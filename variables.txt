@@ -1,0 +1,9 @@
+linelist
+--------
+astropy.table
+columns: 'name','linelab','lines','einstein','comment'
+units: wavelengths in vacuum, Angstroms
+
+constants
+---------
+scipy.constants

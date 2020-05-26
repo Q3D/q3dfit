@@ -103,7 +103,7 @@
 """
 import numpy as np
         
-def ifsf_gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
+def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
                lratfix=False,siglim=False,sigfix=[],blrcomp=False,blrlines=False,specres=False) :
     bad = 1e99
     c=299792.458
@@ -433,7 +433,10 @@ def ifsf_gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
                     parinfo[isoff]['tied'] = ''
                 else:
                     indtie = np.where(lines_arr == linetie[line])[0]
-                    parinfo[iwoff]['tied'] = ''
+                    parinfo[iwoff]['tied'] = '{0:0.6e}{1:1}{2:0.6e}{3:1}{4:1}{5:1}'.format(linelist[line],'/',linelist[linetie[line]],'* P[',woff+indtie*3,']')
+                    # string(linelist[line],'/',linelist[linetie[line]],$
+                    #        '* P[',woff+indtie*3,']',$
+                    #        format='(E0.6,A0,E0.6,A0,I0,A0)') 
                 # fixed/free
                 if sigfix == True:
                     if 'line' in sigfix:
@@ -454,7 +457,8 @@ def ifsf_gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         lineb = np.where(lines_arr == '[SII]6731')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
-            parinfo[foff+lineb*3]['tied'] = ''
+            parinfo[foff+lineb*3]['tied'] = 'P['+'{:1}'.format(str(foff+linea*3))+']/P['+'{:1}'.format(str(ppoff0+maxncomp*ilratlim+i))+']'
+            #'P['+string(foff+linea*3,format='(I0)')+']/P['+string(ppoff0+maxncomp*ilratlim+i,format='(I0)')+']'
             parinfo[foff+lineb*3]['flux_tie'] = '[SII]6716'
         
         ilratlim = 1
@@ -463,8 +467,8 @@ def ifsf_gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         lineb = np.where(lines_arr == '[NI]5200')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
-            parinfo[foff+lineb*3]['tied'] = ''
-            parinfo[foff+lineb*3]['flux_tie'] = '[NI]5200'
+            parinfo[foff+linea*3]['tied'] = 'P['+'{:1}'.format(str(foff+lineb*3))+']/P['+'{:1}'.format(str(ppoff0+maxncomp*ilratlim+i))+']'
+            parinfo[foff+linea*3]['flux_tie'] = '[NI]5200'
         
         ilratlim = 2
         linea = np.where(lines_arr == 'Halpha')[0]
@@ -472,8 +476,12 @@ def ifsf_gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         lineb = np.where(lines_arr == '[NII]6583')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
-            parinfo[foff+lineb*3]['tied'] = ''
+            parinfo[foff+lineb*3]['tied'] = 'P['+'{:1}'.format(str(foff+linea*3))+']/P['+'{:1}'.format(str(ppoff0+maxncomp*ilratlim+i))+']'
             parinfo[foff+lineb*3]['flux_tie'] = 'Halpha'
+        
+        # the if statement here prevents MPFIT_TIE from issuing an IEEE exception,
+        # since if we're not fitting Halpha then the ratio is set to 0 at the 
+        # beginning of this routine
         
         ilratlim = 3
         linea = np.where(lines_arr == '[OII]3726')[0]
@@ -481,7 +489,7 @@ def ifsf_gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         lineb = np.where(lines_arr == '[OII]3729')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
-            parinfo[foff+linea*3]['tied'] = ''
+            parinfo[foff+lineb*3]['tied'] = 'P['+'{:1}'.format(str(foff+linea*3))+']/P['+'{:1}'.format(str(ppoff0+maxncomp*ilratlim+i))+']'
             parinfo[foff+linea*3]['flux_tie'] = '[OII]3729'
             
             
@@ -490,7 +498,7 @@ def ifsf_gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         lineb = np.where(lines_arr == '[OIII]5007')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
-            parinfo[foff+linea*3]['tied'] = ''
+            parinfo[foff+linea*3]['tied'] = 'P['+'{:1}'.format(str(foff+lineb*3))+']/3.0'
             parinfo[foff+linea*3]['flux_tie'] = '[OIII]5007'
             # Make sure initial value is correct
             parinfo[foff+linea*3]['value'] = parinfo[foff+lineb*3]['value']/3.0
@@ -500,7 +508,7 @@ def ifsf_gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         lineb = np.where(lines_arr == '[OI]6364')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
-            parinfo[foff+lineb*3]['tied'] = ''
+            parinfo[foff+lineb*3]['tied'] = 'P['+'{:1}'.format(str(foff+linea*3))+']/3.0'
             parinfo[foff+lineb*3]['flux_tie'] = '[OI]6300'
             # Make sure initial value is correct
             parinfo[foff+lineb*3]['value'] = parinfo[foff+linea*3]['value']/3.0
@@ -510,7 +518,7 @@ def ifsf_gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         lineb = np.where(lines_arr == '[NII]6583')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
-            parinfo[foff+linea*3]['tied'] = ''
+            parinfo[foff+linea*3]['tied'] = 'P['+'{:1}'.format(str(foff+lineb*3))+']/3.0'
             parinfo[foff+linea*3]['flux_tie'] = '[NII]6583'
             # Make sure initial value is correct
             parinfo[foff+linea*3]['value'] = parinfo[foff+lineb*3]['value']/3.0
@@ -520,7 +528,7 @@ def ifsf_gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         lineb = np.where(lines_arr == '[NeIII]3869')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
-            parinfo[foff+linea*3]['tied'] = ''
+            parinfo[foff+linea*3]['tied'] = 'P['+'{:1}'.format(str(foff+lineb*3))+']/3.0'
             parinfo[foff+linea*3]['flux_tie'] = '[NeIII]3869'
             # Make sure initial value is correct
             parinfo[foff+linea*3]['value'] = parinfo[foff+lineb*3]['value']/3.0
@@ -535,11 +543,15 @@ def ifsf_gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
     badpar = []
     ct = 0
     if ct > 0 :
-        print('Quantity','Line','Comp','Value','Lower limit','Upper limit')#,format='(2A20,A5,3A15)')
+        # print('Quantity','Line','Comp','Value','Lower limit','Upper limit')#,format='(2A20,A5,3A15)')
+        printText = '{0:20}{1:20}{2:5}{3:15}{4:15}{5:15}'.format('Quantity','Line','Comp','Value','Lower limit','Upper limit')
+        print(printText)#,format='(2A20,A5,3A15)')
         for i in range(0,ct):
             j = badpar[i]
-            print(parinfo[j]['parname'],parinfo[j]['line'],parinfo[j]['comp'],
-                  parinfo[j]['value'],parinfo[j][0],parinfo[j]['limits'][1])#,format='(2A20,I5,3E15.6)')
+            print('{0:20}{1:20}{2:5}{3:15.6e}{4:15.6e}{5:15.6e}'.format(parinfo[j]['parname'],parinfo[j]['line'],parinfo[j]['comp'],
+                  parinfo[j]['value'],parinfo[j][0],parinfo[j]['limits'][1]))
+            # print(parinfo[j]['parname'],parinfo[j]['line'],parinfo[j]['comp'],
+                  # parinfo[j]['value'],parinfo[j][0],parinfo[j]['limits'][1])#,format='(2A20,I5,3E15.6)')
         print('Initial values are outside limits.')
     else:
         return parinfo

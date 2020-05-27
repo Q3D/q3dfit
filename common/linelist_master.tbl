@@ -1,0 +1,59 @@
+\                                                                               
+\fixlen = T
+\RowsRetrieved =  ???
+\ORIGIN  = 'Hand-crafted by N. Zakamska from D. Rupke's file'
+\DATETIME= '2020-05-25 16:58:00'
+\
+\ name
+\ ___ line name recognizable by a reasonable human
+\ linelab
+\ ___ Latex-friendly line name
+\ lines
+\ ___ wavelength in vacuum, in Angstrom
+\ Wavelength sources:
+\   1. NIST ASD -- For UV, observed if present, otherwise Ritz
+\   2. HeI 4686 -- found random wavelength compilation. In NIST, shows
+\                  up as a complex of many fine structure lines with
+\                  range of several tenths of an A.
+\ For IR lines:
+\   1. H_2: http://www.jach.hawaii.edu/UKIRT/astronomy/calib/spec_cal/h2_s.html
+\   2. He: http://www.jach.hawaii.edu/UKIRT/astronomy/calib/spec_cal/he_4.html
+\   3. H: http://www.jach.hawaii.edu/UKIRT/astronomy/calib/spec_cal/recomb_menu.html
+\   4. [SiVI]: NIST
+\   Checked He and H lines in NIST and there is good agreement.
+|              name|                lines|              linelab|
+|              char|               double|                 char|
+|                  |             Angstrom|                     |
+|              null|                 null|                 null|
+\
+\
+\
+\ IR lines (vacuum). Nadia: spot-checked with NIST
+                Paa                 18756  P$\alpha$             \this is a comment
+                Pab             12821.578  P$\beta$                
+                Pag              10941.17  P$\gamma$               
+                Pad               10052.6  P$\delta$               
+                Brg                 21661  Br$\gamma$              
+                Brd                 19451  Br$\delta$              
+                Bre                 18181  Br$\epsilon$            
+           H2_10_S1                 21218  H$\down2$(1-0) S(1)     
+           H2_10_S2                 20338  H$\down2$(1-0) S(2)     
+           H2_10_S3                 19575  H$\down2$(1-0) S(3)     
+           H2_10_S4                 18920  H$\down2$(1-0) S(4)     
+           H2_10_S5                 18358  H$\down2$(1-0) S(5)     
+             HeI206                 20587  HeI 2.06$\mu$m          
+             HeI187                 18691  HeI 1.87$\mu$m          
+             HeI108                 10833  HeI 1.08$\mu$m          
+            HeI108a          10832.057472  HeI 1.08320$\mu$m       
+            HeI108b          10833.216751  HeI 1.08332$\mu$m       
+            HeI108c          10833.306444  HeI 1.08333$\mu$m       
+        [ArIII]7138               7137.77  [ArIII] 7138          	
+        [ArIII]7753               7753.19  [ArIII] 7753          	
+         [SIII]9071                9071.1  [SIII] 9071            	
+         [SIII]9533                9533.2  [SIII] 9533            	 
+           [SII]103                 10329  [SII] 1.03$\mu$m        
+          [SII]103a              10289.55  [SII] 1.0289$\mu$m      
+          [SII]103b              10323.32  [SII] 1.0323$\mu$m      
+          [SII]103c              10329.24  [SII] 1.0329$\mu$m      
+          [SII]103d              10373.33  [SII] 1.0373$\mu$m      
+          [SiVI]196                 19646  [SiVI] 1.96$\mu$m       

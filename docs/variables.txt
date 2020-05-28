@@ -7,3 +7,12 @@ units: wavelengths in vacuum, Angstroms
 constants
 ---------
 scipy.constants
+
+outstr
+------
+IDL structure output by IFSF_FITSPEC --> dict
+
+initdat
+-------
+IDL structure read by IFSF through calling master initialization function --> dict read by IFSF through calling master initialization function
+

@@ -1,0 +1,1 @@
+#!/usr/bin/env python3# -*- coding: utf-8 -*-"""Created on Thu May 28 14:48:26 2020@author: drupke"""#from . import q3d_example

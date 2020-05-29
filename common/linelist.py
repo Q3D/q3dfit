@@ -44,6 +44,7 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
         that one line is not in the line list, convert to air wavelengths and 
         to microns and remove the line lables
     """
+    import pdb
     from astropy.table import Table, vstack
     import os
     #https://stackoverflow.com/questions/4060221/how-to-reliably-open-a-file-in-the-same-directory-as-a-python-script

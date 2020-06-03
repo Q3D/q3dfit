@@ -1,16 +1,17 @@
 def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
     """
-    Generates an astropy Table of lines from the master file linelist_master.tbl
+    Generates an astropy Table of lines from the master files linelist_air.tbl
+    and linelist_vac.tbl
     
     Returns:
     
        An astropy Table of lines with keywords 'name','linelab','lines'
-       Example: 'Lyalpha', 'Ly \$\alpha\$', 1215.67d
+       Example: 'Lyalpha', 'Ly \$\alpha\$', 1215.67
     
     Parameters:
     
-       No required parameters; by default the entire table is read from the 
-       linelist_master.tbl and returned
+       No required parameters; by default the entire tables are read from the 
+       linelist_air.tbl and linelist_vac.tbl, recomputed into vacuum and returned
     
     Optional parameters:
     
@@ -26,7 +27,14 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
     
     Examples:
         
-        1.
+        1. 
+        
+        u=linelist()
+        
+        will return all lines in the catalog with labels and central wavelengths
+        in vacuum in Angstroms.
+        
+        2.
         
         mylist=['Paa', 'Halpha', 'Paa']
         u=linelist(inlines=mylist)
@@ -35,7 +43,7 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
         in the same order as given, and a warning there is a duplicated line 
         in mylist
         
-        2.
+        3.
         
         mylist=['Paa', 'Halpha', 'junk']
         u=linelist(inlines=mylist,vacuum=False,waveunit='micron',linelab=False)

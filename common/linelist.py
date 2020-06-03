@@ -28,7 +28,7 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
         
         1.
         
-        mylist=['Paa', '[SII]103b', 'Paa']
+        mylist=['Paa', 'Halpha', 'Paa']
         u=linelist(inlines=mylist)
         
         will produce a table of vacuum wavelengths in Angstroms for three lines
@@ -37,7 +37,7 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
         
         2.
         
-        mylist=['Paa', '[SII]103b', 'junk']
+        mylist=['Paa', 'Halpha', 'junk']
         u=linelist(inlines=mylist,vacuum=False,waveunit='micron',linelab=False)
         
         will produce a table of air wavelengths in micron for two lines, report
@@ -48,12 +48,36 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
     from astropy.table import Table, vstack
     import os
     #https://stackoverflow.com/questions/4060221/how-to-reliably-open-a-file-in-the-same-directory-as-a-python-script
-    all_lines=Table.read(os.path.dirname(__file__)+'/linelist_master.tbl',format='ipac')
+
+    # Ideally the whole line file would be one list on vacuum scale, in which case
+    # we can simply do:
+    # all_lines=Table.read(os.path.dirname(__file__)+'/linelist_master.tbl',format='ipac')
+    # outlines=all_lines
+    
+    # However, right now I have two different files.
+    lines_air=Table.read(os.path.dirname(__file__)+'/linelist_air.tbl',format='ipac')
+    lines_vac=Table.read(os.path.dirname(__file__)+'/linelist_vac.tbl',format='ipac')
+    # get everything on the same wavelength scale, air or vacuum depending on the
+    # user input; this must be done before any Angstrom to micron conversion
+    # is attempted
+    if ((vacuum!=True) & (vacuum!=False)):
+        print ('Incorrect input for vacuum vs air, proceeding with default (vacuum)')
+        vacuum=True
+    if (vacuum==False):
+        # meaning air is desired; converting from vacuum to air and stacking the 
+        # two tables into one output
+        temp=1.e4/lines_vac['lines']
+        lines_vac['lines']=lines_vac['lines']/(1.+6.4328e-5+
+                2.94981e-2/(146.-temp**2)+2.5540e-4/(41.-temp**2))
+        all_lines=vstack([lines_vac,lines_air])
+    if (vacuum==True):
+        # meaning vacuum is desired; converting from air to vacuum and stacking the
+        # two tables into one output
+        temp=1.e4/lines_air['lines']
+        lines_air['lines']=lines_air['lines']*(1.+6.4328e-5+
+                2.94981e-2/(146.-temp**2)+2.5540e-4/(41.-temp**2))
+        all_lines=vstack([lines_vac,lines_air])
     outlines=all_lines
-    # Dave had some checks on whether the master table was complete, in that there
-    # is exactly one name per one Tex label per wavelength
-    # it would not be crazy to read in this table and check that there are no 
-    # empty fields in these key columns...
    
     # a helper function that removes duplicate lines to check for duplicates
     # https://stackoverflow.com/questions/12897374/get-unique-values-from-a-list-in-python
@@ -88,15 +112,6 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
     if (linelab==False):
         outlines.keep_columns(['name','lines'])
         
-    # switch from vacuum to air if requested; this needs to be done on Angstroms
-    # so before any unit conversion is attempted
-    if ((vacuum!=True) & (vacuum!=False)):
-        print ('Incorrect input for vacuum vs air, proceeding with default (vacuum)')
-    if (vacuum==False):
-        temp=1.e4/outlines['lines']
-        outlines['lines']=outlines['lines']/(1.+6.4328e-5+
-                2.94981e-2/(146.-temp**2)+2.5540e-4/(41.-temp**2))
-        
     # switch to microns if requested. Only Angstrom and microns are recognized 
     if ((waveunit!='Angstrom') & (waveunit!='micron')):
         print ('Wave unit ',waveunit,' not recognized, returning Angstroms')
@@ -111,4 +126,4 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
             print('Input list size different from output table size, most likely')
             print('because some lines were not found in the database')
 
-    return outlines                                               
+    return outlines

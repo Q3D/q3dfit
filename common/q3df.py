@@ -51,6 +51,7 @@ def q3df( initproc, cols=None, rows=None, oned=False, onefit=False, \
     import pdb
     import time
 
+    from q3dfit.common.fitloop import fitloop
     from q3dfit.common.linelist import linelist
     from q3dfit.common.readcube import CUBE
     
@@ -123,12 +124,16 @@ def q3df( initproc, cols=None, rows=None, oned=False, onefit=False, \
 
 #   Set up 2D arrays specifying column value and row value at each point to be
 #   fitted. These are zero-offset for indexing other arrays.
-    colarr = np.empty((ncols,nrows))
-    rowarr = np.empty((ncols,nrows))
+    colarr = np.empty((ncols,nrows),dtype=int)
+    rowarr = np.empty((ncols,nrows),dtype=int)
     for i in range(nrows): colarr[:,i] = list(range(cols[0]-1,cols[1]))
     for i in range(ncols): rowarr[i,] = list(range(rows[0]-1,rows[1]))
     nspax = ncols * nrows
     
 #   Call to FITLOOP or parallelization goes here.
     
-    print('Q3DF: Total time for calculation: '+(time.time()-starttime)+' s.')
+#   Test call
+    fitloop(0,colarr,rowarr,cube,initdat,linelist,oned,onefit,quiet,\
+            logfile=initdat['logfile'])
+
+    print('Q3DF: Total time for calculation: '+str(time.time()-starttime)+' s.')

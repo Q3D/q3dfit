@@ -8,7 +8,6 @@ from astropy.io.fits import update
 from scipy import constants as ct
 import copy
 from scipy import interpolate
-#from pathlib import Path
 import os
 
 
@@ -31,7 +30,7 @@ cube = CUBE(fp='/jwst1/lwz/KCWI_dwarf/pg1411/PG1411/',infile='pg1411rb3.fits')
         phu: primary fits extension
         dat: data array
         var: variance array
-        err: error array
+        err: error array, the values are recorded as nan when the variances are negative.
         dq: dq array
         wave: wavelength array
         header_phu: header for the primary fits extension
@@ -268,6 +267,6 @@ class CUBE:
                 dq[ibd] = 1
     
 if __name__ == "__main__":
-    c = constants.c/1000.
+    #c = constants.c/1000.
     #main(J0906=True)
-    main()
+    cube=CUBE(fp='/jwst1/lwz/KCWI_dwarf/pg1411/PG1411/',infile='pg1411rb3.fits')

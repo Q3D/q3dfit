@@ -145,16 +145,19 @@ class CUBE:
         self.hdu = hdu
         self.phu = hdu[0]
         try: 
-            self.dat = hdu[datext].data
+            self.dat = (hdu[datext].data).T
         except:
             print('data extension does not exist')
         try:
-            self.var = hdu[varext].data
-            self.err = (hdu[varext].data) ** 0.5
+            self.var = (hdu[varext].data).T
+            self.err = copy.copy(self.var) ** 0.5
+            badvar = np.where(self.var < 0)
+            if np.size(badvar) > 0:
+                print('Warning: Negative values encountered in variance array.')
         except:
             print('variance extension does not exist')
         try:
-            self.dq = hdu[dqext].data
+            self.dq = (hdu[dqext].data).T
         except:
             print('quality flag extension does not exist')
         if zerodq == True:
@@ -171,8 +174,8 @@ class CUBE:
 
         datashape = np.shape(self.dat)
         if np.size(datashape) == 3:
-            nrows = (datashape)[2]
-            ncols = (datashape)[1]
+            ncols = (datashape)[2]
+            nrows = (datashape)[1]
             nw = (datashape)[0]
             try: 
                 np.max([nrows,ncols]) < nw

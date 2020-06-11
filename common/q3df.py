@@ -54,6 +54,7 @@ def q3df( initproc, cols=None, rows=None, oned=False, onefit=False, \
     from q3dfit.common.fitloop import fitloop
     from q3dfit.common.linelist import linelist
     from q3dfit.common.readcube import CUBE
+    from q3dfit.exceptions import InitializationError
     
     starttime = time.time()
     
@@ -71,7 +72,10 @@ def q3df( initproc, cols=None, rows=None, oned=False, onefit=False, \
         if initdat.__contains__('argslinelist'):
             linelist=linelist(initdat['lines'],**initdat['argslinelist'])
         else: linelist=linelist(initdat['lines'])
-    else: linelist=linelist()
+    else:
+#   This deviates from IFSFIT, but really need to throw an error here
+#   because fitloop expects one to specify lines in the initialization file
+        raise InitializationError('No lines to fit specified')
     
 #   Read data
 #   Set default extensions
@@ -126,8 +130,10 @@ def q3df( initproc, cols=None, rows=None, oned=False, onefit=False, \
 #   fitted. These are zero-offset for indexing other arrays.
     colarr = np.empty((ncols,nrows),dtype=int)
     rowarr = np.empty((ncols,nrows),dtype=int)
-    for i in range(nrows): colarr[:,i] = list(range(cols[0]-1,cols[1]))
-    for i in range(ncols): rowarr[i,] = list(range(rows[0]-1,rows[1]))
+    for i in range(nrows):
+        colarr[:,i] = list(range(cols[0]-1,cols[1]))
+    for i in range(ncols):
+        rowarr[i,] = list(range(rows[0]-1,rows[1]))
     nspax = ncols * nrows
     
 #   Call to FITLOOP or parallelization goes here.

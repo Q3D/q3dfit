@@ -51,10 +51,13 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
     
     import pdb
     import numpy as np
+    from q3dfit.exceptions import InitializationError
 
     if logfile:
-        if isinstance(logfile,str): uselogfile = logfile
-        else: uselogfile = logfile[ispax]
+        if isinstance(logfile,str):
+            uselogfile = logfile
+        else:
+            uselogfile = logfile[ispax]
         loglun = open(uselogfile,'w')
     
     masksig_secondfit_def = 2.
@@ -105,8 +108,10 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
 #           Each dict key (line) will have one value (# comp)
             ncomp = dict()
             for line in initdat['lines']:
-                if oned: ncomp[line] = initdat['ncomp'][line][i]
-                else: ncomp[line] = initdat['ncomp'][line][i,j]
+                if oned:
+                    ncomp[line] = initdat['ncomp'][line][i]
+                else:
+                    ncomp[line] = initdat['ncomp'][line][i,j]
                 
 #       First fit
 
@@ -117,7 +122,67 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
 #           Find lines where ncomp set to 0
             ct_comp_emlist = 0
             if not initdat.__contains__('noemlinfit'):
-                for i in ncomp.values():
-                    if i == 0: ct_comp_emlist+=1
-            
+                for k in ncomp.values():
+                    if k == 0: ct_comp_emlist+=1
+
+#           initialize gas sigma limit array
+            if initdat.__contains__('siglim_gas'):
+                if initdat['siglim_gas'].ndim == 1:
+                    siglim_gas = initdat['siglim_gas']
+                else:
+                    if oned:
+                        siglim_gas = initdat['siglim_gas'][i,]
+                    else:
+                        siglim_gas = initdat['siglim_gas'][i,j,]
+            else:
+                siglim_gas = False
+
+#           initialize gas sigma initial guess array
+            if initdat.__contains__('siginit_gas'):
+                if initdat['siginit_gas'][initdat['lines'][0]].ndim == 1:
+                    siginit_gas = initdat['siginit_gas']
+                else:
+                    siginit_gas = dict()
+                    if oned:
+                        for k in initdat['lines']:
+                            siginit_gas[k] = initdat['siginit_gas'][k][i,]
+                    else:
+                        for k in initdat['lines']:
+                            siginit_gas[k] = initdat['siginit_gas'][k][i,j,]
+            else:
+                siginit_gas = False
+
+#           initialize stellar redshift initial guess
+            if oned:
+                zstar = initdat['zinit_stars'][i]
+            else:
+                zstar = initdat['zinit_stars'][i,j]
+            zstar_init = zstar
+
+#           regions to ignore in fitting. Set to max(err)
+            if initdat.__contains__('cutrange'):
+                if initdat['cutrange'].ndim == 1:
+                    indx_cut = \
+                        np.intersect1d((cube.wave >= \
+                                        initdat['cutrange'][0]).nonzero(),\
+                                       (cube.wave <= \
+                                        initdat['cutrange'][1]).nonzero())
+                    if indx_cut.size != 0:
+                        pdb.set_trace()
+                        dq[indx_cut]=1
+                        err[indx_cut]=errmax*100.
+                elif initdat['cutrange'].ndim == 2:
+                    for k in range(initdat['cutrange'].shape[0]):
+                        indx_cut = \
+                            np.intersect1d((cube.wave >= \
+                                            initdat['cutrange'][k,0]).nonzero(),\
+                                           (cube.wave <= \
+                                            initdat['cutrange'][k,1]).nonzero())
+                        if indx_cut.size != 0:
+                            dq[indx_cut]=1
+                            err[indx_cut]=errmax*100.
+                else:
+                    raise InitializationError("CUTRANGE not properly specified")
+
+#           To abort the while loop, for testing            
             dofit = False

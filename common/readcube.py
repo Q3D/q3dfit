@@ -124,11 +124,13 @@ class CUBE:
         infile=kwargs.get('infile','')
         self.infile = infile
         try:
-            os.path.isfile(infile)
-            hdu = fits.open(fp+infile,ignore_missing_end=True)
-            hdu.info()
+            os.path.isfile(fp+infile)
+            #hdu = fits.open(fp+infile,ignore_missing_end=True)
+            #hdu.info()
         except:
             print(infile+' does not exist!')
+        hdu = fits.open(fp+infile,ignore_missing_end=True)
+        hdu.info()
         # fits extensions to be read 
         datext = kwargs.get('datext',1)
         varext = kwargs.get('varext',2)
@@ -174,9 +176,9 @@ class CUBE:
 
         datashape = np.shape(self.dat)
         if np.size(datashape) == 3:
-            ncols = (datashape)[2]
+            ncols = (datashape)[0]
             nrows = (datashape)[1]
-            nw = (datashape)[0]
+            nw = (datashape)[2]
             try: 
                 np.max([nrows,ncols]) < nw
             except:

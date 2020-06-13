@@ -9,10 +9,8 @@ import numpy as np
 
 def pltcont(instr, outfile, compspec, comptitles, ps, title, fitran, \
                  yranminmax):
-    #placeholders
-    instr = np.load(instr, allow_pickle='TRUE').item()
-    compspec = instr['compspec']
-        
+    instr = np.load("dict.npy", allow_pickle='TRUE').item()
+    compspec = np.array(instr['compspec'])        
     if len(compspec) > 0:
         compspec = np.array(compspec)
         sizecomp = np.size(compspec)
@@ -54,10 +52,7 @@ def pltcont(instr, outfile, compspec, comptitles, ps, title, fitran, \
         
     nmasked = 0
 
-#   consec(instr['ct_indx']) = lct, hct, nct
-    nct = instr['nct']
-    lct = instr['lct']
-    hct = instr['hct']
+    lct, hct, nct = consec(instr['ct_indx'])
 
     if nct > 1:
         nmasked = nct - 1
@@ -126,7 +121,7 @@ def pltcont(instr, outfile, compspec, comptitles, ps, title, fitran, \
         else:
            yran = [0, maximum]
 
-        #list of elements at indices in i1   
+        #finding yran[1] aka max
         ydi = np.zeros(len(i1))
         ydi= np.array(ydat)[i1]
         
@@ -155,6 +150,7 @@ def pltcont(instr, outfile, compspec, comptitles, ps, title, fitran, \
         plt.yticks(np.arange(yran[0], yran[1], \
                      round(((yran[1] - yran[0])/5), 2)), fontsize = 25)
 
+        #actually plotting
         plt.plot(wave, ydat, 'w', linewidth = 1)
 
         if ncomp > 0:
@@ -194,6 +190,7 @@ def pltcont(instr, outfile, compspec, comptitles, ps, title, fitran, \
         else:
             yran = [0, maximum]
         
+        #finding yran[1] aka max
         ydi = np.zeros(len(i2))
         ydi= np.array(ydat)[i2]
         
@@ -218,6 +215,7 @@ def pltcont(instr, outfile, compspec, comptitles, ps, title, fitran, \
         plt.tick_params(which = 'major', length = 20, pad = 30)
         plt.tick_params(which = 'minor', length = 10)
         
+        #yay more plotting
         plt.plot(wave, ydat, 'w', linewidth = 1)
         
         if ncomp > 0:
@@ -254,7 +252,7 @@ def pltcont(instr, outfile, compspec, comptitles, ps, title, fitran, \
             if smallboy < minimum:
                 minimum = smallboy   
         
-        
+        #finding yran[1] aka max        
         if yranminmax != None:
             yran = [minimum, maximum]
         else: yran = [0, maximum]
@@ -284,7 +282,7 @@ def pltcont(instr, outfile, compspec, comptitles, ps, title, fitran, \
         plt.tick_params(which = 'major', length = 20, pad = 30)
         plt.tick_params(which = 'minor', length = 10)
 
-
+        #plotting more
         plt.plot(wave, ydat, 'w', linewidth = 1)    
         if ncomp > 0:
             for i in range (0, ncomp):
@@ -297,13 +295,93 @@ def pltcont(instr, outfile, compspec, comptitles, ps, title, fitran, \
                 plt.plot([masklam[i][0],masklam[i][1]], [yran[0], yran[0]], \
                          'c', linewidth = 20, solid_capstyle="butt")
 
+    #more formatting
     plt.subplots_adjust(hspace=0.25)
-#    plt.margins(10)?
     plt.tight_layout(pad = 10)
 
     if title != None:
          plt.suptitle(title, fontsize = 50)
-         
 
     tmpfile = outfile
     plt.savefig(tmpfile + '.jpg')
+
+def consec(a, l = None, h = None, n = None, same = None, distribution = None):
+    nel = len(a)
+    if nel == 1: 
+        l = 0
+        h = 0
+        n = 1        
+    elif nel == 2:
+        if same != None:
+            if a[1] - a[0] == 0:
+                l = 0
+                h = 1
+                n = 1
+            else: 
+                l = -1
+                h = -1
+                n = 0                
+        else:
+            if abs(a[1] - a[0]) == 1:
+                l = 0
+                h = 1
+                n = 1
+            else:
+                l = -1
+                h = -1
+                n = 0      
+    else:
+        if same == None:
+            #adding padding
+            temp = np.concatenate(([a[0]], a))
+            arr = np.concatenate((temp, [a[-1]]))
+            
+            shiftedright = np.roll(arr, 1)
+            shiftedleft = np.roll(arr, -1)
+
+           
+            cond1 = np.absolute(np.subtract(arr, shiftedright)) == 1
+            cond2 = np.absolute(np.subtract(arr, shiftedleft)) == 1
+
+        else:
+            #adding padding
+            temp = np.concatenate(([a[0] + 1], a))
+            arr = np.concatenate((temp, [a[-1] - 1]))
+            
+            shiftedright = np.roll(arr, 1)
+            shiftedleft = np.roll(arr, -1)
+            
+            cond1 = np.absolute(np.subtract(arr, shiftedright)) == 0
+            cond2 = np.absolute(np.subtract(arr, shiftedleft)) == 0        
+        
+        #getting rid of padding
+        cond1 = cond1[1: -1]
+        cond2 = cond2[1: -1]
+        
+        #making l
+        l = [0]
+        l.pop(0)
+        for i in range (0, nel):
+            if cond2[i] and cond1[i] == False:
+                l.append(i)
+        nl = len(l)        
+
+        #making h        
+        h = [0]
+        h.pop(0)
+        for i in range (0, nel):
+            if cond1[i] and cond2[i] == False:
+                h.append(i)        
+        nh = len(h)
+        
+        if nh * nl == 0: 
+            l = -1
+            h = -1
+            n = 0 
+        
+        else: n = min(nh, nl)
+    
+    if l[0] != h[0]: dist = np.subtract(h, l) + 1 
+    else: dist = 0
+
+    return l, h, n

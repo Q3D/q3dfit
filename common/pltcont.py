@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
 
-def pltcont(instr, outfile, compspec, comptitles, ps, title, fitran, \
-                 yranminmax):
+def pltcont(instr, outfile, compspec = None, comptitles = None, ps = None, \
+            title = None, fitran = None, \
+                 yranminmax = None):
     instr = np.load("dict.npy", allow_pickle='TRUE').item()
     compspec = np.array(instr['compspec'])        
     if len(compspec) > 0:

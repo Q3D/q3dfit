@@ -130,7 +130,7 @@ class CUBE:
         except:
             print(infile+' does not exist!')
         hdu = fits.open(fp+infile,ignore_missing_end=True)
-        hdu.info()
+        #hdu.info()
         # fits extensions to be read 
         datext = kwargs.get('datext',1)
         varext = kwargs.get('varext',2)
@@ -141,6 +141,7 @@ class CUBE:
         quiet = kwargs.get('quiet',True)
         waveext = kwargs.get('waveext',None)
         zerodq = kwargs.get('zerodq',False)
+        vormap = kwargs.get('vormpa',None)
         self.datext = datext
         self.varext = varext
         self.dqext = dqext
@@ -230,26 +231,25 @@ class CUBE:
         BUNIT = 'BUNIT'
         if BUNIT in header:
             self.bunit = header[BUNIT]
-        #if vormap:
-        #    ncols = np.max(vormap)
-        #    nrows = 1
-        #    vordat = np.zeros((ncols,nrows,nz))
-        #    vorvar = np.zeros((ncols,nrows,nz))
-        #    vordq = np.zeros((ncols,nrows,nz))
-        #    vorcoords = np.zeros((ncols,2),dtype=int)
-        #    nvor = np.zeros((ncols))
-        #    for i in np.arange(ncols) do begin
-        #      ivor = np.where(vormap eq i+1)
-        #      xyvor = (vormap,ivor[0])
-        #      vordat[:,0,i] = dat[xyvor[0],xyvor[1],*]
-        #      vorvar[:,0,i] = var[xyvor[0],xyvor[1],*]
-        #      vordq[:,0,i] = dq[xyvor[0],xyvor[1],*]
-        #      vorcoords[i,*] = xyvor
-        #      nvor[i] = ctivor
-        #    endfor
-        #    dat = vordat
-        #    var = vorvar
-        #    dq = vordq
+        if vormap:
+            ncols = np.max(vormap)
+            nrows = 1
+            vordat = np.zeros((ncols,nrows,nz))
+            vorvar = np.zeros((ncols,nrows,nz))
+            vordq = np.zeros((ncols,nrows,nz))
+            vorcoords = np.zeros((ncols,2),dtype=int)
+            nvor = np.zeros((ncols))
+            for i in np.arange(ncols):
+                ivor = np.where(vormap == i+1)
+                xyvor = [ivor[0][0],ivor[0][1]]
+                vordat[i,0,:] = dat[xyvor[0],xyvor[1],:]
+                vorvar[i,0,:] = var[xyvor[0],xyvor[1],:]
+                vordq[i,0,:] = dq[xyvor[0],xyvor[1],:]
+                vorcoords[i,:] = xyvor
+                nvor[i] = (np.shape(ivor))[1]
+            dat = vordat
+            var = vorvar
+            dq = vordq
 
         if linearize:
             waveold = copy.copy(self.wave)

@@ -143,7 +143,7 @@ class CUBE:
         quiet = kwargs.get('quiet',True)
         waveext = kwargs.get('waveext',None)
         zerodq = kwargs.get('zerodq',False)
-        vormap = kwargs.get('vormpa',None)
+        vormap = kwargs.get('vormap',None)
         self.datext = datext
         self.varext = varext
         self.dqext = dqext
@@ -272,7 +272,7 @@ class CUBE:
             ibd = np.where(self.dq > 0.01)
             if np.size(ibd) > 0:
                 dq[ibd] = 1
-    
+        hdu.close()
 if __name__ == "__main__":
     #c = constants.c/1000.
     #main(J0906=True)

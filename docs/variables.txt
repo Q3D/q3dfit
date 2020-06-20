@@ -52,6 +52,17 @@ linelist
         that one line is not in the line list, convert to air wavelengths and 
         to microns and remove the line lables
 
+        4.
+        
+        To get the central wavelength for an individual feature by name:
+            
+        wv=np.array(linelist(['Halpha'])['lines'])
+        
+        OR
+        
+        u=linelist()
+        wv=np.array(u['lines'][(u['name']=='Halpha')])      
+
 
 constants
 ---------

@@ -51,6 +51,18 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
         will produce a table of air wavelengths in micron for two lines, report
         that one line is not in the line list, convert to air wavelengths and 
         to microns and remove the line lables
+        
+        4.
+        
+        To get the central wavelength for an individual feature by name:
+            
+        wv=np.array(linelist(['Halpha'])['lines'])
+        
+        OR
+        
+        u=linelist()
+        wv=np.array(u['lines'][(u['name']=='Halpha')])      
+        
     """
     import pdb
     from astropy.table import Table, vstack

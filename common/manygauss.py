@@ -42,6 +42,7 @@
 ;                       resolution in quadrature in wavelength space to each
 ;                       velocity component
 ;      2020jun01, YI, translated to Python 3
+;      2020jun22, YI, added LMFIT functions that build the parameter variables and running the fits that call many_gauss()
 ;    
 ; :Copyright:
 ;    Copyright (C) 2013--2016 David S. N. Rupke
@@ -63,19 +64,157 @@
 ;-
 """
 import numpy as np
+import matplotlib.pyplot as plt
+from lmfit import Parameters, Minimizer,minimize,fit_report
+import re
+
+def lm_resid(param,wave,flux_nocnt,flux_err):
+    """Calculate total residual for fits of Gaussians to several data sets."""
+    parvalue = np.zeros(len(param))
+    for ip, par in enumerate(param):
+        pValue = param[par].value
+        parvalue[ip] = pValue
+    manyGauss = manygauss(wave,parvalue)
+    resid = (flux_nocnt - manyGauss )/flux_err
+    # plt.clf()
+    # plt.plot(wave,flux_nocnt,'-',color='grey',linewidth=0.5)
+    # plt.plot(wave,manyGauss,'b-',linewidth=1)
+    # plt.xlim(4000,8000)
+    # print('lm_resid() finish')
+    return resid
+
+def fix_expressions(params,pnames,paramExp,indexs=[0]):
+    new_exprs = []
+    print('------------------')
+    # now go through each expressions....
+    for ex, exp in enumerate(paramExp):
+        exp = re.sub('d','',exp)
+        pind = np.array(re.findall(r'P\[(.*?)\]', exp)).astype(int)
+        nexp = exp
+        for epind in pind:
+            sepind = 'P['+str(epind)+']'
+            nexp = nexp.replace(sepind,pnames[epind])
+        new_exprs.append(nexp)
+        ni = indexs[ex]
+        params[pnames[ni]].expr = nexp
+    return params
+    
+
+def run_manygauss(wave,flux_nocnt,flux_err,parinfo,maxiter=1000.):
+    # set-up the LMFIT parameters
+    ppoff = parinfo[0]['value']
+    nline = (len(parinfo)-ppoff)/3
+    find = ppoff+np.arange(nline)*3
+    wind = find + 1
+    sind = find + 2
+
+    fit_params = Parameters()
+    pnames = []
+    parTie = []
+    
+    for ip, par in enumerate(parinfo):
+        ptie = parinfo[ip]['tied']
+        if isinstance(ptie,bytes):
+            ptie = ptie.decode('utf-8')
+            if ptie != '':
+                ptie = ptie.replace(' ','')
+                ptie = ptie.replace('+',' + ').replace('*',' * ').replace('-',' - ').replace('/',' / ')
+                ptie = ptie.replace('E + ','E+')
+                parTie.append(ptie)
+        fixed =bool(int(parinfo[ip]['fixed']))
+        # print(ip,fixed)
+        if ip >= find[0]:
+            line = parinfo[ip]['line']
+            if isinstance(line,bytes):
+                line = line.decode('utf-8')
+            if line == '':
+                line = 'blank_'+str(ip)
+            else:
+                line = line.replace(' ','_').replace('.','').replace('-','').replace('-','').replace('[','').replace(']','').replace('/','')
+            # print(ip,line)
+            if ip in find:
+                fpar = parinfo[ip]
+                fname = 'flx_%s' % (line)
+                pnames.append(fname)
+                if fpar['limits'][0] != fpar['limits'][1]:
+                    
+                    fit_params.add(fname, value=fpar['value'],vary = fixed,
+                                    min=fpar['limits'][0], max=fpar['limits'][1],
+                                    brute_step= fpar['step'])
+                else:
+                    fit_params.add(fname, value=fpar['value'],vary = fixed,
+                                    brute_step= fpar['step'])
+            elif ip in wind:
+                wpar = parinfo[ip]
+                wname = 'wav_%s' % (line)
+                pnames.append(wname)
+                if wpar['limits'][0] != wpar['limits'][1]:
+                    fit_params.add(wname, value=wpar['value'],vary = fixed,
+                                min=wpar['limits'][0], max=wpar['limits'][1],
+                                brute_step= wpar['step'])
+                else:
+                    fit_params.add(wname, value=wpar['value'], vary = fixed,
+                                brute_step= wpar['step'])
+            elif ip in sind:
+                spar = parinfo[ip]
+                sname = 'sig_%s' % (line)
+                pnames.append(sname)
+                if spar['limits'][0] != spar['limits'][1]:
+                    fit_params.add(sname, value=spar['value'],vary = fixed,
+                                min=spar['limits'][0], max=spar['limits'][1],
+                                brute_step=spar['step'])
+                else:
+                    fit_params.add(sname, value=spar['value'], vary = fixed,
+                                brute_step=spar['step'])
+        else:
+            parname = parinfo[ip]['parname']
+            if isinstance(parname,bytes):
+                parname = parname.decode('utf-8')
+            if parname == '':
+                parname = 'blank_'+str(ip)
+            else:
+                parname = parname.replace(' ','_').replace('.','').replace('-','').replace('-','').replace('[','').replace(']','').replace('/','_')
+            pnames.append(parname)
+            if parinfo[ip]['limits'][0] == parinfo[ip]['limits'][1]:
+                fit_params.add(parname, value=parinfo[ip]['value'],vary = fixed,
+                                brute_step= parinfo[ip]['step'])
+            else:
+                fit_params.add(parname, value=parinfo[ip]['value'],vary = fixed,
+                                min=parinfo[ip]['limits'][0], max=parinfo[ip]['limits'][1],
+                                brute_step= parinfo[ip]['step'])
+    # now check for the EXPRESSIONS
+    pnames = np.array(pnames)
+    expr = np.where(parinfo[:]['tied'] != '')[0]
+    print(expr)
+    if len(parTie) != 0:
+        fit_params = fix_expressions(fit_params,pnames,parTie,indexs=expr)
+        
+    lmout = minimize(lm_resid, fit_params, args=(wave,flux_nocnt,flux_err),
+                     method='leastsq',max_nfev=maxiter)
+    
+    parout = lmout.params
+    parval = np.zeros(len(parinfo))
+    for ip, par in enumerate(parout):
+        parval[ip] = parout[par].value
+    specfit = manygauss(wave,parval)
+    print(fit_report(lmout.params))
+    return lmout,parval,specfit
+
 
 def manygauss(wave,param,specresarr=None):
     c=299792.458
 
-    ppoff = param[0]
+    ppoff = param[0].astype(int)
     nwave = len(wave)
-    nline = (len(param)-ppoff)/3
+    nline = ((len(param)-ppoff)/3).astype(int)
 
     find = ppoff+np.arange(nline)*3
     wind = find + 1
     sind = find + 2
 
     dispersion = wave[1] - wave[0]
+    
+    
     if specresarr:
         # flipped the (row,column) indices of specresarr
         # np.searchsorted() works a little differently from value_locate() in IDL
@@ -85,15 +224,15 @@ def manygauss(wave,param,specresarr=None):
     else:
         srsigslam = np.zeros(nline)+param[2]
   
-
     # resolution in wavelength space [sigma] assumed to be in third element of PARAM
 
-    sigs = np.sqrt(np.power(param[sind]/c * param[wind],2.) + np.power(srsigslam,2.))
+    sigs = np.sqrt(np.power((param[sind]/c)*param[wind],2.) + np.power(srsigslam,2.))
     maxsig = np.max(sigs)
     
     nsubwave = np.round(10. * maxsig / dispersion)
     halfnsubwave = np.round(nsubwave / 2)
-    nsubwave = halfnsubwave*2+1
+    nsubwave = (halfnsubwave*2+1).astype(int)
+    
     
     # indsubwaves = rebin(transpose(fix(indgen(nsubwave)-halfnsubwave)),nline,nsubwave)
     # in the Python version, the transpose happens after the np.resize rebinning
@@ -108,8 +247,8 @@ def manygauss(wave,param,specresarr=None):
     dwaves = (indsubwaves - np.resize(indrefwaves_frac,[nsubwave,nline]))*dispersion
     # flipped the (row,column) indices of indrefwaves rebin
     indsubwaves += np.resize(indrefwaves,[nsubwave,nline])
-  
-    yvals = np.arange(nwave)
+    
+    yvals = np.zeros(nwave)
     for i in range (0,nline):
         # flipped the (row,column) indices for indsubwaves
         # Python cannot do a where(condition 1 and condition 2)  extraction like in IDL, 
@@ -129,7 +268,8 @@ def manygauss(wave,param,specresarr=None):
             mask = np.zeros(len(exparg))
             mask[ms] = np.ones(len(ms))
             # flipped the (row,column) indices for indsubwaves
-            yvals[indsubwaves[gind,i]] += np.transpose(fluxes[i]*mask*np.exp(exparg*mask))      
+            yvals[indsubwaves[gind,i]] = np.add(yvals[indsubwaves[gind,i]],np.transpose(fluxes[i]*mask*np.exp(exparg*mask)))
+            # yvals[indsubwaves[gind,i]] = np.transpose(fluxes[i]*mask*np.exp(exparg*mask))
 
     return yvals
 

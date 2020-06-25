@@ -119,9 +119,10 @@
 ;      2018may30, DSNR, added option to adjust XTOL and FTOL for line fitting
 ;      2018jun25, DSNR, added NOEMLINMASK switch, distinct from NOEMLINFIT
 ;      2020jun16, YI, rough translation to Python 3; changed all "lambda" variables to "wlambda" since it is a Python keyword
-;      2020jun22, YI, replaced emission line MPFIT with LMFIT 
+;      2020jun22, YI, replaced emission line MPFIT with LMFIT (testing separately)
 ;      2020jun22, YI, added scipy modules to extract XDR data (replace the IDL restore function)
-; 
+;      2020jun23, YI, importing Nadia's airtovac() and the pPPXF log_rebin() functions
+;      2020jun24, YI, importing the copy module and creating duplicate flux and err variables. I keep getting "ValueError: assignment destination is read-only"
 ;         
 ; :Copyright:
 ;    Copyright (C) 2013--2018 David S. N. Rupke
@@ -148,16 +149,27 @@ import time
 from scipy import interpolate
 import scipy.io as sio
 from scipy.io import readsav
-    
+from airtovac import airtovac
+from ppxf.ppxf_util import log_rebin
+import copy
+
 def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
             maskwidths=None,peakinit=None,quiet=None,siginit_gas=None,siglim_gas=None,tweakcntfit=None,col=None,row=None):
 
     flux_out = flux
     err_out = err
     
+    flux = copy.deepcopy(flux)
+    err = copy.deepcopy(err)
+    
+    # flux.setflags(write=True)
+    # err.setflags(write=True)
+    
     c = 299792.458         # speed of light, km/s
     siginit_gas_def = 100.  # default sigma for initial guess 
                             # for emission line widths
+    
+    
     if 'lines' in initdat :
         nlines = len(initdat['lines'])
         linelabel = initdat['lines']
@@ -168,10 +180,11 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         quiet=b'1'
     else:
         quiet=b'0'
-    if siglim_gas:
+    if siglim_gas.all():
         siglim_gas=siglim_gas
     else:
         siglim_gas=b'0'
+    
     if 'fcnlinefit' in initdat :
         fcnlinefit=initdat['fcnlinefit']
     else:
@@ -182,10 +195,12 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         nomaskran=initdat['nomaskran']
     else:
         nomaskran=b'0'
-    if 'startempfile' in initdat :
+        
+    if 'STARTEMPFILE' in initdat :
         istemp = b'1'
     else:
         istemp=b'0'
+        
     if 'loglam' in initdat :
         loglam=b'1'
     else:
@@ -210,47 +225,49 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         mpfit_ftol=initdat['mpfit_ftol']
     else:
         mpfit_ftol=1.-10
-
+    
     noemlinfit = b'0'
     if 'noemlinfit' in initdat :
         ct_comp_emlist = 0
     else:
-        print('hi')
-        # nocomp_emlist = ncomp.where(0,complement=comp_emlist,ncomp=ct_comp_emlist)
+        nocomp_emlist = np.where(np.array(list(ncomp.values())) == 0)[0]
+        comp_emlist = np.where(np.array(list(ncomp.values())) != 0)[0]
+        ct_comp_emlist = len(comp_emlist)
     if ct_comp_emlist == 0 :
         noemlinfit=b'1'
-
+    
     noemlinmask = b'0'
     if noemlinfit == b'1' and 'doemlinmask' not in initdat :
         noemlinmask = b'1'
-
-    if istemp :
+    
+    if bool(int(istemp)):
     # Get stellar templates
-        sav_data = readsav(initdat.startempfile)
+        startempfile = initdat['STARTEMPFILE']
+        if isinstance(startempfile,bytes):
+            startempfile = startempfile.decode('utf-8')
+        
+        sav_data = readsav(startempfile)
         template = sav_data['template']
         # restore,initdat.startempfile
     # Redshift stellar templates
-        templatelambdaz = template['lambda'][0]
+        templatelambdaz = np.copy(template['lambda'][0])
         if 'keepstarz' not in initdat :
             templatelambdaz *= 1. + zstar
         if vacuum == b'1' :
-            airtovac(templatelambdaz)
-            pass # need to fix this
+            templatelambdaz = airtovac(templatelambdaz)
         if 'waveunit' in initdat :
             templatelambdaz *= initdat['waveunit']
         if 'fcnconvtemp' in initdat :
             impModule = __import__(initdat.fcnconvtemp)
             fcnconvtemp = getattr(impModule,initdat['fcnconvtemp'])
             if 'argsconvtemp' in initdat :
-                newtemplate = fcnconvtemp(templatelambdaz,template,_extra=initdat.argsconvtemp)
+                newtemplate = fcnconvtemp(templatelambdaz,template,*initdat.argsconvtemp)
             else:
                 newtemplate = fcnconvtemp(templatelambdaz,template)
     else:
         templatelambdaz = wlambda
-
     # Set up error in zstar
     zstar_err = 0.
-
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Pick out regions to fit
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -262,23 +279,20 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     else:
         fitran_tmp = [wlambda[0],wlambda[len(wlambda)-1]]
     # indices locating good data and data within fit range
-    
     gd_indx_1 = set(np.where(flux != 0)[0])
     gd_indx_2 = set(np.where(err > 0)[0])
-    gd_indx_3 = set(np.where(np.isnan(flux) == True)[0])
-    gd_indx_4 = set(np.where(np.isfinite(flux) == False)[0])
-    gd_indx_5 = set(np.where(np.isnan(err) == False)[0])
+    gd_indx_4 = set(np.where(np.isfinite(flux) == True)[0])
     gd_indx_6 = set(np.where(np.isfinite(err) == True)[0])
     gd_indx_7 = set(np.where(dq == 0 )[0])
     gd_indx_8 = set(np.where(wlambda >= min(templatelambdaz))[0])
     gd_indx_9 = set(np.where(wlambda <= max(templatelambdaz))[0])
     gd_indx_10 = set(np.where(wlambda >= fitran_tmp[0])[0])
     gd_indx_11 = set(np.where(wlambda <= fitran_tmp[1])[0])
-    gd_indx_full = np.array(set.intersection(gd_indx_1,gd_indx_2,gd_indx_3,gd_indx_4,gd_indx_5,gd_indx_6,
-                                         gd_indx_7,gd_indx_8,gd_indx_9,gd_indx_10,gd_indx_11))
     
+    gd_indx_full = gd_indx_1.intersection(gd_indx_2,gd_indx_4,gd_indx_6,gd_indx_7,gd_indx_8,gd_indx_9,gd_indx_10,gd_indx_11)
+    gd_indx_full = list(gd_indx_full)
     fitran = [min(wlambda[gd_indx_full]),max(wlambda[gd_indx_full])]
-
+    
     # Find where flux is <= 0 or error is <= 0 or infinite or NaN
     # (Otherwise MPFIT chokes.)
     neg_indx = np.where(flux > 0)[0]
@@ -287,27 +301,30 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     zerinf_indx_1 = np.where(flux == 0)[0]
     zerinf_indx_2 = np.where(err <= 0)[0]
     zerinf_indx_3 = np.where(np.isfinite(flux) == False)[0]
-    zerinf_indx_4 = np.where(np.isnan(flux) == True)[0]
     zerinf_indx_5 = np.where(np.isfinite(err) == False)[0]
-    zerinf_indx_6 = np.where(np.isnan(err) == True)[0]
-    zerinf_indx = np.unique(np.concatenate(zerinf_indx_1,zerinf_indx_2,zerinf_indx_3,zerinf_indx_4,zerinf_indx_5,zerinf_indx_6))
+    zerinf_indx = np.unique(np.hstack([zerinf_indx_1,zerinf_indx_2,zerinf_indx_3,zerinf_indx_5]))
     
     ctzerinf = len(zerinf_indx)
     maxerr = max(err[gd_indx_full])
+    
+    
     # if ctneg gt 0 then begin
     #   flux[neg_indx]=-1d*flux[neg_indx]
     #   err[neg_indx]=maxerr*100d
     #   if not quiet then print,'Setting ',ctneg,' points from neg. flux to pos. '+$
     #       'and max(err)x100.',format='(A,I0,A)'
     if ctzerinf > 0 :
-        flux[zerinf_indx]=np.median(flux[gd_indx_full])
+        flux[zerinf_indx]= np.median(flux[gd_indx_full])
         err[zerinf_indx]=maxerr*100.
         if quiet != None :
             print('{:s}{:0.1f}{:s}'.format('Setting ',ctzerinf,' points from zero/inf./NaN flux or '+'neg./zero/inf./NaN error to med(flux) and max(err)x100.'))
 
     # indices locating data within actual fit range
-    # fitran_indx = where(wlambda ge fitran[0] AND wlambda le fitran[1],ctfitran)
-
+    fitran_indx1 = np.where(wlambda >= fitran[0])[0]
+    fitran_indx2 = np.where(wlambda <= fitran[1])[0]
+    fitran_indx = np.intersect1d(fitran_indx1,fitran_indx2)
+    ctfitran = len(fitran_indx)
+    
     # indices locating good regions within wlambda[fitran_indx]
     gd_indx_full_rezero = gd_indx_full - fitran_indx[0]
     max_gd_indx_full_rezero = max(fitran_indx) - fitran_indx[0]
@@ -318,42 +335,42 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     ctgd = len(i_gd_indx_full_rezero)
     
     gd_indx = gd_indx_full_rezero[i_gd_indx_full_rezero]
-
+    
     # Limit data to fitrange
     npix     = len(fitran_indx)
     gdflux   = flux[fitran_indx]
     gdlambda = wlambda[fitran_indx]
     gderr    = err[fitran_indx]
-
+    
     # Weight
     gdweight = 1./np.power(gderr,2.)
-
+    
     # Log rebin galaxy spectrum for finding bad regions in log space
-    log_rebin,fitran,flux_raw[fitran_indx],gdflux_log
-    log_rebin,fitran,err_raw[fitran_indx]^2d,gderrsq_log
+    gdflux_log,_,_  = log_rebin(fitran,flux_raw[fitran_indx])
+    gderrsq_log,_,_ = log_rebin(fitran,np.power(err_raw[fitran_indx],2.))
     gderr_log = np.sqrt(gderrsq_log)
     #  neg_indx_log = where(gdflux_log lt 0,ctneg_log)
     
     zil1 = set(np.where(gdflux_log == 0)[0])
     zil2 = set(np.where(gdflux_log <= 0)[0])
     zil3 = set(np.where(np.isfinite(gderr_log) == False)[0])
-    zerinf_indx_log = np.array(set.intersection(zil1,zil2,zil3))
+    zerinf_indx_log = list(zil1.intersection(zil2,zil3))
     ctzerinf_log = len(zerinf_indx_log)
     gd_indx_log = np.arange(ctfitran)
-    
-    #  if ctneg_log gt 0 then $
-    #     gd_indx_log = cgsetdifference(gd_indx_log,neg_indx_log)
     if ctzerinf_log > 0:
         gd_indx_log = np.setdiff1d(gd_indx_log,zerinf_indx_log)
 
     # Log rebin galaxy spectrum for use with PPXF, this time with 
     # errors corrected before rebinning
-    log_rebin,fitran,gdflux,gdflux_log,gdlambda_log,velscale=velscale
-    log_rebin,fitran,gderr^2d,gderrsq_log
+    gdflux_log,_,_  = log_rebin,fitran,gdflux,gdflux_log,gdlambda_log,velscale=velscale
+    gderrsq_log,_,_ = log_rebin(fitran,gderr^2.)
+    
     gderr_log = np.sqrt(gderrsq_log)
 
     # timer
     fit_time0 = time.time()
+    print('step 1 complete')
+    return
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Fit continuum
@@ -428,7 +445,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                 #                           ct_indx,ct_coeff,zstar,
                 #                           quiet=quiet,_extra=argscontfit_use)
                 ppxf_sigma=0.
-                if initdat['fcncontfit'] == 'ifsf_fitqsohost' and 'refit' in initdat['argscontfit']':
+                if initdat['fcncontfit'] == 'ifsf_fitqsohost' and 'refit' in initdat['argscontfit']:
                     pass # this is just a placeholder for now
                     # ppxf_sigma=ct_coeff.ppxf_sigma
             else:
@@ -453,8 +470,8 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
             # Check polynomial degree
             add_poly_degree = 4
             if 'argscontfit' in initdat:
-                if tag_exist(initdat.argscontfit,'add_poly_degree'):
-                    pass # this is just a placeholder for 
+                # if tag_exist(initdat.argscontfit,'add_poly_degree'):
+                pass # this is just a placeholder for 
                     # add_poly_degree = initdat.argscontfit.add_poly_degree
     
             # This ensures PPXF doesn't look for wlambda if no reddening is done
@@ -482,9 +499,11 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
             #       error=solerr
     
             # Resample the best fit into linear space
+            continuum = []
             # continuum = interpol(continuum_log,gdlambda_log,ALOG(gdlambda))
     
             # Adjust stellar redshift based on fit
+            sol=[]
             zstar += sol[0]/c
             ppxf_sigma=sol[1]
     
@@ -493,6 +512,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
             # However if one *assume* that the fit is good, a corrected estimate of the
             # errors is: errorCorr = error*sqrt(chi^2/DOF) = error*sqrt(sol[6]).
             ct_rchisq = sol[6]
+            solerr = []
             solerr *= np.sqrt(sol[6])
             zstar_err = np.sqrt(np.power(zstar_err,2.) + np.power((solerr[0]/c),2.))
             ppxf_sigma_err=solerr[1]
@@ -522,11 +542,11 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
             # Indices into masked data
                 tmp_ctind1 = np.where(ct_lambda >= tweakcntfit[i,0])[0]
                 tmp_ctind2 = np.where(ct_lambda <= tweakcntfit[i,1])[0]
-                tmp_ctind = np.intersect1d(tmp_ind1,tmp_ind2)
-                ct_ind = len(tmp_ind)
+                tmp_ctind = np.intersect1d(tmp_ctind1,tmp_ctind2)
+                ct_ctind = len(tmp_ctind)
                 
                 if ct_ind > 0 and ct_ctind > 0 :
-                        parinfo =  list(np.repeat({'value':0.},tweakcntfit[2,i]+1))
+                    parinfo =  list(np.repeat({'value':0.},tweakcntfit[2,i]+1))
                     # parinfo = replicate({value:0d},tweakcntfit[2,i]+1)
                     pass # this is just a placeholder for now
                     # tmp_pars = mpfitfun('poly',ct_lambda[tmp_ctind],$
@@ -579,7 +599,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                         peakinit[neg,line] = 0
         # Initial guesses for emission line widths
         if siginit_gas != None:
-            siginit_gas = inidat['lines']
+            siginit_gas = initdat['lines']
             for line in initdat['lines']:
                 siginit_gas[line] = np.zeros(initdat['maxncomp'])+siginit_gas_def
 
@@ -601,26 +621,20 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         if 'argsinitpar' in initdat:
             # need to fix the _extra keywords
             parinit = fcninitpar(linelist,linelistz,initdat['linetie'],peakinit,siginit_gas,
-                                 initdat['maxncomp'],ncomp,siglim=siglim_gas,_extra=initdat['argsinitpar']) 
+                                  initdat['maxncomp'],ncomp,siglim=siglim_gas,_extra=initdat['argsinitpar']) 
         else:
             parinit = fcninitpar(linelist,linelistz,initdat['linetie'],peakinit,siginit_gas,
-                                 initdat['maxncomp'],ncomp,siglim=siglim_gas)
+                                  initdat['maxncomp'],ncomp,siglim=siglim_gas)
         
         testsize = len(parinit)
         if testsize == 0 :
             raise Exception('Bad initial parameter guesses.')
         #     outstr = 0
         #     goto,finish
-          
-        specfit = np.zeros(npix)
         
-        #################################
-        # INSERT THE LMFIT HERE
-        ################################
         efitModule = __import__(fcnlinefit)
-        elin_lmfit = getattr(impModule,'run'+initdat[fcnlinefit])
-        
-        lmout,specfit = elin_lmfit(gdlambda,gdflux_nocnt,gderr_nocnt,parinfo=parinit,maxiter=1000.)
+        elin_lmfit = getattr(efitModule,'run'+initdat[fcnlinefit])
+        lmout,parout,specfit = elin_lmfit(gdlambda,gdflux_nocnt,gderr_nocnt,parinfo=parinit,maxiter=1000)
         
         params = lmout.params
         covar = lmout.covar
@@ -630,13 +644,13 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         errmsg=lmout.message
         
         # MPFIT variables -- to fix.
-        niter=niter
-        status=status
-        quiet=quiet
-        npegged=npegged
-        functargs=argslinefit
-        xtol=mpfit_xtol
-        ftol=mpfit_ftol
+        # niter=niter
+        # status=status
+        # quiet=quiet
+        # npegged=npegged
+        # functargs=argslinefit
+        # xtol=mpfit_xtol
+        # ftol=mpfit_ftol
         
         
         # param = Mpfitfun(fcnlinefit,gdlambda,gdflux_nocnt,gderr_nocnt,
@@ -659,12 +673,12 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         #  endforeach
         
         # need to adjust the error messages corresponding to LMFIT
-        if status == 0 or status == -16 :
-            raise Exception('MPFIT: '+errmsg)
-        #     outstr = 0
-        #     goto,finish
-        if status == 5 :
-            print('LMFIT: Max. iterations reached.')
+        # if status == 0 or status == -16 :
+        #     raise Exception('MPFIT: '+errmsg)
+        # #     outstr = 0
+        # #     goto,finish
+        # if status == 5 :
+        #     print('LMFIT: Max. iterations reached.')
 
         # Errors from covariance matrix ...
         perror *=  np.sqrt(chisq/dof)

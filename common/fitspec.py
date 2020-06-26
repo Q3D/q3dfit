@@ -123,6 +123,7 @@
 ;      2020jun22, YI, added scipy modules to extract XDR data (replace the IDL restore function)
 ;      2020jun23, YI, importing Nadia's airtovac() and the pPPXF log_rebin() functions
 ;      2020jun24, YI, importing the copy module and creating duplicate flux and err variables. I keep getting "ValueError: assignment destination is read-only"
+;      2020jun26, YI, fixed bugs. tested the manygauss() emission line fit call. skipped the continuum fits
 ;         
 ; :Copyright:
 ;    Copyright (C) 2013--2018 David S. N. Rupke
@@ -150,6 +151,7 @@ from scipy import interpolate
 import scipy.io as sio
 from scipy.io import readsav
 from airtovac import airtovac
+from masklin import masklin
 from ppxf.ppxf_util import log_rebin
 import copy
 
@@ -188,7 +190,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     if 'fcnlinefit' in initdat :
         fcnlinefit=initdat['fcnlinefit']
     else:
-        fcnlinefit='ifsf_manygauss'
+        fcnlinefit='manygauss'
     if 'argslinefit' in initdat :
         argslinefit=initdat['argslinefit']
     if 'nomaskran' in initdat :
@@ -362,20 +364,22 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
 
     # Log rebin galaxy spectrum for use with PPXF, this time with 
     # errors corrected before rebinning
-    gdflux_log,_,_  = log_rebin,fitran,gdflux,gdflux_log,gdlambda_log,velscale=velscale
-    gderrsq_log,_,_ = log_rebin(fitran,gderr^2.)
+    gdflux_log,gdlambda_log,velscale = log_rebin(fitran,gdflux)
+    gderrsq_log,_,_ = log_rebin(fitran,np.power(gderr,2.))
     
     gderr_log = np.sqrt(gderrsq_log)
 
     # timer
     fit_time0 = time.time()
-    print('step 1 complete')
-    return
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Fit continuum
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    
     if 'fcncontfit' in initdat:
+        print('this will do the continuum fits...')
+        print('----------------------------------------\nfitspec() debug test; STOP\n----------------------------------------')
+        return
         # Mask emission lines
         if noemlinfit != b'1':
             pass # this is just a placeholder for now
@@ -387,9 +391,9 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                     for line in initdat['lines']:
                         maskwidths[line] = np.zeros(initdat['maxncomp'])+maskwidths_def
             pass # this is just a placeholder for now
-            # ct_indx  = ifsf_masklin(gdlambda, linelistz, maskwidths, nomaskran=nomaskran)
+            ct_indx  = masklin(gdlambda, linelistz, maskwidths, nomaskran=nomaskran)
             # Mask emission lines in log space
-            # ct_indx_log = ifsf_masklin(exp(gdlambda_log), linelistz, maskwidths, nomaskran=nomaskran)
+            ct_indx_log = masklin(np.exp(gdlambda_log), linelistz, maskwidths, nomaskran=nomaskran)
         else:   
             ct_indx = np.arange(len(gdlambda))
             ct_indx_log = np.arange(len(gdlambda_log))
@@ -576,7 +580,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     fit_time1 = time.time()
     if quiet != None :
         print('{:s}{:0.1f}{:s}'.format('FITSPEC: Continuum fit took ',fit_time1-fit_time0,' s.'))
-
+    
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # Fit emission lines
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -599,10 +603,10 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                         peakinit[neg,line] = 0
         # Initial guesses for emission line widths
         if siginit_gas != None:
-            siginit_gas = initdat['lines']
+            siginit_gas = {k:None for k in initdat['lines']}
             for line in initdat['lines']:
                 siginit_gas[line] = np.zeros(initdat['maxncomp'])+siginit_gas_def
-
+            
         ## Normalize data so it's near 1. Use 95th percentile of flux. If it's far from
         ## 1, results are different, and probably less correct b/c of issues of numerical
         ## precision in calculating line properties.
@@ -615,9 +619,11 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         #  foreach line,initdat.lines do peakinit[line] /= fnorm
         
         # Fill out parameter structure with initial guesses and constraints
-        impModule = __import__(initdat.fcninitpar)
+        impModule = __import__(initdat['fcninitpar'])
         fcninitpar = getattr(impModule,initdat['fcninitpar'])
         
+        # running test functions for now.....
+        # I need to fix the manygauss() fits
         if 'argsinitpar' in initdat:
             # need to fix the _extra keywords
             parinit = fcninitpar(linelist,linelistz,initdat['linetie'],peakinit,siginit_gas,
@@ -625,24 +631,26 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         else:
             parinit = fcninitpar(linelist,linelistz,initdat['linetie'],peakinit,siginit_gas,
                                   initdat['maxncomp'],ncomp,siglim=siglim_gas)
-        
+            
+       
+    
         testsize = len(parinit)
         if testsize == 0 :
             raise Exception('Bad initial parameter guesses.')
-        #     outstr = 0
-        #     goto,finish
-        
+            
         efitModule = __import__(fcnlinefit)
-        elin_lmfit = getattr(efitModule,'run'+initdat[fcnlinefit])
+        elin_lmfit = getattr(efitModule,'run_'+fcnlinefit)
         lmout,parout,specfit = elin_lmfit(gdlambda,gdflux_nocnt,gderr_nocnt,parinfo=parinit,maxiter=1000)
         
-        params = lmout.params
-        covar = lmout.covar
-        dof=lmout.nfree
-        nfev=lmout.nfev
-        chisq=lmout.chisq
-        errmsg=lmout.message
+        # params = lmout.params
+        # covar = lmout.covar
+        # dof=lmout.nfree
+        # nfev=lmout.nfev
+        # chisq=lmout.chisq
+        # errmsg=lmout.message
         
+        print('----------------------------------------\nfitspec(): elinefit test; STOP\n----------------------------------------')
+        return gdlambda,specfit
         # MPFIT variables -- to fix.
         # niter=niter
         # status=status
@@ -681,7 +689,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         #     print('LMFIT: Max. iterations reached.')
 
         # Errors from covariance matrix ...
-        perror *=  np.sqrt(chisq/dof)
+        perror =  np.sqrt(chisq/dof)
         # ... and from fit residual.
         resid=gdflux-continuum-specfit
         perror_resid = perror

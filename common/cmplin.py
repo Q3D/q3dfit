@@ -53,31 +53,23 @@ def cmplin(instr, line, comp, velsig = None):
         else: gausspar[2] = np.sqrt(gausspar[2]**2.0 + specres**2.0)
         
         if gausspar[2] == 0.0: flux = 0.0
-        else: #flux = modeling.models.Gaussian1D(gausspar[0], gausspar[1], gausspar[2]) 
-            flux = gaussian(instr['wave'], gausspar)
-        #gaussian(a, b) is in idlastro, should return a double array
+        else: flux = gaussian(instr['wave'], gausspar)
+
     else: 
         flux = 0.0
-
+    
     return flux
 
-def gaussian(xi, parms, pderiv = None, DOUBLE = None):
+def gaussian(xi, parms):
     getcontext().prec = 40
     a = parms[0] #amp
     b = parms[1] #mean
     c = parms[2] #standard dev
     g = [0.0] #gaussian
-#    g = g[1:] #lol
-    d = [0.0] #derivative
         
     for x in xi:
         hl = Decimal(a) * Decimal(-0.5 * ((x - b) / c)**2).exp()
-#        if hl > 10**-41: print('{:.5E}'.format(hl))
         g.append(hl)
+    g = g[1:] #lol
 
-    if pderiv != None:
-        for i in range (0, len(xi)):
-            np.append(d, (((-a * (x - b)) / c**2) \
-                          / (math.exp((c**2 * (x - b)**2)/(2 * c**2)))))
-        return d
     return g

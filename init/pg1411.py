@@ -132,7 +132,7 @@ def pg1411():
     tweakcntfit[:,:,2,:] = tw_ord
 
 # Parameters for emission line plotting
-    linoth = np.full((2,6),'')
+    linoth = np.full((2,6),'', dtype=object)
     linoth[0,2] = '[OIII]4959'
     linoth[0,3] = '[OI]6364'
     linoth[:,4] = ['[NII]6548','[NII]6583']
@@ -144,7 +144,7 @@ def pg1411():
                    'wave': [0,4861,5007,6300,6563,6731],
                    'off': [[-120,90],[-80,50],[-130,50],
                          [-80,120],[-95,70],[-95,50]],
-                   'linoth': linoth}
+                   'linoth': str(linoth)}
 
 # Velocity dispersion limits and fixed values
     siglim_gas = np.ndarray([5,500])

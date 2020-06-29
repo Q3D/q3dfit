@@ -10,6 +10,7 @@ import copy
 from scipy import interpolate
 import os
 
+import warnings
 
 
 '''
@@ -68,7 +69,7 @@ cube = CUBE(fp='/jwst1/lwz/KCWI_dwarf/pg1411/PG1411/',infile='pg1411rb3.fits')
       The extention number of a wavelength array.
     zerodq: in, optional, type=byte
       Zero out the DQ array.
-
+    vormap: in, optional, 2D array for the voronoi binning map
 ; :Author:
 ;    David S. N. Rupke::
 ;      Rhodes College
@@ -118,6 +119,7 @@ cube = CUBE(fp='/jwst1/lwz/KCWI_dwarf/pg1411/PG1411/',infile='pg1411rb3.fits')
 
 class CUBE:
     def __init__(self,**kwargs):
+        warnings.filterwarnings("ignore")
         fp = kwargs.get('fp','')
         self.fp = fp
         self.cspeed = 299792.458
@@ -141,7 +143,7 @@ class CUBE:
         quiet = kwargs.get('quiet',True)
         waveext = kwargs.get('waveext',None)
         zerodq = kwargs.get('zerodq',False)
-        vormap = kwargs.get('vormpa',None)
+        vormap = kwargs.get('vormap',None)
         self.datext = datext
         self.varext = varext
         self.dqext = dqext
@@ -270,7 +272,7 @@ class CUBE:
             ibd = np.where(self.dq > 0.01)
             if np.size(ibd) > 0:
                 dq[ibd] = 1
-    
+        hdu.close()
 if __name__ == "__main__":
     #c = constants.c/1000.
     #main(J0906=True)

@@ -124,6 +124,7 @@
 ;      2020jun23, YI, importing Nadia's airtovac() and the pPPXF log_rebin() functions
 ;      2020jun24, YI, importing the copy module and creating duplicate flux and err variables. I keep getting "ValueError: assignment destination is read-only"
 ;      2020jun26, YI, fixed bugs. tested the manygauss() emission line fit call. skipped the continuum fits
+;      2020jun28, YI, tested the gmos.py line initialization calls for parameter set-up. minor changes
 ;         
 ; :Copyright:
 ;    Copyright (C) 2013--2018 David S. N. Rupke
@@ -375,8 +376,8 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Fit continuum
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    
-    if 'fcncontfit' in initdat:
+    testing = 0
+    if 'fcncontfit' in initdat and testing !=1:
         print('this will do the continuum fits...')
         print('----------------------------------------\nfitspec() debug test; STOP\n----------------------------------------')
         return
@@ -584,25 +585,34 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # Fit emission lines
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    # calling IDL save data for testing...
+    if testing == 1:
+        from scipy.io import readsav
+        sav_data = readsav(r"C:\Users\yuzoi\OneDrive\Desktop\JHU\research\JWST\Q3D\IFSFIT\pysfit\fitspec_data.xdr")
+        gdlambda = sav_data['gdlambda']
+        gdflux_nocnt = sav_data['gdflux_nocnt']
+        gderr_nocnt = sav_data['gderr_nocnt']
+    # parinit = sav_data['parinit']
 
     if noemlinfit != b'1':
     # Initial guesses for emission line peak fluxes (above continuum)
     # If initial guess is negative, set to 0 to prevent MPFITFUN from choking 
     #  (since we limit peak to be >= 0).
-        if peakinit != None:
+        if peakinit == None:
             if 'peakinit' in initdat :
                 peakinit = initdat['peakinit']
             else:
-                peakinit = initdat['lines']
+                peakinit = {line:None for line in initdat['lines']}
                 for line in initdat['lines'] :
-                    fline = interpolate.interp1d(gdflux_nocnt, gdlambda, kind='linear')
-                    peakinit[line] = fline(linelistz[line])
-                    neg = np.where(peakinit[line] > 0)[0]
+                    fline = interpolate.interp1d(gdlambda,gdflux_nocnt, kind='linear')
+                    peakinit[line] = np.array([fline(linelistz[line][0]).item()])
+                    neg = np.where(peakinit[line] < 0)[0]
                     ct = len(neg)
                     if ct > 0 :
-                        peakinit[neg,line] = 0
+                        peakinit[line] = [0]
+        
         # Initial guesses for emission line widths
-        if siginit_gas != None:
+        if siginit_gas == None:
             siginit_gas = {k:None for k in initdat['lines']}
             for line in initdat['lines']:
                 siginit_gas[line] = np.zeros(initdat['maxncomp'])+siginit_gas_def
@@ -632,25 +642,25 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
             parinit = fcninitpar(linelist,linelistz,initdat['linetie'],peakinit,siginit_gas,
                                   initdat['maxncomp'],ncomp,siglim=siglim_gas)
             
-       
-    
         testsize = len(parinit)
         if testsize == 0 :
             raise Exception('Bad initial parameter guesses.')
-            
+        
         efitModule = __import__(fcnlinefit)
         elin_lmfit = getattr(efitModule,'run_'+fcnlinefit)
         lmout,parout,specfit = elin_lmfit(gdlambda,gdflux_nocnt,gderr_nocnt,parinfo=parinit,maxiter=1000)
+        # test = elin_lmfit(gdlambda,gdflux_nocnt,gderr_nocnt,parinfo=parinit,maxiter=1000)
         
-        # params = lmout.params
-        # covar = lmout.covar
-        # dof=lmout.nfree
-        # nfev=lmout.nfev
-        # chisq=lmout.chisq
-        # errmsg=lmout.message
+        param = parout
+        covar = lmout.covar
+        dof=lmout.nfree
+        nfev=lmout.nfev
+        chisq=lmout.chisq
+        errmsg=lmout.message
         
-        print('----------------------------------------\nfitspec(): elinefit test; STOP\n----------------------------------------')
-        return gdlambda,specfit
+        # print('----------------------------------------\nfitspec(): elinefit test; STOP\n----------------------------------------')
+        # return gdlambda,gdflux_nocnt
+        # return gdlambda,specfit
         # MPFIT variables -- to fix.
         # niter=niter
         # status=status

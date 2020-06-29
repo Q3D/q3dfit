@@ -144,7 +144,7 @@ def pg1411():
                    'wave': [0,4861,5007,6300,6563,6731],
                    'off': [[-120,90],[-80,50],[-130,50],
                          [-80,120],[-95,70],[-95,50]],
-                   'linoth': str(linoth)}
+                   'linoth': linoth}
 
 # Velocity dispersion limits and fixed values
     siglim_gas = [5,500]

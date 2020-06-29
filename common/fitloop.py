@@ -52,6 +52,8 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
     import pdb
     import numpy as np
     from q3dfit.exceptions import InitializationError
+#    from q3dfit.common.fitspec import fitspec
+#    from q3dfit.common.sepfitpars import sepfitpars
 
     if logfile:
         if isinstance(logfile,str):
@@ -168,7 +170,6 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
                                        (cube.wave <= \
                                         initdat['cutrange'][1]).nonzero())
                     if indx_cut.size != 0:
-                        pdb.set_trace()
                         dq[indx_cut]=1
                         err[indx_cut]=errmax*100.
                 elif initdat['cutrange'].ndim == 2:
@@ -183,6 +184,47 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
                             err[indx_cut]=errmax*100.
                 else:
                     raise InitializationError("CUTRANGE not properly specified")
+
+#           option to tweak continuum fit
+            tweakcntfit = False
+            if initdat.__contains__('tweakcntfit'):
+                tweakcntfit = initdat['tweakcntfit'][i,j,:,:]
+                
+#           initialize starting wavelengths
+#           should this be astropy table? dict of numpy arrays?
+#u['line'][(u['name']=='Halpha')]
+            linelistz = dict()
+            if not initdat.__contains__('noemlinfit') and ct_comp_emlist > 0:
+                for line in initdat['lines']:
+                    if oned:
+                        linelistz[line] = \
+                            linelist[line]['lines'] * \
+                                (1. + initdat['zinit_gas'][line][i,])
+                    else:
+                        linelistz[line] = \
+                            linelist[line]['lines'] * \
+                                (1. + initdat['zinit_gas'][line][i,j,])
+            linelistz_init = linelistz
+
+            if not quiet:
+                print('FITLOOP: First call to FITSPEC')
+            # structinit = fitspec(cube.wave,flux,err,dq,zstar,linelist,\
+            #                      linelistz,ncomp,initdat,quiet=quiet,\
+            #                      siglim_gas=siglim_gas,siginit_gas=siginit_gas,\
+            #                      tweakcntfit=tweakcntfit,col=i+1,row=j+1)
+            # if not quiet:
+            #     print('FIT STATUS: '+structinit['fitstatus'])
+
+#           Second fit
+
+            # if not onefit and not abortfit:
+                
+                # if not initdat.__contains__('noemlinfit') and ct_comp_emlist > 0:
+
+                    # # set emission line mask parameters
+                    # linepars = sepfitpars(linelist,structinit['param'],\
+                    #                       structinit['perror'],\
+                    #                       structinit['parinfo'])
 
 #           To abort the while loop, for testing            
             dofit = False

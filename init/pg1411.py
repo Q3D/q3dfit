@@ -147,9 +147,8 @@ def pg1411():
                    'linoth': linoth}
 
 # Velocity dispersion limits and fixed values
-    siglim_gas = [5,500]
+    siglim_gas = np.ndarray([5,500])
 #    lratfix = {'[NI]5200/5198': [1.5]}
-
 
 #
 # Output structure
@@ -207,7 +206,7 @@ def pg1411():
             'siglim_gas': siglim_gas,
             'siginit_gas': siginit_gas,
             'siginit_stars': 50,
-            'cutrange': [[6410,6430]],
+            'cutrange': np.array([6410,6430]),
             'nocvdf': 1,
 #            'cvdf_vlimits': [-3e3,3e3],
 #            'cvdf_vstep': 10d,

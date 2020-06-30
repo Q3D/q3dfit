@@ -189,6 +189,7 @@ def pltlin(instr, pltpar, outfile):
     ct=len(ind)
     print(ct)
     if ct > 0:
+        figure, (top, bottom) = plt.subplots(2, sharex=True)
         ydat = spectot
         ymod = modtot
         ydattmp=np.zeros((ct), dtype=float)
@@ -215,30 +216,30 @@ def pltlin(instr, pltpar, outfile):
         else:
             ytit= ''
         
-        plt.plot (wave,ydat, color='White', linewidth=1)
+        top.plot (wave,ydat, color='White', linewidth=1)
         xtit = 'Observed Wavelength ($\AA$)'
         ytit=''
         plt.xlim([xran[0], xran[1]])
         plt.ylim([yran[0], yran[1]])
-        plt.plot (wave, ymod,color='Red', linewidth=2)   
+        top.plot (wave, ymod,color='Red', linewidth=2)   
         for j in range(1, ncomp+1):
           flux= cmplin(instr, linlab[i], j, velsig=1)
           for p in range (0, len(flux)):
               flux[p]=float(flux[p])
-          plt.plot(wave, (yran[0]+flux), color=colors[j-1], linewidth=2, linestyle='dashed')
+          top.plot(wave, (yran[0]+flux), color=colors[j-1], linewidth=2, linestyle='dashed')
           if linoth[0, i] != '':
              for k in range (0, (len(linoth[:,i]))):
                   if linoth[k,i] != '':
                        flux=cmplin(instr, linoth[k,i], j, velsig=1)
                        for p in range(0, len(flux)):
                          flux[p]=float(flux[p])
-                       plt.plot(wave,(yran[0]+flux), color=colors[j-1], linestyle='dashed')
+                       top.plot(wave,(yran[0]+flux), color=colors[j-1], linestyle='dashed')
         xloc=xran[0]+(xran[1]-xran[0])*(float(0.05))
         yloc=yran[0]+(yran[1]-yran[0])*(float(0.85))
         plt.text(xloc, yloc, linlab[i], fontsize=2)        
         if nmasked > 0:
           for r in range (0,nmasked):
-               plt.plot([masklam[r,0], masklam[r,1]], [yran[0], yran[0]],linewidth=8, color='Cyan')
+               top.plot([masklam[r,0], masklam[r,1]], [yran[0], yran[0]],linewidth=8, color='Cyan')
         ydat = specstars
         ymod = modstars
         ydattmp=np.zeros((len(ind)), dtype=float)
@@ -263,8 +264,8 @@ def pltlin(instr, pltpar, outfile):
             ytit = 'Residual' 
         else:
             ytit = ''
-        #plt.plot(wave, ydat, linewidth=1)
-        #plt.plot(wave,ymod,color='Red',thick=4)
+        bottom.plot(wave, ydat, linewidth=1)
+        bottom.plot(wave,ymod,color='Red',thick=4)
         plt.show()
         
  if 'micron' in pltpar:

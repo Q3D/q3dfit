@@ -189,7 +189,9 @@ def pltlin(instr, pltpar, outfile):
     ct=len(ind)
     print(ct)
     if ct > 0:
-        figure, (top, bottom) = plt.subplots(2, sharex=True)
+        figure, (top, bottom) = plt.subplots(2)
+        top= plt.subplot2grid((5, 1), (0, 0), rowspan=3)
+        bottom = plt.subplot2grid((5, 1), (3,0),  rowspan=2)
         ydat = spectot
         ymod = modtot
         ydattmp=np.zeros((ct), dtype=float)
@@ -215,12 +217,11 @@ def pltlin(instr, pltpar, outfile):
             ytit='Fit'
         else:
             ytit= ''
-        
+        top.set_xlim([xran[0], xran[1]])
+        top.set_ylim([yran[0], yran[1]])
         top.plot (wave,ydat, color='White', linewidth=1)
         xtit = 'Observed Wavelength ($\AA$)'
         ytit=''
-        plt.xlim([xran[0], xran[1]])
-        plt.ylim([yran[0], yran[1]])
         top.plot (wave, ymod,color='Red', linewidth=2)   
         for j in range(1, ncomp+1):
           flux= cmplin(instr, linlab[i], j, velsig=1)
@@ -264,6 +265,8 @@ def pltlin(instr, pltpar, outfile):
             ytit = 'Residual' 
         else:
             ytit = ''
+        bottom.set_xlim([xran[0], xran[1]])
+        bottom.set_ylim([yran[0], yran[1]])
         bottom.plot(wave, ydat, linewidth=1)
         bottom.plot(wave,ymod,color='Red',thick=4)
         plt.show()

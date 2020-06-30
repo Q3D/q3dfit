@@ -1,0 +1,385 @@
+# -*- coding: utf-8 -*-
+"""
+Plots continuum fit and outputs to JPG.
+"""
+import pdb
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+import numpy as np
+
+def pltcont(instr, outfile, compspec = None, comptitles = None, ps = None, \
+            title = None, fitran = None, \
+                 yranminmax = None):
+    if np.all(compspec != None):
+        sizecomp = compspec.ndim
+        if sizecomp > 1:
+            ncomp = len(compspec[0])
+        else: ncomp = 1    
+        compcolors = ['c', 'y', 'm']
+    else: ncomp = 0
+    
+    wave = instr['wave']
+    specstars = instr['cont_dat']
+    speclines = instr['emline_dat']
+    modstars = instr['cont_fit']
+        
+    if fitran != None: xran = fitran
+    else: xran = instr['fitran']
+    dxran = xran[1] - xran [0]
+    xran1 = [xran[0], xran[0] + dxran//3.0]
+    xran2 = [xran[0] + dxran//3.0, xran[0] + 2.0 * dxran//3.0]
+    xran3 = [xran[0] + 2.0 * dxran//3.0, xran[1]]
+    i1 = [None]
+    i2 = [None] 
+    i3 = [None]    
+    
+    i1.pop(0)
+    i2.pop(0)
+    i3.pop(0)
+
+    for i in range (0, len(wave)):
+        if wave[i] > xran1[0] and wave[i] < xran1[1]:
+            i1.append(i)
+        if wave[i] > xran2[0] and wave[i] < xran2[1]:
+            i2.append(i)
+        if wave[i] > xran3[0] and wave[i] < xran3[1]:
+            i3.append(i)
+    ct1 = len(i1)
+    ct2 = len(i2)
+    ct3 = len(i3)
+        
+    nmasked = 0
+
+    lct, hct, nct = consec(instr['ct_indx'])
+
+    if nct > 1:
+        nmasked = nct - 1
+        masklam=[[0] * 2] * nmasked
+        masklam = np.array(masklam, dtype = float)
+        for i in range (0, nmasked):
+            masklam[i][0] = wave[instr['ct_indx'][hct[i]]]
+            masklam[i][1] = wave[instr['ct_indx'][lct[i + 1]]]
+
+    if instr['ct_indx'][0] != 0:
+        ++nmasked
+        masklam = [[wave[0], wave[instr['ct_indx'][lct[0] - 1]]]] + masklam
+    if instr['ct_indx'][len(instr['ct_indx']) - 1] != len(wave)-1:
+        ++nmasked
+        masklam = masklam + [[wave[instr['ct_indx'][hct[nct - 1]]], \
+                              wave[len(wave)-1]]]
+    
+    maxthresh = 0.2
+    ntop = 20
+    nbottom = 20
+    if len(wave) < 100:
+        ntop = 10
+        nbottom = 10
+    ++ntop
+    --nbottom
+        
+
+    xtit = 'Observed Wavelength ($\AA$)'
+    ytit=''
+    plt.style.use('dark_background')
+    fig = plt.figure(figsize = (50, 30))
+    plt.axis('off') #so the subplots don't share a y-axis
+
+    masklam=np.array(masklam)
+#    pdb.set_trace()
+
+    if ct1 > 0:
+        ax1 = fig.add_subplot(3,1,1)
+        #custom legend
+        if ncomp > 0 and comptitles != None:
+            custom_lines = []
+            for i in range (0, ncomp):
+                custom_lines.append(Line2D([0],[0], \
+                                           color = compcolors[i], lw = 4))
+            custom_lines.append(Line2D([0],[0], color = 'r', lw = 4))
+            plt.legend(custom_lines, comptitles + ['total'], prop = {"size":30})
+                
+        ydat = specstars
+        ymod = modstars
+        
+        maximum = 0
+        #finding max value between ydat and ymod at indices from i1
+        for i in i1:
+            bigboy = max(ydat[i], ymod[i])
+            if bigboy > maximum:
+                maximum = bigboy
+        #finding min        
+        minimum = 0
+        for i in i1:
+            smallboy = min(ydat[i], ymod[i])
+            if smallboy < minimum:
+                minimum = smallboy        
+        #set min and max in yran
+        if yranminmax != None:
+           yran = [minimum, maximum]
+        else:
+           yran = [0, maximum]
+
+        #finding yran[1] aka max
+        ydi = np.zeros(len(i1))
+        ydi= np.array(ydat)[i1]
+        
+        ymodi = np.zeros(len(i1))
+        ymodi = np.array(ymod)[i1]
+        y = np.array(ydi - ymodi)
+        ny = len(y)
+
+        iysort = np.argsort(y)                
+        ysort = np.array(y)[iysort]
+        
+        ymodisort = ymodi[iysort]
+        if ysort[ny - ntop] < ysort[ny - 1] * maxthresh:
+            yran[1] = max(ysort[0:ny - ntop] + ymodisort[0:ny - ntop])
+
+        #plotting
+        plt.xlim(xran1[0], xran1[1])
+        plt.ylim(yran[0], yran[1])   
+        plt.ylabel(ytit)
+
+        #Tick formatting
+        plt.minorticks_on()
+        plt.tick_params(which = 'major', length = 20, pad = 30)
+        plt.tick_params(which = 'minor', length = 10)
+        plt.xticks(np.arange(xran1[0], xran1[1], 200), fontsize = 30)        
+        plt.yticks(np.arange(yran[0], yran[1], \
+                     round(((yran[1] - yran[0])/5), 2)), fontsize = 25)
+
+        #actually plotting
+        plt.plot(wave, ydat, 'w', linewidth = 1)
+
+        if ncomp > 0:
+            for i in range (0, ncomp):
+                plt.plot(wave, compspec[:, i], compcolors[i], linewidth = 3)
+        
+        plt.plot(wave, ymod, 'r', linewidth = 4, label = 'Total')
+        
+        if nmasked > 0:
+            for i in range (0, nmasked):
+                plt.plot([masklam[i][0], masklam[i][1]], [yran[0], yran[0]], \
+                         'c', linewidth = 20,  solid_capstyle="butt")
+
+    #like previous section
+    if ct2 > 0:
+        ax2 = fig.add_subplot(3,1,2)
+        plt.minorticks_on()
+
+        ydat = specstars
+        ymod = modstars        
+        
+        #finding max
+        maximum = 0
+        for i in i2:
+            bigboy = max(ydat[i], ymod[i])
+            if bigboy > maximum:
+                maximum = bigboy
+        #finding min        
+        minimum = 0
+        for i in i2:
+            smallboy = min(ydat[i], ymod[i])
+            if smallboy < minimum:
+                minimum = smallboy                       
+        
+        if yranminmax != None:
+            yran = [minimum, maximum]
+        else:
+            yran = [0, maximum]
+        
+        #finding yran[1] aka max
+        ydi = np.zeros(len(i2))
+        ydi= np.array(ydat)[i2]
+        
+        ymodi = np.zeros(len(i2))
+        ymodi = np.array(ymod)[i2]
+        y = np.array(ydi - ymodi)
+        ny = len(y)
+
+        iysort = np.argsort(y)                
+        ysort = np.array(y)[iysort]
+        
+        ymodisort = ymodi[iysort]
+        if ysort[ny - ntop] < ysort[ny - 1] * maxthresh:
+            yran[1] = max(ysort[0:ny - ntop] + ymodisort[0:ny - ntop])
+            
+        #plotting
+        plt.xlim(xran2[0], xran2[1])
+        plt.ylim(yran[0], yran[1])
+        plt.ylabel(ytit)
+        plt.xticks(np.arange(xran2[0], xran2[1], 200), fontsize = 30)
+        plt.yticks(fontsize = 25)
+        plt.tick_params(which = 'major', length = 20, pad = 30)
+        plt.tick_params(which = 'minor', length = 10)
+        
+        #yay more plotting
+        plt.plot(wave, ydat, 'w', linewidth = 1)
+        
+        if ncomp > 0:
+            for i in range (0, ncomp):
+                plt.plot(wave, compspec[:, i], compcolors[i], linewidth = 3)
+        
+        plt.plot(wave, ymod, 'r', linewidth = 4)
+        
+        if nmasked > 0:
+            for i in range (0, nmasked):
+                plt.plot([masklam[i][0],masklam[i][1]], [yran[0], yran[0]], \
+                         'c', linewidth = 20,  solid_capstyle="butt")
+        
+    
+    #and again
+    if ct3 > 0:
+        ax3 = fig.add_subplot(3,1,3)
+        plt.subplots_adjust(hspace = 2)
+        plt.minorticks_on()
+
+        ydat = specstars
+        ymod = modstars
+        
+        #finding max
+        maximum = 0
+        for i in i3:
+            bigboy = max(ydat[i], ymod[i])
+            if bigboy > maximum:
+                maximum = bigboy
+        #finding min        
+        minimum = 0
+        for i in i3:
+            smallboy = min(ydat[i], ymod[i])
+            if smallboy < minimum:
+                minimum = smallboy   
+        
+        #finding yran[1] aka max        
+        if yranminmax != None:
+            yran = [minimum, maximum]
+        else: yran = [0, maximum]
+        
+        ydi = np.zeros(len(i3))
+        ydi= np.array(ydat)[i3]
+        
+        ymodi = np.zeros(len(i3))
+        ymodi = np.array(ymod)[i3]
+        y = np.array(ydi - ymodi)
+        ny = len(y)
+
+        iysort = np.argsort(y)                
+        ysort = np.array(y)[iysort]
+        
+        ymodisort = ymodi[iysort]
+        if ysort[ny - ntop] < ysort[ny - 1] * maxthresh:
+            yran[1] = max(ysort[0:ny - ntop] + ymodisort[0:ny - ntop])  
+
+        #plotting
+        plt.xlim(xran3[0], xran3[1])
+        plt.ylim(yran[0], yran[1])
+        plt.xlabel(xtit, fontsize = 45, labelpad = 35)    
+        plt.ylabel(ytit)
+        plt.xticks(np.arange(xran3[0], xran3[1], 200), fontsize = 30)
+        plt.yticks(fontsize = 25)
+        plt.tick_params(which = 'major', length = 20, pad = 30)
+        plt.tick_params(which = 'minor', length = 10)
+
+        #plotting more
+        plt.plot(wave, ydat, 'w', linewidth = 1)    
+        if ncomp > 0:
+            for i in range (0, ncomp):
+                plt.plot(wave, compspec[:, i], compcolors[i], linewidth = 3)
+                
+        plt.plot(wave, ymod, 'r', linewidth = 4)
+                
+        if nmasked > 0:
+            for i in range (0, nmasked):
+                plt.plot([masklam[i][0],masklam[i][1]], [yran[0], yran[0]], \
+                         'c', linewidth = 20, solid_capstyle="butt")
+
+    #more formatting
+    plt.subplots_adjust(hspace=0.25)
+    plt.tight_layout(pad = 10)
+
+    if title != None:
+         plt.suptitle(title, fontsize = 50)
+
+    tmpfile = outfile
+    plt.savefig(tmpfile + '.jpg')
+
+def consec(a, l = None, h = None, n = None, same = None, distribution = None):
+    nel = len(a)
+    if nel == 1: 
+        l = 0
+        h = 0
+        n = 1        
+    elif nel == 2:
+        if same != None:
+            if a[1] - a[0] == 0:
+                l = 0
+                h = 1
+                n = 1
+            else: 
+                l = -1
+                h = -1
+                n = 0                
+        else:
+            if abs(a[1] - a[0]) == 1:
+                l = 0
+                h = 1
+                n = 1
+            else:
+                l = -1
+                h = -1
+                n = 0      
+    else:
+        if same == None:
+            #adding padding
+            temp = np.concatenate(([a[0]], a))
+            arr = np.concatenate((temp, [a[-1]]))
+            
+            shiftedright = np.roll(arr, 1)
+            shiftedleft = np.roll(arr, -1)
+
+           
+            cond1 = np.absolute(np.subtract(arr, shiftedright)) == 1
+            cond2 = np.absolute(np.subtract(arr, shiftedleft)) == 1
+
+        else:
+            #adding padding
+            temp = np.concatenate(([a[0] + 1], a))
+            arr = np.concatenate((temp, [a[-1] - 1]))
+            
+            shiftedright = np.roll(arr, 1)
+            shiftedleft = np.roll(arr, -1)
+            
+            cond1 = np.absolute(np.subtract(arr, shiftedright)) == 0
+            cond2 = np.absolute(np.subtract(arr, shiftedleft)) == 0        
+        
+        #getting rid of padding
+        cond1 = cond1[1: -1]
+        cond2 = cond2[1: -1]
+        
+        #making l
+        l = [0]
+        l.pop(0)
+        for i in range (0, nel):
+            if cond2[i] and cond1[i] == False:
+                l.append(i)
+        nl = len(l)        
+
+        #making h        
+        h = [0]
+        h.pop(0)
+        for i in range (0, nel):
+            if cond1[i] and cond2[i] == False:
+                h.append(i)        
+        nh = len(h)
+        
+        if nh * nl == 0: 
+            l = -1
+            h = -1
+            n = 0 
+        
+        else: n = min(nh, nl)
+    
+    if l[0] != h[0]: dist = np.subtract(h, l) + 1 
+    else: dist = 0
+
+    return l, h, n

@@ -132,7 +132,7 @@ def pg1411():
     tweakcntfit[:,:,2,:] = tw_ord
 
 # Parameters for emission line plotting
-    linoth = np.full((2,6),'')
+    linoth = np.full((2,6),'', dtype=object)
     linoth[0,2] = '[OIII]4959'
     linoth[0,3] = '[OI]6364'
     linoth[:,4] = ['[NII]6548','[NII]6583']

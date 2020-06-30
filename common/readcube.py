@@ -10,6 +10,7 @@ import copy
 from scipy import interpolate
 import os
 
+import warnings
 
 
 '''
@@ -68,7 +69,7 @@ cube = CUBE(fp='/jwst1/lwz/KCWI_dwarf/pg1411/PG1411/',infile='pg1411rb3.fits')
       The extention number of a wavelength array.
     zerodq: in, optional, type=byte
       Zero out the DQ array.
-
+    vormap: in, optional, 2D array for the voronoi binning map
 ; :Author:
 ;    David S. N. Rupke::
 ;      Rhodes College
@@ -118,17 +119,20 @@ cube = CUBE(fp='/jwst1/lwz/KCWI_dwarf/pg1411/PG1411/',infile='pg1411rb3.fits')
 
 class CUBE:
     def __init__(self,**kwargs):
+        warnings.filterwarnings("ignore")
         fp = kwargs.get('fp','')
         self.fp = fp
         self.cspeed = 299792.458
         infile=kwargs.get('infile','')
         self.infile = infile
         try:
-            os.path.isfile(infile)
-            hdu = fits.open(fp+infile,ignore_missing_end=True)
-            hdu.info()
+            os.path.isfile(fp+infile)
+            #hdu = fits.open(fp+infile,ignore_missing_end=True)
+            #hdu.info()
         except:
             print(infile+' does not exist!')
+        hdu = fits.open(fp+infile,ignore_missing_end=True)
+        #hdu.info()
         # fits extensions to be read 
         datext = kwargs.get('datext',1)
         varext = kwargs.get('varext',2)
@@ -139,22 +143,26 @@ class CUBE:
         quiet = kwargs.get('quiet',True)
         waveext = kwargs.get('waveext',None)
         zerodq = kwargs.get('zerodq',False)
+        vormap = kwargs.get('vormap',None)
         self.datext = datext
         self.varext = varext
         self.dqext = dqext
         self.hdu = hdu
         self.phu = hdu[0]
         try: 
-            self.dat = hdu[datext].data
+            self.dat = (hdu[datext].data).T
         except:
             print('data extension does not exist')
         try:
-            self.var = hdu[varext].data
-            self.err = (hdu[varext].data) ** 0.5
+            self.var = (hdu[varext].data).T
+            self.err = copy.copy(self.var) ** 0.5
+            badvar = np.where(self.var < 0)
+            if np.size(badvar) > 0:
+                print('Warning: Negative values encountered in variance array.')
         except:
             print('variance extension does not exist')
         try:
-            self.dq = hdu[dqext].data
+            self.dq = (hdu[dqext].data).T
         except:
             print('quality flag extension does not exist')
         if zerodq == True:
@@ -171,9 +179,9 @@ class CUBE:
 
         datashape = np.shape(self.dat)
         if np.size(datashape) == 3:
-            nrows = (datashape)[2]
-            ncols = (datashape)[1]
-            nw = (datashape)[0]
+            ncols = (datashape)[0]
+            nrows = (datashape)[1]
+            nw = (datashape)[2]
             try: 
                 np.max([nrows,ncols]) < nw
             except:
@@ -225,26 +233,25 @@ class CUBE:
         BUNIT = 'BUNIT'
         if BUNIT in header:
             self.bunit = header[BUNIT]
-        #if vormap:
-        #    ncols = np.max(vormap)
-        #    nrows = 1
-        #    vordat = np.zeros((ncols,nrows,nz))
-        #    vorvar = np.zeros((ncols,nrows,nz))
-        #    vordq = np.zeros((ncols,nrows,nz))
-        #    vorcoords = np.zeros((ncols,2),dtype=int)
-        #    nvor = np.zeros((ncols))
-        #    for i in np.arange(ncols) do begin
-        #      ivor = np.where(vormap eq i+1)
-        #      xyvor = (vormap,ivor[0])
-        #      vordat[:,0,i] = dat[xyvor[0],xyvor[1],*]
-        #      vorvar[:,0,i] = var[xyvor[0],xyvor[1],*]
-        #      vordq[:,0,i] = dq[xyvor[0],xyvor[1],*]
-        #      vorcoords[i,*] = xyvor
-        #      nvor[i] = ctivor
-        #    endfor
-        #    dat = vordat
-        #    var = vorvar
-        #    dq = vordq
+        if vormap:
+            ncols = np.max(vormap)
+            nrows = 1
+            vordat = np.zeros((ncols,nrows,nz))
+            vorvar = np.zeros((ncols,nrows,nz))
+            vordq = np.zeros((ncols,nrows,nz))
+            vorcoords = np.zeros((ncols,2),dtype=int)
+            nvor = np.zeros((ncols))
+            for i in np.arange(ncols):
+                ivor = np.where(vormap == i+1)
+                xyvor = [ivor[0][0],ivor[0][1]]
+                vordat[i,0,:] = dat[xyvor[0],xyvor[1],:]
+                vorvar[i,0,:] = var[xyvor[0],xyvor[1],:]
+                vordq[i,0,:] = dq[xyvor[0],xyvor[1],:]
+                vorcoords[i,:] = xyvor
+                nvor[i] = (np.shape(ivor))[1]
+            dat = vordat
+            var = vorvar
+            dq = vordq
 
         if linearize:
             waveold = copy.copy(self.wave)
@@ -265,7 +272,7 @@ class CUBE:
             ibd = np.where(self.dq > 0.01)
             if np.size(ibd) > 0:
                 dq[ibd] = 1
-    
+        hdu.close()
 if __name__ == "__main__":
     #c = constants.c/1000.
     #main(J0906=True)

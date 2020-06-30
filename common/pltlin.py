@@ -187,7 +187,6 @@ def pltlin(instr, pltpar, outfile):
             ind=np.append(ind, h)
     ind=np.delete(ind,[0])
     ct=len(ind)
-    print(ct)
     if ct > 0:
         figure, (top, bottom) = plt.subplots(2)
         top= plt.subplot2grid((5, 1), (0, 0), rowspan=3)

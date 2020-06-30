@@ -317,22 +317,4 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                     elif initdat['sorttype'] == reversewave:
                         isort = linepars['wave'][igd, line].sort(reverse = true)
                     
-                    if 'flipsort' in initdat:
-                        if flipsort[j, i] != None: #????
-                            isort = isort.sort(reverse = true)
-                if thisncomp > 0:
-                    for line in lines_with_doublets:
-                        kcomp = 1
-                        for sindex in isort:
-                            cstr='c'+string(kcomp,format='(I0)')
-                            emlwav[cstr,line,i,j]=linepars.wave[line,sindex]
-                            emlwaverr[cstr,line,i,j]=linepars.waveerr[line,sindex]
-                            emlsig[cstr,line,i,j]=linepars.sigma[line,sindex]
-                            emlsigerr[cstr,line,i,j]=linepars.sigmaerr[line,sindex]
-                            emlweq['f'+cstr,line,i,j]=lineweqs.comp[line,sindex]
-                            emlflx['f'+cstr,line,i,j]=linepars.flux[line,sindex]
-                            emlflxerr['f'+cstr,line,i,j]=linepars.fluxerr[line,sindex]
-                            emlflx['f'+cstr+'pk',line,i,j]=linepars.fluxpk[line,sindex]
-                            emlflxerr['f'+cstr+'pk',line,i,j]=linepars.fluxpkerr[line,sindex]
-                            kcomp+=1 
-                    
+             

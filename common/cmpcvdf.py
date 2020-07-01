@@ -38,7 +38,6 @@ def cmpcvdf(emlwav,emlwaverr,emlsig,emlsigerr,emlflx,emlflxerr,
     """
 
     import numpy as np
-    # OK, this does not exist. I had multiple failed options here. 
     from rebin import rebin
     
     # I am sure I need to do something else here for the 'bad' values... 
@@ -84,14 +83,14 @@ def cmpcvdf(emlwav,emlwaverr,emlsig,emlsigerr,emlflx,emlflxerr,
             cstr='c'+str(i+1)
             # OK, this function proved impossible to find, but clearly must be
             # either found or written... I have three failed versions so far
-            rbpkfluxes = rebin(emlflx['f'+cstr+'pk',line],newdims=[size_cube[0],size_cube[1],nmod])
-            rbpkfluxerrs = rebin(emlflxerr['f'+cstr+'pk',line],newdims=[size_cube[0],size_cube[1],nmod])
-            rbpkwaves = rebin(emlwav[cstr][line],newdims=[size_cube[0],size_cube[1],nmod])
-            rbpkwaveerrs = rebin(emlwaverr[cstr][line],newdims=[size_cube[0],size_cube[1],nmod])
-            rbsigmas = rebin(emlsig[cstr][line],newdims=[size_cube[0],size_cube[1],nmod])
-            rbsigmaerrs = rebin(emlsigerr[cstr][line],newdims=[size_cube[0],size_cube[1],nmod])
+            rbpkfluxes = rebin(emlflx['f'+cstr+'pk',line],newdims=(size_cube[0],size_cube[1],nmod))
+            rbpkfluxerrs = rebin(emlflxerr['f'+cstr+'pk',line],newdims=(size_cube[0],size_cube[1],nmod))
+            rbpkwaves = rebin(emlwav[cstr][line],newdims=(size_cube[0],size_cube[1],nmod))
+            rbpkwaveerrs = rebin(emlwaverr[cstr][line],newdims=(size_cube[0],size_cube[1],nmod))
+            rbsigmas = rebin(emlsig[cstr][line],newdims=(size_cube[0],size_cube[1],nmod))
+            rbsigmaerrs = rebin(emlsigerr[cstr][line],newdims=(size_cube[0],size_cube[1],nmod))
             # in the original code there was a reshaping of modwaves, but I don't understand why... 
-            rbmodwaves = rebin(modwaves,newdims=[size_cube[0],size_cube[1],nmod])
+            rbmodwaves = rebin(modwaves,newdims=(size_cube[0],size_cube[1],nmod))
             inz = ((rbsigmas > 0) & (rbsigmas != bad) & (rbpkwaves > 0) & (rbpkwaves != bad) &
                    (rbpkwaveerrs > 0) & (rbpkwaveerrs != bad) & (rbpkfluxes > 0) & 
                    (rbpkfluxes != bad) & (rbpkfluxerrs > 0) & (rbpkfluxerrs != bad))
@@ -131,7 +130,7 @@ def cmpcvdf(emlwav,emlwaverr,emlsig,emlsigerr,emlflx,emlflxerr,
         dmodwaves=temp5
         fluxnorm = emlcvdf['flux'][line]*dmodwaves
         fluxnormerr = emlcvdf['fluxerr'][line]*dmodwaves
-        fluxint = rebin(sum(fluxnorm,3),newdims=[size_cube[0],size_cube[1],nmod])
+        fluxint = rebin(sum(fluxnorm,3),newdims=(size_cube[0],size_cube[1],nmod))
         inz = (fluxint != 0)
         if (sum(inz)>0):
             fluxnorm[inz]/=fluxint[inz]

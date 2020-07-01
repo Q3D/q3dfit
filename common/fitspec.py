@@ -125,7 +125,8 @@
 ;      2020jun24, YI, importing the copy module and creating duplicate flux and err variables. I keep getting "ValueError: assignment destination is read-only"
 ;      2020jun26, YI, fixed bugs. tested the manygauss() emission line fit call. skipped the continuum fits
 ;      2020jun28, YI, tested the gmos.py line initialization calls for parameter set-up. minor changes
-;         
+;      2020jul01, DSNR, bug fixes
+;
 ; :Copyright:
 ;    Copyright (C) 2013--2018 David S. N. Rupke
 ;
@@ -146,18 +147,21 @@
 ;-
 """
 
+import importlib
 import numpy as np
 import time
 from scipy import interpolate
 import scipy.io as sio
 from scipy.io import readsav
-from airtovac import airtovac
-from masklin import masklin
+from q3dfit.common.airtovac import airtovac
+from q3dfit.common.masklin import masklin
 from ppxf.ppxf_util import log_rebin
 import copy
+import pdb
 
 def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
-            maskwidths=None,peakinit=None,quiet=None,siginit_gas=None,siglim_gas=None,tweakcntfit=None,col=None,row=None):
+            maskwidths=None,peakinit=None,quiet=None,siginit_gas=None,
+            siglim_gas=None,tweakcntfit=None,col=None,row=None):
 
     flux_out = flux
     err_out = err
@@ -376,7 +380,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Fit continuum
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    testing = 0
+    testing = 1
     if 'fcncontfit' in initdat and testing !=1:
         print('this will do the continuum fits...')
         print('----------------------------------------\nfitspec() debug test; STOP\n----------------------------------------')
@@ -586,12 +590,12 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
 # Fit emission lines
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     # calling IDL save data for testing...
-    if testing == 1:
-        from scipy.io import readsav
-        sav_data = readsav(r"C:\Users\yuzoi\OneDrive\Desktop\JHU\research\JWST\Q3D\IFSFIT\pysfit\fitspec_data.xdr")
-        gdlambda = sav_data['gdlambda']
-        gdflux_nocnt = sav_data['gdflux_nocnt']
-        gderr_nocnt = sav_data['gderr_nocnt']
+    # if testing == 1:
+    #     from scipy.io import readsav
+    #     sav_data = readsav(r"C:\Users\yuzoi\OneDrive\Desktop\JHU\research\JWST\Q3D\IFSFIT\pysfit\fitspec_data.xdr")
+    #     gdlambda = sav_data['gdlambda']
+    #     gdflux_nocnt = sav_data['gdflux_nocnt']
+    #     gderr_nocnt = sav_data['gderr_nocnt']
     # parinit = sav_data['parinit']
 
     if noemlinfit != b'1':
@@ -629,7 +633,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         #  foreach line,initdat.lines do peakinit[line] /= fnorm
         
         # Fill out parameter structure with initial guesses and constraints
-        impModule = __import__(initdat['fcninitpar'])
+        impModule = importlib.import_module('q3dfit.init.'+initdat['fcninitpar'])
         fcninitpar = getattr(impModule,initdat['fcninitpar'])
         
         # running test functions for now.....

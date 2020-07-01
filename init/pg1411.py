@@ -147,7 +147,8 @@ def pg1411():
                    'linoth': str(linoth)}
 
 # Velocity dispersion limits and fixed values
-    siglim_gas = np.ndarray([5,500])
+    siglim_gas = np.ndarray(2)
+    siglim_gas[:] = [5,500]
 #    lratfix = {'[NI]5200/5198': [1.5]}
 
 #
@@ -156,7 +157,7 @@ def pg1411():
 
     init = { \
 # Required pars
-            'fcninitpar': 'ifsf_gmos',
+            'fcninitpar': 'gmos',
             'fitran': fitrange,
             'fluxunits': 1e-15, # erg/s/cm^2/arcsec^2
             'infile': infile,

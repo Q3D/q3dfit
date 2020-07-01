@@ -103,6 +103,7 @@
 ;
 ;-
 """
+import pdb
 import numpy as np
         
 def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
@@ -126,7 +127,7 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         
     # Number of emission lines to fit
     nline = len(linelist)
-    lines_arr = linelist #these 2 steps highly depend on the structure of the input
+    lines_arr = np.array(linelist['name']) #these 2 steps highly depend on the structure of the input
     # Number of initial parameters before Gaussian parameters begin
     lratlim = 4 
     ppoff0 = 3
@@ -455,7 +456,7 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
                     parinfo[iwoff]['tied'] = ''
                     parinfo[isoff]['tied'] = ''
                 else:
-                    indtie = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0] == linetie[line]][0]
+                    indtie = [idx for idx,key in enumerate(lines_arr.tolist()) if key[0] == linetie[line]][0]
                     parinfo[iwoff]['tied'] = '{0:0.6e}{1:1}{2:0.6e}{3:1}{4:1}{5:1}'.format(linelist[line],'/',linelist[linetie[line]],'* P[',woff+indtie*3,']')
                     parinfo[isoff]['tied'] = '{0:1}{1:1}{2:1}'.format('P[',soff+indtie*3,']') 
                     parinfo[iwoff]['sigmawave_tie'] = linetie[line]

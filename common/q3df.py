@@ -113,7 +113,7 @@ def q3df( initproc, cols=None, rows=None, oned=False, onefit=False, \
         cols=[1,cube.ncols]
         ncols = cube.ncols
     elif len(cols) == 1:
-        cols = [cols, cols]
+        cols = [cols[0], cols[0]]
         ncols = 1
     else:
         ncols = cols[1]-cols[0]+1
@@ -121,7 +121,7 @@ def q3df( initproc, cols=None, rows=None, oned=False, onefit=False, \
         rows=[1,cube.nrows]
         nrows = cube.nrows
     elif len(rows) == 1:
-        rows = [rows, rows]
+        rows = [rows[0], rows[0]]
         nrows = 1
     else:
         nrows = rows[1]-rows[0]+1

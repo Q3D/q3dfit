@@ -52,7 +52,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
     import pdb
     import numpy as np
     from q3dfit.exceptions import InitializationError
-#    from q3dfit.common.fitspec import fitspec
+    from q3dfit.common.fitspec import fitspec
 #    from q3dfit.common.sepfitpars import sepfitpars
 
     if logfile:
@@ -99,8 +99,8 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
         err[indx_bad] = errmax*100.
 
 #   Check that the flux is not filled with 0s, infs, or nans
-    somedata = ((flux != 0.).any() or \
-                (flux != np.inf).any() or \
+    somedata = ((flux != 0.).any() and \
+                (flux != np.inf).any() and \
                 (flux != np.nan).any())
     if somedata:
         
@@ -121,11 +121,11 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
         abortfit = False
         while(dofit):
             
-#           Find lines where ncomp set to 0
+#           Make sure ncomp > 0 for at least one line
             ct_comp_emlist = 0
             if not initdat.__contains__('noemlinfit'):
                 for k in ncomp.values():
-                    if k == 0: ct_comp_emlist+=1
+                    if k > 0: ct_comp_emlist+=1
 
 #           initialize gas sigma limit array
             if initdat.__contains__('siglim_gas'):
@@ -198,22 +198,24 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
                 for line in initdat['lines']:
                     if oned:
                         linelistz[line] = \
-                            linelist[line]['lines'] * \
+                            linelist['lines'][(linelist['name']==line)] * \
                                 (1. + initdat['zinit_gas'][line][i,])
                     else:
                         linelistz[line] = \
-                            linelist[line]['lines'] * \
+                            linelist['lines'][(linelist['name']==line)] * \
                                 (1. + initdat['zinit_gas'][line][i,j,])
             linelistz_init = linelistz
 
             if not quiet:
                 print('FITLOOP: First call to FITSPEC')
-            # structinit = fitspec(cube.wave,flux,err,dq,zstar,linelist,\
-            #                      linelistz,ncomp,initdat,quiet=quiet,\
-            #                      siglim_gas=siglim_gas,siginit_gas=siginit_gas,\
-            #                      tweakcntfit=tweakcntfit,col=i+1,row=j+1)
-            # if not quiet:
-            #     print('FIT STATUS: '+structinit['fitstatus'])
+                
+            structinit = fitspec(cube.wave,flux,err,dq,zstar,linelist,\
+                                 linelistz,ncomp,initdat,quiet=quiet,\
+                                 siglim_gas=siglim_gas,siginit_gas=siginit_gas,\
+                                 tweakcntfit=tweakcntfit,col=i+1,row=j+1)
+        
+            if not quiet:
+                print('FIT STATUS: '+structinit['fitstatus'])
 
 #           Second fit
 

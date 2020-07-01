@@ -1,73 +1,51 @@
-from q3dfit.common import fitqsohost
+from q3dfit.common import fitqsohost,makeqsotemplate,readcube
 import numpy
 from astropy.io import fits
 import lmfit
 import matplotlib.pyplot as plt
+import os
 
-def load_in_data(infile):
-    '''Temporary function to load in a fits cube
-        
-        Parametrs
-        ---------
-        infile: string
-        name or path to the fits file that needs to be loaded in
-        
-        Returns
-        -------
-        cube: numpy array
-        
-        '''
-    
-    
-    
-    hdul = fits.open(infile)
-    print(hdul)
-    cube = hdul[1].data
-    
-    return cube
-
-
-def makeqsotemplate(incube):
-    
-    '''Function defined to extract the quasar spectrum
-        
-        
-        Parameters
-        ----------
-        
-        
-        
-        Returns
-        -------
-        array
-        2 by 1-D array of wavelength and quasar flux
-        
-        
-        
-        
-        
-        
-        '''
-    
-    
-    
-    white_light_image = numpy.median(incube,axis=0) #Right now hard coding which axis is wavelength ra,dec.
-    
-    loc_max = numpy.where(white_light_image == white_light_image.max())
-    print(loc_max)
-    qsotemplate = incube[:,loc_max[0][0],loc_max[1][0]]
-    
-    
-    return qsotemplate
+#def load_in_data(infile):
+#    '''Temporary function to load in a fits cube
+#
+#        Parametrs
+#        ---------
+#        infile: string
+#        name or path to the fits file that needs to be loaded in
+#
+#        Returns
+#        -------
+#        cube: numpy array
+#
+#        '''
+#
+#
+#
+#    hdul = fits.open(infile)
+#    print(hdul)
+#    cube = hdul[1].data
+#
+#    return cube
 
 
-data = load_in_data('../../pyfsfit/pg1411rb3.fits')
+
+
+
 
 #k=k/numpy.median(k)
-test_spec_to_fit = data[:,15,10] #15,5  #15,3
+data = readcube.CUBE(infile='../../pyfsfit/pg1411rb3.fits')
+test_spec_to_fit = data.dat[10,15] #15,5  #15,3
 
 wave = numpy.arange(0,len(test_spec_to_fit))
-qsotemplate=[wave,makeqsotemplate(data)]
+
+outxdr = ''
+infits = '../../pyfsfit/pg1411rb3.fits'
+
+qsotemplate = makeqsotemplate.makeqsotemplate(infits,outxdr,dataext=None,dqext=None,waveext=None)
+os.system('rm nucleartemplate.npy')
+
+qsotemplate=[wave,qsotemplate['flux']]
+
 x_ranges_to_fit = [[11,190],[500,1404],[1893,1997],[2078,3350],[4180,5485],[5495,5700],[5800,6195]] #[[0,6195]] [4180,5400],[5500,5700]
 x_to_fit = numpy.array([])
 y_to_fit = numpy.array([])

@@ -87,12 +87,6 @@ from decimal import *
 #
 
 def pltlin(instr, pltpar, outfile):
-#in IDL this next section of code directs the output to z-buffer pseudo device
-#and sets the resolution, depth, character size/thickness, line thickness
-#and erases it
- # plt.minorticks_on()
- # plt.xticks(step=50)
- # plt.xminorticks(step=10)
 
  # if hasattr(pltpar,'micron'):
  #     plt.xticks(step=0.5E4)
@@ -105,8 +99,6 @@ def pltlin(instr, pltpar, outfile):
  #    plt.xminorticks(step=0.5E10)
  #    float(plt.xminorticks)
  
- pos=np.zeros((pltpar['nx'], pltpar['ny']), dtype=int)
- #stuff about margins
  param=instr['param']
  ncomp= param[1]
  ncomp=int(ncomp)
@@ -167,17 +159,21 @@ def pltlin(instr, pltpar, outfile):
  linlab= pltpar['label']
  linwav= pltpar['wave']
  off= pltpar['off']
+ nx=pltpar['nx']
+ ny=pltpar['ny']
  if 'linoth' in pltpar:
     linoth=pltpar['linoth']
  else: 
     linoth= np.arange(1, nlin)
     str(linoth) 
- 
- #axes[0,0].plot([0])
+  
  plt.style.use('dark_background') 
- plt.axis('off') #so the subplots don't share a y-axis   
  
  for i in range (0,nlin):
+    fig = plt.figure(figsize=(16,13))
+    outer = gridspec.GridSpec(ny, nx, wspace=0.1, hspace=0.1)
+    inner = gridspec.GridSpecFromSubplotSpec (2, 1, \
+            subplot_spec=outer[i], wspace=0.1, hspace=0, height_ratios=[4,2], width_ratios=None)
     linwavtmp= linwav[i]
     offtmp=np.array(off)[i,:]
     xran = (linwavtmp + offtmp)
@@ -189,9 +185,11 @@ def pltlin(instr, pltpar, outfile):
     ind=np.delete(ind,[0])
     ct=len(ind)
     if ct > 0:
-        figure, (top, bottom) = plt.subplots(2)
-        top= plt.subplot2grid((5, 1), (0, 0), rowspan=3)
-        bottom = plt.subplot2grid((5, 1), (3,0),  rowspan=2)
+        ax0 = plt.Subplot(fig, inner[0])
+        ax1 = plt.Subplot(fig, inner[1])
+        ax0.annotate(linlab[i], (0.05, 0.9), xycoords='axes fraction', va='center', fontsize=15)
+        fig.add_subplot(ax0)
+        fig.add_subplot(ax1)
         ydat = spectot
         ymod = modtot
         ydattmp=np.zeros((ct), dtype=float)
@@ -212,35 +210,35 @@ def pltlin(instr, pltpar, outfile):
         else:
             yranmax=ymodmax
         yran=[yranmin, yranmax]
-        icol = (float(i))/(float(pltpar['nx']))
+        icol = (float(i))/(float(nx))
         if icol == int(icol):
             ytit='Fit'
         else:
             ytit= ''
-        top.set_xlim([xran[0], xran[1]])
-        top.set_ylim([yran[0], yran[1]])
-        top.plot (wave,ydat, color='White', linewidth=1)
+        ax0.set_xlim([xran[0], xran[1]])
+        ax0.set_ylim([yran[0], yran[1]])
+        ax0.plot (wave,ydat, color='White', linewidth=1)
         xtit = 'Observed Wavelength ($\AA$)'
         ytit=''
-        top.plot (wave, ymod,color='Red', linewidth=2)   
+        ax0.plot (wave, ymod,color='Red', linewidth=2)   
         for j in range(1, ncomp+1):
           flux= cmplin(instr, linlab[i], j, velsig=1)
           for p in range (0, len(flux)):
               flux[p]=float(flux[p])
-          top.plot(wave, (yran[0]+flux), color=colors[j-1], linewidth=2, linestyle='dashed')
+          ax0.plot(wave, (yran[0]+flux), color=colors[j-1], linewidth=2, linestyle='dashed')
           if linoth[0, i] != '':
              for k in range (0, (len(linoth[:,i]))):
                   if linoth[k,i] != '':
                        flux=cmplin(instr, linoth[k,i], j, velsig=1)
                        for p in range(0, len(flux)):
                          flux[p]=float(flux[p])
-                       top.plot(wave,(yran[0]+flux), color=colors[j-1], linestyle='dashed')
+                       ax0.plot(wave,(yran[0]+flux), color=colors[j-1], linestyle='dashed')
         xloc=xran[0]+(xran[1]-xran[0])*(float(0.05))
         yloc=yran[0]+(yran[1]-yran[0])*(float(0.85))
         plt.text(xloc, yloc, linlab[i], fontsize=2)        
         if nmasked > 0:
           for r in range (0,nmasked):
-               top.plot([masklam[r,0], masklam[r,1]], [yran[0], yran[0]],linewidth=8, color='Cyan')
+               ax0.plot([masklam[r,0], masklam[r,1]], [yran[0], yran[0]],linewidth=8, color='Cyan')
         ydat = specstars
         ymod = modstars
         ydattmp=np.zeros((len(ind)), dtype=float)
@@ -265,11 +263,10 @@ def pltlin(instr, pltpar, outfile):
             ytit = 'Residual' 
         else:
             ytit = ''
-        bottom.set_xlim([xran[0], xran[1]])
-        bottom.set_ylim([yran[0], yran[1]])
-        bottom.plot(wave, ydat, linewidth=1)
-        bottom.plot(wave,ymod,color='Red',thick=4)
-        plt.show()
+        ax1.set_xlim([xran[0], xran[1]])
+        ax1.set_ylim([yran[0], yran[1]])
+        ax1.plot(wave, ydat, linewidth=1)
+        ax1.plot(wave,ymod,color='Red')
         
  if 'micron' in pltpar:
     xtit= 'Observed Wavelength (\u03BC)'
@@ -375,7 +372,7 @@ for i in fluxfile.readlines():
         count+=1
 fluxfile.close()
 
-outfile= 'pltlingraphs'
+outfile= 'pltlingraph'
 linoth = np.full((2,6),'', dtype=object)
 linoth[0,2] = '[OIII]4959'
 linoth[0,3] = '[OI]6364'

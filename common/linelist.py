@@ -23,7 +23,7 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
            wavelengths in vacuum, default is True (otherwise returns air 
            wavelengths); conversion is equation 3 from Morton et al. 1991
            ApJSS 77 119
-       waveunit: a string variable, 'A' or 'micron', default is Angstrom
+       waveunit: a string variable, 'Angstrom' or 'micron', default is Angstrom
     
     Examples:
         

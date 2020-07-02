@@ -267,7 +267,6 @@ def pltlin(instr, pltpar, outfile):
         ax1.set_ylim([yran[0], yran[1]])
         ax1.plot(wave, ydat, linewidth=1)
         ax1.plot(wave,ymod,color='Red')
-        plt.show()
         
  if 'micron' in pltpar:
     xtit= 'Observed Wavelength (\u03BC)'

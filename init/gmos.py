@@ -82,6 +82,7 @@
 ;      2018feb22, DSNR, added NeIII line ratio
 ;      2020may22, YI, translated from IDL to Python 3
 ;      2020may26, YI, fixed Python bugs
+;      2020may28, YI, tested through fitspec() with saved IDL data and fixed bugs
 ;    
 ; :Copyright:
 ;    Copyright (C) 2013--2018 David S. N. Rupke
@@ -102,6 +103,7 @@
 ;
 ;-
 """
+import pdb
 import numpy as np
         
 def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
@@ -113,20 +115,19 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
 # Website says R = 1688 at 4610 A for 0.5" slit, with IFU 0.31" eff. slit.
 # This gives 1.69 A FWHM. I measure sometimes closer to 1.5-1.6.
 # Sigma is then in the range 0.64 -- 0.72. Use the latter for flexibility.
-
     if not blrlines :
         blrlines = ['Halpha','Hbeta','Hgamma','Hdelta','Hepsilon','H8','H9','H10','H11']
     if not specres :
         specres = 0.64
     # A reasonable lower limit of 5d for physicality ... Assume line is resolved.
-    if not siglim :
+    if not siglim.all() :
         siglim = [5.,2000.]
     if not blrcomp :
         blrcomp = -1
         
     # Number of emission lines to fit
     nline = len(linelist)
-    lines_arr = linelist #these 2 steps highly depend on the structure of the input
+    lines_arr = np.array(linelist['name']) #these 2 steps highly depend on the structure of the input
     # Number of initial parameters before Gaussian parameters begin
     lratlim = 4 
     ppoff0 = 3
@@ -135,7 +136,7 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
     pardict = {'value':0.,'fixed':0.,'limited':[b'0',b'0'],'tied':'',
                'limits':[0.,0.],'step':0.,'mpprint':b'0','mpside':2,
                'parname':'','line':'','comp':0.,'sigmawave_tie':'','flux_tie':''}
-    parinfo = list(np.repeat(pardict,ppoff+maxncomp*(nline*3)))
+    parinfo = [pardict.copy() for i in range(ppoff+maxncomp*(nline*3))]
     
     # Number of initial parameters before Gaussian parameters begin
     parinfo[0]['value'] = ppoff
@@ -155,31 +156,40 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
     if not lratfix :
         lratfix = {}
     
+    
+    
+    
 # [SII] ratio
     ilratlim = 0
     lratlab = '[SII]6716/6731'
     if '[SII]6716' in ncomp:
-        tmp_ncomp = ncomp['[SII]6716']
+        tmp_ncomp = int(ncomp['[SII]6716'])
     else:
         tmp_ncomp = 0
     if tmp_ncomp > 0 :
         ip1 = ppoff0 + ilratlim*maxncomp
         ip2 = ip1+tmp_ncomp
-        fa = initflux['[SII]6716'][0:tmp_ncomp]
-        fb = initflux['[SII]6731'][0:tmp_ncomp]
+        
+        fa = np.array(initflux['[SII]6716'][0:tmp_ncomp])
+        fb = np.array(initflux['[SII]6731'][0:tmp_ncomp])
         frat = np.zeros(tmp_ncomp)+1. # default if initial s2b flux = 0
         inz  = np.where(fb > 0)[0]
         ctnz = len(inz)
         if ctnz > 0 :
             frat[inz] = fa[inz]/fb[inz]
-        parinfo[ip1:ip2]['value'] = frat      
-        parinfo[ip1:ip2]['limited'] = np.resize([b'1',b'1'],[tmp_ncomp,2])
-        parinfo[ip1:ip2]['limits']  = np.resize([0.44,1.43],[tmp_ncomp,2])
-        parinfo[ip1:ip2]['parname'] = '[SII]6716/6731 line ratio'
-        parinfo[ip1:ip2]['comp'] = np.arange(0,tmp_ncomp)+1
+        
+        parinfo[ip1:ip2][0]['value'] = frat
+        parinfo[ip1:ip2][0]['limited'] = np.resize([b'1',b'1'],[tmp_ncomp,2])[0]
+        parinfo[ip1:ip2][0]['limits']  = np.resize([0.44,1.43],[tmp_ncomp,2])[0]
+        parinfo[ip1:ip2][0]['parname'] = '[SII]6716/6731 line ratio'
+        parinfo[ip1:ip2][0]['comp'] = np.arange(0,tmp_ncomp)+1
+        
+        
         # Check to see if line ratio is fixed
         ilratfix = [i for i, x in enumerate(lratfix) if x == lratlab]
         ctlratfix = len(ilratfix)
+        
+        
         for i in range(0,tmp_ncomp) :
         # If line ratio is fixed, then fix it
             lratfixed = b'0'
@@ -206,12 +216,13 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
     ilratlim = 1    
     lratlab = '[NI]5200/5198'
     if '[NI]5198'  in ncomp :
-        tmp_ncomp = ncomp['[NI]5198']
+        tmp_ncomp = int(ncomp['[NI]5198'])
     else:
         tmp_ncomp = 0
     if tmp_ncomp > 0:
         ip1 = ppoff0 + ilratlim*maxncomp
         ip2 = ip1+tmp_ncomp
+        
         fa = initflux['[NI]5200'][0:tmp_ncomp]
         fb = initflux['[NI]5198'][0:tmp_ncomp]
         frat = np.zeros(tmp_ncomp)+2.
@@ -219,11 +230,12 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         ctnz = len(inz)
         if ctnz > 0 :
             frat[inz] = fa[inz]/fb[inz]
-        parinfo[ip1:ip2]['value'] = frat
-        parinfo[ip1:ip2]['limited'] = np.resize([b'1',b'1'],[tmp_ncomp,2])
-        parinfo[ip1:ip2]['limits']  = np.resize([0.6,4.],[tmp_ncomp,2])
-        parinfo[ip1:ip2]['parname'] = '[NI]5200/5198 line ratio'
-        parinfo[ip1:ip2]['comp'] = np.arange(0,tmp_ncomp)+1
+        parinfo[ip1:ip2][0]['value'] = frat
+        parinfo[ip1:ip2][0]['limited'] = np.resize([b'1',b'1'],[tmp_ncomp,2])[0]
+        parinfo[ip1:ip2][0]['limits']  = np.resize([0.6,4.],[tmp_ncomp,2])[0]
+        parinfo[ip1:ip2][0]['parname'] = '[NI]5200/5198 line ratio'
+        parinfo[ip1:ip2][0]['comp'] = np.arange(0,tmp_ncomp)+1
+        
         # Check to see if line ratio is fixed
         ilratfix = [i for i, x in enumerate(lratfix) if x == lratlab]
         ctlratfix = len(ilratfix)
@@ -243,32 +255,34 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
                     # case of pegging at or dipping below lower limit
                 if parinfo[ip1+i]['value'] <= parinfo[ip1+i]['limits'][0] :
                     parinfo[ip1+i]['value'] = parinfo[ip1+i]['limits'][0] + (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1                
-                    
+    
 # [NII]/Ha ratio
     ilratlim = 2
     lratlab = '[NII]6583/Ha'
     if ('Halpha' in ncomp) and ('[NII]6583'  in ncomp) :
-        tmp_ncomp = ncomp['Halpha']
+        tmp_ncomp = int(ncomp['Halpha'])
     else:
         tmp_ncomp = 0
     if tmp_ncomp > 0:
         ip1 = ppoff0 + ilratlim*maxncomp
         ip2 = ip1+tmp_ncomp
-        fa = initflux['[NII]6583'][0:tmp_ncomp]
-        fb = initflux['Halpha'][0:tmp_ncomp]
+        fa = np.array(initflux['[NII]6583'][0:tmp_ncomp])
+        fb = np.array(initflux['Halpha'][0:tmp_ncomp])
         frat = np.zeros(tmp_ncomp)+1.
         inz  = np.where(fb > 0)[0]
         ctnz = len(inz)
         if ctnz > 0 :
             frat[inz] = fa[inz]/fb[inz]
-        parinfo[ip1:ip2]['value'] = frat
-        parinfo[ip1:ip2]['limited'] = np.resize([b'1',b'1'],[tmp_ncomp,2])
+        parinfo[ip1:ip2][0]['value'] = frat
+        parinfo[ip1:ip2][0]['limited'] = np.resize([b'1',b'1'],[tmp_ncomp,2])[0]
         # This upper limit appears to be the maximum seen in Kewley+06 or 
         # Rich+14 ("Composite Spectra in ..."). The lower limit is appropriate 
         # for ULIRGs.
-        parinfo[ip1:ip2]['limits']  = np.resize([0.1,4.],[tmp_ncomp,2])
-        parinfo[ip1:ip2]['parname'] = '[NII]6583/Halpha line ratio'
-        parinfo[ip1:ip2]['comp'] = np.arange(0,tmp_ncomp)+1
+        parinfo[ip1:ip2][0]['limits']  = np.resize([0.1,4.],[tmp_ncomp,2])[0]
+        parinfo[ip1:ip2][0]['parname'] = '[NII]6583/Halpha line ratio'
+        parinfo[ip1:ip2][0]['comp'] = np.arange(0,tmp_ncomp)+1
+        
+        
         # Check to see if line ratio is fixed
         ilratfix = [i for i, x in enumerate(lratfix) if x == lratlab]
         ctlratfix = len(ilratfix)
@@ -288,7 +302,8 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
                # case of pegging at or dipping below lower limit
                 if parinfo[ip1+i]['value'] <= parinfo[ip1+i]['limits'][0] :
                     parinfo[ip1+i]['value'] = parinfo[ip1+i]['limits'][0] + (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1                
-                    
+                  
+    
 # Ha/Hb ratio --> has been commented out in the original IDL code
 # ilratlim = 3
 #  lratlab = 'Ha/Hb'
@@ -303,12 +318,12 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
 #      frat = dblarr(tmp_ncomp)+3d ; default if initial hb flux = 0
 #      inz = where(fb gt 0,ctnz)
 #      if ctnz gt 0 then frat[inz] = fa[inz]/fb[inz]
-#      parinfo[ip1:ip2].value = frat
-#      parinfo[ip1:ip2].limited = rebin([1B,0B],2,tmp_ncomp)
+#      parinfo[ip1:ip2][0].value = frat
+#      parinfo[ip1:ip2][0].limited = rebin([1B,0B],2,tmp_ncomp)
 # ;    Upper limit of 50 corresponds to E(B-V) = 2.89 using CCM
-#      parinfo[ip1:ip2].limits  = rebin([2.86d,0d],2,tmp_ncomp)
-#      parinfo[ip1:ip2].parname = 'Halpha/Hbeta line ratio'
-#      parinfo[ip1:ip2].comp = indgen(tmp_ncomp)+1
+#      parinfo[ip1:ip2][0].limits  = rebin([2.86d,0d],2,tmp_ncomp)
+#      parinfo[ip1:ip2][0].parname = 'Halpha/Hbeta line ratio'
+#      parinfo[ip1:ip2][0].comp = indgen(tmp_ncomp)+1
 # ;    Check to see if line ratio is fixed
 #      ilratfix = where(lratfix.keys() eq lratlab,ctlratfix)
 #      for i=0,tmp_ncomp do begin
@@ -345,24 +360,24 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
     ilratlim = 3
     lratlab = '[OII]3729/3726'
     if '[OII]3726' in ncomp :
-        tmp_ncomp = ncomp['[OII]3726']
+        tmp_ncomp = int(ncomp['[OII]3726'])
     else:
         tmp_ncomp = 0
     if tmp_ncomp > 0:
         ip1 = ppoff0 + ilratlim*maxncomp
         ip2 = ip1+tmp_ncomp
-        fa = initflux['[OII]3726'][0:tmp_ncomp]
-        fb = initflux['[OII]3729'][0:tmp_ncomp]
+        fa = np.array(initflux['[OII]3726'][0:tmp_ncomp])
+        fb = np.array(initflux['[OII]3729'][0:tmp_ncomp])
         frat = np.zeros(tmp_ncomp)+1.
         inz  = np.where(fb > 0)[0]
         ctnz = len(inz)
         if ctnz > 0 :
             frat[inz] = fa[inz]/fb[inz]
-        parinfo[ip1:ip2]['value'] = frat
-        parinfo[ip1:ip2]['limited'] = np.resize([b'1',b'1'],[tmp_ncomp,2])
-        parinfo[ip1:ip2]['limits']  = np.resize([0.35,1.5],[tmp_ncomp,2])
-        parinfo[ip1:ip2]['parname'] = '[OII]3729/3726 line ratio'
-        parinfo[ip1:ip2]['comp'] = np.arange(0,tmp_ncomp)+1
+        parinfo[ip1:ip2][0]['value'] = frat
+        parinfo[ip1:ip2][0]['limited'] = np.resize([b'1',b'1'],[tmp_ncomp,2])[0]
+        parinfo[ip1:ip2][0]['limits']  = np.resize([0.35,1.5],[tmp_ncomp,2])[0]
+        parinfo[ip1:ip2][0]['parname'] = '[OII]3729/3726 line ratio'
+        parinfo[ip1:ip2][0]['comp'] = np.arange(0,tmp_ncomp)+1
     # Check to see if line ratio is fixed
         ilratfix = [i for i, x in enumerate(lratfix) if x == lratlab]
         ctlratfix = len(ilratfix)
@@ -382,10 +397,10 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
                     # case of pegging at or dipping below lower limit
                 if parinfo[ip1+i]['value'] <= parinfo[ip1+i]['limits'][0] :
                     parinfo[ip1+i]['value'] = parinfo[ip1+i]['limits'][0] + (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1                
-                    
-
+       
+    
 # cycle through velocity components
-    for i,in range(0,maxncomp):
+    for i in range(0,maxncomp):
     # index offsets for this component
         foff = ppoff+i*nline*3
         woff = foff+1
@@ -397,17 +412,21 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
             ifoff = foff + iline*3
             iwoff = woff + iline*3
             isoff = soff + iline*3
+            
             parinfo[ifoff]['parname'] = 'flux_peak'
             parinfo[iwoff]['parname'] = 'wavelength'
             parinfo[isoff]['parname'] = 'sigma'
+            
             parinfo[ifoff]['line'] = line
             parinfo[iwoff]['line'] = line
             parinfo[isoff]['line'] = line
+            
             parinfo[ifoff]['comp'] = i+1
             parinfo[iwoff]['comp'] = i+1
             parinfo[isoff]['comp'] = i+1
+            
             # if the number of components to be fit is exceeded, fix line fluxes to 0
-            if ((i+1 > ncomp[line]) or (np.where(i+1 == blrcomp)[0][0] >= 0 and np.where(line == blrlines)[0][0] == -1)):
+            if ((i+1 > ncomp[line]) or (i+1 == blrcomp) and len(np.where(line == blrlines)[0]) == 0):
                 parinfo[ifoff]['value'] = 0.
                 parinfo[iwoff]['value'] = 0.
                 parinfo[isoff]['value'] = 0.
@@ -420,19 +439,24 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
                 parinfo[iwoff]['value'] = linelistz[line][i]
                 parinfo[isoff]['value'] = initsig[line][i]
                 # limits
-                parinfo[ifoff]['limited'][0] = b'1'
-                parinfo[ifoff]['limited'][0]  = 0.
+                # parinfo[ifoff]['limited'][0] = b'1'
+                parinfo[ifoff]['limited'] = [b'1',b'0']
+                parinfo[ifoff]['limits'][0] = 0.
+                
                 parinfo[iwoff]['limited'] = [b'1',b'1']
-                parinfo[iwoff]['limited'][0] = linelistz[line][i]*0.997
-                parinfo[iwoff]['limited'][1] = linelistz[line][i]*1.003
+                parinfo[iwoff]['limits'] = [linelistz[line][i]*0.997,linelistz[line][i]*1.003]
+                # parinfo[iwoff]['limits'][0] = linelistz[line][i]*0.997
+                # parinfo[iwoff]['limits'][1] = linelistz[line][i]*1.003
+                
                 parinfo[isoff]['limited'] = [b'1',b'1']
-                parinfo[isoff]['limited'] = siglim
+                parinfo[isoff]['limits'] = siglim
+                
                 # ties
                 if line == linetie[line]:
                     parinfo[iwoff]['tied'] = ''
                     parinfo[isoff]['tied'] = ''
                 else:
-                    indtie = np.where(lines_arr == linetie[line])[0]
+                    indtie = [idx for idx,key in enumerate(lines_arr.tolist()) if key[0] == linetie[line]][0]
                     parinfo[iwoff]['tied'] = '{0:0.6e}{1:1}{2:0.6e}{3:1}{4:1}{5:1}'.format(linelist[line],'/',linelist[linetie[line]],'* P[',woff+indtie*3,']')
                     parinfo[isoff]['tied'] = '{0:1}{1:1}{2:1}'.format('P[',soff+indtie*3,']') 
                     parinfo[iwoff]['sigmawave_tie'] = linetie[line]
@@ -444,7 +468,7 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
                             parinfo[isoff]['fixed']=b'1'
                             parinfo[isoff]['value']=sigfix['line'][i] 
             iline+=1
-
+        
         # the if statement here prevents MPFIT_TIE from issuing an IEEE exception,
         # since if we're not fitting [SII] then the ratio is set to 0 at the 
         # beginning of this routine
@@ -530,8 +554,7 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
             parinfo[foff+linea*3]['flux_tie'] = '[NeIII]3869'
             # Make sure initial value is correct
             parinfo[foff+linea*3]['value'] = parinfo[foff+lineb*3]['value']/3.0
-        
-        
+       
 # Check parinit initial values vs. limits
     badpar = [i for i, x in enumerate(parinfo) 
                if (x['limited'][0] == b'1' and x['value'] < x['limits'][0]) 
@@ -547,3 +570,4 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         raise Exception('Initial values are outside limits.')
     else:
         return parinfo
+

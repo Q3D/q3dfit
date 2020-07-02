@@ -144,12 +144,12 @@ def pg1411():
                    'wave': [0,4861,5007,6300,6563,6731],
                    'off': [[-120,90],[-80,50],[-130,50],
                          [-80,120],[-95,70],[-95,50]],
-                   'linoth': str(linoth)}
+                   'linoth': linoth}
 
 # Velocity dispersion limits and fixed values
-    siglim_gas = [5,500]
+    siglim_gas = np.ndarray(2)
+    siglim_gas[:] = [5,500]
 #    lratfix = {'[NI]5200/5198': [1.5]}
-
 
 #
 # Output structure
@@ -157,7 +157,7 @@ def pg1411():
 
     init = { \
 # Required pars
-            'fcninitpar': 'ifsf_gmos',
+            'fcninitpar': 'gmos',
             'fitran': fitrange,
             'fluxunits': 1e-15, # erg/s/cm^2/arcsec^2
             'infile': infile,
@@ -207,7 +207,7 @@ def pg1411():
             'siglim_gas': siglim_gas,
             'siginit_gas': siginit_gas,
             'siginit_stars': 50,
-            'cutrange': [[6410,6430]],
+            'cutrange': np.array([6410,6430]),
             'nocvdf': 1,
 #            'cvdf_vlimits': [-3e3,3e3],
 #            'cvdf_vstep': 10d,

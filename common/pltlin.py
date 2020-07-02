@@ -210,7 +210,7 @@ def pltlin(instr, pltpar, outfile):
         else:
             yranmax=ymodmax
         yran=[yranmin, yranmax]
-        icol = (float(i))/(float(pltpar['nx']))
+        icol = (float(i))/(float(nx))
         if icol == int(icol):
             ytit='Fit'
         else:

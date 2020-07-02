@@ -6,6 +6,7 @@ Created on Mon Jun 29 08:38:08 2020
 """
 
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 import numpy as np
 from astropy import modeling
@@ -35,8 +36,8 @@ from decimal import *
 #rest wavelengths of lines
 #lineoth= np.arrange((Notherlines, Ncomp), float)
 #wavelengths of other lines to plot
-#int(nx) # of plot columns
-#int(ny) # of plot rows
+#nx # of plot columns
+#ny # of plot rows
 #
 
 #outfile: in, required, type=string

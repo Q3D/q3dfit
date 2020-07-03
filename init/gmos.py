@@ -83,6 +83,7 @@
 ;      2020may22, YI, translated from IDL to Python 3
 ;      2020may26, YI, fixed Python bugs
 ;      2020may28, YI, tested through fitspec() with saved IDL data and fixed bugs
+;      2020jul02, YI, fixed the how linelist is handled
 ;    
 ; :Copyright:
 ;    Copyright (C) 2013--2018 David S. N. Rupke
@@ -124,10 +125,12 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         siglim = [5.,2000.]
     if not blrcomp :
         blrcomp = -1
-        
+    
+    # converts the astropy.Table structure of linelist into a Python dictionary that is compatible with the code downstream
+    lines_arr = {name:linelist['lines'][idx] for idx,name in enumerate(linelist['name']) }
     # Number of emission lines to fit
-    nline = len(linelist)
-    lines_arr = np.array(linelist['name']) #these 2 steps highly depend on the structure of the input
+    nline = len(lines_arr)
+    #lines_arr = np.array(linelist['name']) #these 2 steps highly depend on the structure of the input
     # Number of initial parameters before Gaussian parameters begin
     lratlim = 4 
     ppoff0 = 3

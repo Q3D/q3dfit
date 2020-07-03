@@ -168,9 +168,9 @@ def pltlin(instr, pltpar, outfile):
     str(linoth) 
   
  plt.style.use('dark_background') 
- 
+ fig = plt.figure(figsize=(16,13))
+
  for i in range (0,nlin):
-    fig = plt.figure(figsize=(16,13))
     outer = gridspec.GridSpec(ny, nx, wspace=0.1, hspace=0.1)
     inner = gridspec.GridSpecFromSubplotSpec (2, 1, \
             subplot_spec=outer[i], wspace=0.1, hspace=0, height_ratios=[4,2], width_ratios=None)

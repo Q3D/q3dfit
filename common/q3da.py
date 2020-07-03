@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Spyder Editor
-
-This is a temporary script file.
+Routine to plot the continuum and emission lines fits to a spectrum, doesn't
+return anything.
 """
 import numpy as np
 import math
@@ -10,6 +9,8 @@ import pdb
 import importlib
 from q3dfit.common.linelist import linelist
 from q3dfit.common.readcube import CUBE
+from scipy.special import legendre #?
+from scipy import interpolate
 
 def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
          verbose = None, _extra = None):
@@ -85,12 +86,12 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
     
     if 'argsreadcube' in initdat:
         cube = CUBE(infile = initdat['infile'], quiet = quiet, oned = oned, \
-                        header=header, datext = datext, varext = varext, \
-                        dqext = dqext, **initdat['argsreadcube'])
+                    header = header, datext = datext, varext = varext, \
+                    dqext = dqext, **initdat['argsreadcube'])
     else:
         cube = CUBE(infile = initdat['infile'], quiet = quiet, oned = oned, \
-                        header = header, datext = datext, varext = varext, \
-                        dqext = dqext)
+                    header = header, datext = datext, varext = varext, \
+                    dqext = dqext)
     
     if 'vormap' in initdat:
         vormap = initdat['vormap']
@@ -106,55 +107,55 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
         
 #INITIALIZE LINE HASH
     if not('noemlinfit' in initdat):
-      emlwav = dict()
-      emlwaverr = dict()
-      emlsig = dict()
-      emlsigerr = dict()
-      emlweq = dict()
-      emlflx = dict()
-      emlflxerr = dict()
-      emlweq['ftot'] = dict()
-      emlflx['ftot'] = dict()
-      emlflxerr['ftot'] = dict()
-      for k in range (0, initdat['maxncomp']):
-         cstr = 'c' + str(k + 1) #come back to this
-         emlwav[cstr] = dict()
-         emlwaverr[cstr] = dict()
-         emlsig[cstr] = dict()
-         emlsigerr[cstr] = dict()
-         emlweq['f' + cstr] = dict()
-         emlflx['f' + cstr] = dict()
-         emlflxerr['f' + cstr] = dict()
-         emlflx['f' + cstr + 'pk'] = dict()
-         emlflxerr['f' + cstr + 'pk'] = dict()
-      for line in lines_with_doublets:
-         emlweq['ftot'][line] = np.zeros((cube.nrows, cube.ncols), \
-               dtype = float) + bad
-         emlflx['ftot'][line] = np.zeros((cube.nrows, cube.ncols), \
-               dtype = float) + bad
-         emlflxerr['ftot'][line] = np.zeros((cube.nrows, cube.ncols), \
-               dtype = float) + bad
-         for k in range (0, initdat['maxncomp']):
+        emlwav = dict()
+        emlwaverr = dict()
+        emlsig = dict()
+        emlsigerr = dict()
+        emlweq = dict()
+        emlflx = dict()
+        emlflxerr = dict()
+        emlweq['ftot'] = dict()
+        emlflx['ftot'] = dict()
+        emlflxerr['ftot'] = dict()
+        for k in range (0, initdat['maxncomp']):
+            cstr = 'c' + str(k + 1)
+            emlwav[cstr] = dict()
+            emlwaverr[cstr] = dict()
+            emlsig[cstr] = dict()
+            emlsigerr[cstr] = dict()
+            emlweq['f' + cstr] = dict()
+            emlflx['f' + cstr] = dict()
+            emlflxerr['f' + cstr] = dict()
+            emlflx['f' + cstr + 'pk'] = dict()
+            emlflxerr['f' + cstr + 'pk'] = dict()
+        for line in lines_with_doublets:
+            emlweq['ftot'][line] = np.zeros((cube.nrows, cube.ncols), \
+                dtype = float) + bad
+            emlflx['ftot'][line] = np.zeros((cube.nrows, cube.ncols), \
+                dtype = float) + bad
+            emlflxerr['ftot'][line] = np.zeros((cube.nrows, cube.ncols), \
+                dtype = float) + bad
+        for k in range (0, initdat['maxncomp']):
             cstr = 'c' + str(k + 1)
             emlwav[cstr][line] = np.zeros((cube.nrows, cube.ncols), \
-               dtype = float) + bad
+                dtype = float) + bad
             emlwaverr[cstr][line] = np.zeros((cube.nrows, cube.ncols), \
-               dtype = float) + bad
+                dtype = float) + bad
             emlsig[cstr][line] = np.zeros((cube.nrows, cube.ncols), \
-               dtype = float) + bad
+                dtype = float) + bad
             emlsigerr[cstr][line] = np.zeros((cube.nrows, cube.ncols), \
-               dtype = float) + bad
+                dtype = float) + bad
             emlweq['f' + cstr][line] = np.zeros((cube.nrows, cube.ncols), \
-               dtype = float) + bad
+                dtype = float) + bad
             emlflx['f' + cstr][line] = np.zeros((cube.nrows, cube.ncols), \
-               dtype = float) + bad
+                dtype = float) + bad
             emlflxerr['f' + cstr][line] = np.zeros((cube.nrows, cube.ncols), \
-               dtype = float) + bad
+                dtype = float) + bad
             emlflx['f' + cstr + 'pk'][line] = np.zeros((cube.nrows, cube.ncols), \
-               dtype = float) + bad
+                dtype = float) + bad
             emlflxerr['f' + cstr + 'pk'][line] = np.zeros((cube.nrows, cube.ncols), \
-               dtype = float) + bad
-    
+                dtype = float) + bad
+        #basically dictionaries of dictionaries of 2D arrays 
     if 'flipsort' in initdat:
         flipsort = np.zeros(cube['nrows'], cube['ncols'])
         sizefs = len(initdat['flipsort'])
@@ -245,10 +246,10 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                 badmessage = 'No data for ' + str(i + 1) + ', ' + \
                     str(j + 1) + '.'
                 print(badmessage)
-            else:
+            #else:
                 #is there nothing in here?
-                huh = what
             
+            struct = np.load("struct.npy", allow_pickle='TRUE').item()
             struct['noemlinfit'] = err[struct['fitran_indx']] #necessary?
             
             if not 'noemlinfit' in struct:
@@ -300,9 +301,9 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                     if 'flipsort' in initdat:
                         if flipsort[j, i]: #where did flipsort come from?
                             print('Flipsort set for spaxel [' + str(i + 1) \
-                                  + ',' + str(j + 1) + '] but ' + \
-                            'only 1 component. Setting to 2 components and ' \
-                            + 'flipping anyway.')
+                                   + ',' + str(j + 1) + '] but ' + \
+                                  'only 1 component. Setting to 2 components \
+                                   and ' + 'flipping anyway.')
                             isort = [1, 0]
                 elif thisncomp > 2:
                     #sort components
@@ -315,24 +316,123 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                     elif initdat['sorttype'] == wave: #'wave'?? line 444
                         isort = linepars['wave'][igd, line].sort() #reversed this
                     elif initdat['sorttype'] == reversewave:
-                        isort = linepars['wave'][igd, line].sort(reverse = true)
+                        isort = linepars['wave'][igd, line].sort(reverse = True)
                     
                     if 'flipsort' in initdat:
                         if flipsort[j, i] != None: #????
-                            isort = isort.sort(reverse = true)
+                            isort = isort.sort(reverse = True)
                 if thisncomp > 0:
                     for line in lines_with_doublets:
                         kcomp = 1
                         for sindex in isort:
-                            cstr='c'+string(kcomp,format='(I0)')
-                            emlwav[cstr,line,i,j]=linepars.wave[line,sindex]
-                            emlwaverr[cstr,line,i,j]=linepars.waveerr[line,sindex]
-                            emlsig[cstr,line,i,j]=linepars.sigma[line,sindex]
-                            emlsigerr[cstr,line,i,j]=linepars.sigmaerr[line,sindex]
-                            emlweq['f'+cstr,line,i,j]=lineweqs.comp[line,sindex]
-                            emlflx['f'+cstr,line,i,j]=linepars.flux[line,sindex]
-                            emlflxerr['f'+cstr,line,i,j]=linepars.fluxerr[line,sindex]
-                            emlflx['f'+cstr+'pk',line,i,j]=linepars.fluxpk[line,sindex]
-                            emlflxerr['f'+cstr+'pk',line,i,j]=linepars.fluxpkerr[line,sindex]
+                            cstr='c' + str(kcomp)
+                            emlwav[cstr][line][i, j] \
+                                = linepars['wave'].cell(line, sindex)
+                            emlwaverr[cstr][line][i, j] \
+                                = linepars['waveerr'].cell(line, sindex)
+                            emlsig[cstr][line][i, j] \
+                                = linepars['sigma'].cell(line, sindex)
+                            emlsigerr[cstr][line][i, j] \
+                                = linepars['sigmaerr'].cell(line, sindex)
+                            emlweq['f' + cstr][line][i, j] \
+                                = lineweqs['comp'].cell(line, sindex)
+                            emlflx['f' + cstr][line][i, j] \
+                                = linepars['flux'].cell(line,sindex)
+                            emlflxerr['f' + cstr][line][i, j] \
+                                = linepars['fluxerr'].cell(line,sindex)
+                            emlflx['f' + cstr + 'pk'][line][i, j] \
+                                = linepars['fluxpk'].cell(line, sindex)
+                            emlflxerr['f' + cstr + 'pk'][line][i, j] \
+                                = linepars['fluxpkerr'].cell(line, sindex)
                             kcomp+=1 
-                    
+                    #print line fluxes to text file
+                    #Need to write printlinpar, line 474
+#Process and plot continuum data
+              #make and populate output data cubes          
+            if firstcontproc != 0: #i think
+                hostcube = \
+                   {'dat': np.zeros(cube.nrows, cube.ncols, cube.nz), \
+                    'err': np.zeros(cube.nrows, cube.ncols, cube.nz), \
+                    'dq':  np.zeros(cube.nrows, cube.ncols, cube.nz), \
+                    'norm_div': np.zeros(cube.nrows, cube.ncols, cube.nz), \
+                    'norm_sub': np.zeros(cube.nrows, cube.ncols, cube.nz)}
+              
+                if 'decompose_ppxf_fit' in initdat:
+                    contcube = \
+                        {'wave': struct['wave'], \
+                         'all_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
+                         'stel_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
+                         'poly_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
+                         'stel_mod_tot': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'poly_mod_tot': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'poly_mod_tot_pct': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_sigma': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_sigma_err': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_z': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_z_err': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_rchisq': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_ebv': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_ebv_err': np.zeros(cube.nrows, cube.ncols) + bad}
+              
+                elif 'decompose_qso_fit' in initdat:
+                    contcube = \
+                        {'wave': struct['wave'], \
+                         'qso_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
+                         'qso_poly_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
+                         'host_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
+                         'poly_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
+                         'npts': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_sigma': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_sigma_err': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_z': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_z_err': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_rchisq': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_ebv': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_ebv_err': np.zeros(cube.nrows, cube.ncols) + bad}
+                else:
+                    contcube = \
+                        {'all_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
+                         'stel_z': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_z_err': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_rchisq': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_ebv': np.zeros(cube.nrows, cube.ncols) + bad, \
+                         'stel_ebv_err': np.zeros(cube.nrows, cube.ncols) + bad}
+                firstcontproc = 0
+              
+            hostcube['dat'][j, i, struct['fitran_indx']] = struct['cont_dat']
+            hostcube['err'][j, i, struct['fitran_indx']] = err[struct['fitran_indx']]
+            hostcube['dq'][j, i, struct['fitran_indx']] = dq[struct['fitran_indx']]
+            hostcube['norm_div'][j, i, struct['fitran_indx']] \
+                = struct['cont_dat'] / struct['cont_fit']
+            hostcube['norm_sub'][j, i, struct['fitran_indx']] \
+                = struct['cont_dat'] - struct['cont_fit']
+              
+            if 'decompose_ppxf_fit' in initdat:
+                add_poly_degree = 4.0 #shoudl match fitspec
+                if 'argscontfit' in initdat:
+                    if 'add_poly_degree' in initdat['argscontfit']:
+                        add_poly_degree = initdat['argscontfit']['add_poly_degree']
+                #Compute polynomial
+                #log_rebin?
+                xnorm = cap_range(-1.0, 1.0, len(wave_log)) #wave_log from log_rebin
+                cont_fit_poly_log = 0.0
+                for k in range (0, add_poly_degree):
+                    cont_fit_poly_log += legendre(xnorm, k) * struct['ct_add_poly_weight'][k]
+                    #legendre? xnorm? k?
+                interpfunction = interpolate.interp1d(cont_fit_poly_log, wave_log, kind='linear')
+                cont_fit_poly = interpfunction(np.log(struct['wave']))
+                #Compute stellar continuum
+                cont_fit_stel = struct['cont_fit'] - cont_fit_poly
+                
+#fix / and - !!!
+def cap_range(x1, x2, n):
+    a = np.zeros(1, dtype = float)
+    interval = (x2 - x1) / (n - 1)
+    print(interval)
+    num = x1
+    for i in range (0, n):
+        print(num)        
+        a = np.append(a, num)
+        num += interval
+    a = a[1:]
+    return a

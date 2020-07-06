@@ -67,14 +67,14 @@ def pg1411():
     platescale = 0.3
     fitrange = [4620,7450]
 
-    volume = '/Volumes/fingolfin/'
+    volume = '/mnt/c/Users/Carlos Anicetti/Documents/hopkins/year1/ifsfit/development/q3dfit-branches/multiprocess-dev/PG1411'
     
 #
 # Required pars
 #
 
 # Input file
-    infile=volume+'ifs/gmos/cubes/'+gal+'/pg1411'+outstr+'.fits'
+    infile=volume+'/pg1411'+outstr+'.fits'
     
 
     if not os.path.isfile(infile): print('Data cube not found.')
@@ -167,8 +167,8 @@ def pg1411():
             'maxncomp': maxncomp,
             'name': 'PG1411+442',
             'ncomp': ncomp,
-            'mapdir': '/Users/drupke/ifs/gmos/maps/'+gal+'/'+outstr+'/',
-            'outdir': volume+'specfits/gmos/'+gal+'/'+outstr+'/',
+            'mapdir': volume+'/mapdir/'+gal+'/'+outstr+'/',
+            'outdir': volume+'/'+gal+'/'+outstr+'/',
             'platescale': platescale,
             'positionangle': 335,
             'minoraxispa': 75,
@@ -181,16 +181,12 @@ def pg1411():
                                          '[SII]6716','[SII]6731']},
             'argscontfit': {'blrpar': [0,7150,5000/299792*7150,
                                        0,5300,5000/299792*5300],
-                            'qsoxdr': volume+'specfits/gmos/'+gal+\
-                                      '/nuc/pg1411qsotemplate.xdr',
+                            'qsoxdr': volume+"/pg1411qsotemplate.xdr",
                           'siginit_stars': 50,
                           'uselog': 1,
                           'refit': 1},
             'argslinelist': {'vacuum': False},
-#            'startempfile': '/Users/drupke/Documents/stellar_models/'+$
-#                            'gonzalezdelgado/SSPGeneva_z020.sav',
-            'startempfile': volume+'specfits/gmos/'+gal+'/host/'+\
-                            gal+'hosttemplate.xdr',
+            'startempfile': volume+'/hosttemplate.xdr',
             'argspltlin1': argspltlin1,
 #            'donad': 1,
             'decompose_qso_fit': 1,
@@ -200,7 +196,7 @@ def pg1411():
             'maskwidths_def': 500,
             'tweakcntfit': tweakcntfit,
             'emlsigcut': 2,
-            'logfile': volume+'specfits/gmos/'+gal+'/'+outstr+'/'+
+            'logfile': volume+'/'+
                        gal+'_fitlog.txt',
             'batchfile': '/Users/drupke/Dropbox/git/q3dfit/common/fitloop.pro',
             'batchdir': '/Users/drupke/src/idl/batch/',
@@ -211,8 +207,8 @@ def pg1411():
             'nocvdf': 1,
 #            'cvdf_vlimits': [-3e3,3e3],
 #            'cvdf_vstep': 10d,
-            'host': {'dat_fits': volume+'ifs/gmos/cubes/'+gal+'/'+\
-                     gal+outstr+'_host_dat_2.fits'} \
+#            'host': {'dat_fits': volume+'ifs/gmos/cubes/'+gal+'/'+\
+#                     gal+outstr+'_host_dat_2.fits'} \
         }
 
     return(init)

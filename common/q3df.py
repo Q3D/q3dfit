@@ -35,7 +35,7 @@ History
 
 Created on Mon June 29 22:50 2020
 
-@author: danicetti
+@author: canicetti
 """
 
 __author__ = 'Q3D Team'
@@ -48,7 +48,7 @@ __last_modified__ = '2020 June 29'
 def q3df( initproc, cols=None, rows=None, oned=False, onefit=False, ncores=1, \
     quiet=True ):
      if ncores == 1:
-         from common.q3df_helperFunctions import q3df_oneCore
+         from q3dfit.common.q3df_helperFunctions import q3df_oneCore
          q3df_oneCore(initproc, cols, rows, oned, onefit, quiet)
      elif ncores > 1:
         from subprocess import call

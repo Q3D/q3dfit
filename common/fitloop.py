@@ -69,7 +69,8 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
     j = rowarr[colind,rowind]
     print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]',\
           file=loglun)
-    
+   
+    print(i,j)
     if oned:
         flux = cube.dat[:,i]
         err = abs(cube.var[:,i])**0.5

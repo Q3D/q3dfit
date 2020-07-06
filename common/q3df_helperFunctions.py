@@ -57,14 +57,14 @@ def __get_initdat(initproc):
     from sys import path
     import importlib
     path.append("init")
-    module = importlib.import_module(initproc)
+    module = importlib.import_module("q3dfit.init." + initproc)
     fcninitproc = getattr(module,initproc)    
     return fcninitproc()
 
 
 #   Get linelist
 def __get_linelist(initdat):
-    from linelist import linelist
+    from q3dfit.common.linelist import linelist
     if initdat.__contains__('lines'):
         if initdat.__contains__('argslinelist'):
             linelist=linelist(initdat['lines'],**initdat['argslinelist'])
@@ -75,7 +75,7 @@ def __get_linelist(initdat):
 
 # initialize CUBE object
 def __get_CUBE(initdat, oned, quiet):
-    from readcube import CUBE
+    from q3dfit.common.readcube import CUBE
 #   Read data
 #   Set default extensions
     if not initdat.__contains__('datext'): datext=1
@@ -118,7 +118,7 @@ def __get_spaxels(cube, cols=None, rows=None):
         cols=[1,cube.ncols]
         ncols = cube.ncols
     elif len(cols) == 1:
-        cols = [cols, cols]
+        cols = [cols[0], cols[0]]
         ncols = 1
     else:
         ncols = cols[1]-cols[0]+1
@@ -126,17 +126,18 @@ def __get_spaxels(cube, cols=None, rows=None):
         rows=[1,cube.nrows]
         nrows = cube.nrows
     elif len(rows) == 1:
-        rows = [rows, rows]
+        rows = [rows[0], rows[0]]
         nrows = 1
     else:
         nrows = rows[1]-rows[0]+1
+    colarr = np.empty((ncols,nrows), dtype=np.int32)
+    rowarr = np.empty((ncols,nrows), dtype=np.int32)
+    for i in range(nrows): colarr[:,i] = np.arange(cols[0]-1,cols[1], dtype=np.int32)
+    for i in range(ncols): rowarr[i,:] = np.arange(rows[0]-1,rows[1], dtype=np.int32)
     # Flatten from 2D to 1D arrays to preserve indexing using only ispax
-    colarr = np.empty((ncols,nrows))
-    rowarr = np.empty((ncols,nrows))
-    for i in range(nrows): colarr[:,i] = list(range(cols[0]-1,cols[1]))
-    for i in range(ncols): rowarr[i,] = list(range(rows[0]-1,rows[1]))
-    colarr = colarr.flatten()
-    rowarr = rowarr.flatten()
+    # currently not needed. fitloop expects 2D lists.
+    #colarr = colarr.flatten()
+    #rowarr = rowarr.flatten()
     nspax = ncols * nrows
     return nspax, colarr, rowarr
     
@@ -145,6 +146,7 @@ def __get_spaxels(cube, cols=None, rows=None):
 # In its own function due to commonality between single- and multi-threaded execution
 def execute_fitloop( nspax, colarr, rowarr, cube, initdat, linelist, oned, onefit,\
         quiet):
+    from q3dfit.common.fitloop import fitloop
     dolog = 0
     if "logfile" in initdat:
         dolog = 1
@@ -159,8 +161,8 @@ def execute_fitloop( nspax, colarr, rowarr, cube, initdat, linelist, oned, onefi
         # TODO: delete next line when fitloop has been written
         print(ispax, "["+str(rowarr[ispax])+", " + str(colarr[ispax]) + "]")
         # TODO: Uncomment this command once fitloop has been written
-        #q3df_fitloop(ispax, colarr, rowarr, cube, initdat, linelist,\
-        #                    oned, onefit, quiet, logfile=logloop)
+        fitloop(ispax, colarr, rowarr, cube, initdat, linelist,\
+                            oned, onefit, quiet, logfile=logloop)
 
 # q3df setup for single-threaded execution
 def q3df_oneCore( initproc, cols=None, rows=None, oned=False, onefit=False, quiet=True ):

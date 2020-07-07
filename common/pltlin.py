@@ -297,7 +297,7 @@ def pltlin(instr, pltpar, outfile):
         ax1.plot(wave, ydat, linewidth=1)
         ax1.plot(wave,ymod,color='Red')
    
-#titles
+#title
  if 'micron' in pltpar:
     xtit= 'Observed Wavelength (\u03BC)'
  elif 'meter' in pltpar:
@@ -307,5 +307,5 @@ def pltlin(instr, pltpar, outfile):
  fig.suptitle(xtit, fontsize=25)
 
  tmpfile = outfile
- plt.show()
+ #plt.show()
  fig.savefig(tmpfile + '.jpg')

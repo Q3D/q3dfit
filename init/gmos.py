@@ -83,6 +83,9 @@
 ;      2020may22, YI, translated from IDL to Python 3
 ;      2020may26, YI, fixed Python bugs
 ;      2020may28, YI, tested through fitspec() with saved IDL data and fixed bugs
+;      2020jul02, YI, fixed the how linelist is handled
+;      2020jul06, YI, fixed bugs in the [tied] parameter
+;      2020jul07, DSNR, fixed enumerate(lines_arr) and linelist indexing bugs
 ;    
 ; :Copyright:
 ;    Copyright (C) 2013--2018 David S. N. Rupke
@@ -124,10 +127,12 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         siglim = [5.,2000.]
     if not blrcomp :
         blrcomp = -1
-        
+    
+    # converts the astropy.Table structure of linelist into a Python dictionary that is compatible with the code downstream
+    lines_arr = {name:linelist['lines'][idx] for idx,name in enumerate(linelist['name']) }
     # Number of emission lines to fit
-    nline = len(linelist)
-    lines_arr = np.array(linelist['name']) #these 2 steps highly depend on the structure of the input
+    nline = len(lines_arr)
+    #lines_arr = np.array(linelist['name']) #these 2 steps highly depend on the structure of the input
     # Number of initial parameters before Gaussian parameters begin
     lratlim = 4 
     ppoff0 = 3
@@ -456,8 +461,15 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
                     parinfo[iwoff]['tied'] = ''
                     parinfo[isoff]['tied'] = ''
                 else:
-                    indtie = [idx for idx,key in enumerate(lines_arr.tolist()) if key[0] == linetie[line]][0]
-                    parinfo[iwoff]['tied'] = '{0:0.6e}{1:1}{2:0.6e}{3:1}{4:1}{5:1}'.format(linelist[line],'/',linelist[linetie[line]],'* P[',woff+indtie*3,']')
+                    indtie = [idx for idx,key in enumerate(lines_arr.keys()) if key == linetie[line]][0]
+                    parinfo[iwoff]['tied'] = \
+                        '{0:0.8e}{1:1}{2:0.8e}{3:1}{4:1}{5:1}'.\
+                            format(linelist['lines'][(linelist['name']==line)][0],\
+                                   '/',
+                                   linelist['lines'][(linelist['name']==linetie[line])][0],\
+                                   '*P[',\
+                                   woff+indtie*3,\
+                                   ']')
                     parinfo[isoff]['tied'] = '{0:1}{1:1}{2:1}'.format('P[',soff+indtie*3,']') 
                     parinfo[iwoff]['sigmawave_tie'] = linetie[line]
                     parinfo[isoff]['sigmawave_tie'] = linetie[line]
@@ -475,29 +487,35 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         if '[SII]6716' in ncomp:
             if ncomp['[SII]6716'] > 0:
                 ilratlim = 0
-                linea = np.where(lines_arr == '[SII]6716')[0]
+                linea = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[SII]6716']
+                lineb = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[SII]6731']
                 cta = len(linea)
-                lineb = np.where(lines_arr == '[SII]6731')[0]
                 ctb = len(lineb)
                 if cta > 0 and ctb > 0 :
+                    linea = linea[0]
+                    lineb = lineb[0]
                     parinfo[foff+lineb*3]['tied'] = 'P['+'{:1}'.format(str(foff+linea*3))+']/P['+'{:1}'.format(str(ppoff0+maxncomp*ilratlim+i))+']'
                     parinfo[foff+lineb*3]['flux_tie'] = '[SII]6716'
         
         ilratlim = 1
-        linea = np.where(lines_arr == '[NI]5198')[0]
+        linea = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[NI]5198']
+        lineb = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[NI]5200']
         cta = len(linea)
-        lineb = np.where(lines_arr == '[NI]5200')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
+            linea = linea[0]
+            lineb = lineb[0]
             parinfo[foff+linea*3]['tied'] = 'P['+'{:1}'.format(str(foff+lineb*3))+']/P['+'{:1}'.format(str(ppoff0+maxncomp*ilratlim+i))+']'
             parinfo[foff+linea*3]['flux_tie'] = '[NI]5200'
         
         ilratlim = 2
-        linea = np.where(lines_arr == 'Halpha')[0]
+        linea = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='Halpha']
+        lineb = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[NII]6583']
         cta = len(linea)
-        lineb = np.where(lines_arr == '[NII]6583')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
+            linea = linea[0]
+            lineb = lineb[0]
             parinfo[foff+lineb*3]['tied'] = 'P['+'{:1}'.format(str(foff+linea*3))+']/P['+'{:1}'.format(str(ppoff0+maxncomp*ilratlim+i))+']'
             parinfo[foff+lineb*3]['flux_tie'] = 'Halpha'
         
@@ -506,50 +524,60 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
         # beginning of this routine
         
         ilratlim = 3
-        linea = np.where(lines_arr == '[OII]3726')[0]
+        linea = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[OII]3726']
+        lineb = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[OII]3729']
         cta = len(linea)
-        lineb = np.where(lines_arr == '[OII]3729')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
+            linea = linea[0]
+            lineb = lineb[0]
             parinfo[foff+lineb*3]['tied'] = 'P['+'{:1}'.format(str(foff+linea*3))+']/P['+'{:1}'.format(str(ppoff0+maxncomp*ilratlim+i))+']'
             parinfo[foff+linea*3]['flux_tie'] = '[OII]3729'
             
             
-        linea = np.where(lines_arr == '[OIII]4959')[0]
+        linea = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[OIII]4959']
+        lineb = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[OIII]5007']
         cta = len(linea)
-        lineb = np.where(lines_arr == '[OIII]5007')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
+            linea = linea[0]
+            lineb = lineb[0]
             parinfo[foff+linea*3]['tied'] = 'P['+'{:1}'.format(str(foff+lineb*3))+']/3.0'
             parinfo[foff+linea*3]['flux_tie'] = '[OIII]5007'
             # Make sure initial value is correct
             parinfo[foff+linea*3]['value'] = parinfo[foff+lineb*3]['value']/3.0
         
-        linea = np.where(lines_arr == '[OI]6300')[0]
+        linea = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[OI]6300']
+        lineb = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[OI]6364']
         cta = len(linea)
-        lineb = np.where(lines_arr == '[OI]6364')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
+            linea = linea[0]
+            lineb = lineb[0]
             parinfo[foff+lineb*3]['tied'] = 'P['+'{:1}'.format(str(foff+linea*3))+']/3.0'
             parinfo[foff+lineb*3]['flux_tie'] = '[OI]6300'
             # Make sure initial value is correct
             parinfo[foff+lineb*3]['value'] = parinfo[foff+linea*3]['value']/3.0
         
-        linea = np.where(lines_arr == '[NII]6548')[0]
+        linea = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[NII]6548']
+        lineb = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[NII]6583']
         cta = len(linea)
-        lineb = np.where(lines_arr == '[NII]6583')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
+            linea = linea[0]
+            lineb = lineb[0]
             parinfo[foff+linea*3]['tied'] = 'P['+'{:1}'.format(str(foff+lineb*3))+']/3.0'
             parinfo[foff+linea*3]['flux_tie'] = '[NII]6583'
             # Make sure initial value is correct
             parinfo[foff+linea*3]['value'] = parinfo[foff+lineb*3]['value']/3.0
             
-        linea = np.where(lines_arr == '[NeIII]3967')[0]
+        linea = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[NeIII]3967']
+        lineb = [idx for idx,key in enumerate(list(lines_arr.items())) if key[0]=='[NeIII]3869']
         cta = len(linea)
-        lineb = np.where(lines_arr == '[NeIII]3869')[0]
         ctb = len(lineb)
         if cta > 0 and ctb > 0 :
+            linea = linea[0]
+            lineb = lineb[0]
             parinfo[foff+linea*3]['tied'] = 'P['+'{:1}'.format(str(foff+lineb*3))+']/3.0'
             parinfo[foff+linea*3]['flux_tie'] = '[NeIII]3869'
             # Make sure initial value is correct

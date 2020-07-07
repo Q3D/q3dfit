@@ -126,6 +126,7 @@
 ;      2020jun26, YI, fixed bugs. tested the manygauss() emission line fit call. skipped the continuum fits
 ;      2020jun28, YI, tested the gmos.py line initialization calls for parameter set-up. minor changes
 ;      2020jul01, DSNR, bug fixes
+;      2020jul07, DSNR, bug fixes; it runs all the way through now.
 ;
 ; :Copyright:
 ;    Copyright (C) 2013--2018 David S. N. Rupke
@@ -182,6 +183,10 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         linelabel = initdat['lines']
     else :
         linelabel = b'0'
+        
+# converts the astropy.Table structure of linelist into a Python dictionary that is compatible with the code downstream
+    lines_arr = {name:linelist['lines'][idx] for idx,name in enumerate(linelist['name']) }
+
         
     if quiet :
         quiet=b'1'
@@ -275,6 +280,8 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         templatelambdaz = wlambda
     # Set up error in zstar
     zstar_err = 0.
+    
+    
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Pick out regions to fit
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -576,11 +583,17 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                 gderr_nocnt = gderr
                 method   = 'CONTINUUM SUBTRACTED'
     else:
+        add_poly_weights=0.
         gdflux_nocnt = gdflux
         gderr_nocnt = gderr
         method   = 'NO CONTINUUM FIT'
+        continuum = 0.
+        continuum_pretweak = 0.
         ct_coeff = 0.
         ct_indx = 0.
+        ct_rchisq=0.
+        ppxf_sigma=0.
+        ppxf_sigma_err=0.
 
     fit_time1 = time.time()
     if quiet != None :
@@ -650,17 +663,20 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         if testsize == 0 :
             raise Exception('Bad initial parameter guesses.')
         
-        efitModule = __import__(fcnlinefit)
+        efitModule = importlib.import_module('q3dfit.common.'+fcnlinefit)
         elin_lmfit = getattr(efitModule,'run_'+fcnlinefit)
         lmout,parout,specfit = elin_lmfit(gdlambda,gdflux_nocnt,gderr_nocnt,parinfo=parinit,maxiter=1000)
         # test = elin_lmfit(gdlambda,gdflux_nocnt,gderr_nocnt,parinfo=parinit,maxiter=1000)
         
         param = parout
-        covar = lmout.covar
+#        covar = lmout.covar
         dof=lmout.nfree
-        nfev=lmout.nfev
-        chisq=lmout.chisq
+        niter=lmout.nfev
+        rchisq=lmout.chisqr
         errmsg=lmout.message
+#        status=lmout.status
+        status=lmout.success
+
         
         # print('----------------------------------------\nfitspec(): elinefit test; STOP\n----------------------------------------')
         # return gdlambda,gdflux_nocnt
@@ -703,17 +719,18 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         #     print('LMFIT: Max. iterations reached.')
 
         # Errors from covariance matrix ...
-        perror =  np.sqrt(chisq/dof)
+        perror =  np.sqrt(rchisq)
         # ... and from fit residual.
         resid=gdflux-continuum-specfit
         perror_resid = perror
         sigrange = 20.
-        for line in linelist.keys():
-            iline = np.where(parinit[line])[0]
-            ifluxpk = np.intersect1d(iline,np.where(parinit['parname'] == 'flux_peak')[0])
+        for line in lines_arr:
+#            iline = np.where(parinit[line])[0]
+            iline = next(idx for idx,item in enumerate(parinit) if item['line'] == line)
+            ifluxpk = np.intersect1d(iline,np.where(parinit[iline]['parname'] == 'flux_peak')[0])
             ctfluxpk = len(ifluxpk)
-            isigma = np.intersect1d(iline,np.where(parinit['parname'] == 'sigma')[0])
-            iwave = np.intersect1d(iline,np.where(parinit['parname'] == 'wavelength')[0])
+            isigma = np.intersect1d(iline,np.where(parinit[iline]['parname'] == 'sigma')[0])
+            iwave = np.intersect1d(iline,np.where(parinit[iline]['parname'] == 'wavelength')[0])
             for i in range(0,ctfluxpk):
                 waverange = sigrange*np.sqrt(np.power((param[isigma[i]]/c*param[iwave[i]]),2.) + np.power(param[2],2.))
                 wlo = np.searchsorted(gdlambda,param[iwave[i]]-waverange/2.)
@@ -730,7 +747,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     else:
         cont_dat = gdflux
         specfit = 0
-        chisq = 0
+        chisqr = 0
         dof = 1
         niter = 0
         status = 0
@@ -785,7 +802,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
               # Line fit parameters
               'noemlinfit': noemlinfit,   # was emission line fit done?
               'noemlinmask': noemlinmask, # were emission lines masked?
-              'redchisq': chisq/dof, 
+              'redchisq': rchisq, 
               'niter': niter, 
               'fitstatus': status, 
               'linelist': outlinelist, 
@@ -794,7 +811,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
               'param': param, 
               'perror': perror, 
               'perror_resid': perror_resid,  # error from fit residual
-              'covar': covar, 
+#              'covar': covar, 
               'siglim': siglim_gas}
     # finish:
     return outstr

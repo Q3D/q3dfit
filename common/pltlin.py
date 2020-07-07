@@ -148,7 +148,6 @@ def pltlin(instr, pltpar, outfile):
  else: 
     linoth= np.arange(1, nlin)
     str(linoth) 
- 
 
  plt.style.use('dark_background') 
  fig = plt.figure(figsize=(16,13))
@@ -193,11 +192,11 @@ def pltlin(instr, pltpar, outfile):
         xmticks=np.array([0])
         if 'micron' in pltpar:
             for t in range (int(xran[0]), int(xran[1])):
-                if t%(0.5E4)==0:
+                if t%(0.1E4)==0:
                     xmticks=np.append(xmticks, t)
         elif 'meter' in pltpar:
             for t in range (int(xran[0]), int(xran[1])):
-                if t%(0.5E10)==0:
+                if t%(0.1E10)==0:
                     xmticks=np.append(xmticks, t)
         else:
             for t in range (int(xran[0]), int(xran[1])):

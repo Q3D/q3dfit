@@ -99,8 +99,13 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
         #making vorcoords an np array for this one
         vorcoords  = np.zeros(nvorcols, 2)
         for i in range (1, nvorcols + 1):
-            xyvor = np.where(vormap == i) #i think so?
-            vorcoords[i - 1, :] = xyvor
+            ivor = np.where(vormap == i)
+            xyvor = array_indices(vormap, ivor[0])
+            ctivor = len(xyvor)
+            vorcoords[i - 1, 0] = xyvor[0]
+            vorcoords[i - 1, 1] = xyvor[1] #i'm only guessing, need to see what 
+                                            #dimensions vorcoords etc. are
+
 
 #INITIALIZE OUTPUT FILES, need to write helper functions (printlinpar, 
 #printfitpar) later
@@ -226,12 +231,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                 infile = str(initdat['outdir']) + str(initdat['label']) \
                     + '_' + labin + '.xdr'
                 outfile = initdat['outdir'] + initdat['label'] + '_' + labout
-                #replacement for where
-                nodata = [None]
-                nodata.pop(0)
-                for i in range(0, len(flux)):
-                    if flux[i] != 0:
-                        nodata.append(i)
+                nodata = np.where(flux != 0.0) #maybe not 0.0?
                 ct = len(nodata)
                 #check if infile exists here but for now I'm just leaving it
                 filepresent = True            
@@ -299,7 +299,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                 if thisncomp == 1:
                     isort = 0
                     if 'flipsort' in initdat:
-                        if flipsort[j, i]: #where did flipsort come from?
+                        if flipsort[j, i]:
                             print('Flipsort set for spaxel [' + str(i + 1) \
                                    + ',' + str(j + 1) + '] but ' + \
                                   'only 1 component. Setting to 2 components \
@@ -403,9 +403,9 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
             hostcube['err'][j, i, struct['fitran_indx']] = err[struct['fitran_indx']]
             hostcube['dq'][j, i, struct['fitran_indx']] = dq[struct['fitran_indx']]
             hostcube['norm_div'][j, i, struct['fitran_indx']] \
-                = struct['cont_dat'] / struct['cont_fit']
+                = np.divide(struct['cont_dat'], struct['cont_fit'])
             hostcube['norm_sub'][j, i, struct['fitran_indx']] \
-                = struct['cont_dat'] - struct['cont_fit']
+                = np.subtract(struct['cont_dat'], struct['cont_fit'])
               
             if 'decompose_ppxf_fit' in initdat:
                 add_poly_degree = 4.0 #shoudl match fitspec
@@ -422,9 +422,132 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                 interpfunction = interpolate.interp1d(cont_fit_poly_log, wave_log, kind='linear')
                 cont_fit_poly = interpfunction(np.log(struct['wave']))
                 #Compute stellar continuum
-                cont_fit_stel = struct['cont_fit'] - cont_fit_poly
+                cont_fit_stel = np.subtract(struct['cont_fit'], cont_fit_poly)
+                #Total flux fromd ifferent components
+                cont_fit_tot = np.sum(struct['cont_fit'])
+                contcube['all_mod'][j, i, struct['fitran_indx']] = struct['cont_fit']
+                contcube['stel_mod'][j, i, struct['fitran_indx']] = cont_fit_stel
+                contcube['poly_mod'][j, i, struct['fitran_indx']] = cont_fit_poly
+                contcube['stel_mod_tot'][j, i] = np.sum(cont_fit_stel)
+                contcub['poly_mod_tot'][j, i] = np.sum(cont_fit_poly)
+                contcube['poly_mod_tot_pct'][j, j] \
+                    = np.divide(contcube['poly_mod_tot'][j, i], cont_fit_tot)
+                contcube['stel_sigma'][j, i] = struct['ct_ppxf_sigma']
+                contcube['stel_z'][j, i] = struct['zstar']
                 
-#fix / and - !!!
+                if 'ct_errors' in struct:
+                    contcube['stel_sigma_err'][j, i, :] \
+                        = struct['ct_errors']['ct_ppxf_sigma']
+                    #assuming that ct_errors is a dictionary
+                else: #makes an array with those two arrays in it?
+                    contcube['stel_sigma_err'][j, i, :] \
+                        = [struct['ct_ppxf_sigma_err'], struct['ct_ppxf_sigma_err']]
+                
+                if 'ct_errors' in struct:                    
+                    contcube['stel_z_err'][j, i, :] = struct['ct_errors']['zstar']
+                else: 
+                    contcube['stel_z_err'][j, i, :] \
+                        = [struct['zstar_err'], struct['zstar_err']]
+            
+            elif 'decompose_qso_fit' in initdat:
+                if initdat['fcncontfit'] == 'fitqsohost':
+                    if 'qsoord' in initdat['argscontfit']:
+                        qsoord = initdat['argscontfit']['qsoord']
+                    else: qsoord = False #?
+                    
+                    if 'hostord' in initdat['argscontfit']:
+                        hostord = initdat['argscontfit']['hostord'] 
+                    else: hostord = False #?
+                    
+                    if 'blrpar' in initdat['argscontfit']:
+                        blrterms = len(initdat['argscontfit']['blrpar'])  #blrpar a 1D array
+                    else: blrterms = 0 #?
+                    #default here must be same as in IFSF_FITQSOHOST
+                    if 'add_poly_degree' in initdat['argscontfit']:
+                        add_poly_degree = initdat['argscontfit']['add_poly_degree']
+                    else: add_poly_degree = 30
+                    
+                    #These lines mirror ones in IFSF_FITQSOHOST
+                    struct_tmp = struct
+
+                    # Get and renormalize template (check to see what name file is saved under)
+                    qsotemplate = np.load("qsotemplate.npy", allow_pickle='TRUE').item()                    
+                    qsowave = qsotemplate['wave']
+                    qsoflux_full = qsotemplate['flux']
+                    qsoflux = np.where(qsowave > struct_tmp['fitran'][0]*0.99999 and \
+                                   qsowave < struct_tmp['fitran'][1]*1.00001)
+                    #I think. line 611              
+                    qsoflux /= np.median(qsoflux)
+                    struct = struct_tmp
+                    #If polynomial residual is re-fit with PPXF, separate out best-fit
+                    #parameter structure created in IFSF_FITQSOHOST and compute polynomial
+                    #and stellar components
+                    if 'refit' in initdat['argscontfit']:
+                        par_qsohost = struct['ct_coeff']['qso_host']
+                        par_stel = struct['ct_coeff']['stel']
+                        #log rebin, line 622
+                        xnorm = cap_range(-1.0, 1.0, len(wave_log)) #1D?
+                        if add_poly_degree > 0:
+                            par_poly = struct['ct_coeff']['poly']
+                            polymod_log = 0.0 # Additive polynomial
+                            for k in range (0, add_poly_degree):
+                                polymod_log += legendre(xnorm,k)*par_poly[k]
+                            interpfunct = interpolate.interp1d(polymod_log, wave_log, kind='linear')
+                            polymod_refit = interpfunct(np.log(struct['wave']))
+                        else:
+                            polymod_refit = np.zeros(struct['wave'], dtype = float)
+                        contcube['stel_sigma'][j, i] = struct['ct_coeff']['ppxf_sigma']
+                        contcube['stel_z'][j, i] = struct['zstar']
+                        
+                        if 'ct_errors' in struct:
+                            contcube['stel_sigma_err'][j, i, :] \
+                                = struct['ct_errors']['ct_ppxf_sigma'] #i think?
+                        else:
+                            contcube['stel_sigma_err'][j, i, :] \
+                                = [struct['ct_ppxf_sigma_err'], struct['ct_ppxf_sigma_err']]
+                        if 'ct_errors' in struct:
+                            contcube['stel_z_err'][j, i, :] \
+                                = struct['ct_errors']['zstar'] #zstar?
+                        else: 
+                            contcube['stel_z_err'][j, i, :] \
+                                = [struct['zstar_err'], struct['zstar_err']]
+                        #again like why aren't those two if statements combined
+                    else:
+                        par_qsohost = struct['ct_coeff']
+                        polymod_refit = 0.0
+            
+                    #produce fit with template only and with template + host. Also
+                    #output QSO multiplicative polynomial
+                    qsomod_polynorm = True #??
+                    qsohostfcn(struct['wave'], par_qsohost, qsomod, qsoflux = qsoflux, \
+                                      qsoonly = True, blrterms = blrterms, \
+                                      qsoscl = qsomod_polynorm, qsoord = qsoord, \
+                                      hostord = hostord)
+                    hostmod = struct['cont_fit_pretweak'] - qsomod
+                    
+                    #if continuum is tweaked in any region, subide resulting residual 
+                    #proportionality @ each wavelength btwn qso and host components
+                    qsomod_notweat = qsomod
+                    if 'tweakcntfit' in initdat:
+                        modresid = struct['cont_fit'] - struct['cont_fit_pretweak']
+                        inz = np.where(qsomod != 0 and hostmod != 0)
+                        qsofrac = np.array(len(qsomod), dtype = float)
+                        for ind in inz:
+                            qsofrac[ind] = qsomod[ind] / (qsomod[ind] + hostmod[ind])
+                        qsomod += modresid * qsofrac
+                        hostmod += modresid * (1.0 - qsofrac)
+                    #components of qso fit for plotting
+                    qsomod_normonly = qsoflux
+                    if 'blrpar' in initdat['argscontfit']:
+                        qsohostfcn(struct['wave'], par_qsohost, qsomod_blronly, \
+                                         qsoflux = qsoflux, blronly = True, \
+                                         blrterms = blrterms, qsoord = qsoord, \
+                                         hostord = hostord)
+            elif initdat['fcncontfit'] == ppxf and 'qsotempfile' in initdat:
+                struct_star = struct
+                #ask abt name of file loaded here
+
+
 def cap_range(x1, x2, n):
     a = np.zeros(1, dtype = float)
     interval = (x2 - x1) / (n - 1)
@@ -436,3 +559,9 @@ def cap_range(x1, x2, n):
         num += interval
     a = a[1:]
     return a
+
+def array_indices(array, index):
+    height = len(array[0])
+    x = index // height
+    y = index % height
+    return x, y

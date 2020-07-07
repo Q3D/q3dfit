@@ -45,6 +45,7 @@
 ;      2020jun22, YI, added LMFIT functions that build the parameter variables 
 ;                     and running the fits that call many_gauss()
 ;      2020jul07, DSNR, fixed indexing bug in expr
+;      2020jul07, YI, refined the LMFIT parameter set --> able to reproduce MPFIT results, but cannot get uncertainties
 ;    
 ; :Copyright:
 ;    Copyright (C) 2013--2016 David S. N. Rupke
@@ -74,20 +75,15 @@ import pdb
 def lm_resid(param,wave,flux_nocnt,flux_err):
     """Calculate total residual for fits of Gaussians to several data sets."""
     parvalue = np.zeros(len(param))
-    for ip, par in enumerate(param):
+    for ip, par in enumerate(param.valuesdict()):
         pValue = param[par].value
         parvalue[ip] = pValue
     manyGauss = manygauss(wave,parvalue)
     resid = (flux_nocnt - manyGauss )/flux_err
-    # plt.clf()
-    # plt.plot(wave,flux_nocnt,'-',color='grey',linewidth=0.5)
-    # plt.plot(wave,manyGauss,'b-',linewidth=1)
-    # plt.xlim(4000,8000)
-    # print('lm_resid() finish')
     return resid
 
 def fix_expressions(params,pnames,paramExp,indexs=[0]):
-    new_exprs = []
+    # new_exprs = []
     print('------------------')
     # now go through each expressions....
     for ex, exp in enumerate(paramExp):
@@ -97,11 +93,23 @@ def fix_expressions(params,pnames,paramExp,indexs=[0]):
         for epind in pind:
             sepind = 'P['+str(epind)+']'
             nexp = nexp.replace(sepind,pnames[epind])
-        new_exprs.append(nexp)
+        # new_exprs.append(nexp)
         ni = indexs[ex]
         params[pnames[ni]].expr = nexp
     return params
-    
+
+def set_params(fit_params,NAME=None,VALUE=None,VARY=True,LIMITED=None,TIED=True,LIMITS=None,STEP=None):
+    LIMITED = np.array(LIMITED).astype(int)
+    fit_params.add(NAME, value=VALUE,vary = VARY)
+    if STEP != 0.:
+        fit_params[NAME].brute_step=STEP
+    for li in [0,1]:
+        if LIMITED[li] == 1:
+            if li == 0:
+                fit_params[NAME].min=LIMITS[0]
+            elif li == 1:
+                fit_params[NAME].max=LIMITS[1]
+    return fit_params
 
 def run_manygauss(wave,flux_nocnt,flux_err,parinfo,maxiter=1000.):
     # set-up the LMFIT parameters
@@ -112,7 +120,7 @@ def run_manygauss(wave,flux_nocnt,flux_err,parinfo,maxiter=1000.):
     sind = find + 2
 
     fit_params = Parameters()
-    pnames = []
+    # pnames = []
     parTie = []
     
     for ip, par in enumerate(parinfo):
@@ -125,6 +133,7 @@ def run_manygauss(wave,flux_nocnt,flux_err,parinfo,maxiter=1000.):
                 ptie = ptie.replace('E + ','E+')
                 parTie.append(ptie)
         fixed =bool(int(parinfo[ip]['fixed']))
+        ifixed = not fixed
         # print(ip,fixed)
         if ip >= find[0]:
             line = parinfo[ip]['line']
@@ -138,37 +147,18 @@ def run_manygauss(wave,flux_nocnt,flux_err,parinfo,maxiter=1000.):
             if ip in find:
                 fpar = parinfo[ip]
                 fname = 'flx_%s' % (line)
-                pnames.append(fname)
-                if fpar['limits'][0] != fpar['limits'][1]:
-                    
-                    fit_params.add(fname, value=fpar['value'],vary = fixed,
-                                    min=fpar['limits'][0], max=fpar['limits'][1],
-                                    brute_step= fpar['step'])
-                else:
-                    fit_params.add(fname, value=fpar['value'],vary = fixed,
-                                    brute_step= fpar['step'])
+                fit_params = set_params(fit_params,NAME=fname,VALUE=fpar['value'],VARY=ifixed,LIMITED=fpar['limited'],
+                                        TIED=fpar['tied'],LIMITS=fpar['limits'],STEP=fpar['step'])
             elif ip in wind:
                 wpar = parinfo[ip]
                 wname = 'wav_%s' % (line)
-                pnames.append(wname)
-                if wpar['limits'][0] != wpar['limits'][1]:
-                    fit_params.add(wname, value=wpar['value'],vary = fixed,
-                                min=wpar['limits'][0], max=wpar['limits'][1],
-                                brute_step= wpar['step'])
-                else:
-                    fit_params.add(wname, value=wpar['value'], vary = fixed,
-                                brute_step= wpar['step'])
+                fit_params = set_params(fit_params,NAME=wname,VALUE=wpar['value'],VARY=ifixed,LIMITED=wpar['limited'],
+                                        TIED=wpar['tied'],LIMITS=wpar['limits'],STEP=wpar['step'])
             elif ip in sind:
                 spar = parinfo[ip]
                 sname = 'sig_%s' % (line)
-                pnames.append(sname)
-                if spar['limits'][0] != spar['limits'][1]:
-                    fit_params.add(sname, value=spar['value'],vary = fixed,
-                                min=spar['limits'][0], max=spar['limits'][1],
-                                brute_step=spar['step'])
-                else:
-                    fit_params.add(sname, value=spar['value'], vary = fixed,
-                                brute_step=spar['step'])
+                fit_params = set_params(fit_params,NAME=sname,VALUE=spar['value'],VARY=ifixed,LIMITED=spar['limited'],
+                                        TIED=spar['tied'],LIMITS=spar['limits'],STEP=spar['step'])
         else:
             parname = parinfo[ip]['parname']
             if isinstance(parname,bytes):
@@ -177,23 +167,19 @@ def run_manygauss(wave,flux_nocnt,flux_err,parinfo,maxiter=1000.):
                 parname = 'blank_'+str(ip)
             else:
                 parname = parname.replace(' ','_').replace('.','').replace('-','').replace('-','').replace('[','').replace(']','').replace('/','_')
-            pnames.append(parname)
-            if parinfo[ip]['limits'][0] == parinfo[ip]['limits'][1]:
-                fit_params.add(parname, value=parinfo[ip]['value'],vary = fixed,
-                                brute_step= parinfo[ip]['step'])
-            else:
-                fit_params.add(parname, value=parinfo[ip]['value'],vary = fixed,
-                                min=parinfo[ip]['limits'][0], max=parinfo[ip]['limits'][1],
-                                brute_step= parinfo[ip]['step'])
+            # pnames.append(parname)
+            ipar = parinfo[ip]
+            fit_params = set_params(fit_params,NAME=parname,VALUE=ipar['value'],VARY=ifixed,LIMITED=ipar['limited'],
+                                        TIED=ipar['tied'],LIMITS=ipar['limits'],STEP=ipar['step'])
     # now check for the EXPRESSIONS
-    pnames = np.array(pnames)
+    pnames = list(fit_params.valuesdict())
     expr = [idx for idx,item in enumerate(parinfo) if item['tied'] != '']
     print(expr)
     if len(parTie) != 0:
         fit_params = fix_expressions(fit_params,pnames,parTie,indexs=expr)
         
     lmout = minimize(lm_resid, fit_params, args=(wave,flux_nocnt,flux_err),
-                     method='leastsq',max_nfev=maxiter)
+                      method='least_squares',max_nfev=maxiter,calc_covar =True)
     
     parout = lmout.params
     parval = np.zeros(len(parinfo))

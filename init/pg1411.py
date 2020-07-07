@@ -67,8 +67,9 @@ def pg1411():
     platescale = 0.3
     fitrange = [4620,7450]
 
-    volume = '/mnt/c/Users/Carlos Anicetti/Documents/hopkins/year1/ifsfit/development/q3dfit-branches/multiprocess-dev/PG1411'
-    
+#    volume = '/mnt/c/Users/Carlos Anicetti/Documents/hopkins/year1/ifsfit/development/q3dfit-branches/multiprocess-dev/PG1411'
+    volume = '/Volumes/fingolfin/ifs/gmos/cubes/pg1411/' 
+   
 #
 # Required pars
 #

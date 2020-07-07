@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jun 29 08:38:08 2020
 
 @author: lily
 """
@@ -57,6 +56,7 @@ Created on Mon Jun 29 08:38:08 2020
 #      2016aug31, DSNR, added overplotting of continuum ranges masked during
 #                       continuum fit with thick cyan line
 #      2016sep13, DSNR, added MICRON keyword
+#
 #Copyright:
 #    Copyright (C) 2013--2016 David S. N. Rupke
 #
@@ -75,7 +75,7 @@ Created on Mon Jun 29 08:38:08 2020
 #    http://www.gnu.org/licenses/.
 #
 #-
-#
+# Translated into python by Lily Whitesell, June 2020
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec

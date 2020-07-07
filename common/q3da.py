@@ -2,6 +2,7 @@
 """
 Routine to plot the continuum and emission lines fits to a spectrum, doesn't
 return anything.
+@author: hadley
 """
 import numpy as np
 import math

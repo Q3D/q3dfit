@@ -84,6 +84,7 @@
 ;      2020may26, YI, fixed Python bugs
 ;      2020may28, YI, tested through fitspec() with saved IDL data and fixed bugs
 ;      2020jul02, YI, fixed the how linelist is handled
+;      2020jul07, DSNR, fixed enumerate(lines_arr) and linelist indexing bugs
 ;    
 ; :Copyright:
 ;    Copyright (C) 2013--2018 David S. N. Rupke
@@ -459,8 +460,15 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
                     parinfo[iwoff]['tied'] = ''
                     parinfo[isoff]['tied'] = ''
                 else:
-                    indtie = [idx for idx,key in enumerate(lines_arr.tolist()) if key[0] == linetie[line]][0]
-                    parinfo[iwoff]['tied'] = '{0:0.6e}{1:1}{2:0.6e}{3:1}{4:1}{5:1}'.format(linelist[line],'/',linelist[linetie[line]],'* P[',woff+indtie*3,']')
+                    indtie = [idx for idx,key in enumerate(lines_arr.keys()) if key == linetie[line]][0]
+                    parinfo[iwoff]['tied'] = \
+                        '{0:0.8e}{1:1}{2:0.8e}{3:1}{4:1}{5:1}'.\
+                            format(linelist['lines'][(linelist['name']==line)][0],\
+                                   '/',
+                                   linelist['lines'][(linelist['name']==linetie[line])][0],\
+                                   '*P[',\
+                                   woff+indtie*3,\
+                                   ']')
                     parinfo[isoff]['tied'] = '{0:1}{1:1}{2:1}'.format('P[',soff+indtie*3,']') 
                     parinfo[iwoff]['sigmawave_tie'] = linetie[line]
                     parinfo[isoff]['sigmawave_tie'] = linetie[line]

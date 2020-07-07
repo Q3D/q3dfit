@@ -42,7 +42,9 @@
 ;                       resolution in quadrature in wavelength space to each
 ;                       velocity component
 ;      2020jun01, YI, translated to Python 3
-;      2020jun22, YI, added LMFIT functions that build the parameter variables and running the fits that call many_gauss()
+;      2020jun22, YI, added LMFIT functions that build the parameter variables 
+;                     and running the fits that call many_gauss()
+;      2020jul07, DSNR, fixed indexing bug in expr
 ;    
 ; :Copyright:
 ;    Copyright (C) 2013--2016 David S. N. Rupke
@@ -67,6 +69,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from lmfit import Parameters, Minimizer,minimize,fit_report
 import re
+import pdb
 
 def lm_resid(param,wave,flux_nocnt,flux_err):
     """Calculate total residual for fits of Gaussians to several data sets."""
@@ -184,7 +187,7 @@ def run_manygauss(wave,flux_nocnt,flux_err,parinfo,maxiter=1000.):
                                 brute_step= parinfo[ip]['step'])
     # now check for the EXPRESSIONS
     pnames = np.array(pnames)
-    expr = np.where(parinfo[:]['tied'] != '')[0]
+    expr = [idx for idx,item in enumerate(parinfo) if item['tied'] != '']
     print(expr)
     if len(parTie) != 0:
         fit_params = fix_expressions(fit_params,pnames,parTie,indexs=expr)

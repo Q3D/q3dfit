@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-This procedure is the core routine to fit the continuum and emission lines of 
+This procedure is the core routine to fit the continuum and emission lines of
 a spectrum. As input, it requires a structure of initialization parameters.
 The tags for this structure can be found in INITTAGS.txt.
 
 Returns
 -------
 IDL save file (.xdr)
- 
+
 Parameters
 ----------
 initproc: in, required, type=string
@@ -31,115 +31,36 @@ cols: in, optional, type=intarr, default=all
        subroutines.
 
 History
-    2020may21, DSNR, copied header from IFSF.pro
+    2020jun29, canicetti, copied header from q3df.py
 
-Created on Tue May 26 13:37:58 2020
+Created on Mon June 29 22:50 2020
 
-@author: drupke
+@author: canicetti
 """
 
 __author__ = 'Q3D Team'
-__credits__ = ['David S. N. Rupke']
-__created__ = '2020 May 26'
-__last_modified__ = '2020 Jun 01'
+__credits__ = ['Carlos Anicetti']
+__created__ = '2020 June 29'
+__last_modified__ = '2020 June 29'
 
-def q3df( initproc, cols=None, rows=None, oned=False, onefit=False, \
-          quiet=True ):
-    
-    import importlib
-    import numpy as np
-    import pdb
-    import time
+# invoke the correct q3df helper function depending on whether this is to a single-
+# or multi-threaded process
+def q3df( initproc, cols=None, rows=None, oned=False, onefit=False, ncores=1, \
+    quiet=True ):
+     if ncores == 1:
+         from q3dfit.common.q3df_helperFunctions import q3df_oneCore
+         q3df_oneCore(initproc, cols, rows, oned, onefit, quiet)
+     elif ncores > 1:
+        from subprocess import call
+        # convert cols and rows to string of form "[1,2,3...]" Note no whitespace.
+        cols = str(cols)
+        cols = cols.replace(" ", "")
+        rows = str(rows)
+        rows = rows.replace(" ", "")
+        # start a new MPI process since MPI cannot be started from within a Python script
+        call(["mpiexec", "-n", str(ncores), "python", "common/q3df_helperFunctions.py",\
+                initproc, cols, rows, str(oned), str(onefit), str(quiet)])
 
-    from q3dfit.common.fitloop import fitloop
-    from q3dfit.common.linelist import linelist
-    from q3dfit.common.readcube import CUBE
-    from q3dfit.exceptions import InitializationError
-    
-    starttime = time.time()
-    
-#   This block reads in the dictionary from the master initialization file. 
-#   The multi-step process is because initproc is a string variable. The
-#   initialization file must be in the init subdirectory of the Q3DFIT
-#   distribution for this to work. There may be a better way with an 
-#   arbitrary path.
-    module = importlib.import_module('q3dfit.init.'+initproc)
-    fcninitproc = getattr(module,initproc)    
-    initdat = fcninitproc()
 
-#   Get linelist
-    if initdat.__contains__('lines'):
-        if initdat.__contains__('argslinelist'):
-            linelist=linelist(initdat['lines'],**initdat['argslinelist'])
-        else: linelist=linelist(initdat['lines'])
-    else:
-#   This deviates from IFSFIT, but really need to throw an error here
-#   because fitloop expects one to specify lines in the initialization file
-        raise InitializationError('No lines to fit specified')
-    
-#   Read data
-#   Set default extensions
-    if not initdat.__contains__('datext'): datext=1
-    else: datext=initdat['datext']
-    if not initdat.__contains__('varext'): varext=2
-    else: varext=initdat['varext']
-    if not initdat.__contains__('dqext'): dqext=3
-    else: dqext=initdat['dqext']
-#   Check for additional arguments
-    if not initdat.__contains__('vormap'): vormap=False
-    else: vormap=initdat['vormap']
-    if initdat.__contains__('argsreadcube'):
-        cube = CUBE(infile=initdat['infile'],datext=datext,dqext=dqext,\
-                    oned=oned,quiet=quiet,varext=varext,vormap=vormap,\
-                    **initdat['argsreadcube'])
-    else:
-        cube = CUBE(infile=initdat['infile'],datext=datext,dqext=dqext,\
-                    oned=oned,quiet=quiet,varext=varext,vormap=vormap)
-        
-#   Loop through spaxels
 
-#   Voronoi binned case
-    if cols and rows and vormap:
-        if len(cols) == 1 and len(rows) == 1:
-            cols=vormap[cols[0]-1,rows[0]-1]
-            rows=1
-        else:
-            print('Q3DF: ERROR: Can only specify 1 spaxel, or all spaxels, \
-                  in Voronoi mode.')
 
-#   Set up 2-element arrays with starting and ending columns/rows
-#   These are unity-offset to reflect pixel labels
-    if not cols:
-        cols=[1,cube.ncols]
-        ncols = cube.ncols
-    elif len(cols) == 1:
-        cols = [cols[0], cols[0]]
-        ncols = 1
-    else:
-        ncols = cols[1]-cols[0]+1
-    if not rows:
-        rows=[1,cube.nrows]
-        nrows = cube.nrows
-    elif len(rows) == 1:
-        rows = [rows[0], rows[0]]
-        nrows = 1
-    else:
-        nrows = rows[1]-rows[0]+1
-
-#   Set up 2D arrays specifying column value and row value at each point to be
-#   fitted. These are zero-offset for indexing other arrays.
-    colarr = np.empty((ncols,nrows),dtype=int)
-    rowarr = np.empty((ncols,nrows),dtype=int)
-    for i in range(nrows):
-        colarr[:,i] = list(range(cols[0]-1,cols[1]))
-    for i in range(ncols):
-        rowarr[i,] = list(range(rows[0]-1,rows[1]))
-    nspax = ncols * nrows
-    
-#   Call to FITLOOP or parallelization goes here.
-    
-#   Test call
-    fitloop(0,colarr,rowarr,cube,initdat,linelist,oned,onefit,quiet,\
-            logfile=initdat['logfile'])
-
-    print('Q3DF: Total time for calculation: '+str(time.time()-starttime)+' s.')

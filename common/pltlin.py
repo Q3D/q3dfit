@@ -1,18 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jun 29 08:38:08 2020
 
 @author: lily
 """
-
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-from matplotlib.lines import Line2D
-import numpy as np
-from astropy import modeling
-import math
-import pdb
-from decimal import *
 # docformat= 'rst'
 
 #+
@@ -66,6 +56,7 @@ from decimal import *
 #      2016aug31, DSNR, added overplotting of continuum ranges masked during
 #                       continuum fit with thick cyan line
 #      2016sep13, DSNR, added MICRON keyword
+#
 #Copyright:
 #    Copyright (C) 2013--2016 David S. N. Rupke
 #
@@ -84,21 +75,19 @@ from decimal import *
 #    http://www.gnu.org/licenses/.
 #
 #-
-#
+# Translated into python by Lily Whitesell, June 2020
+
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+from matplotlib.lines import Line2D
+import numpy as np
+from astropy import modeling
+import math
+import pdb
+from decimal import *
 
 def pltlin(instr, pltpar, outfile):
 
- # if hasattr(pltpar,'micron'):
- #     plt.xticks(step=0.5E4)
- #     float(plt.xticks)
- #     plt.xminorticks(step=0.5E4)
- #     float(plt.xminorticks)
- # if hasattr(pltpar,'meter'):
- #    plt.xticks(step=0.5E10)
- #    float(plt.xticks)
- #    plt.xminorticks(step=0.5E10)
- #    float(plt.xminorticks)
- 
  param=instr['param']
  ncomp= param[1]
  ncomp=int(ncomp)
@@ -122,13 +111,6 @@ def pltlin(instr, pltpar, outfile):
 #modlines /= norm
 
  zbase= instr['zstar']
-
- # if hasattr (pltpar, 'micron'):
- #    wave=(1E4)
- #    float(wave)
- # if hasattr (pltpar, 'meter'):
- #    wave=(1E10)
- #    float(wave)
    
 
 #Find masked regions during continuum fit
@@ -166,14 +148,14 @@ def pltlin(instr, pltpar, outfile):
  else: 
     linoth= np.arange(1, nlin)
     str(linoth) 
-  
+
  plt.style.use('dark_background') 
  fig = plt.figure(figsize=(16,13))
-
  for i in range (0,nlin):
-    outer = gridspec.GridSpec(ny, nx, wspace=0.1, hspace=0.1)
+    outer = gridspec.GridSpec(ny, nx, wspace=0.2, hspace=0.2)
     inner = gridspec.GridSpecFromSubplotSpec (2, 1, \
             subplot_spec=outer[i], wspace=0.1, hspace=0, height_ratios=[4,2], width_ratios=None)
+ #create xran and ind
     linwavtmp= linwav[i]
     offtmp=np.array(off)[i,:]
     xran = (linwavtmp + offtmp)
@@ -185,11 +167,52 @@ def pltlin(instr, pltpar, outfile):
     ind=np.delete(ind,[0])
     ct=len(ind)
     if ct > 0:
+ #create subplots
         ax0 = plt.Subplot(fig, inner[0])
         ax1 = plt.Subplot(fig, inner[1])
         ax0.annotate(linlab[i], (0.05, 0.9), xycoords='axes fraction', va='center', fontsize=15)
         fig.add_subplot(ax0)
         fig.add_subplot(ax1)
+ #create x-ticks
+        xticks=np.array([0])
+        if 'micron' in pltpar:
+            for t in range (int(xran[0]), int(xran[1])):
+                if t%(0.5E4)==0:
+                    xticks=np.append(xticks, t)
+        elif 'meter' in pltpar:
+            for t in range (int(xran[0]), int(xran[1])):
+                if t%(0.5E10)==0:
+                    xticks=np.append(xticks, t)
+        else:
+            for t in range (int(xran[0]), int(xran[1])):
+                if t%50==0:
+                    xticks=np.append(xticks, t)
+        xticks=np.delete(xticks,[0])
+ #create minor x-ticks
+        xmticks=np.array([0])
+        if 'micron' in pltpar:
+            for t in range (int(xran[0]), int(xran[1])):
+                if t%(0.1E4)==0:
+                    xmticks=np.append(xmticks, t)
+        elif 'meter' in pltpar:
+            for t in range (int(xran[0]), int(xran[1])):
+                if t%(0.1E10)==0:
+                    xmticks=np.append(xmticks, t)
+        else:
+            for t in range (int(xran[0]), int(xran[1])):
+                if t%10==0:
+                    xmticks=np.append(xmticks, t)
+        xmticks=np.delete(xmticks,[0])
+ #set ticks
+        ax0.set_xticks(xticks)
+        ax1.set_xticks(xticks)
+        ax0.set_xticks(xmticks, minor=True)
+        ax1.set_xticks(xmticks, minor=True)
+        ax0.tick_params('x', which='major', direction='in', length=7, width=2, color='white')
+        ax0.tick_params('x', which='minor', direction='in', length=5, width=1, color='white')
+        ax1.tick_params('x', which='major', direction='in', length=7, width=2, color='white')
+        ax1.tick_params('x', which='minor', direction='in', length=5, width=1,  color='white')
+ #create yran
         ydat = spectot
         ymod = modtot
         ydattmp=np.zeros((ct), dtype=float)
@@ -211,12 +234,14 @@ def pltlin(instr, pltpar, outfile):
             yranmax=ymodmax
         yran=[yranmin, yranmax]
         icol = (float(i))/(float(nx))
-        if icol == int(icol):
+        if icol%1==0:
             ytit='Fit'
         else:
             ytit= ''
+        ax0.set(ylabel=ytit)
         ax0.set_xlim([xran[0], xran[1]])
         ax0.set_ylim([yran[0], yran[1]])
+ #plots on ax0
         ax0.plot (wave,ydat, color='White', linewidth=1)
         xtit = 'Observed Wavelength ($\AA$)'
         ytit=''
@@ -225,20 +250,21 @@ def pltlin(instr, pltpar, outfile):
           flux= cmplin(instr, linlab[i], j, velsig=1)
           for p in range (0, len(flux)):
               flux[p]=float(flux[p])
-          ax0.plot(wave, (yran[0]+flux), color=colors[j-1], linewidth=2, linestyle='dashed')
+          ax0.plot(wave, (yran[0]+flux), color=colors[j-1], linewidth=1, linestyle='dashed')
           if linoth[0, i] != '':
              for k in range (0, (len(linoth[:,i]))):
                   if linoth[k,i] != '':
                        flux=cmplin(instr, linoth[k,i], j, velsig=1)
                        for p in range(0, len(flux)):
-                         flux[p]=float(flux[p])
-                       ax0.plot(wave,(yran[0]+flux), color=colors[j-1], linestyle='dashed')
+                           flux[p]=float(flux[p])
+                       ax0.plot(wave,(yran[0]+flux), color=colors[j-1], linewidth=1, linestyle='dashed')
         xloc=xran[0]+(xran[1]-xran[0])*(float(0.05))
         yloc=yran[0]+(yran[1]-yran[0])*(float(0.85))
         plt.text(xloc, yloc, linlab[i], fontsize=2)        
         if nmasked > 0:
           for r in range (0,nmasked):
                ax0.plot([masklam[r,0], masklam[r,1]], [yran[0], yran[0]],linewidth=8, color='Cyan')
+ #set new value for yran
         ydat = specstars
         ymod = modstars
         ydattmp=np.zeros((len(ind)), dtype=float)
@@ -259,315 +285,26 @@ def pltlin(instr, pltpar, outfile):
         else:
             yranmax=ymodmax
         yran=[yranmin, yranmax]
-        if icol == int(icol):
+        if icol%1==0:
             ytit = 'Residual' 
         else:
             ytit = ''
+        ax1.set(ylabel=ytit)
+ #plots on ax1
         ax1.set_xlim([xran[0], xran[1]])
         ax1.set_ylim([yran[0], yran[1]])
         ax1.plot(wave, ydat, linewidth=1)
         ax1.plot(wave,ymod,color='Red')
-        
+   
+#title
  if 'micron' in pltpar:
     xtit= 'Observed Wavelength (\u03BC)'
  elif 'meter' in pltpar:
     xtit = 'Observed Wavelength (m)'
  else: 
     xtit = 'Observed Wavelength ($\AA$)'
-    plt.text(0.5, 0.02, xtit, fontsize=2)
-    tmpfile = outfile
- plt.savefig(tmpfile + '.jpg')
- 
-def consec(a, l = None, h = None, n = None, same = None, distribution = None):
-   #a=array
-    nel = len(a)
-    if nel == 1: 
-        l = 0
-        h = 0
-        n = 1        
-    elif nel == 2:
-        if same != None:
-            if a[1] - a[0] == 0:
-                l = 0
-                h = 1
-                n = 1
-            else: 
-                l = -1
-                h = -1
-                n = 0                
-        else:
-            if abs(a[1] - a[0]) == 1:
-                l = 0
-                h = 1
-                n = 1
-            else:
-                l = -1
-                h = -1
-                n = 0      
-    else:
-        if same == None:
-            #adding padding
-            temp = np.concatenate(([a[0]], a))
-            arr = np.concatenate((temp, [a[-1]]))
-            
-            shiftedright = np.roll(arr, 1)
-            shiftedleft = np.roll(arr, -1)
+ fig.suptitle(xtit, fontsize=25)
 
-           
-            cond1 = np.absolute(np.subtract(arr, shiftedright)) == 1
-            cond2 = np.absolute(np.subtract(arr, shiftedleft)) == 1
-
-        else:
-            #adding padding
-            temp = np.concatenate(([a[0] + 1], a))
-            arr = np.concatenate((temp, [a[-1] - 1]))
-            
-            shiftedright = np.roll(arr, 1)
-            shiftedleft = np.roll(arr, -1)
-            
-            cond1 = np.absolute(np.subtract(arr, shiftedright)) == 0
-            cond2 = np.absolute(np.subtract(arr, shiftedleft)) == 0        
-        
-        #getting rid of padding
-        cond1 = cond1[1: -1]
-        cond2 = cond2[1: -1]
-        
-        #making l
-        l = [0]
-        l.pop(0)
-        for i in range (0, nel):
-            if cond2[i] and cond1[i] == False:
-                l.append(i)
-        nl = len(l)        
-
-        #making h        
-        h = [0]
-        h.pop(0)
-        for i in range (0, nel):
-            if cond1[i] and cond2[i] == False:
-                h.append(i)        
-        nh = len(h)
-        
-        if nh * nl == 0: 
-            l = -1
-            h = -1
-            n = 0 
-        
-        else: n = min(nh, nl)
-    
-    if l[0] != h[0]: dist = np.subtract(h, l) + 1 
-    else: dist = 0
-
-    return l, h, n
-
-#placeholder for flux
-fluxfile= open("fluxph.txt", 'r')
-fluxph = np.zeros((6105), dtype=float)
-count = 0
-for i in fluxfile.readlines():
-  for j in i.split():
-      if count < 6105:
-        row = count % 6105
-        fluxph[row] = j
-        count+=1
-fluxfile.close()
-
-outfile= 'pltlingraph'
-linoth = np.full((2,6),'', dtype=object)
-linoth[0,2] = '[OIII]4959'
-linoth[0,3] = '[OI]6364'
-linoth[:,4] = ['[NII]6548','[NII]6583']
-linoth[0,5] = '[SII]6716'
-pltpar = {'nx': 3,'ny': 2,
-'label': ['','Hbeta','[OIII]5007','[OI]6300','Halpha','[SII]6731'],
-'wave': [0,4861,5007,6300,6563,6731],
-'off': [[-120,90],[-80,50],[-130,50],
-       [-80,120],[-95,70],[-95,50]],
-'linoth': linoth}
-
-#instr.param
-paramfile= open("param.txt", 'r')
-paramarr = np.zeros((37), dtype=float)
-count = 0
-for i in paramfile.readlines():
-  for j in i.split():
-      if count < 37:
-        row = count % 37
-        paramarr[row] = j
-        count+=1
-paramfile.close()
-
-#instr.wave
-wavefile = open("wave.txt", 'r')
-wavearr= np.zeros((6105), dtype=float)
-count = 0
-for i in wavefile.readlines():
-  for j in i.split():
-      if count < 6105:
-        row = count % 6105
-        wavearr[row]= j
-        count+=1
-wavefile.close()
-
-#instr.spec
-specfile = open("spec.txt", 'r')
-specarr= np.zeros((6105), dtype=float)
-count = 0
-for i in specfile.readlines():
-  for j in i.split():
-      if count < 6105:
-        row = count % 6105
-        specarr[row]= j
-        count+=1
-specfile.close()
-        
-#instr.cont_dat
-cont_datfile = open("cont_dat.txt", 'r')
-cont_datarr= np.zeros((6105), dtype=float)
-count = 0
-for i in cont_datfile.readlines():
-  for j in i.split():
-      if count < 6105:
-        row = count % 6105
-        cont_datarr[row]= j
-        count+=1
-cont_datfile.close()
-
-#instr.emlin_dat
-emlin_datfile = open("emlin_dat.txt", 'r')
-emlin_datarr= np.zeros((6105), dtype=float)
-count = 0
-for i in emlin_datfile.readlines():
-  for j in i.split():
-      if count < 6105:
-        row = count % 6105
-        emlin_datarr[row] = j
-        count+=1
-emlin_datfile.close()
-
-#instr.cont_fit
-cont_fitfile = open("cont_fit.txt", 'r')
-cont_fitarr= np.zeros((6105), dtype=float)
-count = 0
-for i in cont_fitfile.readlines():
-  for j in i.split():
-      if count < 6105:
-        row = count % 6105
-        cont_fitarr[row] = j
-        count+=1
-cont_fitfile.close()
-
-#instr.emlin_fit
-emlin_fitfile = open("emlin_fit.txt", 'r')
-emlin_fitarr= np.zeros((6105), dtype=float)
-count = 0
-for i in emlin_fitfile.readlines():
-  for j in i.split():
-      if count < 6105:
-        row = count % 6105
-        emlin_fitarr[row] = j
-        count+=1
-emlin_fitfile.close()
-
-#instr.zstar
-zstar=0.089302800717023054
-
-#instr.ct_indx
-ct_indxfile= open("ct_indx.txt", 'r')
-ct_indxarr = np.zeros((5800), dtype=int)
-count = 0
-for i in ct_indxfile.readlines():
-  for j in i.split():
-      if count < 5800:
-        row = count % 5800
-        ct_indxarr[row] = j
-        count+=1
-ct_indxfile.close()
-linelabelarr=['Halpha','Hbeta', '[OI]6300', '[OI]6364', \
-              '[OIII]4959', '[OIII]5007', '[NII]6548', \
-              '[NII]6583',  '[SII]6716',    '[SII]6731']
-parinfo = {'line': ['', '', '', '', '', '', '', \
-                'Hbeta', 'Hbeta', 'Hbeta', 'Halpha', 'Halpha', 'Halpha', \
-                '[OIII]4959', '[OIII]4959', '[OIII]4959', '[NII]6583', \
-                '[NII]6583',  '[NII]6583',  '[SII]6716',  '[SII]6716', \
-                '[SII]6716',  '[OI]6364',   '[OI]6364',   '[OI]6364', \
-                '[SII]6731',  '[SII]6731',  '[SII]6731',  '[OIII]5007', \
-                '[OIII]5007', '[OIII]5007', '[NII]6548',  '[NII]6548', \
-                '[NII]6548',  '[OI]6300',   '[OI]6300',   '[OI]6300'],
-            'comp':[0.0000000,       0.0000000,       0.0000000, \
-                    1.0000000,       0.0000000,       1.0000000, \
-                    0.0000000,       1.0000000,       1.0000000, \
-                    1.0000000,       1.0000000,       1.0000000, \
-                    1.0000000,       1.0000000,       1.0000000, \
-                    1.0000000,       1.0000000,       1.0000000, \
-                    1.0000000,       1.0000000,       1.0000000, \
-                    1.0000000,       1.0000000,       1.0000000, \
-                    1.0000000,       1.0000000,       1.0000000, \
-                    1.0000000,       1.0000000,       1.0000000, \
-                    1.0000000,       1.0000000,       1.0000000, \
-                    1.0000000,       1.0000000,       1.0000000, \
-                    1.0000000]}
-instr= {"param":paramarr, "wave":wavearr, "spec":specarr, "cont_dat":cont_datarr, \
-        "emlin_dat":emlin_datarr, "emlin_fit":emlin_fitarr, "cont_fit":cont_fitarr, \
-            "zstar":zstar, "ct_indx":ct_indxarr, "linelabel":linelabelarr, "parinfo":parinfo}
-
-def cmplin(instr, line, comp, velsig = None):
-
-    c = 299792.458
-        
-    iline = [None]
-    iline.pop(0)
-
-    for i in range (0, len(instr['linelabel'])):
-        if instr['linelabel'][i] == line:
-            iline.append(i)
-    ct = len(iline)
-    ppoff = instr['param'][0]
-    ncomp = instr['param'][1]
-    specres = instr['param'][2]
-
-    if 'parinfo' in instr:                
-        indices = [None]
-        indices.pop(0)
-        for i in range (0, len(instr['parinfo']['line'])):
-            if instr['parinfo']['line'][i] == line and \
-                instr['parinfo']['comp'][i] == comp:
-                indices.append(i)
-    else:
-        nline = len(instr['linelabel'])
-        #not sure why it did where inelabel == line a Second time here? took it out
-        indices = instr['param'][0] + (comp - 1) * nline * 3 + iline * 3
-        indices = indices = indices[0] + np.arange(0, 3, dtype = float)
-
-    if indices[0] != -1:
-        gausspar = [None]
-        for i in indices:
-            gausspar.append(instr['param'][i])
-        gausspar = gausspar[1:] #haha
-        if velsig != None:
-            gausspar[2] = np.sqrt((gausspar[2] * gausspar[1]/c)**2.0 \
-                    + specres ** 2.0)
-        else: gausspar[2] = np.sqrt(gausspar[2]**2.0 + specres**2.0)
-        
-        if gausspar[2] == 0.0: flux = 0.0
-        else: flux = gaussian(instr['wave'], gausspar)
-
-    else: 
-        flux = 0.0
-    return flux
-
-def gaussian(xi, parms):
-    getcontext().prec = 40
-    a = parms[0] #amp
-    b = parms[1] #mean
-    c = parms[2] #standard dev
-    g = [0.0] #gaussian
-        
-    for x in xi:
-        hl = Decimal(a) * Decimal(-0.5 * ((x - b) / c)**2).exp()
-        g.append(hl)
-    g = g[1:] #lol
-    
-    return g
-
-pltlin(instr, pltpar, outfile)
+ tmpfile = outfile
+ #plt.show()
+ fig.savefig(tmpfile + '.jpg')

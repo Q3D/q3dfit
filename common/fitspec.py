@@ -127,6 +127,7 @@
 ;      2020jun28, YI, tested the gmos.py line initialization calls for parameter set-up. minor changes
 ;      2020jul01, DSNR, bug fixes
 ;      2020jul07, DSNR, bug fixes; it runs all the way through now.
+;      2020jul08, YI, cleaned up the emission line fit section; variables for new many_gauss.py
 ;
 ; :Copyright:
 ;    Copyright (C) 2013--2018 David S. N. Rupke
@@ -602,15 +603,6 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # Fit emission lines
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    # calling IDL save data for testing...
-    # if testing == 1:
-    #     from scipy.io import readsav
-    #     sav_data = readsav(r"C:\Users\yuzoi\OneDrive\Desktop\JHU\research\JWST\Q3D\IFSFIT\pysfit\fitspec_data.xdr")
-    #     gdlambda = sav_data['gdlambda']
-    #     gdflux_nocnt = sav_data['gdflux_nocnt']
-    #     gderr_nocnt = sav_data['gderr_nocnt']
-    # parinit = sav_data['parinit']
-
     if noemlinfit != b'1':
     # Initial guesses for emission line peak fluxes (above continuum)
     # If initial guess is negative, set to 0 to prevent MPFITFUN from choking 
@@ -665,38 +657,23 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         
         efitModule = importlib.import_module('q3dfit.common.'+fcnlinefit)
         elin_lmfit = getattr(efitModule,'run_'+fcnlinefit)
-        lmout,parout,specfit = elin_lmfit(gdlambda,gdflux_nocnt,gderr_nocnt,parinfo=parinit,maxiter=1000)
-        # test = elin_lmfit(gdlambda,gdflux_nocnt,gderr_nocnt,parinfo=parinit,maxiter=1000)
-        
-        param = parout
-#        covar = lmout.covar
-        dof=lmout.nfree
-        niter=lmout.nfev
-        rchisq=lmout.chisqr
-        errmsg=lmout.message
-#        status=lmout.status
-        status=lmout.success
+        lmout,parout,specfit,perror = elin_lmfit(gdlambda,gdflux_nocnt,gderr_nocnt,parinfo=parinit,maxiter=1000)
 
-        
-        # print('----------------------------------------\nfitspec(): elinefit test; STOP\n----------------------------------------')
-        # return gdlambda,gdflux_nocnt
-        # return gdlambda,specfit
-        # MPFIT variables -- to fix.
-        # niter=niter
-        # status=status
+        param  = parout
+        covar  = lmout.covar
+        dof    =lmout.nfree
+        nfev   = lmout.nfev
+        chisq  = lmout.chisqr
+        errmsg = lmout.message
+        status = lmout.success
+        # the following MPFIT variables that were not compatible with LMFIT,
+        # I have deleted these from the final output structure where applicable
+        # niter=niter 
         # quiet=quiet
         # npegged=npegged
         # functargs=argslinefit
         # xtol=mpfit_xtol
         # ftol=mpfit_ftol
-        
-        
-        # param = Mpfitfun(fcnlinefit,gdlambda,gdflux_nocnt,gderr_nocnt,
-        #                   parinfo=parinit,perror=perror,maxiter=1000,
-        #                   bestnorm=chisq,covar=covar,yfit=specfit,dof=dof,
-        #                   nfev=nfev,niter=niter,status=status,quiet=quiet,
-        #                   npegged=npegged,functargs=argslinefit,
-        #                   errmsg=errmsg,xtol=mpfit_xtol,ftol=mpfit_ftol)
 
         # Un-normalize fit. (NOT USED)
         #  specfit *= fnorm
@@ -710,9 +687,9 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         #     perror[ifluxpk] *= fnorm
         #  endforeach
         
-        # need to adjust the error messages corresponding to LMFIT
-        # if status == 0 or status == -16 :
-        #     raise Exception('MPFIT: '+errmsg)
+        # error messages corresponding to LMFIT, documentation was not very helpful with the error messages...
+        if status == False  :
+            raise Exception('LMFIT: '+errmsg)
         # #     outstr = 0
         # #     goto,finish
         # if status == 5 :
@@ -727,10 +704,10 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         for line in lines_arr:
 #            iline = np.where(parinit[line])[0]
             iline = next(idx for idx,item in enumerate(parinit) if item['line'] == line)
-            ifluxpk = np.intersect1d(iline,np.where(parinit[iline]['parname'] == 'flux_peak')[0])
+            ifluxpk = np.intersect1d(iline,np.array([ip for ip,item in enumerate(parinit) if item['parname'] == 'flux_peak']))
             ctfluxpk = len(ifluxpk)
-            isigma = np.intersect1d(iline,np.where(parinit[iline]['parname'] == 'sigma')[0])
-            iwave = np.intersect1d(iline,np.where(parinit[iline]['parname'] == 'wavelength')[0])
+            isigma = np.intersect1d(iline,np.array([ip for ip,item in enumerate(parinit) if item['parname'] == 'sigma']))
+            iwave = np.intersect1d(iline,np.array([ip for ip,item in enumerate(parinit) if item['parname'] == 'wavelength']))
             for i in range(0,ctfluxpk):
                 waverange = sigrange*np.sqrt(np.power((param[isigma[i]]/c*param[iwave[i]]),2.) + np.power(param[2],2.))
                 wlo = np.searchsorted(gdlambda,param[iwave[i]]-waverange/2.)
@@ -757,13 +734,12 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         perror = 0
         perror_resid = 0
         covar = 0
-        
-        # This sets the output reddening to a numerical 0 instead of NULL
-        if len(ebv_star) == 0 :
-            ebv_star=0.
-            fit_time2 = time.time()
-            if quiet != None :
-                print('{:s}{:0.1f}{:s}'.format('FITSPEC: Line fit took ',fit_time2-fit_time1,' s.'))
+    # This sets the output reddening to a numerical 0 instead of NULL
+    if len(ebv_star) == 0 :
+        ebv_star=0.
+        fit_time2 = time.time()
+        if quiet != None :
+            print('{:s}{:0.1f}{:s}'.format('FITSPEC: Line fit took ',fit_time2-fit_time1,' s.'))
                 
                 
 #;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -803,7 +779,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
               'noemlinfit': noemlinfit,   # was emission line fit done?
               'noemlinmask': noemlinmask, # were emission lines masked?
               'redchisq': rchisq, 
-              'niter': niter, 
+              #'niter': niter, (DOES NOT EXIST)
               'fitstatus': status, 
               'linelist': outlinelist, 
               'linelabel': linelabel, 

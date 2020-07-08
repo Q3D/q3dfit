@@ -663,7 +663,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         covar  = lmout.covar
         dof    =lmout.nfree
         nfev   = lmout.nfev
-        chisq  = lmout.chisqr
+        rchisq  = lmout.chisqr
         errmsg = lmout.message
         status = lmout.success
         # the following MPFIT variables that were not compatible with LMFIT,
@@ -701,23 +701,22 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         resid=gdflux-continuum-specfit
         perror_resid = perror
         sigrange = 20.
-        for line in lines_arr:
-#            iline = np.where(parinit[line])[0]
-            iline = next(idx for idx,item in enumerate(parinit) if item['line'] == line)
-            ifluxpk = np.intersect1d(iline,np.array([ip for ip,item in enumerate(parinit) if item['parname'] == 'flux_peak']))
-            ctfluxpk = len(ifluxpk)
-            isigma = np.intersect1d(iline,np.array([ip for ip,item in enumerate(parinit) if item['parname'] == 'sigma']))
-            iwave = np.intersect1d(iline,np.array([ip for ip,item in enumerate(parinit) if item['parname'] == 'wavelength']))
-            for i in range(0,ctfluxpk):
-                waverange = sigrange*np.sqrt(np.power((param[isigma[i]]/c*param[iwave[i]]),2.) + np.power(param[2],2.))
-                wlo = np.searchsorted(gdlambda,param[iwave[i]]-waverange/2.)
-                whi = np.searchsorted(gdlambda,param[iwave[i]]+waverange/2.)
-                if gdlambda[wlo] < gdlambda[0] or wlo == -1:
-                    wlo=0
-                if gdlambda[whi] > gdlambda[len(gdlambda)-1] or whi == -1 :
-                    whi=len(gdlambda)-1
-                if param[ifluxpk[i]] > 0 :
-                    perror_resid[ifluxpk[i]] = np.sqrt(np.mean(np.power(resid[wlo:whi],2.)))
+#        for line in lines_arr:
+#            iline = next(idx for idx,item in enumerate(parinit) if item['line'] == line)
+#            ifluxpk = np.intersect1d(iline,np.array([ip for ip,item in enumerate(parinit) if item['parname'] == 'flux_peak']))
+#            ctfluxpk = len(ifluxpk)
+#            isigma = np.intersect1d(iline,np.array([ip for ip,item in enumerate(parinit) if item['parname'] == 'sigma']))
+#            iwave = np.intersect1d(iline,np.array([ip for ip,item in enumerate(parinit) if item['parname'] == 'wavelength']))
+#            for i in range(0,ctfluxpk):
+#                waverange = sigrange*np.sqrt(np.power((param[isigma[i]]/c*param[iwave[i]]),2.) + np.power(param[2],2.))
+#                wlo = np.searchsorted(gdlambda,param[iwave[i]]-waverange/2.)
+#                whi = np.searchsorted(gdlambda,param[iwave[i]]+waverange/2.)
+#                if gdlambda[wlo] < gdlambda[0] or wlo == -1:
+#                    wlo=0
+#                if gdlambda[whi] > gdlambda[len(gdlambda)-1] or whi == -1 :
+#                    whi=len(gdlambda)-1
+#                if param[ifluxpk[i]] > 0 :
+#                    perror_resid[ifluxpk[i]] = np.sqrt(np.mean(np.power(resid[wlo:whi],2.)))
          
         outlinelist = linelist # this bit of logic prevents overwriting of linelist
         cont_dat = gdflux - specfit

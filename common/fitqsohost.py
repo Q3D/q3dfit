@@ -166,11 +166,13 @@ def set_up_fit_continuum_additive_polynomial_model(p):
     return continuum_additive_polynomial_model,continuum_additive_polynomial_model_parameters
 
 
-def fitqsohost(wave,flux,weight,template_wave,template_flux,index,qsotemplate,ct_coeff=None,zstar=None,quiet=None,blrpar=None,qsoxdr=None,qsoonly=None,index_log=None,refit=None,add_poly_degree=None,sigint_stars=None,polyspec_refit=None,fitran=None,fittol=None,qsoord=None,hostonly=None,hostord=None):
+def fitqsohost(wave,flux,weight,template_wave,template_flux,index,ct_coeff=None,zstar=None,quiet=None,blrpar=None,qsoxdr=None,qsoonly=None,index_log=None,refit=None,add_poly_degree=None,sigint_stars=None,polyspec_refit=None,fitran=None,fittol=None,qsoord=None,hostonly=None,hostord=None,**kwargs):
 
 
-    qsowave = qsotemplate[0]
-    qsoflux_full = qsotemplate[1]
+    qsotemplate = numpy.load(qsoxdr).item()
+    
+    qsowave = qsotemplate['wave']
+    qsoflux_full = qsotemplate['flux']
 
 
     qsoflux = qsoflux_full
@@ -185,6 +187,7 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,qsotemplate,ct
     iflux = flux[index]
     iweight = weight[index]
     ierr = err[index]
+
 
 
 
@@ -238,5 +241,10 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,qsotemplate,ct
     y_final = result.eval(wave=wave,qso_model=qsoflux)
 
 
-    return result,comps,y_final
+    if 'fcn_test' in kwargs.keys():
+    
+        return result,comps,y_final
+
+    else:
+        return y_final
 

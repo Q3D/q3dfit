@@ -42,7 +42,7 @@ outxdr = ''
 infits = '../../pyfsfit/pg1411rb3.fits'
 
 qsotemplate = makeqsotemplate.makeqsotemplate(infits,outxdr,dataext=None,dqext=None,waveext=None)
-os.system('rm nucleartemplate.npy')
+#os.system('rm nucleartemplate.npy')
 
 qsotemplate=[wave,qsotemplate['flux']]
 
@@ -57,7 +57,7 @@ for i in x_ranges_to_fit:
 
 
 
-result,comps,y_final=fitqsohost.fitqsohost(wave,test_spec_to_fit,test_spec_to_fit,0,0,x_to_fit,qsotemplate,qsoonly=1,qsoord=1,hostonly=1)#hostonly=1,hostord=1)
+result,comps,y_final=fitqsohost.fitqsohost(wave,test_spec_to_fit,test_spec_to_fit,0,0,x_to_fit,qsoxdr='nucleartemplate.npy',qsoonly=1,qsoord=1,hostonly=1,fcn_test=1)#hostonly=1,hostord=1)
 print(result.fit_report())
 plt.plot(test_spec_to_fit,'blue',label='data')
 plt.plot(x_to_fit,result.init_fit, 'k--', label='initial fit')

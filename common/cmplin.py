@@ -3,7 +3,7 @@
 """
 Created on Tue Jun  9 12:35:25 2020
 
-@author: hadley
+Returns an array of Decimals (fluxes representing emission line profile)
 """
 
 import numpy as np
@@ -43,10 +43,9 @@ def cmplin(instr, line, comp, velsig = None):
         indices = indices = indices[0] + np.arange(0, 3, dtype = float)
 
     if indices[0] != -1:
-        gausspar = [None]
+        gausspar = []
         for i in indices:
             gausspar.append(instr['param'][i])
-        gausspar = gausspar[1:] #haha
         if velsig != None:
             gausspar[2] = np.sqrt((gausspar[2] * gausspar[1]/c)**2.0 \
                     + specres ** 2.0)
@@ -57,7 +56,7 @@ def cmplin(instr, line, comp, velsig = None):
 
     else: 
         flux = 0.0
-    
+#    print(type(flux[0]))
     return flux
 
 def gaussian(xi, parms):
@@ -70,6 +69,6 @@ def gaussian(xi, parms):
     for x in xi:
         hl = Decimal(a) * Decimal(-0.5 * ((x - b) / c)**2).exp()
         g.append(hl)
-    g = g[1:] #lol
+    g = g[1:]
 
     return g

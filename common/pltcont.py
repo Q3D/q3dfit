@@ -3,18 +3,16 @@
 Plots continuum fit and outputs to JPG.
 @author: hadley
 """
-
+import pdb
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
 
-def pltcont(instr, outfile, compspec, comptitles, ps, title, fitran, \
-                 yranminmax):
-    instr = np.load("dict.npy", allow_pickle='TRUE').item()
-    compspec = np.array(instr['compspec'])        
-    if len(compspec) > 0:
-        compspec = np.array(compspec)
-        sizecomp = np.size(compspec)
+def pltcont(instr, outfile, compspec = None, comptitles = None, ps = None, \
+            title = None, fitran = None, \
+                 yranminmax = None):
+    if np.all(compspec != None):
+        sizecomp = compspec.ndim
         if sizecomp > 1:
             ncomp = len(compspec[0])
         else: ncomp = 1    
@@ -25,7 +23,7 @@ def pltcont(instr, outfile, compspec, comptitles, ps, title, fitran, \
     specstars = instr['cont_dat']
     speclines = instr['emline_dat']
     modstars = instr['cont_fit']
-            
+        
     if fitran != None: xran = fitran
     else: xran = instr['fitran']
     dxran = xran[1] - xran [0]
@@ -88,10 +86,10 @@ def pltcont(instr, outfile, compspec, comptitles, ps, title, fitran, \
     plt.axis('off') #so the subplots don't share a y-axis
 
     masklam=np.array(masklam)
+#    pdb.set_trace()
 
     if ct1 > 0:
         ax1 = fig.add_subplot(3,1,1)
-        
         #custom legend
         if ncomp > 0 and comptitles != None:
             custom_lines = []

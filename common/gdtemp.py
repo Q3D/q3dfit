@@ -72,5 +72,3 @@ def maxium (arr, r, c):
             if arr[i][j] > mx: 
                 mx = arr[i][j]
     return mx
-
-gdtemp('SSPGeneva.z020', 'gdtempoutfile')

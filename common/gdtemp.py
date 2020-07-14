@@ -39,6 +39,7 @@ def gdtemp (infile, outfile):
                 count+=1
     data=np.transpose(datarr)
     data=np.reshape(data, (13321, 139))
+    file.close()
     
     #create lambda
     Lambda=np.zeros(13321, dtype=float)

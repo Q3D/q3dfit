@@ -4,6 +4,7 @@ Created on Thu Jul  9 14:29:06 2020
 
 @author: lily
 """
+# Translated into python by Lily Whitesell, July 14, 2020
 
 import numpy as np
 

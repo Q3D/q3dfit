@@ -697,7 +697,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         #     print('LMFIT: Max. iterations reached.')
 
         # Errors from covariance matrix ...
-        rchisq = chisq/dof
+#        rchisq = chisq/dof
         perror = np.multiply(perror,np.sqrt(rchisq))
         # perror =  np.sqrt(rchisq)
         # ... and from fit residual.

@@ -51,9 +51,14 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
     
     import pdb
     import numpy as np
+    from sys import path
+    # trim directory of this file to get directory of q3dfit. 
+    # This makes imports work in multiprocess case
+    path.append(__file__[:-18])
+    import q3dfit
     from q3dfit.exceptions import InitializationError
     from q3dfit.common.fitspec import fitspec
-#    from q3dfit.common.sepfitpars import sepfitpars
+    from q3dfit.common.sepfitpars import sepfitpars
 
     if logfile:
         if isinstance(logfile,str):
@@ -63,6 +68,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
         loglun = open(uselogfile,'w')
     
     masksig_secondfit_def = 2.
+    # TODO: take this back to 1d
     colind = ispax % cube.ncols
     rowind = int(ispax / cube.ncols)
     i = colarr[colind,rowind]
@@ -220,14 +226,14 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
 
 #           Second fit
 
-            # if not onefit and not abortfit:
+            if not onefit and not abortfit:
                 
-                # if not initdat.__contains__('noemlinfit') and ct_comp_emlist > 0:
+                if not initdat.__contains__('noemlinfit') and ct_comp_emlist > 0:
 
-                    # # set emission line mask parameters
-                    # linepars = sepfitpars(linelist,structinit['param'],\
-                    #                       structinit['perror'],\
-                    #                       structinit['parinfo'])
-
+                    # set emission line mask parameters
+                    linepars = sepfitpars(linelist,structinit['param'],\
+                                          structinit['perror'],\
+                                          structinit['parinfo'])
+            
 #           To abort the while loop, for testing            
             dofit = False

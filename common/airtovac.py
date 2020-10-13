@@ -1,7 +1,6 @@
 def airtovac(wv, waveunit='Angstrom'):
     """
     Takes an array of wavelengths in air and converts them to vacuum
-        using eq. 3 from Morton et al. 1991 ApJSS 77 119
 
     Returns: 
        An array of the same dimensions as the input and in the same units 
@@ -16,8 +15,6 @@ def airtovac(wv, waveunit='Angstrom'):
     Examples:
        wv=np.arange(3000,7000,1)
        vac_wv=airtovac(wv)
-       
-    @author: Nadia Zakamska
 
     """
     x=wv

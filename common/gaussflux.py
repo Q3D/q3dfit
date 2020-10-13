@@ -60,7 +60,7 @@
 
 import numpy as np
 import math
-from q3dfit.common.gaussarea import gaussarea
+from q3dfit.common import gaussarea
 
 def gaussflux(norm, sigma, normerr=None,sigerr=None):
     

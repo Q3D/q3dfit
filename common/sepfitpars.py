@@ -84,25 +84,14 @@ import numpy as np
 import math
 from astropy.table import Table
 from scipy import constants
-from q3dfit.common.gaussflux import gaussflux
+from q3dfit.common import gaussflux
 
 
 def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = None, doublets = None):
 
-    # DW: param, perror and parinfo are lists of dictionaries which are not easy to handle
-    # I therefore re-structure them into a single dictionary each
-    
-    parinfo_new={}
-    for k,v in [(key,d[key]) for d in parinfo for key in d]:
-        if k not in parinfo_new: parinfo_new[k]=[v]
-        else: parinfo_new[k].append(v)
-    
-    parinfo_new = Table(parinfo_new)
-    
-    param = np.array(param)
-    perror = np.array(perror)
-	
-	# Return 0 if no lines were fit
+# Return 0 if no lines were fit
+## DW: this assumes that the output from lmfit is called param
+
     if len(param) == 1: ### DW: this needs to be double checked!!!!###:
         outstr = {'nolines': np.array([0])}
         return outstr
@@ -128,41 +117,40 @@ def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = None, d
             tf =  Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
             tfe = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
       
+        ## DW: this assumes parinfo is a Table
     
-        in2ha = np.where(parinfo_new['parname'] == '[NII]/Halpha line ratio')
-        ctn2ha = np.count_nonzero(parinfo_new['parname'] == '[NII]/Halpha line ratio')
+        in2ha = np.where(parinfo['parname'] == '[NII]/Halpha line ratio')
+        ctn2ha = np.count_nonzero(parinfo['parname'] == '[NII]/Halpha line ratio')
     
-        in1rat = np.where(parinfo_new['parname'] == '[NI]5200/5198 line ratio')
-        ctn1rat = np.count_nonzero(parinfo_new['parname'] == '[NI]5200/5198 line ratio')
+        in1rat = np.where(parinfo['parname'] == '[NI]5200/5198 line ratio')
+        ctn1rat = np.count_nonzero(parinfo['parname'] == '[NI]5200/5198 line ratio')
 
-        is2rat = np.where(parinfo_new['parname'] == '[SII]6716/6731 line ratio')
-        cts2rat = np.count_nonzero(parinfo_new['parname'] == '[SII]6716/6731 line ratio')
+        is2rat = np.where(parinfo['parname'] == '[SII]6716/6731 line ratio')
+        cts2rat = np.count_nonzero(parinfo['parname'] == '[SII]6716/6731 line ratio')
 
-        #   ihahb = np.where(parinfo_new['parname'] == 'Halpha/Hbeta line ratio')
-        #   cthahb = np.count_nonzero(parinfo_new['parname'] == 'Halpha/Hbeta line ratio')
+        #   ihahb = np.where(parinfo['parname'] == 'Halpha/Hbeta line ratio')
+        #   cthahb = np.count_nonzero(parinfo['parname'] == 'Halpha/Hbeta line ratio')
 
-        io2rat = np.where(parinfo_new['parname'] == '[OII]3729/3726 line ratio')
-        cto2rat = np.count_nonzero(parinfo_new['parname'] == '[OII]3729/3726 line ratio')
+        io2rat = np.where(parinfo['parname'] == '[OII]3729/3726 line ratio')
+        cto2rat = np.count_nonzero(parinfo['parname'] == '[OII]3729/3726 line ratio')
     
         #   Populate Tables
 
         for line in linelist['name']:
-        
             #indices
-            iline =   np.where(parinfo_new['line'] == line)
-            ifluxpk = np.intersect1d(iline, np.where(parinfo_new['parname'] == 'flux_peak'))
-            isigma =  np.intersect1d(iline, np.where(parinfo_new['parname'] == 'sigma'))
-            iwave =   np.intersect1d(iline, np.where(parinfo_new['parname'] == 'wavelength'))
-            
+            iline =   np.where(parinfo['parname'] == line)
+            ifluxpk = np.intersect1d(iline, np.where(parinfo['parname'] == 'flux_peak')
+            isigma =  np.intersect1d(iline, np.where(parinfo['parname'] == 'sigma')
+            iwave =   np.intersect1d(iline, np.where(parinfo['parname'] == 'wavelength')
             # indices for errors, which is more complicated if error comes from line to which this one is tied
-            sigmawave_tie = parinfo_new['sigmawave_tie'][isigma[0]] # line tied to
+            sigmawave_tie = parinfo['sigmawave_tie'][isigma[0]] # line tied to
             if sigmawave_tie == '':
                 isigmaerr = isigma
                 iwaveerr = iwave
             else:
-                ilinetie = np.where(parinfo_new['line'] == sigmawave_tie)
-                isigmaerr = np.intersect1d(ilinetie, np.where(parinfo_new['parname'] == 'sigma'))
-                iwaveerr = np.intersect1d(ilinetie, np.where(parinfo_new['parname'] == 'wavelength'))
+                ilinetie = np.where(parinfo['line'] == sigmawave_tie)
+                isigmaerr = np.intersect1d(ilinetie, np.where(parinfo['parname'] == 'sigma')
+                iwaveerr = np.intersect1d(ilinetie, np.where(parinfo['parname'] == 'wavelength')
               
             wave[line] = param[iwave]
             sigma[line] = param[isigma]
@@ -286,9 +274,9 @@ def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = None, d
                                           
             if (line == '[OII]3729') and (cto2rat > 0.):
                 fluxpkerr_obs[line][0:cto2rat] = \
-                fluxpk_obs[line][0:cto2rat]*np.sqrt( \
-                (perror[io2rat]/param[io2rat])**2. + \
-                (fluxpkerr_obs['[OII]3726'][0:cto2rat]/ \
+                fluxpk_obs[line][0:cto2rat]*np.sqrt( \                          
+                (perror[io2rat]/param[io2rat])**2. + \                          
+                (fluxpkerr_obs['[OII]3726'][0:cto2rat]/ \                          
                 fluxpk_obs['[OII]3726'][0:cto2rat])**2.)                          
                 # In pegged case, set errors equal to each other
                 ipegged = np.where((perror[io2rat] == 0.) and (param[io2rat] != 0.))
@@ -308,9 +296,9 @@ def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = None, d
             if ctnz > 0:
             # Make sure we're not adding something to 0 -- i.e. the component wasn't fit.
                 sigmatmp[inz] = np.sqrt(sigmatmp[inz]**2. + param[2]**2.)
-                sigma_obs[line][inz] = sigmatmp[inz]/wave[line][inz]*(constants.c/1.e3) # in km/s                         
+                sigma_obs[line][inz] = sigmatmp[inz]/wave[line,inz]*(constants.c/1.e3) # in km/s                         
             # error propagation for adding in quadrature
-                sigmaerr_obs[line][inz] *= \
+                sigmaerr_obs[line,inz] *= \
                 sigma[line][inz]/(constants.c/1.e3)*wave[line][inz] / sigmatmp[inz]
             # Correct peak flux and error for deconvolution
                 fluxpk[line][inz] *= sigma_obs[line][inz]/sigma[line][inz]
@@ -369,30 +357,30 @@ def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = None, d
             for i in np.arange(0,ndoublets):
                 if (np.count_nonzero(linelist['name'] == doublets[0,i]) == 1) and (np.count_nonzero(linelist['name'] == doublets[1,i]) == 1):
 # new line label
-                    dkey = doublets[0,i]+'+'+doublets[1,i]
+                dkey = doublets[0,i]+'+'+doublets[1,i]
 # add fluxes
-                    tf[dkey] = tf[doublets[0,i]]+tf[doublets[1,i]]
-                    flux[dkey] = flux[doublets[0,i]]+flux[doublets[1,i]]
-                    fluxpk[dkey] = fluxpk[doublets[0,i]]+fluxpk[doublets[1,i]]
-                    fluxpk_obs[dkey] = fluxpk_obs[doublets[0,i]]+fluxpk_obs[doublets[1,i]]
+                tf[dkey] = tf[doublets[0,i]]+tf[doublets[1,i]]
+                flux[dkey] = flux[doublets[0,i]]+flux[doublets[1,i]]
+                fluxpk[dkey] = fluxpk[doublets[0,i]]+fluxpk[doublets[1,i]]
+                fluxpk_obs[dkey] = fluxpk_obs[doublets[0,i]]+fluxpk_obs[doublets[1,i]]
 # add flux errors in quadrature
-                    tfe[dkey] = np.sqrt(tfe[doublets[0,i]]**2. + tfe[doublets[1,i]]**2.)
-                    fluxerr[dkey] = np.sqrt(fluxerr[doublets[0,i]]**2. + fluxerr[doublets[1,i]]**2.)
-                    fluxpkerr[dkey] = np.sqrt(fluxpkerr[doublets[0,i]]**2. + fluxpkerr[doublets[1,i]]**2.)
-                    fluxpkerr_obs[dkey] = np.sqrt(fluxpkerr_obs[doublets[0,i]]**2. + fluxpkerr_obs[doublets[1,i]]**2.)
+                tfe[dkey] = np.sqrt(tfe[doublets[0,i]]**2. + tfe[doublets[1,i]]**2.)
+                fluxerr[dkey] = np.sqrt(fluxerr[doublets[0,i]]**2. + fluxerr[doublets[1,i]]**2.)
+                fluxpkerr[dkey] = np.sqrt(fluxpkerr[doublets[0,i]]**2. + fluxpkerr[doublets[1,i]]**2.)
+                fluxpkerr_obs[dkey] = np.sqrt(fluxpkerr_obs[doublets[0,i]]**2. + fluxpkerr_obs[doublets[1,i]]**2.)
 # average waves and sigmas and errors
-                    wave[dkey] = (wave[doublets[0,i]]+wave[doublets[1,i]])/2.
-                    waveerr[dkey] = (waveerr[doublets[0,i]]+waveerr[doublets[1,i]])/2.
-                    sigma[dkey] = (sigma[doublets[0,i]]+sigma[doublets[1,i]])/2.
-                    sigmaerr[dkey] = (sigmaerr[doublets[0,i]]+sigmaerr[doublets[1,i]])/2.
-                    sigma_obs[dkey] = (sigma_obs[doublets[0,i]]+sigma_obs[doublets[1,i]])/2.
-                    sigmaerr_obs[dkey] = (sigmaerr_obs[doublets[0,i]]+sigmaerr_obs[doublets[1,i]])/2.
-        
-        outstr = {'nolines':0,'flux':flux,'fluxerr':fluxerr,'fluxpk':fluxpk,'fluxpkerr':fluxpkerr,\
-                  'wave':wave,'waveerr':waveerr,'sigma':sigma,'sigmaerr':sigmaerr,'sigma_obs':sigma_obs,\
-                  'sigmaerr_obs':sigmaerr_obs, 'fluxpk_obs':fluxpk_obs,'fluxpkerr_obs':fluxpkerr_obs}
-        if tflux:
-            tflux = {'tflux':tf,'tfluxerr':tfe}
+                wave[dkey] = (wave[doublets[0,i]]+wave[doublets[1,i]])/2.
+                waveerr[dkey] = (waveerr[doublets[0,i]]+waveerr[doublets[1,i]])/2.
+                sigma[dkey] = (sigma[doublets[0,i]]+sigma[doublets[1,i]])/2.
+                sigmaerr[dkey] = (sigmaerr[doublets[0,i]]+sigmaerr[doublets[1,i]])/2.
+                sigma_obs[dkey] = (sigma_obs[doublets[0,i]]+sigma_obs[doublets[1,i]])/2.
+                sigmaerr_obs[dkey] = (sigmaerr_obs[doublets[0,i]]+sigmaerr_obs[doublets[1,i]])/2.
+                                          
+        outstr = {nolines:0,flux:flux,fluxerr:fluxerr,fluxpk:fluxpk,fluxpkerr:fluxpkerr,\
+                  wave:wave,waveerr:waveerr,sigma:sigma,sigmaerr:sigmaerr,sigma_obs:sigma_obs,\
+                  sigmaerr_obs:sigmaerr_obs, fluxpk_obs:fluxpk_obs,fluxpkerr_obs:fluxpkerr_obs}
+		if tflux:
+            tflux = {tflux:tf,tfluxerr:tfe}
         
         return outstr
                                           

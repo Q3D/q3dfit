@@ -147,7 +147,6 @@ def __get_spaxels(cube, cols=None, rows=None):
 def execute_fitloop( nspax, colarr, rowarr, cube, initdat, linelist, oned, onefit,\
         quiet):
     from q3dfit.common.fitloop import fitloop
-    #from fitloop import fitloop
     dolog = 0
     if "logfile" in initdat:
         dolog = 1
@@ -186,13 +185,11 @@ def q3df_oneCore( initproc, cols=None, rows=None, oned=False, onefit=False, quie
 
 
 # q3df setup for multi-threaded execution
-def q3df_multiCore( rank, initproc, cols=None, rows=None, oned=False, onefit=False,\
+def q3df_multiCore( rank, initproc, cols=None, rows=None, oned=False, onefit=False, ncores=1, \
           quiet=True ):
     import pdb
     import time
     from numpy import floor
-    # TODO: modify import statements on __get functions to account for invoking from a different folder in multicore case
-    multicore=True
     if rank == 0: starttime = time.time()
     initdat = __get_initdat(initproc)
     linelist = __get_linelist(initdat)
@@ -206,10 +203,6 @@ def q3df_multiCore( rank, initproc, cols=None, rows=None, oned=False, onefit=Fal
     stop = int(floor(nspax * (rank+1) / size))
     colarr = colarr[start:stop]
     rowarr = rowarr[start:stop]
-    print("RANK " + str(rank) + ":")
-    print(start, stop)
-    print(colarr)
-    print(rowarr)
     # number of spaxels THIS CORE is responsible for
     nspax_thisCore = stop-start
     # execute FITLOOP
@@ -221,9 +214,6 @@ def q3df_multiCore( rank, initproc, cols=None, rows=None, oned=False, onefit=Fal
 if __name__ == "__main__":
     from sys import argv
     from mpi4py import MPI
-    from sys import path
-    path.append("../..")
-    import q3dfit 
     # get multiprocessor data: number of tasks and which one this is
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
@@ -252,4 +242,5 @@ if __name__ == "__main__":
     else: onefit=False
     if argv[6].startswith("T"): quiet=True
     else: quiet=False
-    q3df_multiCore(rank, initproc, cols, rows, oned, onefit, quiet)
+    q3df_multiCore(rank, initproc, cols, rows, oned, onefit, size, quiet)
+

@@ -57,10 +57,10 @@ def q3df( initproc, cols=None, rows=None, oned=False, onefit=False, ncores=1, \
         cols = cols.replace(" ", "")
         rows = str(rows)
         rows = rows.replace(" ", "")
-        # get directory of THIS FILE, then trim off file name, i.e. return enclosing folder
-        # XXX: this will break if the filename changes from q3dfit.py!
-        thisDir = __file__[:-7]
         # start a new MPI process since MPI cannot be started from within a Python script
-        call(["mpiexec", "-n", str(ncores), "python", thisDir + "q3df_helperFunctions.py",\
+        call(["mpiexec", "-n", str(ncores), "python", "common/q3df_helperFunctions.py",\
                 initproc, cols, rows, str(oned), str(onefit), str(quiet)])
-        
+
+
+
+

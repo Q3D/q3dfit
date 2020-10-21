@@ -33,13 +33,13 @@ import os
 
 
 #k=k/numpy.median(k)
-data = readcube.CUBE(infile='../../pyfsfit/pg1411rb3.fits')
+data = readcube.CUBE(infile='/Users/Endeavour/Projects/Q3D_dev/pyfsfit/pg1411rb3.fits')
 test_spec_to_fit = data.dat[10,15] #15,5  #15,3
 
 wave = numpy.arange(0,len(test_spec_to_fit))
 
 outxdr = ''
-infits = '../../pyfsfit/pg1411rb3.fits'
+infits = '/Users/Endeavour/Projects/Q3D_dev/pyfsfit/pg1411rb3.fits'
 
 qsotemplate = makeqsotemplate.makeqsotemplate(infits,outxdr,dataext=None,dqext=None,waveext=None)
 #os.system('rm nucleartemplate.npy')

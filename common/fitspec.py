@@ -158,6 +158,7 @@ import scipy.io as sio
 from scipy.io import readsav
 from q3dfit.common.airtovac import airtovac
 from q3dfit.common.masklin import masklin
+from q3dfit.common import fitqsohost
 from ppxf.ppxf_util import log_rebin
 import copy
 import pdb
@@ -394,6 +395,12 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         print('this will do the continuum fits...')
         print('----------------------------------------\nfitspec() debug test; STOP\n----------------------------------------')
         return
+        
+        qsoxdr=argscontfit_use[‘qsoxdr’]
+        
+        continuum = fitqsohost.fitqsohost(wlambda,flux,err,0,0,gd_indx_full,qsoxdr='nucleartemplate.npy',qsoonly=1,qsoord=1,hostonly=1)
+        
+        
         # Mask emission lines
         if noemlinfit != b'1':
             pass # this is just a placeholder for now

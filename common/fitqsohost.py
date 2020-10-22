@@ -169,7 +169,7 @@ def set_up_fit_continuum_additive_polynomial_model(p):
 def fitqsohost(wave,flux,weight,template_wave,template_flux,index,ct_coeff=None,zstar=None,quiet=None,blrpar=None,qsoxdr=None,qsoonly=None,index_log=None,refit=None,add_poly_degree=None,sigint_stars=None,polyspec_refit=None,fitran=None,fittol=None,qsoord=None,hostonly=None,hostord=None,**kwargs):
 
 
-    qsotemplate = numpy.load(qsoxdr).item()
+    qsotemplate = numpy.load(qsoxdr,allow_pickle=True).item()
     
     qsowave = qsotemplate['wave']
     qsoflux_full = qsotemplate['flux']

@@ -390,17 +390,14 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Fit continuum
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    testing = 1
+    testing = 0
+    print(initdat['fcncontfit'])
     if 'fcncontfit' in initdat and testing !=1:
         print('this will do the continuum fits...')
         print('----------------------------------------\nfitspec() debug test; STOP\n----------------------------------------')
-        return
-        
-        qsoxdr=argscontfit_use[‘qsoxdr’]
-        
-        continuum = fitqsohost.fitqsohost(wlambda,flux,err,0,0,gd_indx_full,qsoxdr='nucleartemplate.npy',qsoonly=1,qsoord=1,hostonly=1)
-        
-        
+        #return
+
+
         # Mask emission lines
         if noemlinfit != b'1':
             pass # this is just a placeholder for now
@@ -410,17 +407,18 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                 else:
                     maskwidths = initdat['lines']
                     for line in initdat['lines']:
-                        maskwidths[line] = np.zeros(initdat['maxncomp'])+maskwidths_def
+                        pass
+                        #maskwidths[line] = np.zeros(initdat['maxncomp'])+maskwidths_def
             pass # this is just a placeholder for now
-            ct_indx  = masklin(gdlambda, linelistz, maskwidths, nomaskran=nomaskran)
+            #ct_indx  = masklin(gdlambda, linelistz, maskwidths, nomaskran=nomaskran)
             # Mask emission lines in log space
-            ct_indx_log = masklin(np.exp(gdlambda_log), linelistz, maskwidths, nomaskran=nomaskran)
+            #ct_indx_log = masklin(np.exp(gdlambda_log), linelistz, maskwidths, nomaskran=nomaskran)
         else:   
             ct_indx = np.arange(len(gdlambda))
             ct_indx_log = np.arange(len(gdlambda_log))
             
-        ct_indx = np.intersect1d(ct_indx,gd_indx)
-        ct_indx_log = np.intersect1d(ct_indx_log,gd_indx_log)
+        #ct_indx = np.intersect1d(ct_indx,gd_indx)
+        #ct_indx_log = np.intersect1d(ct_indx_log,gd_indx_log)
         
         ###############################
         # NOT USED IN IFSF_FITSPEC.PRO
@@ -448,15 +446,19 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if initdat['fcncontfit'] != 'ppxf':
             if istemp:
-                templatelambdaz_tmp = templatelambdaz
-                templateflux_tmp = template['flux']
+                pass
+                #templatelambdaz_tmp = templatelambdaz
+                #templateflux_tmp = template['flux']
             else:
                 templatelambdaz_tmp = b'0'
                 templateflux_tmp = b'0'
                 
             if 'argscontfit' in initdat:
                 argscontfit_use = initdat['argscontfit']
-                if initdat['fcncontfit'] == 'ifsf_fitqsohost' :
+                if initdat['fcncontfit'] == 'fitqsohost' :
+                    qsoxdr=initdat['argscontfit']["qsoxdr"]
+                    continuum = fitqsohost.fitqsohost(wlambda,flux,err,0,0,fitran_indx,qsoxdr=qsoxdr,qsoonly=1,qsoord=1,hostonly=1)
+                    continuum = continuum[fitran_indx]
                     pass # this is just a placeholder for now
                     # argscontfit_use = create_struct(argscontfit_use,'fitran',fitran)
                 if 'uselog' in initdat['argscontfit']:
@@ -551,7 +553,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Option to tweak cont. fit with local polynomial fits
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        if not tweakcntfit:
+        if 'tweakcntfit' not in initdat:
             continuum_pretweak=continuum
         # Arrays holding emission-line-masked data
             ct_lambda=gdlambda[ct_indx]
@@ -764,7 +766,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     outstr = {'fitran': fitran,
               # Continuum fit parameters
               'ct_method': method, 
-              'ct_coeff': ct_coeff, 
+              #              'ct_coeff': ct_coeff,
               'ct_ebv': ebv_star, 
               'zstar': zstar, 
               'zstar_err': zstar_err,
@@ -784,7 +786,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
               # gd_indx is applied, and then ct_indx
               'gd_indx': gd_indx,         # cuts on various criteria
               'fitran_indx': fitran_indx, # cuts on various criteria
-              'ct_indx': ct_indx,         # where emission is not masked
+              #              'ct_indx': ct_indx,         # where emission is not masked, masking not in yet.
               # Line fit parameters
               'noemlinfit': noemlinfit,   # was emission line fit done?
               'noemlinmask': noemlinmask, # were emission lines masked?

@@ -180,6 +180,7 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,ct_coeff=None,
     #Normalizing qsoflux template
     qsoflux = qsoflux/numpy.median(qsoflux)
 
+    index = numpy.array(index)
     index = index.astype(dtype='int')
 
     err = 1/weight**0.5

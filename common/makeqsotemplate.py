@@ -1,7 +1,7 @@
 import numpy
 from q3dfit.common import readcube
 
-def makeqsotemplate(infits,outxdr,dataext=None,dqext=None,waveext=None):
+def makeqsotemplate(infits,outpy,dataext=None,dqext=None,waveext=None):
     '''Function defined to extract the quasar spectrum
         
         
@@ -10,9 +10,9 @@ def makeqsotemplate(infits,outxdr,dataext=None,dqext=None,waveext=None):
         infits: string
                 Name of the fits file to load in.
         
-        outxdr
+        outpy
               : string
-                Name of the directory where to save the qso spectrum
+                Name of the numpy save file for the resulting qso spectrum
                 
                 
         Returns
@@ -52,6 +52,6 @@ def makeqsotemplate(infits,outxdr,dataext=None,dqext=None,waveext=None):
 
 
 
-    numpy.save(outxdr+'nucleartemplate.npy',qsotemplate)
+    numpy.save(outpy,qsotemplate)
 
     return qsotemplate

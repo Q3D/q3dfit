@@ -182,7 +182,7 @@ def pg1411():
                                          '[SII]6716','[SII]6731']},
             'argscontfit': {'blrpar': [0,7150,5000/299792*7150,
                                        0,5300,5000/299792*5300],
-                            'qsoxdr': volume+"/pg1411qsotemplate.xdr",
+                            'qsoxdr': volume+'/pg1411qsotemplate.npy',
                           'siginit_stars': 50,
                           'uselog': 1,
                           'refit': 1},

@@ -1,3 +1,11 @@
+param, perror
+-------------
+list --> sepfitpars turns into a numpy array
+
+parinfo
+-------
+list of dictionaries --> sepfitpars turns it into astropy Table
+
 linelist
 --------
     Generates an astropy Table of lines from the master files linelist_air.tbl

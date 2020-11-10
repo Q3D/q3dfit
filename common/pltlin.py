@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 
-@author: lily
+@author: Lily Whitesell
 """
 # docformat= 'rst'
 

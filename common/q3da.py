@@ -9,6 +9,7 @@ Created: 7/9/2020
 """
 import numpy as np
 import math
+import pdb
 import importlib
 from q3dfit.common.linelist import linelist
 from q3dfit.common.readcube import CUBE
@@ -192,7 +193,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
             rows[h] = int(rows[h])        
         
         for j in range (rows[0] - 1, rows[1]):            
-            novortile = 0 #b
+            novortile = 0 #bytes thing again
             
             if oned != None: #i think?
                 flux = np.array(cube.dat)[:, i]
@@ -212,7 +213,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                         iuse = vorcoords[initdat['vormap'][i][j] - 1, 0]
                         juse = vorcoords[initdat['vormap'][i][j] - 1, 1]
                     else: 
-                        novortile = 1 #b
+                        novortile = 1 #this byte thing again
                 else:
                     iuse = i
                     juse = j
@@ -733,7 +734,6 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                                            'ord. ' + str(add_poly_degree) + \
                                          ' Leg. poly'], \
                                 fitran = initdat['fitran'], **initdat['argspltcont'])
-
                     else:
                         module = importlib.import_module('q3dfit.common.' + fcnpltcont)                 
                         pltcontfcn = getattr(module, fcnpltcont)    
@@ -754,7 +754,176 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                         pltcontfcn = getattr(module, fcnpltcont)    
                         pltcontfcn(struct, outfile + '_cnt', \
                                    fitran = initdat['fitran'])
-                 
+
+#;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+#; Process NaD (normalize, compute quantities and save, plot)
+#;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+            #             if tag_exist(initdat,'donad') then begin
+            # if tag_exist(initdat,'decompose_qso_fit'):
+            #     if tag_exist(initdat,'remove_scattered'):
+            #         hostmod_tmp = hostmod - polymod_refit
+            #         qsomod_tmp = qsomod + polymod_refit
+            #     else:
+            #         hostmod_tmp = hostmod
+            #         qsomod_tmp = qsomod
+        #         nadnormcont = (struct.cont_dat - qsomod_tmp)/hostmod_tmp
+        #         nadnormconterr = struct.spec_err/hostmod_tmp
+        #         nadnormstel = hostmod_tmp
+        #     else:
+        #         nadnormcont = struct.cont_dat/struct.cont_fit
+        #         nadnormconterr = struct.spec_err/struct.cont_fit
+        #         nadnormstel = struct.cont_fit
+        #     if tag_exist(initnad,'argsnormnad'):
+        #         normnad = ifsf_normnad(struct.wave,\
+        #                              nadnormcont,\
+        #                              nadnormconterr,\
+        #                              struct.zstar,fitpars_normnad,\
+        #                              _extra=initnad.argsnormnad)
+        #         normnadem = ifsf_normnad(struct.wave,\
+        #                                struct.emlin_dat,\
+        #                                struct.spec_err,\
+        #                                struct.zstar,fitpars_normnadem,\
+        #                                /nosncut,/subtract,\
+        #                                _extra=initnad.argsnormnad)
+        #         normnadstel = ifsf_normnad(struct.wave,\
+        #                                  nadnormstel,\
+        #                                  struct.spec_err,\
+        #                                  struct.zstar,fitpars_normnadstel,\
+        #                                  _extra=initnad.argsnormnad)
+        #         if ~ tag_exist(initnad.argsnormnad,'fitranlo'): 
+        #             fitranlo = (1d +struct.zstar)*[5810d,5865d] \
+        #         else:
+        #             fitranlo = initnad.argsnormnad.fitranlo
+        #         if ~ tag_exist(initnad.argsnormnad,'fitranhi'): 
+        #             fitranhi = (1d +struct.zstar)*[5905d,5960d] 
+        #         else: 
+        #             fitranhi = initnad.argsnormnad.fitranhi
+        #     else:
+        #         normnad = ifsf_normnad(struct.wave,\
+        #                              nadnormcont,\
+        #                              nadnormconterr,\
+        #                              struct.zstar,fitpars_normnad)
+        #         normnadem = ifsf_normnad(struct.wave,\
+        #                                struct.emlin_dat,\
+        #                                struct.spec_err,\
+        #                                struct.zstar,fitpars_normnadem,\
+        #                                /nosncut,/subtract)
+        #         normnadstel = ifsf_normnad(struct.wave,\
+        #                                  nadnormstel,\
+        #                                  struct.spec_err,\
+        #                                  struct.zstar,fitpars_normnadstel)
+        #         fitranlo = (1d +struct.zstar)*[5810d,5865d]
+        #         fitranhi = (1d +struct.zstar)*[5905d,5960d]
+        #     #Check data quality
+        #     if normnad != None:
+        #         igd = np.where(normnad.nflux gt 0d,ctgd) \
+        #     else: 
+        #         ctgd = 0
+        #     #Compute empirical equivalent widths and emission-line fluxes
+        #     if ctgd gt 0:
+        #     #Create output data cube
+        #         if firstnadnorm:
+        #             ilo = value_locate(cube.wave,fitranlo[0])+1
+        #             ihi = value_locate(cube.wave,fitranhi[1])
+        #             dat_normnadwave = cube.wave[ilo:ihi]
+        #             nz = ihi-ilo+1
+        #             nadcube = \
+        #                {'wave': np.zeros(cube.ncols,cube.nrows,nz),\
+        #                 'cont': np.zeros(cube.ncols,cube.nrows,nz),\
+        #                 'dat:' np.zeros(cube.ncols,cube.nrows,nz),\
+        #                 'err': np.zeros(cube.ncols,cube.nrows,nz)+bad,\
+        #                 'weq': np.zeros(cube.ncols,cube.nrows,4)+bad,\
+        #                 'stelweq': np.zeros(cube.ncols,cube.nrows,2)+bad,\
+        #                 'iweq': np.zeros(cube.ncols,cube.nrows,4)+bad,\
+        #                 'emflux': np.zeros(cube.ncols,cube.nrows,2)+bad,\
+        #                 'emul': np.zeros(cube.ncols,cube.nrows,4)+bad,\
+        #                 'vel': np.zeros(cube.ncols,cube.nrows,6)+bad}
+        #             firstnadnorm = 0
+        #     #Defaults
+        #     emflux=np.zeros(2)
+        #     emul=np.zeros(4)+bad
+        #     vel = np.zeros(6)+bad
+        #     if tag_exist(initnad,'argsnadweq'):
+        #     weq = ifsf_cmpnadweq(normnad.wave,normnad.nflux,normnad.nerr,\
+        #                                snflux=normnadem.nflux,unerr=normnadem.nerr,\
+        #                                emflux=emflux,emul=emul,\
+        #                                _extra=initnad.argsnadweq)
+        
+        #           #These need to be compatible with the IFSF_CMPNADWEQ defaults
+        #     if tag_exist(initnad.argsnadweq,'emwid'):
+        #         emwid=initnad.argsnadweq.emwid 
+        #     else:
+        #         emwid=20d
+        #     if tag_exist(initnad.argsnadweq,'iabsoff'): 
+        #         iabsoff=initnad.argsnadweq.iabsoff 
+        #     else: 
+        #         iabsoff=4
+        #       endif else begin
+        #          weq = ifsf_cmpnadweq(normnad.wave,normnad.nflux,normnad.nerr,\
+        #                               snflux=normnadem.nflux,unerr=normnadem.nerr,\
+        #                               emflux=emflux,emul=emul)
+        #          These need to be compatible with the IFSF_CMPNADWEQ defaults
+        #          emwid=20d
+        #          iabsoff=4l
+        #       endelse
+        #       Compute stellar continuum NaD equivalent widths from fit
+        #       stelweq = ifsf_cmpnadweq(normnadstel.wave,normnadstel.nflux,\
+        #                                normnadstel.nerr,\
+        #                                wavelim=[5883d*(1d +initdat.zsys_gas),\
+        #                                         6003d*(1d +initdat.zsys_gas),\
+        #                                         0d,0d])
+        
+        #       Compute empirical velocities
+        #       size_weq = size(weq)
+        #       if size_weq[0] eq 2 then begin
+        #          if tag_exist(initnad,'argsnadvel') then \
+        #             vel = ifsf_cmpnadvel(normnad.wave,normnad.nflux,normnad.nerr,\
+        #                                  weq[*,1],initdat.zsys_gas,\
+        #                                  _extra=initnad.argsnadvel) \
+        #          else vel = ifsf_cmpnadvel(normnad.wave,normnad.nflux,normnad.nerr,\
+        #                                    weq[*,1],initdat.zsys_gas)
+        #       endif
+              
+        #       ilo = where(normnad.wave[0] eq dat_normnadwave)
+        #       ihi = where(normnad.wave[n_elements(normnad.wave)-1] \
+        #             eq dat_normnadwave)
+        
+        #       Assume that stellar fit is a good model but that the error spectrum
+        #       may not be perfect. Correct using stellar reduced chi squared
+        #       if tag_exist(initnad,'errcorr_ctrchisq') then begin
+        #          normnad.nerr *= struct.ct_rchisq
+        #          weq[1,0] *= struct.ct_rchisq
+        #          weq[3,0] *= struct.ct_rchisq
+        #       endif
+        #       nadcube.wave[i,j,*] = dat_normnadwave
+        #       nadcube.cont[i,j,ilo:ihi] = struct.cont_fit[normnad.ind]
+        #       nadcube.dat[i,j,ilo:ihi] = normnad.nflux
+        #       nadcube.err[i,j,ilo:ihi] = normnad.nerr
+        #       nadcube.weq[i,j,*] = weq[*,0]
+        #       nadcube.iweq[i,j,*] = weq[*,1]
+        #       nadcube.stelweq[i,j,*] = stelweq[0:1]
+        #       nadcube.emflux[i,j,*] = emflux
+        #       nadcube.emul[i,j,*] = emul
+        #       nadcube.vel[i,j,*] = vel
+        #       Plot data
+        #       if not keyword_set(noplots) then \
+        #          if tag_exist(initnad,'argspltnormnad') then \
+        #             ifsf_pltnaddat,normnad,fitpars_normnad,struct.zstar,\
+        #                            outfile+'_nad_norm',autoindices=weq[*,1],\
+        #                            emwid=emwid,iabsoff=iabsoff,\
+        #                            _extra=initnad.argspltnormnad else \
+        #             ifsf_pltnaddat,normnad,fitpars_normnad,struct.zstar,\
+        #                            outfile+'_nad_norm',autoindices=weq[*,1],\
+        #                            emwid=emwid,iabsoff=iabsoff
+        #    endif
+        
+        # endif
+        
+        # endelse
+        
+        # for
 
 def cap_range(x1, x2, n):
     a = np.zeros(1, dtype = float)

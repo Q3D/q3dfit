@@ -15,7 +15,7 @@ from q3dfit.common.linelist import linelist
 from q3dfit.common.readcube import CUBE
 from scipy.special import legendre
 from scipy import interpolate
-from ppxf_python.ppxf.ppxf_util import log_rebin
+from ppxf.ppxf_util import log_rebin
 
 
 def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
@@ -199,7 +199,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                 flux = np.array(cube.dat)[:, i]
                 err = []
                 for a in cube.var[:, i]:
-                    err.append(math.sqrt(abs(a)))
+                    err.append(np.sqrt(abs(a)))
                 dq = cube.dq[:, i]
                 labin = str(i + 1).zfill(4)
                 labout = labin

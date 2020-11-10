@@ -9,6 +9,7 @@ Created: 7/9/2020
 """
 import numpy as np
 import math
+import pdb
 import importlib
 from q3dfit.common.linelist import linelist
 from q3dfit.common.readcube import CUBE
@@ -192,7 +193,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
             rows[h] = int(rows[h])        
         
         for j in range (rows[0] - 1, rows[1]):            
-            novortile = 0 #b
+            novortile = 0 #bytes thing again
             
             if oned != None: #i think?
                 flux = np.array(cube.dat)[:, i]
@@ -212,7 +213,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                         iuse = vorcoords[initdat['vormap'][i][j] - 1, 0]
                         juse = vorcoords[initdat['vormap'][i][j] - 1, 1]
                     else: 
-                        novortile = 1 #b
+                        novortile = 1 #this byte thing again
                 else:
                     iuse = i
                     juse = j

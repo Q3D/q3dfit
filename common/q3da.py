@@ -1,11 +1,35 @@
 # -*- coding: utf-8 -*-
 """
-Routine to plot the continuum and emission lines fits to a spectrum, doesn't
-return anything.
+Routine to plot the continuum and emission lines fits to a spectrum.
+
+As input, it requires a dictionary of initialization parameters and the output 
+dictionary, struct.npy, from Q3DF. The tags for the initialization structure
+can be found in INITTAGS.txt.
+----------
+Returns: Nothing
+----------
+Parameters
+----------
+initproc: in, required, type=string
+    Name of procedure to initialize the fit.
+cols: in, optional, type=intarr, default=all
+    Columns to fit, in 1-offset format. Either a scalar or a
+    two-element vector listing the first and last columns to fit.
+rows: in, optional, type=intarr, default=all
+    Rows to fit, in 1-offset format. Either a scalar or a
+    two-element vector listing the first and last rows to fit.
+noplots: in, optional, type=byte
+    Disable plotting.
+oned: in, optional, type=byte
+    Data is assumed to be in a 2d array  choose this switch to
+    input data as a 1d array.
+verbose: in, optional, type=byte
+    Print error and progress messages. Propagates to most/all subroutines.
 
 Created: 7/9/2020
 
 @author: hadley
+
 """
 import numpy as np
 import math
@@ -13,9 +37,14 @@ import pdb
 import importlib
 from q3dfit.common.linelist import linelist
 from q3dfit.common.readcube import CUBE
+from q3dfit.common.sepfitpars import sepfitpars
+from q3dfit.common.cmpweq import cmpweq
+from q3dfit.common import qsohostfcn
 from scipy.special import legendre
 from scipy import interpolate
 from ppxf.ppxf_util import log_rebin
+import os
+from astropy.io import fits
 
 
 def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
@@ -24,12 +53,12 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
     fwhmtosig = 2.0 * math.sqrt(2.0 * np.log(2.0))
     
     if verbose != None:
-        quiet = 0
-    else: quiet = 1
+        quiet = False
+    else: quiet = True
     
     if oned != None:
-        oned = 1
-    else: oned = 0
+        oned = True
+    else: oned = False
     
     #reads initdat from initialization file ie pg1411 (initproc is a string)
     module = importlib.import_module('q3dfit.init.' + initproc)                 
@@ -100,14 +129,12 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
     if 'vormap' in initdat:
         vormap = initdat['vormap']
         nvorcols = max(vormap)
-        #making vorcoords an np array for this one
         vorcoords  = np.zeros(nvorcols, 2)
-        for i in range (1, nvorcols + 1):
-            ivor = np.where(vormap == i)
-            xyvor = array_indices(vormap, ivor[0])
-            #ctivor = len(xyvor)
-            vorcoords[i - 1, 0] = xyvor[0]
-            vorcoords[i - 1, 1] = xyvor[1] #check what dimensions vorcoords etc. are
+        for i in range (0, nvorcols):
+            xyvor = np.where(vormap == i).nonzero()
+            #ctivor = len(ivor)
+            #xyvor = array_indices(vormap, ivor[0])
+            vorcoords[:, i] = xyvor #TODO
 
 
 #INITIALIZE OUTPUT FILES, need to write helper functions (printlinpar, 
@@ -193,9 +220,9 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
             rows[h] = int(rows[h])        
         
         for j in range (rows[0] - 1, rows[1]):            
-            novortile = 0 #bytes thing again
+            novortile = False
             
-            if oned != None: #i think?
+            if oned: #i think?
                 flux = np.array(cube.dat)[:, i]
                 err = []
                 for a in cube.var[:, i]:
@@ -213,48 +240,47 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                         iuse = vorcoords[initdat['vormap'][i][j] - 1, 0]
                         juse = vorcoords[initdat['vormap'][i][j] - 1, 1]
                     else: 
-                        novortile = 1 #this byte thing again
+                        novortile = True
                 else:
                     iuse = i
                     juse = j
-                
-                if novortile == 1:#?? or 0? Or none?
+                if ~novortile:
                     flux = np.array(cube.dat)[juse, iuse, :].flatten()
-                    err = np.array(math.sqrt(abs(cube.var[juse, iuse, :]))).flatten()
+                    err = np.array(np.sqrt(abs(cube.var[juse, iuse, :]))).flatten()
                     dq = np.array(cube.dq)[juse, iuse, :].flatten()
                     labin = str(juse + 1) + '_' + str(iuse + 1) #swapped here too
                     labout = str(j + 1) + '_' + str(i + 1)
             
-            #Line 344
-            if novortile == 1: #??
-                infile = str(initdat['outdir']) + str(initdat['label']) \
-                    + '_' + labin + '.xdr'
+            #Restore fit after a couple of sanity checks
+            #these sanity checks are wearing down my sanity
+            if ~novortile:
+                infile = initdat['outdir'] + initdat['label'] + '_' + labin + '.xdr'
                 outfile = initdat['outdir'] + initdat['label'] + '_' + labout
-                nodata = np.where(flux != 0.0) #maybe not 0.0?
-                ct = len(nodata)
-                #check if infile exists:
-                filepresent = True
+                nodata = flux.nonzero()
+                ct = len(nodata[0])
                 try:
-                   fo = open(infile, "r") #extension?
-                   #process after opening file
-                   pass
-                   fo.close()
-                except IOError:
-                   print ("File doesn't exist")
-                   filepresent = False
-                   ct = 0
-            
+                    filepresent = os.path.isfile(infile) #check file 
+                except:
+                    print(infile + 'does not exist')
+            else:
+                filepresent = False
+                ct = 0
+                
             nofit = False
-            
-            if filepresent == False or ct < 0:
+            if ~filepresent or ct < 0:
                 nofit = True
-                badmessage = 'No data for ' + str(i + 1) + ', ' + \
-                    str(j + 1) + '.'
+                badmessage = 'No data for ' + str(i + 1) + ', ' + str(j + 1) + '.'
                 print(badmessage)
+            else:
+                #TODO xdr file
+                infile = fits.open(initdat['infile'])
             
-            
+
+            #can't find struct
             struct = np.load("struct.npy", allow_pickle='TRUE').item()
-            struct['noemlinfit'] = err[struct['fitran_indx']] #necessary?
+            
+            #Restore original error.
+            struct['spec_err'] = err[struct['fitran_indx']]
             
             if not 'noemlinfit' in struct:
                 #get line fit params
@@ -263,15 +289,18 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                                       struct['parinfo'], tflux = tflux, \
                                       doublets = emldoublets)
                 lineweqs = cmpweq(struct, linelist, doublets = emldoublets)
+
 #plot emission line data, print data to a file
             if noplots == None:
+                
                 #plot emission lines
-                if not 'noemlinfit' in struct:
+                if not 'noemlinfit' in struct:  #"if ~ struct.noemlinfit"
                     if not 'nolines' in linepars:                        
                         if 'fcnpltlin' in initdat:
                             fcnpltlin = initdat['fcnpltlin']
                         else: fcnpltlin = 'ifsf_pltlin'
                         if 'argspltlin1' in initdat:
+                            #call function from a string
                             module = importlib.import_module('q3dfit.common.' + fcnpltlin)                 
                             pltlinfcn = getattr(module, initproc)    
                             pltlinfcn(struct, initdat['argspltlin1'], \
@@ -281,15 +310,18 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                             pltlinfcn = getattr(module, initproc)    
                             pltlinfcn(struct, initdat['argspltlin2'], \
                                    outfile + '_lin2')
-            #printfirpar
+            
+            #Possibly add later: print fit parameters to a text file
             
             if not 'noemlinfit' in struct:
+                #get correct number of components in this spaxel
                 thisncomp = 0
                 thisncompline = ''
                 
                 for line in lines_with_doublets:
                     sigtmp = linepars['sigma'][:, line]
                     fluxtmp = linepars['flux'][:, line]
+                    #TODO
                     igd = np.where(sigtmp[i] != False and sigtmp[i] != bad and \
                             fluxtmp != False and fluxtmp != bad)
                     ctgd = len(igd)
@@ -298,6 +330,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                         thisncomp = ctgd
                         thisncompline = line
                     
+                    #assign total fluxes
                     if ctgd > 0:
                         emlweq['ftot', line, j, i] = lineweqs['tot'][line]
                         emlflx['ftot', line, j, i] = tflux['tflux'][line]
@@ -311,7 +344,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                                    + ',' + str(j + 1) + '] but ' + \
                                   'only 1 component. Setting to 2 components \
                                    and ' + 'flipping anyway.')
-                            isort = [1, 0]
+                            isort = [0, 1] #flipped
                 elif thisncomp > 2:
                     #sort components
                     igd = np.arange(thisncomp)
@@ -352,59 +385,59 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                             emlflxerr['f' + cstr + 'pk'][line][i, j] \
                                 = linepars['fluxpkerr'].cell(line, sindex)
                             kcomp+=1 
-                    #print line fluxes to text file
+                    #Possibly do later, print line fluxes to text file
                     #printlinpar, ~line 474
                     
 #Process and plot continuum data
-              #make and populate output data cubes          
+            #make and populate output data cubes          
             if firstcontproc != 0: #i think
                 hostcube = \
-                   {'dat': np.zeros(cube.nrows, cube.ncols, cube.nz), \
-                    'err': np.zeros(cube.nrows, cube.ncols, cube.nz), \
-                    'dq':  np.zeros(cube.nrows, cube.ncols, cube.nz), \
-                    'norm_div': np.zeros(cube.nrows, cube.ncols, cube.nz), \
-                    'norm_sub': np.zeros(cube.nrows, cube.ncols, cube.nz)}
+                   {'dat': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
+                    'err': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
+                    'dq':  np.zeros((cube.nrows, cube.ncols, cube.nw)), \
+                    'norm_div': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
+                    'norm_sub': np.zeros((cube.nrows, cube.ncols, cube.nw))}
               
                 if 'decompose_ppxf_fit' in initdat:
                     contcube = \
                         {'wave': struct['wave'], \
-                         'all_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
-                         'stel_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
-                         'poly_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
-                         'stel_mod_tot': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'poly_mod_tot': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'poly_mod_tot_pct': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_sigma': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_sigma_err': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_z': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_z_err': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_rchisq': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_ebv': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_ebv_err': np.zeros(cube.nrows, cube.ncols) + bad}
+                         'all_mod': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
+                         'stel_mod': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
+                         'poly_mod': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
+                         'stel_mod_tot': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'poly_mod_tot': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'poly_mod_tot_pct': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_sigma': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_sigma_err': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_z': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_z_err': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_rchisq': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_ebv': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_ebv_err': np.zeros((cube.nrows, cube.ncols)) + bad}
               
                 elif 'decompose_qso_fit' in initdat:
                     contcube = \
                         {'wave': struct['wave'], \
-                         'qso_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
-                         'qso_poly_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
-                         'host_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
-                         'poly_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
-                         'npts': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_sigma': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_sigma_err': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_z': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_z_err': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_rchisq': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_ebv': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_ebv_err': np.zeros(cube.nrows, cube.ncols) + bad}
+                         'qso_mod': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
+                         'qso_poly_mod': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
+                         'host_mod': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
+                         'poly_mod': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
+                         'npts': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_sigma': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_sigma_err': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_z': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_z_err': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_rchisq': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_ebv': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_ebv_err': np.zeros((cube.nrows, cube.ncols)) + bad}
                 else:
                     contcube = \
-                        {'all_mod': np.zeros(cube.nrows, cube.ncols, cube.nz), \
-                         'stel_z': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_z_err': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_rchisq': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_ebv': np.zeros(cube.nrows, cube.ncols) + bad, \
-                         'stel_ebv_err': np.zeros(cube.nrows, cube.ncols) + bad}
+                        {'all_mod': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
+                         'stel_z': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_z_err': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_rchisq': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_ebv': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_ebv_err': np.zeros((cube.nrows, cube.ncols)) + bad}
                 firstcontproc = 0
               
             hostcube['dat'][j, i, struct['fitran_indx']] = struct['cont_dat']
@@ -480,12 +513,13 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                     #These lines mirror ones in IFSF_FITQSOHOST
                     struct_tmp = struct
 
-                    # Get and renormalize template (check to see what name file is saved under - a variable?)
-                    qsotemplate = np.load("pg1411nucleartemplate.npy", allow_pickle='TRUE').item()                    
+                    # Get and renormalize template
+                    qsotemplate = np.load(initdat['argscontfit']['qsoxdr'], allow_pickle='TRUE').item()                    
                     qsowave = qsotemplate['wave']
                     qsoflux_full = qsotemplate['flux']
-                    iqsoflux = np.where(qsowave > struct_tmp['fitran'][0]*0.99999 and \
-                                   qsowave < struct_tmp['fitran'][1]*1.00001)
+                    #non zero could be uncessesary
+                    iqsoflux = np.flatnonzero(np.where((qsowave > struct_tmp['fitran'][0]*0.99999) & \
+                                   (qsowave < struct_tmp['fitran'][1]*1.00001)))
                     #line 611      
                     qsoflux = qsoflux_full[iqsoflux]
                     qsoflux /= np.median(qsoflux)
@@ -493,6 +527,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                     #If polynomial residual is re-fit with PPXF, separate out best-fit
                     #parameter structure created in IFSF_FITQSOHOST and compute polynomial
                     #and stellar components
+                    #TODO who is ct coeff help
                     if 'refit' in initdat['argscontfit']:
                         par_qsohost = struct['ct_coeff']['qso_host']
                         par_stel = struct['ct_coeff']['stel']
@@ -510,7 +545,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                             interpfunct = interpolate.interp1d(polymod_log, wave_log, kind='linear')
                             polymod_refit = interpfunct(np.log(struct['wave']))
                         else:
-                            polymod_refit = np.zeros(struct['wave'], dtype = float)
+                            polymod_refit = np.zeros(len(struct['wave']), dtype = float)
                         contcube['stel_sigma'][j, i] = struct['ct_coeff']['ppxf_sigma']
                         contcube['stel_z'][j, i] = struct['zstar']
                         
@@ -561,8 +596,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                                          hostord = hostord)
             elif initdat['fcncontfit'] == 'ppxf' and 'qsotempfile' in initdat:
                 struct_star = struct
-                #???
-                qsotempfile = np.load("qsotempfile.npy", allow_pickle='TRUE').item()                    
+                qsotempfile = np.load(initdat['qsotempfile'], allow_pickle='TRUE').item()                    
                 struct_qso = struct
                 struct = struct_star
                 qsomod = struct_qso['cont_fit'] * struct['ct_coeff'][len(struct['ct_coeff']) - 1]
@@ -605,6 +639,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                             coeffgd /= totcoeffgd
                             #re-normalize to % of total flux
                             coeffgd *= (1.0 - poly_tmp_pct)
+                            #TODO: xdr file
                             starttempfile = np.load(initdat['starttempfile'] + ".npy", allow_pickle='TRUE').item()                    
                             agesgd = starttempfile['ages'][inz] #check
                             #sum coefficients over age ranges

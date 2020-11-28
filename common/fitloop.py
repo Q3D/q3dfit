@@ -214,7 +214,10 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
                                  linelistz,ncomp,initdat,quiet=quiet,\
                                  siglim_gas=siglim_gas,siginit_gas=siginit_gas,\
                                  tweakcntfit=tweakcntfit,col=i+1,row=j+1)
-        
+            
+            #save structinit as struct.npy to be used by q3da later
+            np.save("struct", structinit)
+            
             if not quiet:
                 print('FIT STATUS: '+structinit['fitstatus'])
 

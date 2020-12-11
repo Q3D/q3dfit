@@ -67,16 +67,20 @@ def pg1411():
     platescale = 0.3
     fitrange = [4620,7450]
 
-#    volume = '/mnt/c/Users/Carlos Anicetti/Documents/hopkins/year1/ifsfit/development/q3dfit-branches/multiprocess-dev/PG1411'
-    volume = '/Volumes/fingolfin/ifs/gmos/cubes/pg1411/' 
-   
+#   These are unique to the user
+    volume = '/Volumes/fingolfin/'
+    infile = volume+'ifs/gmos/cubes/'+gal+'/'+gal+outstr+'.fits'
+    mapdir = volume+'ifs/gmos/cubes/'+gal+'/'+outstr+'/' 
+    outdir = volume+'specfits/gmos/'+gal+'/'+outstr+'/'
+    qsotemplate = volume+'ifs/gmos/cubes/'+gal+'/'+gal+'qsotemplate.npy'
+    stellartemplates = \
+        volume+'specfits/gmos/'+gal+'/host/'+gal+'hosttemplate.npy'
+    logfile = outdir+gal+'_fitlog.txt'
+    batchfile = '/Users/drupke/Dropbox/git/q3dfit/common/fitloop.pro'
+    batchdir = '/Users/drupke/src/idl/batch/'
 #
 # Required pars
 #
-
-# Input file
-    infile=volume+'/pg1411'+outstr+'.fits'
-    
 
     if not os.path.isfile(infile): print('Data cube not found.')
 
@@ -168,8 +172,8 @@ def pg1411():
             'maxncomp': maxncomp,
             'name': 'PG1411+442',
             'ncomp': ncomp,
-            'mapdir': volume+'/mapdir/'+gal+'/'+outstr+'/',
-            'outdir': volume+'/'+gal+'/'+outstr+'/',
+            'mapdir': mapdir,
+            'outdir': outdir,
             'platescale': platescale,
             'positionangle': 335,
             'minoraxispa': 75,
@@ -182,25 +186,24 @@ def pg1411():
                                          '[SII]6716','[SII]6731']},
             'argscontfit': {'blrpar': [0,7150,5000/299792*7150,
                                        0,5300,5000/299792*5300],
-                            'qsoxdr': volume+'/pg1411qsotemplate.npy',
+                            'qsoxdr': qsotemplate,
                           'siginit_stars': 50,
                           'uselog': 1,
                           'refit': 1},
             'argslinelist': {'vacuum': False},
-            'startempfile': volume+'/hosttemplate.xdr',
+            'startempfile': stellartemplates,
             'argspltlin1': argspltlin1,
 #            'donad': 1,
-            'decompose_qso_fit': 1,
+#            'decompose_qso_fit': 1,
 #            'remove_scattered': 1,
             'fcncheckcomp': 'checkcomp',
             'fcncontfit': 'fitqsohost',
             'maskwidths_def': 500,
             'tweakcntfit': tweakcntfit,
             'emlsigcut': 2,
-            'logfile': volume+'/'+
-                       gal+'_fitlog.txt',
-            'batchfile': '/Users/drupke/Dropbox/git/q3dfit/common/fitloop.pro',
-            'batchdir': '/Users/drupke/src/idl/batch/',
+            'logfile': logfile,
+            'batchfile': batchfile,
+            'batchdir': batchdir,
             'siglim_gas': siglim_gas,
             'siginit_gas': siginit_gas,
             'siginit_stars': 50,

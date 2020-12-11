@@ -67,24 +67,24 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
    
     #if 'donad' in initdat: do later       
 
-    if not ('noemlinfit' in initdat):
+    if not 'noemlinfit' in initdat:
         #get linelist
         if 'argslinelist' in initdat:
             listlines = linelist(initdat['lines'], **initdat['argslinelist'])
-        else: listlines = linelist(initdat['lines'])
+        else:
+            listlines = linelist(initdat['lines'])
         nlines = len(listlines)
         
         #linelist with doublets to combine
-        emldoublets = [['[SII]6716','[SII]6731'], \
-                       ['[OII]3726','[OII]3729'], \
-                       ['[NI]5198','[NI]5200'], \
-                       ['[NeIII]3869','[NeIII]3967'], \
-                       ['[NeV]3345','[NeV]3426'], \
-                       ['MgII2796','MgII2803']]
+        #needs to have shape Ndoublets x 2, even if Ndoublets=1
+        emldoublets = np.array([['[SII]6716','[SII]6731'], \
+                                ['[OII]3726','[OII]3729'], \
+                                ['[NI]5198','[NI]5200'], \
+                                ['[NeIII]3869','[NeIII]3967'], \
+                                ['[NeV]3345','[NeV]3426'], \
+                                ['MgII2796','MgII2803']])
         
-        if len(emldoublets) == 1:
-            ndoublets = 1
-        else: ndoublets = len(emldoublets)
+        ndoublets = emldoublets.shape[0]
         
         lines_with_doublets = initdat['lines']
         
@@ -97,9 +97,10 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                 lines_with_doublets = [lines_with_doublets] + [dkey]
         
         if 'argslinelist' in initdat:
-            linelist_with_doublets = linelist(lines_with_doublets, \
-                                               **initdat['argslinelist'])
-        else: linelist_with_doublets = linelist(lines_with_doublets)
+            listlines_with_doublets = linelist(lines_with_doublets, \
+                                              **initdat['argslinelist'])
+        else:
+            listlines_with_doublets = linelist(lines_with_doublets)
     
     if 'fcnpltcont' in initdat:
         fcnpltcont = initdat['fcnpltcont']
@@ -200,35 +201,39 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
  
 #LOOP THROUGH SPAXELS
     #switch to track when first NaD normalization done
-    firstnadnorm = 1
+    firstnadnorm = True
     #switch to track when first continuum processed
-    firstcontproc = 1
+    firstcontproc = True
     
-    if cols != None:
-        cols = [1, cube.ncols]
-    elif len(cols) == 1: cols = [cols, cols]
-    np.array(cols).astype("int")
-   
+    if cols is None:
+        cols = np.array([1, cube.ncols],dtype=int)
+    elif not isinstance(cols, (list, np.ndarray)):
+        cols = np.array([cols, cols],dtype=int)
+    else:
+        cols = np.array(cols,dtype=int)
+        
     for i in range (cols[0] - 1, cols[1]):
         if verbose != None:
-            print('Column ' + (i + 1) + ' of ' + cube.ncols) 
+            print('Column '+(i+1)+' of '+ cube.ncols) 
         
-        if rows != None: rows = [1, cube.nrows]
-        elif len(rows) == 1: rows = [rows, rows]
-        #fix(rows)
-        for h in range(0, len(rows)):
-            rows[h] = int(rows[h])        
+        if rows is None: 
+            rows = np.array([1, cube.nrows],dtype=int)
+        elif not isinstance(rows, (list, np.ndarray)):
+            rows = np.array([rows, rows],dtype=int)
+        else:
+            rows = np.array(rows,dtype=int)
         
-        for j in range (rows[0] - 1, rows[1]):            
-            novortile = False
-            
+        for j in range (rows[0]-1, rows[1]):            
+
+            novortile = False # set this to true if we're using Voronoi binning
+                              # and the tiling is missing            
             if oned: #i think?
                 flux = np.array(cube.dat)[:, i]
                 err = []
                 for a in cube.var[:, i]:
                     err.append(np.sqrt(abs(a)))
                 dq = cube.dq[:, i]
-                labin = str(i + 1).zfill(4)
+                labin = str(i+1).zfill(4)
                 labout = labin
             else:
                 if verbose != None:
@@ -244,57 +249,50 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                 else:
                     iuse = i
                     juse = j
-                if ~novortile:
+                if not novortile:
                     flux = np.array(cube.dat)[juse, iuse, :].flatten()
                     err = np.array(np.sqrt(abs(cube.var[juse, iuse, :]))).flatten()
                     dq = np.array(cube.dq)[juse, iuse, :].flatten()
-                    labin = str(juse + 1) + '_' + str(iuse + 1) #swapped here too
-                    labout = str(j + 1) + '_' + str(i + 1)
+                    labin = str(iuse+1).zfill(4)+'_'+str(juse+1).zfill(4)
+                    labout = str(i+1).zfill(4)+'_'+str(j+1).zfill(4)
             
             #Restore fit after a couple of sanity checks
             #these sanity checks are wearing down my sanity
-            if ~novortile:
-                infile = initdat['outdir'] + initdat['label'] + '_' + labin + '.xdr'
+            if not novortile:
+                infile = initdat['outdir'] + initdat['label'] + '_' + labin + '.npy'
                 outfile = initdat['outdir'] + initdat['label'] + '_' + labout
                 nodata = flux.nonzero()
                 ct = len(nodata[0])
-                try:
-                    filepresent = os.path.isfile(infile) #check file 
-                except:
-                    print(infile + 'does not exist')
+                filepresent = os.path.isfile(infile) #check file 
             else:
+                # missing Voronoi bin for this spaxel
                 filepresent = False
                 ct = 0
                 
-            nofit = False
-            if ~filepresent or ct < 0:
-                nofit = True
-                badmessage = 'No data for ' + str(i + 1) + ', ' + str(j + 1) + '.'
+            if not filepresent or ct == 0:
+                badmessage = 'No data for '+str(i+1)+', '+str(j+1)+ '.'
                 print(badmessage)
             else:
-                #TODO xdr file
-                infile = fits.open(initdat['infile'])
-            
+                struct = (np.load(infile, allow_pickle='TRUE')).item()
 
-            #can't find struct
-            struct = np.load("struct.npy", allow_pickle='TRUE').item()
-            
             #Restore original error.
             struct['spec_err'] = err[struct['fitran_indx']]
             
-            if not 'noemlinfit' in struct:
+            if struct['noemlinfit'] == b'0':
                 #get line fit params
-                tflux = True #or false?
-                linepars = sepfitpars(linelist, struct['param,struct']['perror'], \
-                                      struct['parinfo'], tflux = tflux, \
+                tflux = dict()
+                linepars = sepfitpars(listlines, struct['param'],\
+                                      struct['perror'], \
+                                      struct['parinfo'], \
+                                      tflux = tflux, \
                                       doublets = emldoublets)
-                lineweqs = cmpweq(struct, linelist, doublets = emldoublets)
+#                lineweqs = cmpweq(struct, listlines, doublets = emldoublets)
 
 #plot emission line data, print data to a file
             if noplots == None:
                 
                 #plot emission lines
-                if not 'noemlinfit' in struct:  #"if ~ struct.noemlinfit"
+                if struct['noemlinfit'] == b'0':
                     if not 'nolines' in linepars:                        
                         if 'fcnpltlin' in initdat:
                             fcnpltlin = initdat['fcnpltlin']
@@ -313,17 +311,17 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
             
             #Possibly add later: print fit parameters to a text file
             
-            if not 'noemlinfit' in struct:
+            if struct['noemlinfit'] == b'0':
                 #get correct number of components in this spaxel
                 thisncomp = 0
                 thisncompline = ''
                 
                 for line in lines_with_doublets:
-                    sigtmp = linepars['sigma'][:, line]
-                    fluxtmp = linepars['flux'][:, line]
+                    sigtmp = linepars['sigma'][line] # will this get all components?
+                    fluxtmp = linepars['flux'][line]
                     #TODO
-                    igd = np.where(sigtmp[i] != False and sigtmp[i] != bad and \
-                            fluxtmp != False and fluxtmp != bad)
+                    igd = np.where(sigtmp != 0 and sigtmp != bad and \
+                                   fluxtmp != 0 and fluxtmp != bad)
                     ctgd = len(igd)
                     
                     if ctgd > thisncomp:
@@ -332,9 +330,10 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                     
                     #assign total fluxes
                     if ctgd > 0:
-                        emlweq['ftot', line, j, i] = lineweqs['tot'][line]
-                        emlflx['ftot', line, j, i] = tflux['tflux'][line]
-                        emlflxerr['ftot', line, i, j] = tflux['tfluxerr'][line]
+#                        emlweq['ftot', line, j, i] = lineweqs['tot'][line]
+                        pdb.set_trace()
+                        emlflx['ftot'][line][j, i] = tflux['tflux'][line]
+                        emlflxerr['ftot'][line][i, j] = tflux['tfluxerr'][line]
                 
                 if thisncomp == 1:
                     isort = 0
@@ -390,7 +389,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                     
 #Process and plot continuum data
             #make and populate output data cubes          
-            if firstcontproc != 0: #i think
+            if firstcontproc == True: #i think
                 hostcube = \
                    {'dat': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
                     'err': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
@@ -408,12 +407,12 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                          'poly_mod_tot': np.zeros((cube.nrows, cube.ncols)) + bad, \
                          'poly_mod_tot_pct': np.zeros((cube.nrows, cube.ncols)) + bad, \
                          'stel_sigma': np.zeros((cube.nrows, cube.ncols)) + bad, \
-                         'stel_sigma_err': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_sigma_err': np.zeros((cube.nrows, cube.ncols,2)) + bad, \
                          'stel_z': np.zeros((cube.nrows, cube.ncols)) + bad, \
-                         'stel_z_err': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_z_err': np.zeros((cube.nrows, cube.ncols,2)) + bad, \
                          'stel_rchisq': np.zeros((cube.nrows, cube.ncols)) + bad, \
                          'stel_ebv': np.zeros((cube.nrows, cube.ncols)) + bad, \
-                         'stel_ebv_err': np.zeros((cube.nrows, cube.ncols)) + bad}
+                         'stel_ebv_err': np.zeros((cube.nrows, cube.ncols,2)) + bad}
               
                 elif 'decompose_qso_fit' in initdat:
                     contcube = \
@@ -424,21 +423,21 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                          'poly_mod': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
                          'npts': np.zeros((cube.nrows, cube.ncols)) + bad, \
                          'stel_sigma': np.zeros((cube.nrows, cube.ncols)) + bad, \
-                         'stel_sigma_err': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_sigma_err': np.zeros((cube.nrows, cube.ncols,2)) + bad, \
                          'stel_z': np.zeros((cube.nrows, cube.ncols)) + bad, \
-                         'stel_z_err': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_z_err': np.zeros((cube.nrows, cube.ncols,2)) + bad, \
                          'stel_rchisq': np.zeros((cube.nrows, cube.ncols)) + bad, \
                          'stel_ebv': np.zeros((cube.nrows, cube.ncols)) + bad, \
-                         'stel_ebv_err': np.zeros((cube.nrows, cube.ncols)) + bad}
+                         'stel_ebv_err': np.zeros((cube.nrows, cube.ncols,2)) + bad}
                 else:
                     contcube = \
                         {'all_mod': np.zeros((cube.nrows, cube.ncols, cube.nw)), \
                          'stel_z': np.zeros((cube.nrows, cube.ncols)) + bad, \
-                         'stel_z_err': np.zeros((cube.nrows, cube.ncols)) + bad, \
+                         'stel_z_err': np.zeros((cube.nrows, cube.ncols,2)) + bad, \
                          'stel_rchisq': np.zeros((cube.nrows, cube.ncols)) + bad, \
                          'stel_ebv': np.zeros((cube.nrows, cube.ncols)) + bad, \
-                         'stel_ebv_err': np.zeros((cube.nrows, cube.ncols)) + bad}
-                firstcontproc = 0
+                         'stel_ebv_err': np.zeros((cube.nrows, cube.ncols,2)) + bad}
+                firstcontproc = False
               
             hostcube['dat'][j, i, struct['fitran_indx']] = struct['cont_dat']
             hostcube['err'][j, i, struct['fitran_indx']] = err[struct['fitran_indx']]
@@ -741,7 +740,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
             #Plot continuum
             #Make sure fit doesn't indicate no continuum; avoids
             #plot range error in continuum fitting routine, as well as a blank
-            #plot!    
+            #plot!
             if noplots != None and sum(struct['cont_fit']) != 0.0:
                 if 'decompose_qso_fit' in initdat:
                     if 'argspltcont' in initdat:
@@ -785,6 +784,7 @@ def q3da(initproc, cols = None, rows = None, noplots = None, oned = None, \
                         pltcontfcn(struct, outfile + '_cnt', \
                                    fitran = initdat['fitran'], **initdat['argspltcont'])
                     else:
+                        pdb.set_trace()
                         module = importlib.import_module('q3dfit.common.' + fcnpltcont)                 
                         pltcontfcn = getattr(module, fcnpltcont)    
                         pltcontfcn(struct, outfile + '_cnt', \

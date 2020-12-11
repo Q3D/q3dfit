@@ -82,12 +82,14 @@
 #-
 import numpy as np
 import math
+import pdb
 from astropy.table import Table
 from scipy import constants
 from q3dfit.common.gaussflux import gaussflux
 
 
-def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = None, doublets = None):
+def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = None, 
+               doublets = None):
 
     # DW: param, perror and parinfo are lists of dictionaries which are not easy to handle
     # I therefore re-structure them into a single dictionary each
@@ -124,7 +126,7 @@ def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = None, d
         wave          = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
         waveerr       = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
     
-        if tflux:
+        if not (tflux is None):
             tf =  Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
             tfe = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
       
@@ -349,7 +351,7 @@ def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = None, d
             igd = np.where(flux[line] > 0.)
             ctgd = np.count_nonzero(flux[line] > 0.)
             
-            if tflux:     
+            if not (tflux is None):     
                 if ctgd > 0:
                     tf[line] = np.sum(flux[line][igd])
                     tfe[line] = np.sqrt(np.sum(fluxerr[line][igd]**2.))                   
@@ -359,39 +361,36 @@ def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = None, d
                                           
                                           
 # Special doublet cases: combine fluxes from each line
-        if doublets:
-            sdoub = doublets.shape
-            if sdoub[0] == 0:
-                ndoublets = 1
-            else: ndoublets = sdoub[2]
+        if not (doublets is None):
+            ndoublets = doublets.shape[0]
             
-            
-            for i in np.arange(0,ndoublets):
-                if (np.count_nonzero(linelist['name'] == doublets[0,i]) == 1) and (np.count_nonzero(linelist['name'] == doublets[1,i]) == 1):
+            for i in np.arange(0,ndoublets):  
+                if (np.count_nonzero(linelist['name'] == doublets[i,0]) == 1) \
+                    and (np.count_nonzero(linelist['name'] == doublets[i,1]) == 1):
 # new line label
-                    dkey = doublets[0,i]+'+'+doublets[1,i]
+                    dkey = doublets[i,0]+'+'+doublets[i,1]
 # add fluxes
-                    tf[dkey] = tf[doublets[0,i]]+tf[doublets[1,i]]
-                    flux[dkey] = flux[doublets[0,i]]+flux[doublets[1,i]]
-                    fluxpk[dkey] = fluxpk[doublets[0,i]]+fluxpk[doublets[1,i]]
-                    fluxpk_obs[dkey] = fluxpk_obs[doublets[0,i]]+fluxpk_obs[doublets[1,i]]
+                    tf[dkey] = tf[doublets[i,0]]+tf[doublets[i,1]]
+                    flux[dkey] = flux[doublets[i,0]]+flux[doublets[i,1]]
+                    fluxpk[dkey] = fluxpk[doublets[i,0]]+fluxpk[doublets[i,1]]
+                    fluxpk_obs[dkey] = fluxpk_obs[doublets[i,0]]+fluxpk_obs[doublets[i,1]]
 # add flux errors in quadrature
-                    tfe[dkey] = np.sqrt(tfe[doublets[0,i]]**2. + tfe[doublets[1,i]]**2.)
-                    fluxerr[dkey] = np.sqrt(fluxerr[doublets[0,i]]**2. + fluxerr[doublets[1,i]]**2.)
-                    fluxpkerr[dkey] = np.sqrt(fluxpkerr[doublets[0,i]]**2. + fluxpkerr[doublets[1,i]]**2.)
-                    fluxpkerr_obs[dkey] = np.sqrt(fluxpkerr_obs[doublets[0,i]]**2. + fluxpkerr_obs[doublets[1,i]]**2.)
+                    tfe[dkey] = np.sqrt(tfe[doublets[i,0]]**2. + tfe[doublets[i,1]]**2.)
+                    fluxerr[dkey] = np.sqrt(fluxerr[doublets[i,0]]**2. + fluxerr[doublets[i,1]]**2.)
+                    fluxpkerr[dkey] = np.sqrt(fluxpkerr[doublets[i,0]]**2. + fluxpkerr[doublets[i,1]]**2.)
+                    fluxpkerr_obs[dkey] = np.sqrt(fluxpkerr_obs[doublets[i,0]]**2. + fluxpkerr_obs[doublets[i,1]]**2.)
 # average waves and sigmas and errors
-                    wave[dkey] = (wave[doublets[0,i]]+wave[doublets[1,i]])/2.
-                    waveerr[dkey] = (waveerr[doublets[0,i]]+waveerr[doublets[1,i]])/2.
-                    sigma[dkey] = (sigma[doublets[0,i]]+sigma[doublets[1,i]])/2.
-                    sigmaerr[dkey] = (sigmaerr[doublets[0,i]]+sigmaerr[doublets[1,i]])/2.
-                    sigma_obs[dkey] = (sigma_obs[doublets[0,i]]+sigma_obs[doublets[1,i]])/2.
-                    sigmaerr_obs[dkey] = (sigmaerr_obs[doublets[0,i]]+sigmaerr_obs[doublets[1,i]])/2.
+                    wave[dkey] = (wave[doublets[i,0]]+wave[doublets[i,1]])/2.
+                    waveerr[dkey] = (waveerr[doublets[i,0]]+waveerr[doublets[i,1]])/2.
+                    sigma[dkey] = (sigma[doublets[i,0]]+sigma[doublets[i,1]])/2.
+                    sigmaerr[dkey] = (sigmaerr[doublets[i,0]]+sigmaerr[doublets[i,1]])/2.
+                    sigma_obs[dkey] = (sigma_obs[doublets[i,0]]+sigma_obs[doublets[i,1]])/2.
+                    sigmaerr_obs[dkey] = (sigmaerr_obs[doublets[i,0]]+sigmaerr_obs[doublets[i,1]])/2.
         
         outstr = {'nolines':0,'flux':flux,'fluxerr':fluxerr,'fluxpk':fluxpk,'fluxpkerr':fluxpkerr,\
                   'wave':wave,'waveerr':waveerr,'sigma':sigma,'sigmaerr':sigmaerr,'sigma_obs':sigma_obs,\
                   'sigmaerr_obs':sigmaerr_obs, 'fluxpk_obs':fluxpk_obs,'fluxpkerr_obs':fluxpkerr_obs}
-        if tflux:
+        if not (tflux is None):
             tflux = {'tflux':tf,'tfluxerr':tfe}
         
         return outstr

@@ -8,13 +8,21 @@ Returns an array of Decimals (fluxes representing emission line profile)
 
 import numpy as np
 from astropy import modeling
+from astropy.table import Table
 import math
 import pdb
 from decimal import *
 
 
 def cmplin(instr, line, comp, velsig = None):
-    instr = np.load("dict.npy", allow_pickle='TRUE').item()
+
+    # From sepfitpars.py
+    parinfo_new={}
+    for k,v in [(key,d[key]) for d in instr['parinfo'] for key in d]:
+        if k not in parinfo_new: parinfo_new[k]=[v]
+        else: parinfo_new[k].append(v)
+    parinfo_new = Table(parinfo_new)
+    
 
     c = 299792.458
         
@@ -29,18 +37,12 @@ def cmplin(instr, line, comp, velsig = None):
     ncomp = instr['param'][1]
     specres = instr['param'][2]
 
-    if 'parinfo' in instr:                
-        indices = [None]
-        indices.pop(0)
-        for i in range (0, len(instr['parinfo']['line'])):
-            if instr['parinfo']['line'][i] == line and \
-                instr['parinfo']['comp'][i] == comp:
-                indices.append(i)
-    else:
-        nline = len(instr['linelabel'])
-        #not sure why it did where inelabel == line a Second time here? took it out
-        indices = instr['param'][0] + (comp - 1) * nline * 3 + iline * 3
-        indices = indices = indices[0] + np.arange(0, 3, dtype = float)
+    indices = [None]
+    indices.pop(0)
+    for i in range (0, len(parinfo_new['line'])):
+        if parinfo_new['line'][i] == line and \
+            parinfo_new['comp'][i] == comp:
+            indices.append(i)
 
     if indices[0] != -1:
         gausspar = []

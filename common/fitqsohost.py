@@ -261,7 +261,7 @@ def fit_cont_ppxf(wave,flux,z_stars,index,template):
     z = z_stars
     mask = ((wave > 3540) & (wave < 7450))
     flux_to_fit = flux[index.astype(int)]
-    galaxy = flux_to_fit/numpy.median(flux_to_fit)
+    galaxy = flux_to_fit/numpy.abs(numpy.median(flux_to_fit))
     lam_gal = wave[index.astype(int)]
     loglam_gal = numpy.log10(wave[index.astype(int)])
     noise = numpy.full_like(galaxy,numpy.std(galaxy))
@@ -315,7 +315,7 @@ def fit_cont_ppxf(wave,flux,z_stars,index,template):
 
     if template == 'PG1411':
         fwhm_tem = 1.35 #1A?
-        template_PG1411 = numpy.load('pg1411hosttemplate.npy',allow_pickle=True).item()
+        template_PG1411 = numpy.load('data/pg1411hosttemplate.npy',allow_pickle=True).item()
         lam_temp = template_PG1411['lambda']
         lamRange_temp = [numpy.min(lam_temp), numpy.max(lam_temp)]
         ssp_PG1411 = template_PG1411['flux']
@@ -324,7 +324,7 @@ def fit_cont_ppxf(wave,flux,z_stars,index,template):
         templates = sspNew_PG1411
 
     dv = c*numpy.log(lam_temp[0]/lam_gal[0])    # eq.(8) of Cappellari (2017)
-    goodpixels = util.determine_goodpixels(numpy.log(lam_gal), lamRange_temp, z=z+0.001)
+    goodpixels = util.determine_goodpixels(numpy.log(lam_gal), lamRange_temp, z=z)
 
     vel = c*numpy.log(1 + z)   # eq.(8) of Cappellari (2017)
     start = [vel, 200.]  # (km/s), starting guess for [V, sigma]
@@ -332,10 +332,13 @@ def fit_cont_ppxf(wave,flux,z_stars,index,template):
 
     pp = ppxf(templates, galaxy, noise, velscale, start,
             goodpixels=goodpixels, plot=True, moments=4,
-              degree=12, vsyst=dv, clean=False, lam=lam_gal)
+              degree=4, vsyst=dv, clean=False, lam=lam_gal)
 
 
     print("Formal errors:")
     print("     dV    dsigma   dh3      dh4")
     print("".join("%8.2g" % f for f in pp.error*numpy.sqrt(pp.chi2)))
     print('Elapsed time in PPXF: %.2f s' % (clock() - t))
+
+
+    return pp

@@ -156,12 +156,15 @@ import time
 from scipy import interpolate
 import scipy.io as sio
 from scipy.io import readsav
+from astropy.table import QTable, Table, Column
 from q3dfit.common.airtovac import airtovac
 from q3dfit.common.masklin import masklin
 from q3dfit.common import fitqsohost
+from q3dfit.common import linelist as ll
 from ppxf.ppxf_util import log_rebin
 import copy
 import pdb
+
 
 def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
             maskwidths=None,peakinit=None,quiet=None,siginit_gas=None,
@@ -211,7 +214,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     else:
         nomaskran=b'0'
         
-    if 'STARTEMPFILE' in initdat :
+    if 'startempfile' in initdat :
         istemp = b'1'
     else:
         istemp=b'0'
@@ -256,16 +259,18 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         noemlinmask = b'1'
     
     if bool(int(istemp)):
+        
     # Get stellar templates
-        startempfile = initdat['STARTEMPFILE']
+        startempfile = initdat['startempfile']
         if isinstance(startempfile,bytes):
+            
             startempfile = startempfile.decode('utf-8')
         
-        sav_data = readsav(startempfile)
-        template = sav_data['template']
+        sav_data = np.load(startempfile,allow_pickle=True).item()
+        template = sav_data
         # restore,initdat.startempfile
     # Redshift stellar templates
-        templatelambdaz = np.copy(template['lambda'][0])
+        templatelambdaz = np.copy(template['lambda'])
         if 'keepstarz' not in initdat :
             templatelambdaz *= 1. + zstar
         if vacuum == b'1' :
@@ -400,14 +405,18 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
 
         # Mask emission lines
         if noemlinfit != b'1':
-            pass # this is just a placeholder for now
-            if maskwidths == None:
-                if 'maskwidths' in initdat:
+#            if maskwidths == None:
+            if 'maskwidths' in initdat:
                     maskwidths = initdat['maskwidths']
-                else:
-                    maskwidths = initdat['lines']
-                    for line in initdat['lines']:
-                        pass
+            else:
+                lines_to_mask = initdat['lines']
+                halfwidth=Table([ll.linelist(lines_to_mask)['name']])
+                halfwidth['halfwidths']=maskwidths_def
+                ct_indx = masklin(wlambda/(1+initdat['zsys_gas']), ll.linelist(lines_to_mask), halfwidth, 1e4, nomaskran='')
+    
+#                    maskwidths = initdat['lines']
+#                    for line in initdat['lines']:
+#                        pass
                         #maskwidths[line] = np.zeros(initdat['maxncomp'])+maskwidths_def
             pass # this is just a placeholder for now
             #ct_indx  = masklin(gdlambda, linelistz, maskwidths, nomaskran=nomaskran)
@@ -417,7 +426,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
             ct_indx = np.arange(len(gdlambda))
             ct_indx_log = np.arange(len(gdlambda_log))
             
-        #ct_indx = np.intersect1d(ct_indx,gd_indx)
+        ct_indx = np.intersect1d(ct_indx,gd_indx)
         #ct_indx_log = np.intersect1d(ct_indx_log,gd_indx_log)
         
         ###############################
@@ -457,8 +466,8 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                 argscontfit_use = initdat['argscontfit']
                 if initdat['fcncontfit'] == 'fitqsohost' :
                     qsoxdr=initdat['argscontfit']["qsoxdr"]
-                    continuum = fitqsohost.fitqsohost(wlambda,flux,err,0,0,fitran_indx,qsoxdr=qsoxdr,qsoonly=1,qsoord=1,hostonly=1)
-                    continuum = continuum[fitran_indx]
+                    continuum = fitqsohost.fitqsohost(wlambda,flux,err,0,0,ct_indx,qsoxdr=qsoxdr,qsoonly=1,qsoord=1,hostonly=1)
+                    #continuum = continuum[fitran_indx]
                     pass # this is just a placeholder for now
                     # argscontfit_use = create_struct(argscontfit_use,'fitran',fitran)
                 if 'uselog' in initdat['argscontfit']:
@@ -488,9 +497,10 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         # # Option 2: PPXF
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        elif (istemp == b'1' and 'siginit_stars' in initdat):
+        if (istemp == b'1' and 'siginit_stars' in initdat):
             # Interpolate template to same grid as data
-            pass # this is just a placeholder for now
+            print('PPXF-fit')
+            # this is just a placeholder for now
             # temp_log = ifsf_interptemp(gdlambda_log,alog(templatelambdaz),$
             #                             template.flux)
     
@@ -517,7 +527,8 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
             #     sky=gdqsotemp_log       
             else:
                 sky=0.
-    
+
+            fitqsohost.fit_cont_ppxf(wlambda,flux-continuum,0.09,fitran_indx,'PG1411')
             # ppxf,temp_log,gdflux_log,gderr_log,velscale,$
             #       [0,initdat.siginit_stars],sol,$
             #       goodpixels=ct_indx_log,bestfit=continuum_log,moments=2,$
@@ -525,24 +536,24 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
             #       weights=ct_coeff,reddening=ebv_star,lambda=redlambda,sky=sky,$
             #       error=solerr
     
-            # Resample the best fit into linear space
-            continuum = []
-            # continuum = interpol(continuum_log,gdlambda_log,ALOG(gdlambda))
-    
-            # Adjust stellar redshift based on fit
-            sol=[]
-            zstar += sol[0]/c
-            ppxf_sigma=sol[1]
-    
-            # From PPXF docs:
-            # - These errors are meaningless unless Chi^2/DOF~1 (see parameter SOL below).
-            # However if one *assume* that the fit is good, a corrected estimate of the
-            # errors is: errorCorr = error*sqrt(chi^2/DOF) = error*sqrt(sol[6]).
-            ct_rchisq = sol[6]
-            solerr = []
-            solerr *= np.sqrt(sol[6])
-            zstar_err = np.sqrt(np.power(zstar_err,2.) + np.power((solerr[0]/c),2.))
-            ppxf_sigma_err=solerr[1]
+#            # Resample the best fit into linear space
+#            continuum = []
+#            # continuum = interpol(continuum_log,gdlambda_log,ALOG(gdlambda))
+#
+#            # Adjust stellar redshift based on fit
+#            sol=[]
+#            zstar += sol[0]/c
+#            ppxf_sigma=sol[1]
+#
+#            # From PPXF docs:
+#            # - These errors are meaningless unless Chi^2/DOF~1 (see parameter SOL below).
+#            # However if one *assume* that the fit is good, a corrected estimate of the
+#            # errors is: errorCorr = error*sqrt(chi^2/DOF) = error*sqrt(sol[6]).
+#            ct_rchisq = sol[6]
+#            solerr = []
+#            solerr *= np.sqrt(sol[6])
+#            zstar_err = np.sqrt(np.power(zstar_err,2.) + np.power((solerr[0]/c),2.))
+#            ppxf_sigma_err=solerr[1]
 
         else:
             add_poly_weights=0.
@@ -589,7 +600,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                 gderr_nocnt = gderr / continuum
                 method   = 'CONTINUUM DIVIDED'
             else:
-                gdflux_nocnt = gdflux - continuum
+                gdflux_nocnt = gdflux - continuum[fitran_indx]
                 gdweight_nocnt = gdweight
                 gderr_nocnt = gderr
                 method   = 'CONTINUUM SUBTRACTED'
@@ -710,7 +721,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         perror = np.multiply(perror,np.sqrt(rchisq))
         # perror =  np.sqrt(rchisq)
         # ... and from fit residual.
-        resid=gdflux-continuum-specfit
+        resid=gdflux-continuum[fitran_indx]-specfit
         perror_resid = perror
         sigrange = 20.
         for line in lines_arr:

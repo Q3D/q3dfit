@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 """
 This procedure contains the helper functions for the file q3df.py. Its purpose is
-to fit the continuum and emission lines of a spectrum. 
+to fit the continuum and emission lines of a spectrum.
 As input, it requires a structure of initialization parameters.
 The tags for this structure can be found in INITTAGS.txt.
 
 Returns
 -------
 IDL save file (.xdr)
- 
+
 Parameters
 ----------
 initproc: in, required, type=string
@@ -33,7 +33,7 @@ cols: in, optional, type=intarr, default=all
 
 History
     2020may21, DSNR, copied header from IFSF.pro
-    2020jun29, canicetti, refoactored into helper functions and renamed q3df_helperfunctons.py 
+    2020jun29, canicetti, refoactored into helper functions and renamed q3df_helperfunctons.py
 
 Created on Tue May 26 13:37:58 2020
 
@@ -47,10 +47,10 @@ __created__ = '2020 May 26'
 __last_modified__ = '2020 Jun 29'
 
 
-#   This functon reads in the dictionary from the master initialization file. 
+#   This functon reads in the dictionary from the master initialization file.
 #   The multi-step process is because initproc is a string variable. The
 #   initialization file must be in the init subdirectory of the Q3DFIT
-#   distribution for this to work. There may be a better way with an 
+#   distribution for this to work. There may be a better way with an
 #   arbitrary path.
 def __get_initdat(initproc):
 #   add folder "init" to python PATH variable, to avoid importing beyond top-level package
@@ -58,7 +58,7 @@ def __get_initdat(initproc):
     import importlib
     path.append("init")
     module = importlib.import_module("q3dfit.init." + initproc)
-    fcninitproc = getattr(module,initproc)    
+    fcninitproc = getattr(module,initproc)
     return fcninitproc()
 
 
@@ -95,7 +95,7 @@ def __get_CUBE(initdat, oned, quiet):
         cube = CUBE(infile=initdat['infile'],datext=datext,dqext=dqext,\
                     oned=oned,quiet=quiet,varext=varext,vormap=vormap)
     return cube, vormap
-        
+
 
 # construct voronoi map
 def __get_voronoi(cols, rows, vormap):
@@ -140,9 +140,9 @@ def __get_spaxels(cube, cols=None, rows=None):
     #rowarr = rowarr.flatten()
     nspax = ncols * nrows
     return nspax, colarr, rowarr
-    
 
-# handle the FITLOOP execution. 
+
+# handle the FITLOOP execution.
 # In its own function due to commonality between single- and multi-threaded execution
 def execute_fitloop( nspax, colarr, rowarr, cube, initdat, linelist, oned, onefit,\
         quiet):
@@ -153,7 +153,7 @@ def execute_fitloop( nspax, colarr, rowarr, cube, initdat, linelist, oned, onefi
         logloop = []
         for i in range(nspax): logloop.append(initdat["logfile"])
     for ispax in range(0, nspax):
-        if ispax == 0 and dolog: 
+        if ispax == 0 and dolog:
             from os import remove
             # delete log file, if it exists
             try: remove(initdat["logfile"])
@@ -207,7 +207,9 @@ def q3df_multiCore( rank, initproc, cols=None, rows=None, oned=False, onefit=Fal
     nspax_thisCore = stop-start
     # execute FITLOOP
     execute_fitloop(nspax_thisCore, colarr, rowarr, cube, initdat, linelist, oned, onefit, quiet)
-    if rank == 0: print('Q3DF: Total time for calculation: '+ str(time.time()-starttime) + ' s.')
+    if rank == 0:
+        print('Q3DF: Total time for calculation: ' +
+              str(time.time()-starttime) + ' s.')
 
 
 # if called externally, default to MPI behavior
@@ -218,10 +220,12 @@ if __name__ == "__main__":
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
     rank = comm.Get_rank()
-    # helper function: convert a string representing a list of integers 
+    # helper function: convert a string representing a list of integers
     # of form [1, 2, 3...] or [1,2,3...] to an actual list of integers
+
     def string_to_intArray(strArray):
-        if strArray.startswith("N"): return None
+        if strArray.startswith("N"):
+            return None
         # strip leading and trailing brackets
         strArray = strArray[1:-1]
         # form an list by splitting on commas
@@ -236,11 +240,16 @@ if __name__ == "__main__":
     initproc = argv[1]
     cols = string_to_intArray(argv[2])
     rows = string_to_intArray(argv[3])
-    if argv[4].startswith("T"): oned=True
-    else: oned=False
-    if argv[5].startswith("T"): onefit=True
-    else: onefit=False
-    if argv[6].startswith("T"): quiet=True
-    else: quiet=False
+    if argv[4].startswith("T"):
+        oned=True
+    else:
+        oned=False
+    if argv[5].startswith("T"):
+        onefit=True
+    else:
+        onefit=False
+    if argv[6].startswith("T"):
+        quiet=True
+    else:
+        quiet=False
     q3df_multiCore(rank, initproc, cols, rows, oned, onefit, size, quiet)
-

@@ -10,18 +10,19 @@ Created on Thu Jul  9 14:29:06 2020
 import numpy as np
 from astropy.io import ascii
 
-def gdtemp (infile, outfile):
-    
+
+def gdtemp(infile, outfile):
+
     data = ascii.read(infile)
     ages_str = data.meta['comments'][43].split()
     ages_strnp = np.array(ages_str[2:])
     ages = ages_strnp.astype(float)
     Lambda = np.array(data['col1'])
-    flux = np.zeros((len(data),ages.size),dtype=np.float)
+    flux = np.zeros((len(data), ages.size), dtype=np.float)
     cols = data.colnames[1::3]
     for i in range(len(ages)):
-        flux[:,i] = np.array(data[cols[i]])
-        flux[:,i] /= flux[:,i].max()
-          
-    template = {'lambda':Lambda, 'flux':flux, 'ages':ages}
+        flux[:, i] = np.array(data[cols[i]])
+        flux[:, i] /= flux[:, i].max()
+
+    template = {'lambda': Lambda, 'flux': flux, 'ages': ages}
     np.save(outfile, template)

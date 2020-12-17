@@ -213,7 +213,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     if 'nomaskran' in initdat:
         nomaskran=initdat['nomaskran']
     else:
-        nomaskran=b'0'
+        nomaskran=''
 
     if 'startempfile' in initdat:
         istemp = b'1'
@@ -410,15 +410,16 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                 if 'maskwidths' in initdat:
                     maskwidths = initdat['maskwidths']
                 else:
-                    maskwidths = {key: None for key in initdat['lines']}
-                    for line in initdat['lines']:
-                        maskwidths[line] = np.array(initdat['maxncomp']) + \
+                    #maskwidths = {key: None for key in initdat['lines']}
+                    maskwidths = Table([linelist['name']])
+                    maskwidths['halfwidths'] = np.array(initdat['maxncomp']) + \
                             maskwidths_def
-            ct_indx = masklin(gdlambda, linelistz, maskwidths,
-                              nomaskran=nomaskran)
+
+            ct_indx = masklin(gdlambda, linelist, maskwidths,
+                              nomaskran=nomaskran,specres=1e4)
             # Mask emission lines in log space
-            ct_indx_log = masklin(np.exp(gdlambda_log), linelistz, maskwidths,
-                                  nomaskran=nomaskran)
+            ct_indx_log = masklin(np.exp(gdlambda_log), linelist, maskwidths,
+                                  nomaskran=nomaskran,specres=1e4)
         else:
             ct_indx = np.arange(len(gdlambda))
             ct_indx_log = np.arange(len(gdlambda_log))
@@ -453,8 +454,8 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                 if 'usecolrow' in initdat['argscontfit'] and col and row:
                     argscontfit_use['colrow'] = [col, row]
                 continuum = \
-                    fcncontfit(gdlambda, gdflux, gderr, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, ct_coeff, zstar,
+                    fcncontfit(wlambda, flux, err, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
                 ppxf_sigma=0.
                 if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \

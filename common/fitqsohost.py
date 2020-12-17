@@ -193,11 +193,17 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,ct_coeff=None,
     iweight = weight[index]
     ierr = err[index]
 
+    #Default is QSO exponential scale + Host exponential scale model
+    qso_scale_model = set_up_fit_qso_exponential_scale_model([0.0,0.5,0.0,0.5,0.0,0.5,0.0,0.5])
+    ymod = qso_scale_model[0]
+    params = qso_scale_model[1]
 
-
-
+    continuum_model = set_up_fit_continuum_additive_polynomial_model([1e-2,0.5,1e-2,0.5,1-3,0.5,1e-3,0.5])
+    ymod += continuum_model[0]
+    params += continuum_model[1]
+    
+    #Additional options for fitting only QSO or HOST
     if hostonly:
-        print('here')
         continuum_model = set_up_fit_continuum_additive_polynomial_model([1e-2,0.5,1e-2,0.5,1-3,0.5,1e-3,0.5])
         ymod = continuum_model[0]
         params = continuum_model[1]
@@ -206,16 +212,15 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,ct_coeff=None,
         
         additive_polynomial_model = set_up_fit_continuum_additive_polynomial_model([1e-2,0.5,1e-2,0.5,1-3,0.5,1e-3,0.5])
         continuum_legendre = set_up_fit_qso_continuum_legendre([1e-1,1e-3,0.])
-        ymod += additive_polynomial_model[0] + continuum_legendre[0]
-        params += additive_polynomial_model[1] + continuum_legendre[1]
-
+        ymod = additive_polynomial_model[0] + continuum_legendre[0]
+        params = additive_polynomial_model[1] + continuum_legendre[1]
 
     if qsoonly:
         qso_scale_model = set_up_fit_qso_exponential_scale_model([0.0,0.5,0.0,0.5,0.0,0.5,0.0,0.5])
         ymod += qso_scale_model[0]
         params += qso_scale_model[1]
 
-    if qsoord:
+    if qsoonly and qsoord:
         P_L = [1e-1,1e-3,1e-4]
         qso_scale_legendre = set_up_fit_qso_scale_legendre([1e-1,1e-3,1e-4])
         ymod += qso_scale_legendre[0]
@@ -245,7 +250,10 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,ct_coeff=None,
     comps = result.eval_components(wave=wave,qso_model=qsoflux,x=wave)
     y_final = result.eval(wave=wave,qso_model=qsoflux,x=wave)
 
-
+    if refit:
+        print(1)
+    
+    
     if 'fcn_test' in kwargs.keys():
     
         return result,comps,y_final

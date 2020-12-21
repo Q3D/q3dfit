@@ -5,6 +5,8 @@ import ppxf as ppxf_package
 from ppxf.ppxf import ppxf
 import ppxf.ppxf_util as util
 from time import perf_counter as clock
+from q3dfit.common.interptemp import interptemp
+from ppxf.ppxf_util import log_rebin
 
 def qsotemplate_model_exponential(wave,qso_model,a,b,c,d,e,f,g,h):
     
@@ -170,7 +172,7 @@ def set_up_fit_continuum_additive_polynomial_model(p):
     return continuum_additive_polynomial_model,continuum_additive_polynomial_model_parameters
 
 
-def fitqsohost(wave,flux,weight,template_wave,template_flux,index,ct_coeff=None,zstar=None,quiet=None,blrpar=None,qsoxdr=None,qsoonly=None,index_log=None,refit=None,add_poly_degree=None,sigint_stars=None,polyspec_refit=None,fitran=None,fittol=None,qsoord=None,hostonly=None,hostord=None,**kwargs):
+def fitqsohost(wave,flux,weight,template_wave,template_flux,index,zstar,ct_coeff=None,quiet=None,blrpar=None,qsoxdr=None,qsoonly=None,index_log=None,refit=None,add_poly_degree=None,siginit_stars=None,polyspec_refit=None,fitran=None,fittol=None,qsoord=None,hostonly=None,hostord=None,**kwargs):
 
 
     qsotemplate = numpy.load(qsoxdr,allow_pickle=True).item()
@@ -192,15 +194,20 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,ct_coeff=None,
     iflux = flux[index]
     iweight = weight[index]
     ierr = err[index]
-
+    
+    if add_poly_degree ==  None:
+        add_poly_degree = 30
+    
     #Default is QSO exponential scale + Host exponential scale model
-    qso_scale_model = set_up_fit_qso_exponential_scale_model([0.0,0.5,0.0,0.5,0.0,0.5,0.0,0.5])
-    ymod = qso_scale_model[0]
-    params = qso_scale_model[1]
+    if hostonly == None and hostord == None and qsoonly == None and qsoord == None:
+        
+        qso_scale_model = set_up_fit_qso_exponential_scale_model([0.0,0.5,0.0,0.5,0.0,0.5,0.0,0.5])
+        ymod = qso_scale_model[0]
+        params = qso_scale_model[1]
 
-    continuum_model = set_up_fit_continuum_additive_polynomial_model([1e-2,0.5,1e-2,0.5,1-3,0.5,1e-3,0.5])
-    ymod += continuum_model[0]
-    params += continuum_model[1]
+        continuum_model = set_up_fit_continuum_additive_polynomial_model([1e-2,0.5,1e-2,0.5,1e-3,0.5,1e-3,0.5])
+        ymod += continuum_model[0]
+        params += continuum_model[1]
     
     #Additional options for fitting only QSO or HOST
     if hostonly:
@@ -212,8 +219,8 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,ct_coeff=None,
         
         additive_polynomial_model = set_up_fit_continuum_additive_polynomial_model([1e-2,0.5,1e-2,0.5,1-3,0.5,1e-3,0.5])
         continuum_legendre = set_up_fit_qso_continuum_legendre([1e-1,1e-3,0.])
-        ymod = additive_polynomial_model[0] + continuum_legendre[0]
-        params = additive_polynomial_model[1] + continuum_legendre[1]
+        ymod += additive_polynomial_model[0] + continuum_legendre[0]
+        params += additive_polynomial_model[1] + continuum_legendre[1]
 
     if qsoonly:
         qso_scale_model = set_up_fit_qso_exponential_scale_model([0.0,0.5,0.0,0.5,0.0,0.5,0.0,0.5])
@@ -235,8 +242,8 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,ct_coeff=None,
             gaussian_model = lmfit.models.GaussianModel(prefix=gaussian_name)
             gaussian_model_parameters = gaussian_model.make_params()
             gaussian_model_parameters[gaussian_name+'amplitude'].set(value=blrpar[counter])
-            gaussian_model_parameters[gaussian_name+'center'].set(value=blrpar[counter+1],min=blrpar[counter+1]-blrpar[counter+1]*0.005,max=blrpar[counter+1]+blrpar[counter+1]*0.005)
-            gaussian_model_parameters[gaussian_name+'sigma'].set(value=blrpar[counter+2],min=10,max=100)
+            gaussian_model_parameters[gaussian_name+'center'].set(value=blrpar[counter+1],min=blrpar[counter+1]-blrpar[counter+1]*0.001,max=blrpar[counter+1]+blrpar[counter+1]*0.001)
+            gaussian_model_parameters[gaussian_name+'sigma'].set(value=blrpar[counter+2],min=10,max=200)
 
             ymod += gaussian_model
             params += gaussian_model_parameters
@@ -248,18 +255,53 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,ct_coeff=None,
     result = ymod.fit(iflux,params,qso_model=qsoflux[index],wave=iwave,x=iwave)#,x=x_to_fit) #
 
     comps = result.eval_components(wave=wave,qso_model=qsoflux,x=wave)
-    y_final = result.eval(wave=wave,qso_model=qsoflux,x=wave)
+    continuum = result.eval(wave=wave,qso_model=qsoflux,x=wave)
 
+    import matplotlib.pyplot as plt
+    for i in comps.keys():
+        plt.plot(wave,comps[i],label=i)
+    plt.plot(wave,continuum,label='best-fit')
+    plt.legend(loc='best')
+#plt.show()
+    ct_coeff = result.params
     if refit:
-        print(1)
+        c = 299792.458
+        resid = flux - continuum
+
+        lamRange1 = numpy.array([wave.min(),wave.max()])/(1+zstar)
+        resid_log,residlambda_log,velscale = log_rebin(lamRange1,resid)
+        residerrsq_log,_,_ = log_rebin(lamRange1,numpy.power(weight,2.))
+
+        residerr_log = numpy.sqrt(residerrsq_log)
+
+        temp_log = interptemp(wave, template_wave.T[0], numpy.log(template_flux))
+        lamRange2 = numpy.array([template_wave.min(),template_wave.max()])/(1+zstar)
+        #temp_log, logLamTemp, velscale_temp = log_rebin(lamRange2, template_flux, velscale=velscale)
+        goodpixels = util.determine_goodpixels(numpy.log(wave),lamRange2, z=zstar)
+
+        vel = c*numpy.log(1 + zstar)   # eq.(8) of Cappellari (2017)
+        start = [0, siginit_stars]  # (km/s), starting guess for [V, sigma]
+        t = clock()
     
-    
+        pp = ppxf(temp_log, resid_log, residerr_log, velscale, start,
+                  goodpixels=goodpixels, plot=True, moments=4,
+                  degree=add_poly_degree, clean=False, lam=wave/(1+zstar))
+        
+        sol = pp.sol
+        
+        ct_coeff = {'qso_host': result.params,
+                    'stel': pp.weights,
+                    'poly': pp.polyweights,
+                    'ppxf_sigma': sol[1]}
+
+        zstar += sol[0]/c
+
     if 'fcn_test' in kwargs.keys():
     
         return result,comps,y_final
 
     else:
-        return y_final
+        return continuum, ct_coeff, zstar
 
 
 

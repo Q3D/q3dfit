@@ -162,7 +162,8 @@ from q3dfit.common.airtovac import airtovac
 from q3dfit.common.masklin import masklin
 from q3dfit.common import fitqsohost
 from q3dfit.common import linelist as ll
-from ppxf import ppxf
+from q3dfit.common import interptemp
+from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
 import copy
 import pdb
@@ -231,7 +232,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     if 'ebv_star' in initdat:
         ebv_star=initdat['ebv_star']
     else:
-        ebv_star=[]
+        ebv_star=None
     if 'maskwidths_def' in initdat:
         maskwidths_def = initdat['maskwidths_def']
     else:
@@ -415,10 +416,10 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                     maskwidths['halfwidths'] = np.array(initdat['maxncomp']) + \
                             maskwidths_def
 
-            ct_indx = masklin(gdlambda, linelist, maskwidths,
+            ct_indx = masklin(gdlambda/(1+zstar), linelist, maskwidths,
                               nomaskran=nomaskran,specres=1e4)
             # Mask emission lines in log space
-            ct_indx_log = masklin(np.exp(gdlambda_log), linelist, maskwidths,
+            ct_indx_log = masklin(np.exp(gdlambda_log)/(1+zstar), linelist, maskwidths,
                                   nomaskran=nomaskran,specres=1e4)
         else:
             ct_indx = np.arange(len(gdlambda))
@@ -453,15 +454,15 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                     argscontfit_use['index_log'] = ct_indx_log
                 if 'usecolrow' in initdat['argscontfit'] and col and row:
                     argscontfit_use['colrow'] = [col, row]
-                continuum = \
+                continuum, ct_coeff, zstar = \
                     fcncontfit(wlambda, flux, err, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
                 ppxf_sigma=0.
                 if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
                     'refit' in initdat['argscontfit']:
-                    # ppxf_sigma=ct_coeff.ppxf_sigma
-                    ppxf_sigma = 0.  # fix this when ct_coeff is set up properly
+                    ppxf_sigma=ct_coeff['ppxf_sigma']
+
             else:
                 continuum = \
                     fcncontfit(gdlambda, gdflux, gderr, templatelambdaz_tmp,
@@ -479,9 +480,9 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         if (istemp == b'1' and 'siginit_stars' in initdat):
 
             # Interpolate template to same grid as data
-            temp_log = interptemp(gdlambda_log, math.log(templatelambdaz),
-                                  template.flux)
-
+            temp_log = interptemp.interptemp(gdlambda_log, np.log(templatelambdaz.T[0]),
+                                  template['flux'])
+            
             # Check polynomial degree
             add_poly_degree = 4
             if 'argscontfit' in initdat:
@@ -493,18 +494,18 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                 ppxf(temp_log, gdflux_log, gderr_log, velscale,
                      [0, initdat['siginit_stars']], goodpixels=ct_indx_log,
                      degree=add_poly_degree, quiet=quiet, reddening=ebv_star)
-            poly_mod = pp.apoly()
-            continuum_log = pp.bestfit()
-            add_poly_weights = pp.polyweights()
-            ct_coeff = pp.weights()
-            ebv_star = pp.reddening()
-            sol = pp.sol()
-            error = pp.error()
+            poly_mod = pp.apoly
+            continuum_log = pp.bestfit
+            add_poly_weights = pp.polyweights
+            ct_coeff = pp.weights
+            ebv_star = pp.reddening
+            sol = pp.sol
+            error = pp.error
 
             # Resample the best fit into linear space
             cinterp = interpolate.interp1d(gdlambda_log, continuum_log,
                                            kind='cubic')
-            continuum = cinterp(math.log(gdlambda))
+            continuum = cinterp(np.log(gdlambda))
 
             # Adjust stellar redshift based on fit
             zstar += sol[0]/c

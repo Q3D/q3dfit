@@ -399,7 +399,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     testing = 0
     if 'fcncontfit' in initdat and testing != 1:
-
+        
         # Some defaults. These only apply in case of fitting with stellar model
         # + additive polynomial.
         stel_mod = 0.
@@ -447,6 +447,8 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                 templateflux_tmp = b'0'
 
             if 'argscontfit' in initdat:
+                print(fcncontfit)
+                
                 argscontfit_use = initdat['argscontfit']
                 if initdat['fcncontfit'] == 'fitqsohost':
                     argscontfit_use['fitran'] = fitran
@@ -455,7 +457,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                 if 'usecolrow' in initdat['argscontfit'] and col and row:
                     argscontfit_use['colrow'] = [col, row]
                 continuum, ct_coeff, zstar = \
-                    fcncontfit(wlambda, flux, err, templatelambdaz_tmp,
+                    fcncontfit(gdlambda, gdflux, gderr, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
                 ppxf_sigma=0.
@@ -478,7 +480,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         # # Option 2: PPXF
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if (istemp == b'1' and 'siginit_stars' in initdat):
-
+            
             # Interpolate template to same grid as data
             temp_log = interptemp.interptemp(gdlambda_log, np.log(templatelambdaz.T[0]),
                                   template['flux'])
@@ -497,14 +499,14 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
             poly_mod = pp.apoly
             continuum_log = pp.bestfit
             add_poly_weights = pp.polyweights
-            ct_coeff = pp.weights
+            #ct_coeff = pp.weights
             ebv_star = pp.reddening
             sol = pp.sol
             error = pp.error
 
             # Resample the best fit into linear space
             cinterp = interpolate.interp1d(gdlambda_log, continuum_log,
-                                           kind='cubic')
+                                           kind='cubic',fill_value="extrapolate")
             continuum = cinterp(np.log(gdlambda))
 
             # Adjust stellar redshift based on fit
@@ -566,7 +568,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                 gderr_nocnt = gderr / continuum
                 method   = 'CONTINUUM DIVIDED'
             else:
-                gdflux_nocnt = gdflux - continuum[fitran_indx]
+                gdflux_nocnt = gdflux - continuum
                 gdweight_nocnt = gdweight
                 gderr_nocnt = gderr
                 method   = 'CONTINUUM SUBTRACTED'
@@ -689,7 +691,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         perror = np.multiply(perror,np.sqrt(rchisq))
         # perror =  np.sqrt(rchisq)
         # ... and from fit residual.
-        resid=gdflux-continuum[fitran_indx]-specfit
+        resid=gdflux-continuum-specfit
         perror_resid = perror
         sigrange = 20.
         for line in lines_arr:
@@ -726,7 +728,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         perror_resid = 0
         covar = 0
     # This sets the output reddening to a numerical 0 instead of NULL
-    if len(ebv_star) == 0:
+    if ebv_star == None:
         ebv_star=0.
         fit_time2 = time.time()
         if quiet != None:
@@ -745,7 +747,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     outstr = {'fitran': fitran,
               # Continuum fit parameters
               'ct_method': method,
-              #              'ct_coeff': ct_coeff,
+              'ct_coeff': ct_coeff,
               'ct_ebv': ebv_star,
               'zstar': zstar,
               'zstar_err': zstar_err,

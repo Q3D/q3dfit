@@ -7,6 +7,7 @@ import ppxf.ppxf_util as util
 from time import perf_counter as clock
 from q3dfit.common.interptemp import interptemp
 from ppxf.ppxf_util import log_rebin
+from scipy import interpolate
 
 def qsotemplate_model_exponential(wave,qso_model,a,b,c,d,e,f,g,h):
     
@@ -284,7 +285,7 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,zstar,ct_coeff
         t = clock()
     
         pp = ppxf(temp_log, resid_log, residerr_log, velscale, start,
-                  goodpixels=index_log, plot=True, moments=4,
+                  goodpixels=index_log, plot=True, moments=2,
                   degree=add_poly_degree, clean=False, lam=wave/(1+zstar))
         
         sol = pp.sol
@@ -295,6 +296,19 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,zstar,ct_coeff
                     'ppxf_sigma': sol[1]}
 
         zstar += sol[0]/c
+
+        #host can't be negative
+        ineg = numpy.where(continuum < 0)
+        continuum[ineg] = 0
+    
+        continuum_log = pp.bestfit
+        cinterp = interpolate.interp1d(residlambda_log, continuum_log,
+                               kind='cubic',fill_value="extrapolate")
+
+        cont_resid = cinterp(numpy.log(wave/(1+zstar)))
+        continuum += cont_resid
+
+
 
     if 'fcn_test' in kwargs.keys():
     

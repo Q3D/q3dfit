@@ -180,8 +180,8 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,zstar,ct_coeff
     qsowave = qsotemplate['wave']
     qsoflux_full = qsotemplate['flux']
 
-
-    qsoflux = qsoflux_full
+    iqsoflux = numpy.where((qsowave >= fitran[0]) & (qsowave <= fitran[1]))
+    qsoflux = qsoflux_full[iqsoflux]
 
     #Normalizing qsoflux template
     qsoflux = qsoflux/numpy.median(qsoflux)
@@ -200,7 +200,7 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,zstar,ct_coeff
     
     #Default is QSO exponential scale + Host exponential scale model
     if hostonly == None and hostord == None and qsoonly == None and qsoord == None:
-        
+
         qso_scale_model = set_up_fit_qso_exponential_scale_model([0.0,0.5,0.0,0.5,0.0,0.5,0.0,0.5])
         ymod = qso_scale_model[0]
         params = qso_scale_model[1]
@@ -252,7 +252,7 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,zstar,ct_coeff
 
 
 
-    result = ymod.fit(iflux,params,qso_model=qsoflux[index],wave=iwave,x=iwave)#,x=x_to_fit) #
+    result = ymod.fit(iflux,params,qso_model=qsoflux[index],wave=iwave,x=iwave)
 
     comps = result.eval_components(wave=wave,qso_model=qsoflux,x=wave)
     continuum = result.eval(wave=wave,qso_model=qsoflux,x=wave)
@@ -284,7 +284,7 @@ def fitqsohost(wave,flux,weight,template_wave,template_flux,index,zstar,ct_coeff
         t = clock()
     
         pp = ppxf(temp_log, resid_log, residerr_log, velscale, start,
-                  goodpixels=goodpixels, plot=True, moments=4,
+                  goodpixels=index_log, plot=True, moments=4,
                   degree=add_poly_degree, clean=False, lam=wave/(1+zstar))
         
         sol = pp.sol

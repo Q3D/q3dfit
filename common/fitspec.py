@@ -479,7 +479,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         # # Option 2: PPXF
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        if (istemp == b'1' and 'siginit_stars' in initdat):
+        elif (istemp == b'1' and 'siginit_stars' in initdat):
             
             # Interpolate template to same grid as data
             temp_log = interptemp.interptemp(gdlambda_log, np.log(templatelambdaz.T[0]),

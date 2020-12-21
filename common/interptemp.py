@@ -60,27 +60,31 @@ Created on Wed Dec 16 13:54:17 2020
 #    http://www.gnu.org/licenses/.
 
 from scipy import interpolate
-
+import numpy as np
 
 def interptemp(spec_lam, temp_lam, template):
 
-    if template.ndim() == 2:
+    if len(template.shape) == 2:
         ntemp = template.shape(1)
+        new_temp = np.zeros((spec_lam.shape[0],ntemp))
     else:
         ntemp = 1
-    new_temp = np.array([spec_lam.shape(), ntemp])
 
-    if min(temp_lam) > min(spec_lam):
+    if np.min(temp_lam) > np.min(spec_lam):
         print('IFSF_INTERPTEMP: WARNING -- Extrapolating template from ' +
               min(temp_lam) + ' to ' + min(spec_lam) + '.')
-    if max(temp_lam) < max(spec_lam):
+    if np.max(temp_lam) < np.max(spec_lam):
         print('IFSF_INTERPTEMP: WARNING -- Extrapolating template from ' +
               max(temp_lam) + ' to ' + max(spec_lam) + '.')
 
     # Default interpolation for INTERPOL is linear
-    for i in range(ntemp - 1):
+    if ntemp !=1:
+        for i in range(ntemp - 1):
+            interpfunc = \
+                interpolate.interp1d(temp_lam, template[:,i], kind='cubic')
+            new_temp[:, i] = interpfunc(spec_lam)
+    else:
         interpfunc = \
-            interpolate.interp1d(temp_lam, template[*, i], kind='cubic')
-        new_temp[*, i] = interpfunc(spec_lam)
-
-    return, new_temp
+            interpolate.interp1d(temp_lam, template, kind='cubic')
+        new_temp = interpfunc(spec_lam)
+    return new_temp

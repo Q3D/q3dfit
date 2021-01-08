@@ -6,7 +6,7 @@
 ;+
 ;
 ; This function initializes the fitting parameters for PG1411+442
-; 
+;
 ; :Categories:
 ;    IFSF
 ;
@@ -14,13 +14,13 @@
 ;    A structure with tags specified in INITTAGS.txt.
 ;
 ; :Params:
-; 
+;
 ; :Keywords:
 ;    initmaps: out, optional, type=structure
 ;      Parameters for map making.
 ;    initnad: out, optional, type=structure
 ;      Parameters for NaD fitting.
-; 
+;
 ; :Author:
 ;    David S. N. Rupke::
 ;      Rhodes College
@@ -32,7 +32,7 @@
 ; :History:
 ;    ChangeHistory::
 ;      2015aug25, DSNR, created
-;    
+;
 ; :Copyright:
 ;    Copyright (C) 2015 David S. N. Rupke
 ;
@@ -70,7 +70,7 @@ def pg1411():
 #   These are unique to the user
     volume = '/Volumes/fingolfin/'
     infile = volume+'ifs/gmos/cubes/'+gal+'/'+gal+outstr+'.fits'
-    mapdir = volume+'ifs/gmos/cubes/'+gal+'/'+outstr+'/' 
+    mapdir = volume+'ifs/gmos/cubes/'+gal+'/'+outstr+'/'
     outdir = volume+'specfits/gmos/'+gal+'/'+outstr+'/'
     qsotemplate = volume+'ifs/gmos/cubes/'+gal+'/'+gal+'qsotemplate.npy'
     stellartemplates = \

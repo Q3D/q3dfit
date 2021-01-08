@@ -1,153 +1,123 @@
 # -*- coding: utf-8 -*-
 """
-; docformat = 'rst'
-;
-;+
-;
-; This function is the core routine to fit the continuum and emission
-; lines of a spectrum.
-;
-; The function requires an initialization structure with one required
-; and a bunch of optional tags, specified in INITTAGS.txt.
-;
-;
-;:Categories:
-;    IFSFIT
-;
-;:Returns:
-;    A structure that contains the fit and much else ...
-;
-;:Params:
-;    lambda: in, required, type=dblarr(npix)
-;      Spectrum, observed-frame wavelengths.
-;    flux: in, required, type=dblarr(npix)
-;      Spectrum, fluxes.
-;    err: in, required, type=dblarr(npix)
-;      Spectrum, flux errors.
-;    zstar: in, required, type=structure
-;      Initial guess for stellar redshift
-;    linelist: in, required, type=hash(lines)
-;      Emission line rest frame wavelengths.
-;    linelistz: in, required, type=hash(lines\,ncomp)
-;      Emission line observed frame wavelengths.
-;    ncomp: in, required, type=hash(lines)
-;      Number of components fit to each line.
-;    initdat: in, required, type=structure
-;      Structure of initialization parameters, with tags specified in
-;      INITTAGS.txt.
-;
-;:Keywords:
-;    maskwidths: in, optional, type=hash(lines\,maxncomp)
-;      Widths, in km/s, of regions to mask from continuum fit. If not
-;      set, routine defaults to +/- 500 km/s. Can also be set in INITDAT.
-;      Routine prioritizes the keyword definition.
-;    peakinit: in, optional, type=hash(lines\,maxncomp)
-;      Initial guesses for peak emission-line flux densities. If not
-;      set, routine guesses from spectrum. Can also be set in INITDAT.
-;      Routine prioritizes the keyword definition.
-;    siginit_gas: in, optional, type=hash(lines\,maxncomp)
-;      Initial guess for emission line widths for fitting.
-;    siglim_gas: in, optional, type=dblarr(2)
-;      Sigma limits for line fitting.
-;    tweakcntfit: in, optional, type=dblarr(3\,nregions)
-;      Parameters for tweaking continuum fit with localized polynomials. For
-;      each of nregions regions, array contains lower limit, upper limit, and
-;      polynomial degree.
-;    quiet: in, optional, type=byte
-;      Use to prevent detailed output to screen. Default is to print
-;      detailed output.
-;
-;:Author:
-;    David S. N. Rupke::
-;      Rhodes College
-;      Department of Physics
-;      2000 N. Parkway
-;      Memphis, TN 38104
-;      drupke@gmail.com
-;
-;:History:
-;    ChangeHistory::
-;      2009, DSNR, copied base code from Harus Jabran Zahid
-;      2009may, DSNR, tweaked for LRIS data
-;      2009jun/jul, DSNR, rewritten
-;      2010jan28, DSNR, fitting now done in observed frame, not rest frame
-;      2010mar18, DSNR, added ct_coeff output to continuum fit
-;      2013sep, DSNR, complete re-write
-;      2013nov13, DSNR, renamed, added license and copyright
-;      2013nov25, DSNR, changed structure tags of output spectra for clarity
-;      2013dec09, DSNR, removed stellar z and sig optimization;
-;                       added PPXF option
-;      2013dec10, DSNR, removed docs of initdat tags, since it's
-;                       repeated in INITTAGS.txt; removed linelabel
-;                       parameter, since it's in initdat; changed
-;                       'initstr' parameter to 'initdat', for
-;                       consistency with IFSF; testing and bug fixes
-;      2013dec11, DSNR, added MASK_HALFWIDTH variable; changed value
-;                       from 500 to 1000 km/s
-;      2013dec12, DSNR, added SIGINIT_GAS_DEFAULT variable
-;      2013dec17, DSNR, started propagation of hashes through code and
-;                       implementation of new calling sequence rubric
-;      2014jan13, DSNR, propagated use of hashes
-;      2014jan16, DSNR, updated treatment of redshifts; bugfixes
-;      2014jan17, DSNR, bugfixes; implemented SIGINIT_GAS, TWEAKCNTFIT keywords
-;      2014feb17, DSNR, removed code that added "treated" templates
-;                       prior to running a generic continuum fitting
-;                       routine (rebinning, adding polynomials, etc.);
-;                       i.e., generic continuum fitting routine is now
-;                       completely generic
-;      2014feb26, DSNR, replaced ordered hashes with hashes
-;      2014apr23, DSNR, changed MAXITER from 1000 to 100 in call to MPFIT
-;      2016jan06, DSNR, allow no emission line fit with initdat.noemlinfit
-;      2016feb02, DSNR, handle cases with QSO+stellar PPXF continuum fits
-;      2016feb12, DSNR, changed treatment of sigma limits for emission lines
-;                       so that they can be specified on a pixel-by-pixel basis
-;      2016aug31, DSNR, added option to mask continuum range(s) by hand with
-;                       INITDAT tag MASKCTRAN
-;      2016sep13, DSNR, added internal logic to check if emission-line fit present
-;      2016sep16, DSNR, allowed MASKWIDTHS_DEF to come in through INITDAT
-;      2016sep22, DSNR, tweaked continuum function call to allow new continuum
-;                       fitting capabilities; moved logging of things earlier
-;                       instead of ensconcing in PPXF loop, for use of PPXF
-;                       elsewhere; new output tag CONT_FIT_PRETWEAK
-;      2016oct03, DSNR, multiply PERROR by reduced chi-squared, per prescription
-;                       in MPFIT documentation
-;      2016oct11, DSNR, added calculation of fit residual
-;      2016nov17, DSNR, changed FTOL in MPFITFUN call from 1d-6 to
-;                       default (1d-10)
-;      2018mar05, DSNR, added option to convolve template with spectral resolution
-;                       profile
-;      2018may30, DSNR, added option to adjust XTOL and FTOL for line fitting
-;      2018jun25, DSNR, added NOEMLINMASK switch, distinct from NOEMLINFIT
-;      2020jun16, YI, rough translation to Python 3; changed all "lambda" variables to "wlambda" since it is a Python keyword
-;      2020jun22, YI, replaced emission line MPFIT with LMFIT (testing separately)
-;      2020jun22, YI, added scipy modules to extract XDR data (replace the IDL restore function)
-;      2020jun23, YI, importing Nadia's airtovac() and the pPPXF log_rebin() functions
-;      2020jun24, YI, importing the copy module and creating duplicate flux and err variables. I keep getting "ValueError: assignment destination is read-only"
-;      2020jun26, YI, fixed bugs. tested the manygauss() emission line fit call. skipped the continuum fits
-;      2020jun28, YI, tested the gmos.py line initialization calls for parameter set-up. minor changes
-;      2020jul01, DSNR, bug fixes
-;      2020jul07, DSNR, bug fixes; it runs all the way through now.
-;      2020jul08, YI, cleaned up the emission line fit section; variables for new many_gauss.py
-;      2020jul10, YI, bug fixes in perror_resid bloc; ran successfully
-;
-;:Copyright:
-;    Copyright (C) 2013--2018 David S. N. Rupke
-;
-;    This program is free software: you can redistribute it and/or
-;    modify it under the terms of the GNU General Public License as
-;    published by the Free Software Foundation, either version 3 of
-;    the License or any later version.
-;
-;    This program is distributed in the hope that it will be useful,
-;    but WITHOUT ANY WARRANTY; without even the implied warranty of
-;    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;    General Public License for more details.
-;
-;    You should have received a copy of the GNU General Public License
-;    along with this program.  If not, see
-;    http://www.gnu.org/licenses/.
-;
-;-
+
+  This function is the core routine to fit the continuum and emission
+  lines of a spectrum.
+
+  The function requires an initialization structure with one required
+  and a bunch of optional tags, specified in INITTAGS.txt.
+
+
+ :Categories:
+     IFSFIT
+
+ :Returns:
+     A structure that contains the fit and much else ...
+
+ :Params:
+     lambda: in, required, type=dblarr(npix)
+       Spectrum, observed-frame wavelengths.
+     flux: in, required, type=dblarr(npix)
+       Spectrum, fluxes.
+     err: in, required, type=dblarr(npix)
+       Spectrum, flux errors.
+     zstar: in, required, type=structure
+       Initial guess for stellar redshift
+     linelist: in, required, type=hash(lines)
+       Emission line rest frame wavelengths.
+     linelistz: in, required, type=hash(lines\,ncomp)
+       Emission line observed frame wavelengths.
+     ncomp: in, required, type=hash(lines)
+       Number of components fit to each line.
+     initdat: in, required, type=structure
+       Structure of initialization parameters, with tags specified in
+       INITTAGS.txt.
+
+ :Keywords:
+     maskwidths: in, optional, type=hash(lines\,maxncomp)
+       Widths, in km/s, of regions to mask from continuum fit. If not
+       set, routine defaults to +/- 500 km/s. Can also be set in INITDAT.
+       Routine prioritizes the keyword definition.
+     peakinit: in, optional, type=hash(lines\,maxncomp)
+       Initial guesses for peak emission-line flux densities. If not
+       set, routine guesses from spectrum. Can also be set in INITDAT.
+       Routine prioritizes the keyword definition.
+     siginit_gas: in, optional, type=hash(lines\,maxncomp)
+       Initial guess for emission line widths for fitting.
+     siglim_gas: in, optional, type=dblarr(2)
+       Sigma limits for line fitting.
+     tweakcntfit: in, optional, type=dblarr(3\,nregions)
+       Parameters for tweaking continuum fit with localized polynomials. For
+       each of nregions regions, array contains lower limit, upper limit, and
+       polynomial degree.
+     quiet: in, optional, type=byte
+       Use to prevent detailed output to screen. Default is to print
+       detailed output.
+
+ :History:
+     ChangeHistory::
+       2009, DSNR, copied base code from Harus Jabran Zahid
+       2009may, DSNR, tweaked for LRIS data
+       2009jun/jul, DSNR, rewritten
+       2010jan28, DSNR, fitting now done in observed frame, not rest frame
+       2010mar18, DSNR, added ct_coeff output to continuum fit
+       2013sep, DSNR, complete re-write
+       2013nov13, DSNR, renamed, added license and copyright
+       2013nov25, DSNR, changed structure tags of output spectra for clarity
+       2013dec09, DSNR, removed stellar z and sig optimization;
+                        added PPXF option
+       2013dec10, DSNR, removed docs of initdat tags, since it's
+                        repeated in INITTAGS.txt  removed linelabel
+                        parameter, since it's in initdat; changed
+                        'initstr' parameter to 'initdat', for
+                        consistency with IFSF; testing and bug fixes
+       2013dec11, DSNR, added MASK_HALFWIDTH variable; changed value
+                        from 500 to 1000 km/s
+       2013dec12, DSNR, added SIGINIT_GAS_DEFAULT variable
+       2013dec17, DSNR, started propagation of hashes through code and
+                        implementation of new calling sequence rubric
+       2014jan13, DSNR, propagated use of hashes
+       2014jan16, DSNR, updated treatment of redshifts; bugfixes
+       2014jan17, DSNR, bugfixes; implemented SIGINIT_GAS, TWEAKCNTFIT keywords
+       2014feb17, DSNR, removed code that added "treated" templates
+                        prior to running a generic continuum fitting
+                        routine (rebinning, adding polynomials, etc.);
+                        i.e., generic continuum fitting routine is now
+                        completely generic
+       2014feb26, DSNR, replaced ordered hashes with hashes
+       2014apr23, DSNR, changed MAXITER from 1000 to 100 in call to MPFIT
+       2016jan06, DSNR, allow no emission line fit with initdat.noemlinfit
+       2016feb02, DSNR, handle cases with QSO+stellar PPXF continuum fits
+       2016feb12, DSNR, changed treatment of sigma limits for emission lines
+                        so that they can be specified on a pixel-by-pixel basis
+       2016aug31, DSNR, added option to mask continuum range(s) by hand with
+                        INITDAT tag MASKCTRAN
+       2016sep13, DSNR, added internal logic to check if emission-line fit present
+       2016sep16, DSNR, allowed MASKWIDTHS_DEF to come in through INITDAT
+       2016sep22, DSNR, tweaked continuum function call to allow new continuum
+                        fitting capabilities; moved logging of things earlier
+                        instead of ensconcing in PPXF loop, for use of PPXF
+                        elsewhere; new output tag CONT_FIT_PRETWEAK
+       2016oct03, DSNR, multiply PERROR by reduced chi-squared, per prescription
+                        in MPFIT documentation
+       2016oct11, DSNR, added calculation of fit residual
+       2016nov17, DSNR, changed FTOL in MPFITFUN call from 1d-6 to
+                        default (1d-10)
+       2018mar05, DSNR, added option to convolve template with spectral resolution
+                        profile
+       2018may30, DSNR, added option to adjust XTOL and FTOL for line fitting
+       2018jun25, DSNR, added NOEMLINMASK switch, distinct from NOEMLINFIT
+       2020jun16, YI, rough translation to Python 3; changed all "lambda" variables to "wlambda" since it is a Python keyword
+       2020jun22, YI, replaced emission line MPFIT with LMFIT (testing separately)
+       2020jun22, YI, added scipy modules to extract XDR data (replace the IDL restore function)
+       2020jun23, YI, importing Nadia's airtovac() and the pPPXF log_rebin() functions
+       2020jun24, YI, importing the copy module and creating duplicate flux and err variables. I keep getting "ValueError: assignment destination is read-only"
+       2020jun26, YI, fixed bugs. tested the manygauss() emission line fit call. skipped the continuum fits
+       2020jun28, YI, tested the gmos.py line initialization calls for parameter set-up. minor changes
+       2020jul01, DSNR, bug fixes
+       2020jul07, DSNR, bug fixes; it runs all the way through now.
+       2020jul08, YI, cleaned up the emission line fit section; variables for new many_gauss.py
+       2020jul10, YI, bug fixes in perror_resid bloc; ran successfully
 """
 
 import importlib
@@ -155,22 +125,23 @@ import math
 import numpy as np
 import time
 from scipy import interpolate
-#import scipy.io as sio
-#from scipy.io import readsav
+# import scipy.io as sio
+# from scipy.io import readsav
 from astropy.table import Table
 from q3dfit.common.airtovac import airtovac
 from q3dfit.common.masklin import masklin
-from q3dfit.common import fitqsohost
-from q3dfit.common import linelist as ll
+# from q3dfit.common import fitqsohost
+# from q3dfit.common import linelist as ll
 from q3dfit.common import interptemp
 from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
 import copy
 import pdb
 
-def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
-            maskwidths=None,peakinit=None,quiet=None,siginit_gas=None,
-            siglim_gas=None,tweakcntfit=None,col=None,row=None):
+
+def fitspec(wlambda, flux, err, dq, zstar, linelist, linelistz, ncomp, initdat,
+            maskwidths=None, peakinit=None, quiet=None, siginit_gas=None,
+            siglim_gas=None, tweakcntfit=None, col=None, row=None):
 
     flux_out = flux
     err_out = err
@@ -185,30 +156,30 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     siginit_gas_def = 100.  # default sigma for initial guess
                             # for emission line widths
 
-
     if 'lines' in initdat:
-        nlines = len(initdat['lines'])
+        # nlines = len(initdat['lines'])
         linelabel = initdat['lines']
     else:
         linelabel = b'0'
 
-# converts the astropy.Table structure of linelist into a Python dictionary that is compatible with the code downstream
-    lines_arr = {name:linelist['lines'][idx] for idx,name in enumerate(linelist['name']) }
-
+    # converts the astropy.Table structure of linelist into a Python
+    # dictionary that is compatible with the code downstream
+    lines_arr = {name: linelist['lines'][idx] for idx, name in
+                 enumerate(linelist['name'])}
 
     if quiet:
-        quiet=b'1'
+        quiet = b'1'
     else:
-        quiet=b'0'
+        quiet = b'0'
     if siglim_gas.all():
-        siglim_gas=siglim_gas
+        siglim_gas = siglim_gas
     else:
-        siglim_gas=b'0'
+        siglim_gas = b'0'
 
     if 'fcnlinefit' in initdat:
-        fcnlinefit=initdat['fcnlinefit']
+        fcnlinefit = initdat['fcnlinefit']
     else:
-        fcnlinefit='manygauss'
+        fcnlinefit = 'manygauss'
     if 'argslinefit' in initdat:
         argslinefit=initdat['argslinefit']
     if 'nomaskran' in initdat:
@@ -244,7 +215,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     if 'mpfit_ftol' in initdat:
         mpfit_ftol = initdat['mpfit_ftol']
     else:
-        mpfit_ftol=1.-10
+        mpfit_ftol = 1.-10
 
     noemlinfit = b'0'
     if 'noemlinfit' in initdat:
@@ -254,7 +225,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         comp_emlist = np.where(np.array(list(ncomp.values())) != 0)[0]
         ct_comp_emlist = len(comp_emlist)
     if ct_comp_emlist == 0:
-        noemlinfit=b'1'
+        noemlinfit = b'1'
 
     noemlinmask = b'0'
     if noemlinfit == b'1' and 'doemlinmask' not in initdat:
@@ -262,16 +233,15 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
 
     if bool(int(istemp)):
 
-    # Get stellar templates
+        # Get stellar templates
         startempfile = initdat['startempfile']
-        if isinstance(startempfile,bytes):
+        if isinstance(startempfile, bytes):
 
             startempfile = startempfile.decode('utf-8')
 
-        sav_data = np.load(startempfile,allow_pickle=True).item()
+        sav_data = np.load(startempfile, allow_pickle=True).item()
         template = sav_data
-        # restore,initdat.startempfile
-    # Redshift stellar templates
+        # Redshift stellar templates
         templatelambdaz = np.copy(template['lambda'])
         if 'keepstarz' not in initdat:
             templatelambdaz *= 1. + zstar
@@ -281,11 +251,12 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
             templatelambdaz *= initdat['waveunit']
         if 'fcnconvtemp' in initdat:
             impModule = __import__(initdat.fcnconvtemp)
-            fcnconvtemp = getattr(impModule,initdat['fcnconvtemp'])
+            fcnconvtemp = getattr(impModule, initdat['fcnconvtemp'])
             if 'argsconvtemp' in initdat:
-                newtemplate = fcnconvtemp(templatelambdaz,template,*initdat.argsconvtemp)
+                newtemplate = fcnconvtemp(templatelambdaz, template,
+                                          *initdat.argsconvtemp)
             else:
-                newtemplate = fcnconvtemp(templatelambdaz,template)
+                newtemplate = fcnconvtemp(templatelambdaz, template)
     else:
         templatelambdaz = wlambda
     # Set up error in zstar
@@ -313,9 +284,11 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     gd_indx_10 = set(np.where(wlambda >= fitran_tmp[0])[0])
     gd_indx_11 = set(np.where(wlambda <= fitran_tmp[1])[0])
 
-    gd_indx_full = gd_indx_1.intersection(gd_indx_2,gd_indx_4,gd_indx_6,gd_indx_7,gd_indx_8,gd_indx_9,gd_indx_10,gd_indx_11)
+    gd_indx_full = gd_indx_1.intersection(gd_indx_2, gd_indx_4, gd_indx_6,
+                                          gd_indx_7, gd_indx_8, gd_indx_9,
+                                          gd_indx_10, gd_indx_11)
     gd_indx_full = list(gd_indx_full)
-    fitran = [min(wlambda[gd_indx_full]),max(wlambda[gd_indx_full])]
+    fitran = [min(wlambda[gd_indx_full]), max(wlambda[gd_indx_full])]
 
     # Find where flux is <= 0 or error is <= 0 or infinite or NaN
     # (Otherwise MPFIT chokes.)
@@ -326,7 +299,8 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
     zerinf_indx_2 = np.where(err <= 0)[0]
     zerinf_indx_3 = np.where(np.isfinite(flux) == False)[0]
     zerinf_indx_5 = np.where(np.isfinite(err) == False)[0]
-    zerinf_indx = np.unique(np.hstack([zerinf_indx_1,zerinf_indx_2,zerinf_indx_3,zerinf_indx_5]))
+    zerinf_indx = np.unique(np.hstack([zerinf_indx_1, zerinf_indx_2,
+                                       zerinf_indx_3, zerinf_indx_5]))
 
     ctzerinf = len(zerinf_indx)
     maxerr = max(err[gd_indx_full])
@@ -399,34 +373,35 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     testing = 0
     if 'fcncontfit' in initdat and testing != 1:
-        
+
         # Some defaults. These only apply in case of fitting with stellar model
         # + additive polynomial.
         stel_mod = 0.
         poly_mod = 0.
 
         # Mask emission lines
+        # Note that maskwidths is now an astropy Table
         if noemlinmask != b'1':
             if maskwidths is None:
                 if 'maskwidths' in initdat:
                     maskwidths = initdat['maskwidths']
                 else:
-                    #maskwidths = {key: None for key in initdat['lines']}
+                    # maskwidths = {key: None for key in initdat['lines']}
                     maskwidths = Table([linelist['name']])
-                    maskwidths['halfwidths'] = np.array(initdat['maxncomp']) + \
-                            maskwidths_def
+                    maskwidths['halfwidths'] = np.array(initdat['maxncomp']) \
+                        + maskwidths_def
 
             ct_indx = masklin(gdlambda/(1+zstar), linelist, maskwidths,
-                              nomaskran=nomaskran,specres=1e4)
+                              nomaskran=nomaskran)
             # Mask emission lines in log space
-            ct_indx_log = masklin(np.exp(gdlambda_log)/(1+zstar), linelist, maskwidths,
-                                  nomaskran=nomaskran,specres=1e4)
+            ct_indx_log = masklin(np.exp(gdlambda_log)/(1+zstar), linelist,
+                                  maskwidths, nomaskran=nomaskran)
         else:
             ct_indx = np.arange(len(gdlambda))
             ct_indx_log = np.arange(len(gdlambda_log))
 
-        ct_indx = np.intersect1d(ct_indx,gd_indx)
-        ct_indx_log = np.intersect1d(ct_indx_log,gd_indx_log)
+        ct_indx = np.intersect1d(ct_indx, gd_indx)
+        ct_indx_log = np.intersect1d(ct_indx_log, gd_indx_log)
 
     # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     # # Option 1: Input function
@@ -437,9 +412,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                                              initdat['fcncontfit'])
             fcncontfit = getattr(module, initdat['fcncontfit'])
 
-
             if istemp:
-                pass
                 templatelambdaz_tmp = templatelambdaz
                 templateflux_tmp = template['flux']
             else:
@@ -447,8 +420,6 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                 templateflux_tmp = b'0'
 
             if 'argscontfit' in initdat:
-                print(fcncontfit)
-                
                 argscontfit_use = initdat['argscontfit']
                 if initdat['fcncontfit'] == 'fitqsohost':
                     argscontfit_use['fitran'] = fitran
@@ -457,13 +428,13 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
                 if 'usecolrow' in initdat['argscontfit'] and col and row:
                     argscontfit_use['colrow'] = [col, row]
                 continuum, ct_coeff, zstar = \
-                    fcncontfit(gdlambda, gdflux, gderr, templatelambdaz_tmp,
+                    fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
-                ppxf_sigma=0.
+                ppxf_sigma = 0.
                 if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
                     'refit' in initdat['argscontfit']:
-                    ppxf_sigma=ct_coeff['ppxf_sigma']
+                    ppxf_sigma = ct_coeff['ppxf_sigma']
 
             else:
                 continuum = \
@@ -480,11 +451,11 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
         # # Option 2: PPXF
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         elif (istemp == b'1' and 'siginit_stars' in initdat):
-            
+
             # Interpolate template to same grid as data
             temp_log = interptemp.interptemp(gdlambda_log, np.log(templatelambdaz.T[0]),
                                   template['flux'])
-            
+
             # Check polynomial degree
             add_poly_degree = 4
             if 'argscontfit' in initdat:
@@ -688,7 +659,7 @@ def fitspec(wlambda,flux,err,dq,zstar,linelist,linelistz,ncomp,initdat,
 
         # Errors from covariance matrix ...
 #        rchisq = chisq/dof
-        perror = np.multiply(perror,np.sqrt(rchisq))
+        perror = np.multiply(perror, np.sqrt(rchisq))
         # perror =  np.sqrt(rchisq)
         # ... and from fit residual.
         resid=gdflux-continuum-specfit

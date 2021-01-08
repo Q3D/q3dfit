@@ -1,5 +1,6 @@
-def masklin(llambda, linelambda, halfwidth, specres, nomaskran=''):
+def masklin(llambda, linelambda, halfwidth, nomaskran=''):
     """
+
     Masks emission lines from the spectrum for continuum fitting
 
     Returns:
@@ -59,6 +60,12 @@ def masklin(llambda, linelambda, halfwidth, specres, nomaskran=''):
         ind1=masklin(llambda, u, halfwidth, 60., nomaskran=dontmask)
         plt.scatter(llambda[ind1],spec[ind1]-0.05,color='blue',alpha=0.03,s=2)
         plt.show()
+
+        History
+        2020abcXY, ???, translated from IDL
+        2021jan07, DSNR, removed specres keyword
+
+
     """
 
     import numpy as np

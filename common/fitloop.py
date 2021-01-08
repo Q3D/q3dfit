@@ -10,7 +10,7 @@ cores, then DRT_BRIDGELOOP parses this file to feed into a batch file.
 
 :Returns:
    None.
-   
+
 :Params:
    ispax: in, required, type=int
      Value of index over which to loop
@@ -30,7 +30,7 @@ cores, then DRT_BRIDGELOOP parses this file to feed into a batch file.
      If set, ignore second fit
    quiet: in, required, type=byte
      verbosity switch from IFSF
-   
+
 :Keywords:
    logfile: in, optional, type=strarr
      Names of log filesone per spaxel.
@@ -48,7 +48,7 @@ cores, then DRT_BRIDGELOOP parses this file to feed into a batch file.
 
 def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
             quiet, logfile=None):
-    
+
     import pdb
     import numpy as np
     from q3dfit.exceptions import InitializationError
@@ -61,7 +61,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
         else:
             uselogfile = logfile[ispax]
         loglun = open(uselogfile,'w')
-    
+
     masksig_secondfit_def = 2.
     colind = ispax % cube.ncols
     rowind = int(ispax / cube.ncols)
@@ -69,7 +69,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
     j = rowarr[colind,rowind]
     print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]',\
           file=loglun)
-   
+
     print(i,j)
     if oned:
         flux = cube.dat[:,i]
@@ -80,14 +80,14 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
         err = abs(cube.var[i,j,:])**0.5
         dq = cube.dq[i,j,:]
     errmax = max(err)
-    
+
     if initdat.__contains__('vormap'):
         tmpi = cube.vorcoords[i,0]
         tmpj = cube.vorcoords[i,1]
         i = tmpi
         j = tmpj
         print(f'Reference coordinate: [col,row]=[{i+1},{j+1}]',file=loglun)
-        
+
     if oned:
         outlab = '{[outdir]}{[label]}_{:04d}'.format(initdat,initdat,i+1)
     else:
@@ -104,9 +104,9 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
                 (flux != np.inf).any() and \
                 (flux != np.nan).any())
     if somedata:
-        
+
         if not initdat.__contains__('noemlinfit'):
-            
+
 #           Extract # of components specific to this spaxel and write as dict
 #           Each dict key (line) will have one value (# comp)
             ncomp = dict()
@@ -115,13 +115,13 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
                     ncomp[line] = initdat['ncomp'][line][i]
                 else:
                     ncomp[line] = initdat['ncomp'][line][i,j]
-                
+
 #       First fit
 
         dofit = True
         abortfit = False
         while(dofit):
-            
+
 #           Make sure ncomp > 0 for at least one line
             ct_comp_emlist = 0
             if not initdat.__contains__('noemlinfit'):
@@ -190,7 +190,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
             tweakcntfit = False
             if initdat.__contains__('tweakcntfit'):
                 tweakcntfit = initdat['tweakcntfit'][i,j,:,:]
-                
+
 #           initialize starting wavelengths
 #           should this be astropy table? dict of numpy arrays?
 #u['line'][(u['name']=='Halpha')]
@@ -199,32 +199,32 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
                 for line in initdat['lines']:
                     if oned:
                         linelistz[line] = \
-                            linelist['lines'][(linelist['name']==line)] * \
-                                (1. + initdat['zinit_gas'][line][i,])
+                            linelist['lines'][(linelist['name'] == line)] * \
+                                (1. + initdat['zinit_gas'][line][i, ])
                     else:
                         linelistz[line] = \
-                            linelist['lines'][(linelist['name']==line)] * \
-                                (1. + initdat['zinit_gas'][line][i,j,])
+                            linelist['lines'][(linelist['name'] == line)] * \
+                                (1. + initdat['zinit_gas'][line][i, j, ])
             linelistz_init = linelistz
 
             if not quiet:
                 print('FITLOOP: First call to FITSPEC')
-                
+
             structinit = fitspec(cube.wave,flux,err,dq,zstar,linelist,\
                                  linelistz,ncomp,initdat,quiet=quiet,\
                                  siglim_gas=siglim_gas,siginit_gas=siginit_gas,\
                                  tweakcntfit=tweakcntfit,col=i+1,row=j+1)
-            
+
             #save structinit as struct.npy to be used by q3da later
             np.save(outlab, structinit)
-            
+
             if not quiet:
                 print('FIT STATUS: '+structinit['fitstatus'])
 
 #           Second fit
 
             # if not onefit and not abortfit:
-                
+
                 # if not initdat.__contains__('noemlinfit') and ct_comp_emlist > 0:
 
                     # # set emission line mask parameters
@@ -232,5 +232,5 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, linelist, oned, onefit, \
                     #                       structinit['perror'],\
                     #                       structinit['parinfo'])
 
-#           To abort the while loop, for testing            
+#           To abort the while loop, for testing
             dofit = False

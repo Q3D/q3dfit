@@ -23,9 +23,9 @@
        Spectrum, flux errors.
      zstar: in, required, type=structure
        Initial guess for stellar redshift
-     linelist: in, required, type=hash(lines)
+     listlines: in, required, type=hash(lines)
        Emission line rest frame wavelengths.
-     linelistz: in, required, type=hash(lines\,ncomp)
+     listlinesz: in, required, type=hash(lines\,ncomp)
        Emission line observed frame wavelengths.
      ncomp: in, required, type=hash(lines)
        Number of components fit to each line.
@@ -139,7 +139,7 @@ import copy
 import pdb
 
 
-def fitspec(wlambda, flux, err, dq, zstar, linelist, linelistz, ncomp, initdat,
+def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, initdat,
             maskwidths=None, peakinit=None, quiet=None, siginit_gas=None,
             siglim_gas=None, tweakcntfit=None, col=None, row=None):
 
@@ -152,6 +152,7 @@ def fitspec(wlambda, flux, err, dq, zstar, linelist, linelistz, ncomp, initdat,
     # flux.setflags(write=True)
     # err.setflags(write=True)
 
+    bad = 1e99
     c = 299792.458         # speed of light, km/s
     siginit_gas_def = 100.  # default sigma for initial guess
                             # for emission line widths
@@ -162,10 +163,10 @@ def fitspec(wlambda, flux, err, dq, zstar, linelist, linelistz, ncomp, initdat,
     else:
         linelabel = b'0'
 
-    # converts the astropy.Table structure of linelist into a Python
+    # converts the astropy.Table structure of listlines into a Python
     # dictionary that is compatible with the code downstream
-    lines_arr = {name: linelist['lines'][idx] for idx, name in
-                 enumerate(linelist['name'])}
+    lines_arr = {name: listlines['lines'][idx] for idx, name in
+                 enumerate(listlines['name'])}
 
     if quiet:
         quiet = b'1'
@@ -207,7 +208,7 @@ def fitspec(wlambda, flux, err, dq, zstar, linelist, linelistz, ncomp, initdat,
     if 'maskwidths_def' in initdat:
         maskwidths_def = initdat['maskwidths_def']
     else:
-        maskwidths_def = 1000. # default half-width in km/s for emission line masking
+        maskwidths_def = 1000.  # default half-width in km/s for emission line masking
     if 'mpfit_xtol' in initdat:
         mpfit_xtol=initdat['mpfit_xtol']
     else:
@@ -381,20 +382,21 @@ def fitspec(wlambda, flux, err, dq, zstar, linelist, linelistz, ncomp, initdat,
 
         # Mask emission lines
         # Note that maskwidths is now an astropy Table
+        # Column names are line labels, rows are components
         if noemlinmask != b'1':
             if maskwidths is None:
                 if 'maskwidths' in initdat:
                     maskwidths = initdat['maskwidths']
                 else:
-                    # maskwidths = {key: None for key in initdat['lines']}
-                    maskwidths = Table([linelist['name']])
-                    maskwidths['halfwidths'] = np.array(initdat['maxncomp']) \
-                        + maskwidths_def
+                    maskwidths = Table(np.full([initdat['maxncomp'],
+                                                listlines['name'].size],
+                                               maskwidths_def, dtype='float'),
+                                       names=listlines['name'])
 
-            ct_indx = masklin(gdlambda/(1+zstar), linelist, maskwidths,
+            ct_indx = masklin(gdlambda/(1+zstar), listlines, maskwidths,
                               nomaskran=nomaskran)
             # Mask emission lines in log space
-            ct_indx_log = masklin(np.exp(gdlambda_log)/(1+zstar), linelist,
+            ct_indx_log = masklin(np.exp(gdlambda_log)/(1+zstar), listlines,
                                   maskwidths, nomaskran=nomaskran)
         else:
             ct_indx = np.arange(len(gdlambda))
@@ -574,7 +576,7 @@ def fitspec(wlambda, flux, err, dq, zstar, linelist, linelistz, ncomp, initdat,
                 peakinit = {line:None for line in initdat['lines']}
                 for line in initdat['lines']:
                     fline = interpolate.interp1d(gdlambda,gdflux_nocnt, kind='linear')
-                    peakinit[line] = np.array([fline(linelistz[line][0]).item()])
+                    peakinit[line] = np.array([fline(listlinesz[line][0]).item()])
                     neg = np.where(peakinit[line] < 0)[0]
                     ct = len(neg)
                     if ct > 0:
@@ -605,10 +607,10 @@ def fitspec(wlambda, flux, err, dq, zstar, linelist, linelistz, ncomp, initdat,
         # I need to fix the manygauss() fits
         if 'argsinitpar' in initdat:
             # need to fix the _extra keywords
-            parinit = fcninitpar(linelist,linelistz,initdat['linetie'],peakinit,siginit_gas,
+            parinit = fcninitpar(listlines,listlinesz,initdat['linetie'],peakinit,siginit_gas,
                                   initdat['maxncomp'],ncomp,siglim=siglim_gas,_extra=initdat['argsinitpar'])
         else:
-            parinit = fcninitpar(linelist,linelistz,initdat['linetie'],peakinit,siginit_gas,
+            parinit = fcninitpar(listlines,listlinesz,initdat['linetie'],peakinit,siginit_gas,
                                   initdat['maxncomp'],ncomp,siglim=siglim_gas)
 
         testsize = len(parinit)
@@ -641,7 +643,7 @@ def fitspec(wlambda, flux, err, dq, zstar, linelist, linelistz, ncomp, initdat,
         #  specfit *= fnorm
         #  gdflux_nocnt *= fnorm
         #  gderr_nocnt *= fnorm
-        #  foreach line,linelist.keys() do begin
+        #  foreach line,listlines.keys() do begin
         #     iline = where(parinit.line eq line)
         #     ifluxpk = cgsetintersection(iline,where(parinit.parname eq 'flux_peak'),$
         #                                 count=ctfluxpk)
@@ -683,7 +685,7 @@ def fitspec(wlambda, flux, err, dq, zstar, linelist, linelistz, ncomp, initdat,
                 if param[ifluxpk[i]] > 0:
                     perror_resid[ifluxpk[i]] = np.sqrt(np.mean(np.power(resid[wlo:whi],2.)))
 
-        outlinelist = linelist # this bit of logic prevents overwriting of linelist
+        outlistlines = listlines # this bit of logic prevents overwriting of listlines
         cont_dat = gdflux - specfit
     else:
         cont_dat = gdflux
@@ -692,7 +694,7 @@ def fitspec(wlambda, flux, err, dq, zstar, linelist, linelistz, ncomp, initdat,
         dof = 1
         niter = 0
         status = 0
-        outlinelist = 0
+        outlistlines = 0
         parinit = 0
         param = 0
         perror = 0
@@ -745,7 +747,7 @@ def fitspec(wlambda, flux, err, dq, zstar, linelist, linelistz, ncomp, initdat,
               'redchisq': rchisq,
               #'niter': niter, (DOES NOT EXIST)
               'fitstatus': status,
-              'linelist': outlinelist,
+              'linelist': outlistlines,
               'linelabel': linelabel,
               'parinfo': parinit,
               'param': param,

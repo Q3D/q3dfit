@@ -64,11 +64,14 @@ def masklin(llambda, linelambda, halfwidth, nomaskran=''):
         History
         2020abcXY, ???, translated from IDL
         2021jan07, DSNR, removed specres keyword
+        2021jan15, DSNR, changed format of input maskwidths, so edited
+                         treatment of halfwidth parameter
 
 
     """
 
     import numpy as np
+    # import pdb
 
     c = 299792.458
     # we will return the ones that are not masked
@@ -76,16 +79,18 @@ def masklin(llambda, linelambda, halfwidth, nomaskran=''):
     # start by retaining all elements -- mark them all True
     retain = np.array(np.ones(len(llambda)), dtype=bool)
 
-    # line is the index in the linelambda array and cwv is the central wavelength
+    # line is the index in the linelambda array and
+    # cwv is the central wavelength
     # let's flag the indices that are masked
     for line, cwv in enumerate(linelambda['lines']):
-        temp1 = \
-            np.array((llambda <= cwv*(1. - halfwidth['halfwidths'][line]/c)),
-                     dtype=bool)
-        temp2 = \
-            np.array((llambda >= cwv*(1. + halfwidth['halfwidths'][line]/c)),
-                     dtype=bool)
-        retain = (retain & (temp1 | temp2))
+        for i in range(halfwidth.columns[line].size):
+            temp1 = \
+                np.array((llambda <= cwv*(1. - halfwidth.columns[line][i]/c)),
+                         dtype=bool)
+            temp2 = \
+                np.array((llambda >= cwv*(1. + halfwidth.columns[line][i]/c)),
+                         dtype=bool)
+            retain = (retain & (temp1 | temp2))
 
     # if the user has defined the regions not to be masked:
     if (len(nomaskran) > 0):

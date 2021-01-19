@@ -46,16 +46,17 @@ cores, then DRT_BRIDGELOOP parses this file to feed into a batch file.
 
 """
 
+import importlib
+import pdb
+import numpy as np
+from astropy.table import Table
+from q3dfit.exceptions import InitializationError
+from q3dfit.common.fitspec import fitspec
+from q3dfit.common.sepfitpars import sepfitpars
+
 
 def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
             quiet, logfile=None):
-
-    import pdb
-    import numpy as np
-    from astropy.table import Table
-    from q3dfit.exceptions import InitializationError
-    from q3dfit.common.fitspec import fitspec
-    from q3dfit.common.sepfitpars import sepfitpars
 
     if logfile:
         if isinstance(logfile, str):
@@ -104,15 +105,16 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
         err[indx_bad] = errmax*100.
 
 #   Check that the flux is not filled with 0s, infs, or nans
-    somedata = ((flux != 0.).any() and \
-                (flux != np.inf).any() and \
+    somedata = ((flux != 0.).any() and
+                (flux != np.inf).any() and
                 (flux != np.nan).any())
     if somedata:
 
-        if not initdat.__contains__('noemlinfit'):
+        if 'noemlinfit' not in initdat:
 
-#           Extract # of components specific to this spaxel and write as dict
-#           Each dict key (line) will have one value (# comp)
+            # Extract # of components specific to this spaxel and
+            # write as dict
+            # Each dict key (line) will have one value (# comp)
             ncomp = dict()
             for line in initdat['lines']:
                 if oned:
@@ -182,14 +184,17 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                     for k in range(initdat['cutrange'].shape[0]):
                         indx_cut = \
                             np.intersect1d((cube.wave >=
-                                            initdat['cutrange'][k, 0]).nonzero(),
+                                            initdat['cutrange']
+                                            [k, 0]).nonzero(),
                                            (cube.wave <=
-                                            initdat['cutrange'][k, 1]).nonzero())
+                                            initdat['cutrange']
+                                            [k, 1]).nonzero())
                         if indx_cut.size != 0:
                             dq[indx_cut] = 1
                             err[indx_cut] = errmax*100.
                 else:
-                    raise InitializationError('CUTRANGE not properly specified')
+                    raise InitializationError('CUTRANGE not' +
+                                              ' properly specified')
 
             # option to tweak continuum fit
             tweakcntfit = False
@@ -273,6 +278,44 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
             else:
 
                 struct = structinit
+
+            # Check components
+
+            if 'fcncheckcomp' in initdat and \
+                'noemlinfit' not in initda and \
+                not onefit and not abortfit and \
+                ct_comp_emlist > 0:
+
+                siglim_gas = struct['siglim']
+
+                linepars = ifsf_sepfitpars(listlines, struct['param'],
+                                           struct['perror'],
+                                           struct['parinfo'])
+                ccModule = \
+                    importlib.import_module('q3dfit.common.' +
+                                            initdat['fcncheckcomp'])
+                fcncheckcomp = getattr(ccModule, 'run_' +
+                                       initdat['fcncheckcomp'])
+                if 'argscheckcomp' in initdat:
+                    goodcomp = \
+                        fcncheckcomp(linepars, initdat['linetie'],
+                                     ncomp, newncomp, siglim_gas,
+                                     _extra=initdat.argscheckcomp) $
+            else goodcomp = $
+               call_function(initdat.fcncheckcomp,linepars,initdat.linetie,$
+                             ncomp,newncomp,siglim_gas)
+
+            if newncomp.count() gt 0 then begin
+               foreach nc,newncomp,line do $
+                  printf,loglun,'IFSF: Repeating the fit of ',line,$
+                         ' with ',string(nc,format='(I0)'),' components.',$
+                         format='(5A0)'
+            endif else begin
+               dofit=0b
+            endelse
+
+         endif else dofit=0b
+
 
             # save struct to be used by q3da later
             np.save(outlab, struct)

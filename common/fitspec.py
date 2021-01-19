@@ -251,11 +251,12 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, initdat
         if 'waveunit' in initdat:
             templatelambdaz *= initdat['waveunit']
         if 'fcnconvtemp' in initdat:
-            impModule = __import__(initdat.fcnconvtemp)
+            impModule = importlib.import_module('q3dfit.common.' +
+                                                initdat['fcnconvtemp'])
             fcnconvtemp = getattr(impModule, initdat['fcnconvtemp'])
             if 'argsconvtemp' in initdat:
                 newtemplate = fcnconvtemp(templatelambdaz, template,
-                                          *initdat.argsconvtemp)
+                                          **initdat['argsconvtemp'])
             else:
                 newtemplate = fcnconvtemp(templatelambdaz, template)
     else:

@@ -184,6 +184,47 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
                polyspec_refit=None, fitran=None, fittol=None,
                qsoord=None, hostonly=None, hostord=None, **kwargs):
 
+    '''Function defined to fit the continuum
+    
+    Parameters
+    -----
+    wave: array
+        wavelength
+        
+    flux: array
+        Flux values to be fit
+        
+    weight: array
+        Weights of each individual pixel to be fit
+    
+    template_wave: array
+        Wavelength array of the stellar template used as model for stellar continuum
+        
+    template_flux: array
+        Flux of the stellar template used ass model for stellar continuum
+    
+    index: array
+        Pixels used in the fit
+    
+    zstar: float
+        redshift of the stellar continuum
+    
+    
+    
+    
+    returns
+    -------
+    continuum: array
+        best fit continuum model
+    
+    ct_coeff: dictionary or lmfit best fit params structure
+        best fit parameters
+    
+    zstar: float
+        best fit stellar redshift
+    '''
+        
+        
     if qsoxdr is None:
         sys.exit('Quasar template (qsoxdr) not specified in \
                  initialization file.')
@@ -328,6 +369,8 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     #     return result, comps, y_final
     # else:
         return continuum, ct_coeff, zstar
+
+
 
 
 

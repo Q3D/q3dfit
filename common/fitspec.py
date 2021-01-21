@@ -624,11 +624,11 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, initdat
             elin_lmfit(gdlambda, gdflux_nocnt, gderr_nocnt, parinfo=parinit,
                        maxiter=1000)
 
-        param  = parout
-        covar  = lmout.covar
-        dof    =lmout.nfree
-        nfev   = lmout.nfev
-        rchisq  = lmout.chisqr
+        param = parout
+        covar = lmout.covar
+        dof = lmout.nfree
+        # nfev = lmout.nfev
+        rchisq = lmout.chisqr
         errmsg = lmout.message
         status = lmout.success
         # the following MPFIT variables that were not compatible with LMFIT,

@@ -5,8 +5,7 @@ Created on Mon Jun  8 11:14:14 2020
 
 @author: drupke
 
-Take outputs from IFSF and perform fitting loop. If loop is split among multiple
-cores, then DRT_BRIDGELOOP parses this file to feed into a batch file.
+Take outputs from Q3DF and perform fitting loop.
 
 :Returns:
    None.
@@ -43,13 +42,13 @@ cores, then DRT_BRIDGELOOP parses this file to feed into a batch file.
      2016oct20, DSNR, fixed treatment of SIGINIT_GAS
      2016nov17, DSNR, added flux calibration
      2018jun25, DSNR, added MC error calculation on stellar parameters
+     2021jan20, DSNR, finished translating to Python
 
 """
 
 import importlib
-import pdb
+# import pdb
 import numpy as np
-from astropy.table import Table
 from q3dfit.exceptions import InitializationError
 from q3dfit.common.fitspec import fitspec
 from q3dfit.common.sepfitpars import sepfitpars
@@ -96,7 +95,8 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
     if oned:
         outlab = '{[outdir]}{[label]}_{:04d}'.format(initdat, initdat, i+1)
     else:
-        outlab = '{[outdir]}{[label]}_{:04d}_{:04d}'.format(initdat, initdat, i+1, j+1)
+        outlab = '{[outdir]}{[label]}_{:04d}_{:04d}'.format(initdat,
+                                                            initdat, i+1, j+1)
 
 #   Apply DQ plane
     indx_bad = np.nonzero(dq > 0)
@@ -167,7 +167,6 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                 zstar = initdat['zinit_stars'][i]
             else:
                 zstar = initdat['zinit_stars'][i, j]
-            zstar_init = zstar
 
 #           regions to ignore in fitting. Set to max(err)
             if initdat.__contains__('cutrange'):
@@ -210,12 +209,11 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                     if oned:
                         listlinesz[line] = \
                             listlines['lines'][(listlines['name'] == line)] * \
-                                (1. + initdat['zinit_gas'][line][i, ])
+                            (1. + initdat['zinit_gas'][line][i, ])
                     else:
                         listlinesz[line] = \
                             listlines['lines'][(listlines['name'] == line)] * \
-                                (1. + initdat['zinit_gas'][line][i, j, ])
-            listlinesz_init = listlinesz
+                            (1. + initdat['zinit_gas'][line][i, j, ])
 
             if not quiet:
                 print('FITLOOP: First call to FITSPEC')
@@ -260,7 +258,6 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                     peakinit_tmp = None
                     siginit_gas_tmp = None
 
-                zstar_init2 = structinit['zstar']
                 if not quiet:
                     print('FITLOOP: Second call to FITSPEC')
                 struct = fitspec(cube.wave, flux, err, dq, structinit['zstar'],
@@ -282,43 +279,38 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
             # Check components
 
             if 'fcncheckcomp' in initdat and \
-                'noemlinfit' not in initda and \
-                not onefit and not abortfit and \
-                ct_comp_emlist > 0:
+                'noemlinfit' not in initdat and \
+                    not onefit and not abortfit and \
+                    ct_comp_emlist > 0:
 
                 siglim_gas = struct['siglim']
 
-                linepars = ifsf_sepfitpars(listlines, struct['param'],
-                                           struct['perror'],
-                                           struct['parinfo'])
+                linepars = sepfitpars(listlines, struct['param'],
+                                      struct['perror'],
+                                      struct['parinfo'])
                 ccModule = \
                     importlib.import_module('q3dfit.common.' +
                                             initdat['fcncheckcomp'])
-                fcncheckcomp = getattr(ccModule, 'run_' +
-                                       initdat['fcncheckcomp'])
+                fcncheckcomp = getattr(ccModule, initdat['fcncheckcomp'])
+                # Note that this modifies the value of ncomp if necessary
                 if 'argscheckcomp' in initdat:
-                    goodcomp = \
+                    newncomp = \
                         fcncheckcomp(linepars, initdat['linetie'],
-                                     ncomp, newncomp, siglim_gas,
-                                     _extra=initdat.argscheckcomp) $
-            else goodcomp = $
-               call_function(initdat.fcncheckcomp,linepars,initdat.linetie,$
-                             ncomp,newncomp,siglim_gas)
+                                     ncomp, siglim_gas,
+                                     **initdat['argscheckcomp'])
+                else:
+                    newncomp = \
+                        fcncheckcomp(linepars, initdat['linetie'],
+                                     ncomp, siglim_gas)
 
-            if newncomp.count() gt 0 then begin
-               foreach nc,newncomp,line do $
-                  printf,loglun,'IFSF: Repeating the fit of ',line,$
-                         ' with ',string(nc,format='(I0)'),' components.',$
-                         format='(5A0)'
-            endif else begin
-               dofit=0b
-            endelse
+                if len(newncomp) > 0:
+                    for nc, line in newncomp.items():
+                        print(f'Q3DF: Repeating the fit of {line} with {nc} \
+                              components.')  # , file=loglun)
+                else:
+                    dofit = False
+            else:
+                dofit = False
 
-         endif else dofit=0b
-
-
-            # save struct to be used by q3da later
-            np.save(outlab, struct)
-
-            # To abort the while loop, for testing
-            dofit = False
+        # save struct to be used by q3da later
+        np.save(outlab, struct)

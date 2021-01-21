@@ -5,19 +5,33 @@ Created on Tue Jan 19 15:38:38 2021
 
 @author: drupke
 
-; docformat = 'rst'
 ;
-;+
-;
+; Automatically search for "good" components.
 ;
 ; :Categories:
 ;    IFSFIT
 ;
 ; :Returns:
 ;
+;     NEWNCOMP, hash of # of components for each unique linetie anchor.
+;     The input hash NCOMP is also updated to reflect correct new # of components.
+;
 ; :Params:
 ;
+;     linepars: in, required, type=hash
+;        Output from IFSF_SEPFITPARS
+;     linetie: in, required, type=hash
+;        Lines to which each fitted line is tied to
+;     ncomp: in, required, type=hash
+;        # of components for each fitted line
+;     siglim: in, required, type=double(2)
+;        Sigma limits for emission lines.
+;
 ; :Keywords:
+;     sigcut: in, optional, type=double, default=3d
+;        Sigma threshold in flux for rejection of a component.
+;     ignore: in, optional, type=strarr
+;        Array of lines to ignore in looking for good copmonents.
 ;
 ; :Author:
 ;    David S. N. Rupke::
@@ -38,9 +52,11 @@ Created on Tue Jan 19 15:38:38 2021
 ;                       that total flux errors are correctly computed
 ;      2017aug10, DSNR, will now accept components that hit lower limit in sigma
 ;                       (previously had to be above lower limit)
+;      2021jan20, DSNR, updated documentation, input/output
+;      2021jan20, DSNR, translated to Python
 ;
 ; :Copyright:
-;    Copyright (C) 2014--2016 David S. N. Rupke
+;    Copyright (C) 2014--2021 David S. N. Rupke
 ;
 ;    This program is free software: you can redistribute it and/or
 ;    modify it under the terms of the GNU General Public License as
@@ -59,79 +75,64 @@ Created on Tue Jan 19 15:38:38 2021
 
 """
 
+import numpy as np
+import pdb
 
-def ifsf_checkcomp(linepars, linetie, ncomp, newncomp, siglim,
-                   sigcut=None, blrlines=None, blrcomp=None, ignore=None):
+
+def checkcomp(linepars, linetie, ncomp, siglim,
+              sigcut=None, ignore=None):
 
     if sigcut is None:
         sigcut = 3.
 
+    # Output dictionary
     newncomp = dict()
 
+    # Find lines associated with each unique anchor.
+    # NEWLINETIE is a dict of lists,
+    # with the keys being the lines that are tied TO and
+    # the list corresponding to
+    # each key consisting of the tied lines.
+    newlinetie = dict()
     # Find unique anchors
-    anchors = (linetie.values()).toarray()
-    sanchors = anchors[sort(anchors)]
-    uanchors = sanchors[uniq(sanchors)]
+    uanchors = np.unique(sorted(linetie.values()))
+    for key in uanchors:
+        newlinetie[key] = list()
+    for key, val in linetie.items():
+        newlinetie[val].append(key)
 
-;  Find lines associated with each unique anchor. NEWLINETIE is a hash of lists,
-;  with the keys being the lines that are tied TO and the list corresponding to
-;  each key consisting of the tied lines.
-   newlinetie = hash(uanchors)
-   foreach val,newlinetie,key do newlinetie[key] = list()
-   foreach val,linetie,key do newlinetie[val].add,key
+    # Loop through anchors
+    for key, tiedlist in newlinetie.items():
+        if ncomp[key] > 0:
+            goodcomp = np.zeros(ncomp[key], dtype=int)
+            # Loop through lines tied to each anchor,
+            # looking for good components
+            for line in tiedlist:
+                doignore = False
+                if ignore is not None:
+                    for ignoreline in ignore:
+                        if ignoreline == line:
+                            doignore = True
+                if not doignore:
+                    igd = (linepars['flux'][line][:ncomp[line]] >
+                           sigcut*linepars['fluxerr'][line][:ncomp[line]]
+                           and linepars['fluxerr'][line][:ncomp[line]] > 0
+                           and linepars['sigma'][line][:ncomp[line]] >
+                           siglim[0]
+                           and linepars['sigma'][line][:ncomp[line]] <
+                           siglim[1]).nonzero()
+                if np.size(igd) > 0:
+                    goodcomp[igd] += 1
+            # Find number of good components
+            tmpncomp = 0
+            for i in range(ncomp[key]):
+                if goodcomp[i] > 0:
+                    tmpncomp += 1
+            if tmpncomp != ncomp[key]:
+                newncomp[key] = tmpncomp
+                #  Loop through lines tied to each anchor and
+                # set proper number of components
+                for line in tiedlist:
+                    ncomp[line] = tmpncomp
 
-;  Loop through anchors
-   foreach tiedlist,newlinetie,key do begin
-      if ncomp[key] gt 0 then begin
-         goodcomp = intarr(ncomp[key])
-;        Loop through lines tied to each anchor, looking for good components
-         foreach line,tiedlist do begin
-            ctgd = 0
-            doignore=0b
-            if keyword_set(ignore) then $
-               foreach ignoreline,ignore do $
-                  if ignoreline eq line then doignore=1b
-            if ~doignore then begin
-;               igd = where((linepars.fluxpk)[line,0:ncomp[line]-1] ge $
-;                           sigcut*(linepars.fluxpkerr)[line,0:ncomp[line]-1] AND $
-;                           (linepars.fluxpkerr)[line,0:ncomp[line]-1] gt 0 AND $
-               igd = where((linepars.flux)[line,0:ncomp[line]-1] ge $
-                           sigcut*(linepars.fluxerr)[line,0:ncomp[line]-1] AND $
-                           (linepars.fluxerr)[line,0:ncomp[line]-1] gt 0 AND $
-                           (linepars.sigma)[line,0:ncomp[line]-1] ge siglim[0] AND $
-                           (linepars.sigma)[line,0:ncomp[line]-1] lt siglim[1],$
-                           ctgd)
-               if keyword_set(blrcomp) AND keyword_set(blrlines) then begin
-                  foreach blr,blrlines do begin
-                     if line eq blr then begin
-                        foreach ind,blrcomp do begin
-                           if ctgd gt 0 then begin
-                              goodblr = where(ind-1 eq igd,ct)
-                              if ct lt 0 then begin
-                                 igd = [igd,ind-1]
-                                 ctgd++
-                              endif
-                           endif else begin
-                              igd = ind-1
-                              ctgd = 1
-                           endelse
-                        endforeach
-                     endif
-                  endforeach
-               endif
-            endif
-            if ctgd gt 0 then goodcomp[igd]++
-         endforeach
-;        Find number of good components
-         tmpncomp = 0
-         for i=0,ncomp[key]-1 do if goodcomp[i] gt 0 then tmpncomp++
-         if tmpncomp ne ncomp[key] then begin
-            newncomp[key]=tmpncomp
-;           Loop through lines tied to each anchor and set proper number of
-;           components
-            foreach line,tiedlist do ncomp[line]=tmpncomp
-         endif
-      endif
-   endforeach
-
-end
+    return(newncomp)

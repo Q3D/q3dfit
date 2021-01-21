@@ -257,35 +257,35 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     #Default is QSO exponential scale + Host exponential scale model
     if hostonly == None and hostord == None and qsoonly == None and qsoord == None:
 
-        qso_scale_model = set_up_fit_qso_exponential_scale_model([0.0,0.5,0.0,0.5,0.0,0.5,0.0,0.5])
+        qso_scale_model = set_up_fit_qso_exponential_scale_model([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])#[0.0,0.5,0.0,0.5,0.0,0.5,0.0,0.5]
         ymod = qso_scale_model[0]
         params = qso_scale_model[1]
 
-        continuum_model = set_up_fit_continuum_additive_polynomial_model([1e-2,0.5,1e-2,0.5,1e-3,0.5,1e-3,0.5])
+        continuum_model = set_up_fit_continuum_additive_polynomial_model([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])#[1e-2,0.5,1e-2,0.5,1e-3,0.5,1e-3,0.5]
         ymod += continuum_model[0]
         params += continuum_model[1]
 
     #Additional options for fitting only QSO or HOST
     if hostonly:
-        continuum_model = set_up_fit_continuum_additive_polynomial_model([1e-2,0.5,1e-2,0.5,1-3,0.5,1e-3,0.5])
+        continuum_model = set_up_fit_continuum_additive_polynomial_model([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])#[1e-2,0.5,1e-2,0.5,1e-3,0.5,1e-3,0.5]
         ymod = continuum_model[0]
         params = continuum_model[1]
 
     if hostonly and hostord:
 
-        additive_polynomial_model = set_up_fit_continuum_additive_polynomial_model([1e-2,0.5,1e-2,0.5,1-3,0.5,1e-3,0.5])
+        additive_polynomial_model = set_up_fit_continuum_additive_polynomial_model([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])#[1e-2,0.5,1e-2,0.5,1-3,0.5,1e-3,0.5]
         continuum_legendre = set_up_fit_qso_continuum_legendre([1e-1,1e-3,0.])
         ymod += additive_polynomial_model[0] + continuum_legendre[0]
         params += additive_polynomial_model[1] + continuum_legendre[1]
 
     if qsoonly:
-        qso_scale_model = set_up_fit_qso_exponential_scale_model([0.0,0.5,0.0,0.5,0.0,0.5,0.0,0.5])
+        qso_scale_model = set_up_fit_qso_exponential_scale_model([0.0,0.5,0.0,0.0,0.0,0.5,0.0,0.0])#[0.0,0.5,0.0,0.5,0.0,0.5,0.0,0.5]
         ymod += qso_scale_model[0]
         params += qso_scale_model[1]
 
     if qsoonly and qsoord:
         P_L = [1e-1,1e-3,1e-4]
-        qso_scale_legendre = set_up_fit_qso_scale_legendre([1e-1,1e-3,1e-4])
+        qso_scale_legendre = set_up_fit_qso_scale_legendre([0.0,0.0,0.0])#[1e-1,1e-3,1e-4]
         ymod += qso_scale_legendre[0]
         params += qso_scale_legendre[1]
 
@@ -303,19 +303,26 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
             params += gaussian_model_parameters
             counter += 3
 
-    result = ymod.fit(iflux, params, weights=iweight, qso_model=qsoflux[index],
-                      wave=iwave, x=iwave)
+#testing with resid function
+#    def resid(params,wave,qsoflux=None,ymod=None,flux=None):
+#
+#        return ymod.eval(params,wave=wave, qso_model=qsoflux, x=wave) - flux
+#    out = lmfit.minimize(resid, params, args=(iwave,), kws={'qsoflux': qsoflux[index],'ymod':ymod,'flux':iflux},method='least_squares',nan_policy='omit)
+
+    result = ymod.fit(iflux, params, weights=iweight, qso_model=qsoflux[index],wave=iwave, x=iwave,method='least_squares',nan_policy='omit')
 
     comps = result.eval_components(wave=wave, qso_model=qsoflux, x=wave)
     continuum = result.eval(wave=wave, qso_model=qsoflux, x=wave)
 
-    # Test plot
-    # import matplotlib.pyplot as plt
-    # for i in comps.keys():
-    #     plt.plot(wave, comps[i], label=i)
-    # plt.plot(wave, continuum, label='best-fit')
-    # plt.legend(loc='best')
-    # plt.show()
+#    Test plot
+#    import matplotlib.pyplot as plt
+#    for i in comps.keys():
+#        plt.plot(wave, comps[i], label=i)
+#    plt.plot(wave, continuum, label='best-fit')
+#    plt.plot(wave,flux,label='flux')
+#    plt.plot(wave,flux-continuum,label='resid')
+#    plt.legend(loc='best')
+#    plt.show()
 
     ct_coeff = result.params
 

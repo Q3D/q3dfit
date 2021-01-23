@@ -207,10 +207,10 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
             if lratfixed == b'0':
                 # case of pegging at or exceeding upper limit
                 if parinfo[ip1+i]['value'] >= parinfo[ip1+i]['limits'][1] :
-                    parinfo[ip1+i]['value'] = parinfo[ip1+i]['limits'][1] - (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1
+                    parinfo[ip1+i]['value'] = np.array([parinfo[ip1+i]['limits'][1] - (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1])
                 # case of pegging at or dipping below lower limit
                 if parinfo[ip1+i]['value'] <= parinfo[ip1+i]['limits'][0] :
-                    parinfo[ip1+i]['value'] = parinfo[ip1+i]['limits'][0] + (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1                
+                    parinfo[ip1+i]['value'] = np.array([parinfo[ip1+i]['limits'][0] + (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1])
         
 # [NI] ratio
 # See Ferland+12 for collisional case, Bautista99 for other cases. Upper limit 
@@ -256,10 +256,10 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
             if lratfixed == b'0':
                 # case of pegging at or exceeding upper limit
                 if parinfo[ip1+i]['value'] >= parinfo[ip1+i]['limits'][1] :
-                    parinfo[ip1+i]['value'] = parinfo[ip1+i]['limits'][1] - (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1
+                    parinfo[ip1+i]['value'] = np.array([parinfo[ip1+i]['limits'][1] - (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1])
                     # case of pegging at or dipping below lower limit
                 if parinfo[ip1+i]['value'] <= parinfo[ip1+i]['limits'][0] :
-                    parinfo[ip1+i]['value'] = parinfo[ip1+i]['limits'][0] + (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1                
+                    parinfo[ip1+i]['value'] = np.array([parinfo[ip1+i]['limits'][0] + (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1])
     
 # [NII]/Ha ratio
     ilratlim = 2
@@ -303,10 +303,10 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
             if lratfixed == b'0':
                 # case of pegging at or exceeding upper limit
                 if parinfo[ip1+i]['value'] >= parinfo[ip1+i]['limits'][1] :
-                    parinfo[ip1+i]['value'] = parinfo[ip1+i]['limits'][1] - (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1
+                    parinfo[ip1+i]['value'] = np.array([parinfo[ip1+i]['limits'][1] - (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1])
                # case of pegging at or dipping below lower limit
                 if parinfo[ip1+i]['value'] <= parinfo[ip1+i]['limits'][0] :
-                    parinfo[ip1+i]['value'] = parinfo[ip1+i]['limits'][0] + (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1                
+                    parinfo[ip1+i]['value'] = np.array([parinfo[ip1+i]['limits'][0] + (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1])
                   
     
 # Ha/Hb ratio --> has been commented out in the original IDL code
@@ -398,10 +398,10 @@ def gmos(linelist, linelistz,linetie,initflux,initsig,maxncomp,ncomp,
             if lratfixed == b'0':
                 # case of pegging at or exceeding upper limit
                 if parinfo[ip1+i]['value'] >= parinfo[ip1+i]['limits'][1] :
-                    parinfo[ip1+i]['value'] = parinfo[ip1+i]['limits'][1] - (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1
+                    parinfo[ip1+i]['value'] = np.array([parinfo[ip1+i]['limits'][1] - (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1])
                     # case of pegging at or dipping below lower limit
                 if parinfo[ip1+i]['value'] <= parinfo[ip1+i]['limits'][0] :
-                    parinfo[ip1+i]['value'] = parinfo[ip1+i]['limits'][0] + (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1                
+                    parinfo[ip1+i]['value'] = np.array([parinfo[ip1+i]['limits'][0] + (parinfo[ip1+i]['limits'][1] - parinfo[ip1+i]['limits'][0])*0.1])
        
     
 # cycle through velocity components

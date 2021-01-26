@@ -631,7 +631,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         covar = lmout.covar
         dof = lmout.nfree
         # nfev = lmout.nfev
-        rchisq = lmout.chisqr
+        rchisq = lmout.redchi
         errmsg = lmout.message
         status = lmout.success
         # the following MPFIT variables that were not compatible with LMFIT,
@@ -643,19 +643,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # xtol=mpfit_xtol
         # ftol=mpfit_ftol
 
-        # Un-normalize fit. (NOT USED)
-        #  specfit *= fnorm
-        #  gdflux_nocnt *= fnorm
-        #  gderr_nocnt *= fnorm
-        #  foreach line,listlines.keys() do begin
-        #     iline = where(parinit.line eq line)
-        #     ifluxpk = cgsetintersection(iline,where(parinit.parname eq 'flux_peak'),$
-        #                                 count=ctfluxpk)
-        #     param[ifluxpk] *= fnorm
-        #     perror[ifluxpk] *= fnorm
-        #  endforeach
-
-        # error messages corresponding to LMFIT, documentation was not very helpful with the error messages...
+        # error messages corresponding to LMFIT,
+        # documentation was not very helpful with the error messages...
         if status == False :
             raise Exception('LMFIT: '+errmsg)
         # #     outstr = 0
@@ -663,10 +652,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # if status == 5:
         #     print('LMFIT: Max. iterations reached.')
 
-        # Errors from covariance matrix ...
-#        rchisq = chisq/dof
-        perror = np.multiply(perror, np.sqrt(rchisq))
-        # perror =  np.sqrt(rchisq)
+        # Errors from covariance matrix. [Let's not multiply by reduced
+        # chi-squared for now -- not clear that it's ocrrect ...)
+        # perror = np.multiply(perror, np.sqrt(rchisq))
         # ... and from fit residual.
         resid=gdflux-continuum-specfit
         perror_resid = perror
@@ -694,7 +682,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     else:
         cont_dat = gdflux
         specfit = 0
-        chisqr = 0
+        rchisq = 0
         dof = 1
         niter = 0
         status = 0

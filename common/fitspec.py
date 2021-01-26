@@ -118,30 +118,28 @@
        2020jul07, DSNR, bug fixes; it runs all the way through now.
        2020jul08, YI, cleaned up the emission line fit section; variables for new many_gauss.py
        2020jul10, YI, bug fixes in perror_resid bloc; ran successfully
+       2021jan, AV and DSNR, major changes in continuum implementation
+       2021jan25, DSNR, fixed bug in errors passing into elin_lmfit
 """
 
+import copy
 import importlib
-import math
 import numpy as np
+import pdb
 import time
-from scipy import interpolate
-# import scipy.io as sio
-# from scipy.io import readsav
 from astropy.table import Table
-from q3dfit.common.airtovac import airtovac
-from q3dfit.common.masklin import masklin
-# from q3dfit.common import fitqsohost
-# from q3dfit.common import linelist as ll
-from q3dfit.common import interptemp
 from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
-import copy
-import pdb
+from q3dfit.common.airtovac import airtovac
+from q3dfit.common.masklin import masklin
+from q3dfit.common import interptemp
+from scipy import interpolate
 
 
-def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, initdat,
-            maskwidths=None, peakinit=None, quiet=None, siginit_gas=None,
-            siglim_gas=None, tweakcntfit=None, col=None, row=None):
+def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
+            initdat, maskwidths=None, peakinit=None, quiet=None,
+            siginit_gas=None, siglim_gas=None, tweakcntfit=None,
+            col=None, row=None):
 
     flux_out = flux
     err_out = err
@@ -182,7 +180,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, initdat
     else:
         fcnlinefit = 'manygauss'
     if 'argslinefit' in initdat:
-        argslinefit=initdat['argslinefit']
+        argslinefit = initdat['argslinefit']
     if 'nomaskran' in initdat:
         nomaskran=initdat['nomaskran']
     else:
@@ -537,7 +535,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, initdat
 
             if 'dividecont' in initdat:
                 gdflux_nocnt = gdflux / continuum - 1
-                gdweight_nocnt = gdweight * np.power(continuum,2.)
+                gdweight_nocnt = gdweight * np.power(continuum, 2.)
                 gderr_nocnt = gderr / continuum
                 method   = 'CONTINUUM DIVIDED'
             else:
@@ -600,18 +598,23 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, initdat
         #  foreach line,initdat.lines do peakinit[line] /= fnorm
 
         # Fill out parameter structure with initial guesses and constraints
-        impModule = importlib.import_module('q3dfit.init.'+initdat['fcninitpar'])
-        fcninitpar = getattr(impModule,initdat['fcninitpar'])
+        impModule = importlib.import_module('q3dfit.init.' +
+                                            initdat['fcninitpar'])
+        fcninitpar = getattr(impModule, initdat['fcninitpar'])
 
         # running test functions for now.....
         # I need to fix the manygauss() fits
         if 'argsinitpar' in initdat:
             # need to fix the _extra keywords
-            parinit = fcninitpar(listlines,listlinesz,initdat['linetie'],peakinit,siginit_gas,
-                                  initdat['maxncomp'],ncomp,siglim=siglim_gas,_extra=initdat['argsinitpar'])
+            parinit = \
+                fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
+                           siginit_gas, initdat['maxncomp'], ncomp,
+                           siglim=siglim_gas, _extra=initdat['argsinitpar'])
         else:
-            parinit = fcninitpar(listlines,listlinesz,initdat['linetie'],peakinit,siginit_gas,
-                                  initdat['maxncomp'],ncomp,siglim=siglim_gas)
+            parinit = \
+                fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
+                           siginit_gas, initdat['maxncomp'], ncomp,
+                           siglim=siglim_gas)
 
         testsize = len(parinit)
         if testsize == 0:
@@ -620,7 +623,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, initdat
         efitModule = importlib.import_module('q3dfit.common.'+fcnlinefit)
         elin_lmfit = getattr(efitModule, 'run_'+fcnlinefit)
         lmout, parout, specfit, perror = \
-            elin_lmfit(gdlambda, gdflux_nocnt, gderr_nocnt, parinfo=parinit,
+            elin_lmfit(gdlambda, gdflux_nocnt, gdweight_nocnt, parinfo=parinit,
                        maxiter=1000)
 
         param  = parout

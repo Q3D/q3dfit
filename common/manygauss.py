@@ -23,7 +23,7 @@
 ;      Best-fit parameter array output by MPFIT.
 ;
 ; :Keywords:
-; 
+;
 ; :Author:
 ;    David S. N. Rupke::
 ;      Rhodes College
@@ -42,13 +42,20 @@
 ;                       resolution in quadrature in wavelength space to each
 ;                       velocity component
 ;      2020jun01, YI, translated to Python 3 - ver2
-;      2020jun22, YI, added LMFIT functions that build the parameter variables and running the fits that call many_gauss() - ver2
-;      2020jul06, YI, refined the LMFIT parameter set --> able to reproduce MPFIT results, but cannot get uncertainties - ver3
+;      2020jun22, YI, added LMFIT functions that build the parameter variables
+;                     and running the fits that call many_gauss() - ver2
+;      2020jul06, YI, refined the LMFIT parameter set --> able to reproduce
+;                     MPFIT results, but cannot get uncertainties - ver3
 ;      2020jul07, DSNR, fixed indexing bug in expr
-;      2020jul08, YI, complete rewrite: implemented LMFIT Composite Model instead of LMFIT Minimizer for fits; can get fit stats. major changes to manygauss - ver4
-;    
+;      2020jul08, YI, complete rewrite: implemented LMFIT Composite Model
+;                     instead of LMFIT Minimizer for fits; can get fit
+;                     stats. major changes to manygauss - ver4
+;      2021jan25, DSNR, rewrote some logic for clarity; heavy commenting;
+;                       removed fixing of line ratios; tested unsuccessfully
+;                       one option for varying line ratio
+;
 ; :Copyright:
-;    Copyright (C) 2013--2016 David S. N. Rupke
+;    Copyright (C) 2013--2021 David S. N. Rupke
 ;
 ;    This program is free software: you can redistribute it and/or
 ;    modify it under the terms of the GNU General Public License as
@@ -67,234 +74,211 @@
 ;-
 """
 import numpy as np
-import matplotlib.pyplot as plt
-from lmfit import Parameters, Minimizer,minimize,fit_report,report_fit,Model
+import pdb
 import re
+from lmfit import Model
 
-def fix_expressions(pnames,paramExp,indexs=[0],lineRat=[0]):
-    # now go through each expressions....
+
+# This loops through expressions that tie parameters together and replaces
+# instances of "P[index]" with the parameter name equivalent in LMFIT
+# parnames = parameter names for the LMFIT model, except for srsigslam's
+# partie = tied expressions
+# iparinfo = parinfo indices of parnames
+def fix_expressions(parnames, partie, iparinfo):
     newExp = []
-    for ex, exp in enumerate(paramExp):
-        if ex in indexs:
-            
-            exp = re.sub('d','',exp)
-            pind = np.array(re.findall(r'P\[(.*?)\]', exp)).astype(int)
+    # Loop through all fitted parameters (except srsigslam)
+    for i, par in enumerate(parnames):
+        exp = partie[i]
+        notie = False
+        # Re-write expression only if it's not an empty string
+        if exp != '':
             nexp = exp
+            # Search for all instances of "P[index]" in the expression
+            pind = np.array(re.findall(r'P\[(.*?)\]', exp)).astype(int)
+            # for each instance, replace by the correct LMFIT parameter name
+            # if it exists
             for epind in pind:
                 sepind = 'P['+str(epind)+']'
-                if epind in lineRat:
-                    nexp = nexp.replace(sepind,str(lineRat[epind]))
+                tmpind = (iparinfo == epind).nonzero()[0]
+                if len(tmpind) > 0:
+                    nexp = nexp.replace(sepind, parnames[tmpind[0]])
                 else:
-                    nexp = nexp.replace(sepind,pnames[epind])
-            newExp.append(nexp)
+                    notie = True
+            if not notie:
+                newExp.append(nexp)
+            else:
+                newExp.append('')
         else:
-            newExp.append(exp)
+            newExp.append('')
     return newExp
 
-def set_params(fit_params,NAME=None,VALUE=None,VARY=True,LIMITED=None,TIED='',LIMITS=None,STEP=None):
+
+def set_params(fit_params, NAME=None, VALUE=None, VARY=True, LIMITED=None,
+               TIED='', LIMITS=None, STEP=None):
     LIMITED = np.array(LIMITED).astype(int)
-    fit_params[NAME].set(value=VALUE,vary=VARY)
+    fit_params[NAME].set(value=VALUE, vary=VARY)
     if STEP != 0.:
-        fit_params[NAME].brute_step=STEP
-    if TIED != '' :
-        fit_params[NAME].expr=TIED
-    for li in [0,1]:
+        fit_params[NAME].brute_step = STEP
+    if TIED != '':
+        fit_params[NAME].expr = TIED
+    for li in [0, 1]:
         if LIMITED[li] == 1:
             if li == 0:
-                fit_params[NAME].min=LIMITS[0]
+                fit_params[NAME].min = LIMITS[0]
             elif li == 1:
-                fit_params[NAME].max=LIMITS[1]
-    
+                fit_params[NAME].max = LIMITS[1]
     return fit_params
 
-def run_manygauss(wave,flux_nocnt,flux_err,parinfo,maxiter=1000.):
-    # set-up the LMFIT parameters
+
+def run_manygauss(wave, flux_nocnt, flux_weight, parinfo, maxiter=1000):
+
     ppoff = parinfo[0]['value']
-    nline = (len(parinfo)-ppoff)/3
-    find = ppoff+np.arange(nline)*3
-    wind = find + 1
-    sind = find + 2
-    
+    nline = (len(parinfo)-ppoff)/3  # number of emission lines
+    find = ppoff+np.arange(nline)*3  # indices to fluxes in parinfo
+    wind = find + 1  # indices to wavelengths in parinfo
+    sind = find + 2  # indices to sigmas in parinfo
+
+    # the total LMFIT Model
+    # size = # model instances
     manyGauss = []
-    parTie = []
-    iparTi = []
+    # parameter names used in the LMFIT model
+    # size = # fitted pars - # lines (no srsigslam)
     parnames = []
-    parval = []
-    ilnRat = {}
-    
+    # parinfo index for each parname
+    # size = # fitted pars - # lines (no srsigslam)
+    iparinfo = []
+    # expressions for tying parameters together
+    # size = # fitted pars - # lines (no srsigslam)
+    partie = []
+    # initial values set in parinfo; size = # pars in parinfo
+    parvals = []
+    # nLineRatios = 0
+
+    # Start translating parinfo to parameter language of LMFIT
     for ip, par in enumerate(parinfo):
-        ptie = parinfo[ip]['tied']
-        if isinstance(ptie,bytes):
-            ptie = ptie.decode('utf-8')
-        if ptie != '':
-            ptie = ptie.replace(' ','')
-            ptie = ptie.replace('+',' + ').replace('*',' * ').replace('-',' - ').replace('/',' / ')
-            ptie = ptie.replace('e + ','E + ')
-            ptie = ptie.replace('E + ','E+')
-            iparTi.append(ip)
-        parTie.append(ptie)
+        fitpar = False  # is this a parameter to fit?
+        # Initial parameter values
         ival = parinfo[ip]['value']
-        if type(ival) is np.ndarray or isinstance(ival,list):
+        if type(ival) is np.ndarray or isinstance(ival, list):
             ival = ival[0]
-        parval.append(ival)
+        parvals.append(ival)
+        # Process lines
         if ip >= find[0]:
+            fitpar = True
             line = parinfo[ip]['line']
-            if isinstance(line,bytes):
-                line = line.decode('utf-8')
-            if line == '':
-                line = 'blank_'+str(ip)
-            else:
-                line = line.replace(' ','_').replace('.','').replace('-','').replace('-','').replace('[','').replace(']','').replace('/','')
+            line = line.replace(' ', '_').replace('.', '').\
+                replace('-', '').replace('-', '').replace('[', '').\
+                replace(']', '').replace('/', '')
+            # Create model instance of linel add to total model;
+            # and populate parameter list
             if ip in find:
-                fname = '%s_flx' % (line)
+                parname = '%s_flx' % (line)
                 mName = '%s_' % (line)
-                parnames.append(fname)
-                imodel = Model(manygauss,independent_vars=['x'],prefix=mName)
-                if ip == find[0]:
-                    manyGauss = imodel
-                else:
+                imodel = Model(manygauss, independent_vars=['x'], prefix=mName)
+                if isinstance(manyGauss, Model):
                     manyGauss += imodel
+                else:
+                    manyGauss = imodel
             elif ip in wind:
-                wname = '%s_cwv' % (line)
-                parnames.append(wname)
+                parname = '%s_cwv' % (line)
             elif ip in sind:
-                sname = '%s_sig' % (line)
-                parnames.append(sname)
-        else:
-            parname = parinfo[ip]['parname']
-            if isinstance(parname,bytes):
-                parname = parname.decode('utf-8')
-            if parname == '':
-                parname = 'blank_'+str(ip)
-            else:
-                parname = parname.replace(' ','_').replace('.','').replace('-','').replace('-','').replace('[','').replace(']','').replace('/','_')
-                if len(parname.split('line_ratio')) > 1:
-                    ilnRat[ip]=parinfo[ip]['value'][0]
-            ipar = parinfo[ip]
+                parname = '%s_sig' % (line)
+        # # Process line ratios
+        # else:
+        #     parname = parinfo[ip]['parname']
+        #     parname = parname.replace(' ', '_').replace('.', '').\
+        #         replace('-', '').replace('[', '').\
+        #         replace(']', '').replace('/', '_')
+        #     if len(parname.split('line_ratio')) > 1:
+        #         parname = parname.replace('_line_ratio', '_')
+        #         nLineRatios += 1
+        #         imodel = Model(lineratio, independent_vars=['x'],
+        #                         prefix=parname)
+        #         parname += 'lrat'
+        #         if isinstance(manyGauss, Model):
+        #             manyGauss += imodel
+        #         else:
+        #             manyGauss = imodel
+        #         fitpar = True
+        if fitpar:
             parnames.append(parname)
-    paramNames = manyGauss.param_names
+            iparinfo.append(ip)
+            ptie = parinfo[ip]['tied']
+            if ptie != '':
+                ptie = ptie.replace('e+', 'E+')
+            partie.append(ptie)
+
+    # size = # fitted parameters
+    # paramNames = manyGauss.param_names
     fit_params = manyGauss.make_params()
-    newExp = fix_expressions(parnames,parTie,indexs=iparTi,lineRat=ilnRat)
-    # ppoff = int(parinfo[0]['value'])
-    gind = np.arange(nline)*4.+3
-    ipn = 0
-    ip = 0
-    while ipn < len(paramNames):
-        par = paramNames[ipn]
-        if ipn in gind:
-            ipar = parinfo[2]
-            fit_params = set_params(fit_params,NAME=par,VALUE=ipar['value'],VARY=False,LIMITED=ipar['limited'],
-                                        TIED='',LIMITS=ipar['limits'],STEP=ipar['step'])
+    iparinfo = np.array(iparinfo)  # for logic in fix_expressions
+    # replaces "P[index]" instances with LMFIT parameter names
+    newExp = fix_expressions(parnames, partie, iparinfo)
+
+    # Set parameter properties properly in LMFIT parameter objects
+    ip = 0  # index counting parname values
+    for i, parname in enumerate(fit_params.keys()):
+        # # Line ratio parameters
+        # if len(parname.split('lrat')) > 1:
+        #     pidat = parinfo[iparinfo[ip]]
+        #     fixed = bool(int(pidat['fixed']))
+        #     ifixed = not fixed
+        #     fit_params = \
+        #         set_params(fit_params, NAME=parname, VALUE=pidat['value'],
+        #                    VARY=ifixed, LIMITED=pidat['limited'],
+        #                    TIED='', LIMITS=pidat['limits'],
+        #                    STEP=pidat['step'])
+        #     ip += 1
+        # elif len(parname.split('srsigslam')) > 1:
+        if len(parname.split('srsigslam')) > 1:
+            pidat = parinfo[2]
+            fit_params = \
+                set_params(fit_params, NAME=parname, VALUE=pidat['value'],
+                           VARY=False, LIMITED=pidat['limited'],
+                           TIED='', LIMITS=pidat['limits'], STEP=pidat['step'])
         else:
-            par = paramNames[ipn]
-            ipar = parinfo[ip+ppoff]
-            fixed = bool(int(ipar['fixed']))
+            pidat = parinfo[iparinfo[ip]]
+            fixed = bool(int(pidat['fixed']))
             ifixed = not fixed
-            itied = newExp[ip+ppoff]
-            fit_params = set_params(fit_params,NAME=par,VALUE=ipar['value'],VARY=ifixed,LIMITED=ipar['limited'],
-                                            TIED=itied,LIMITS=ipar['limits'],STEP=ipar['step'])
-            ip+=1
-        ipn+=1
-    lmout = manyGauss.fit(flux_nocnt,fit_params,x=wave,method='least_squares',weights=1/flux_err,max_nfev=maxiter)
-    specfit = manyGauss.eval(lmout.params,x=wave)
-    print('*******************************************************************')
+            itied = newExp[ip]
+            fit_params = \
+                set_params(fit_params, NAME=parname, VALUE=pidat['value'],
+                           VARY=ifixed, LIMITED=pidat['limited'],
+                           TIED=itied, LIMITS=pidat['limits'],
+                           STEP=pidat['step'])
+            ip += 1
+
+    # Actual fit
+    lmout = manyGauss.fit(flux_nocnt, fit_params, x=wave,
+                          method='least_squares', weights=flux_weight,
+                          max_nfev=maxiter, nan_policy='omit')
+    specfit = manyGauss.eval(lmout.params, x=wave)
+    print('*****************************************************************')
     print(lmout.fit_report())
-    print('*******************************************************************')
-    # get the param (array in the same format as the IDL mpfit version)
-    pardict = []
-    parOut = parval
-    for ip,par in enumerate(lmout.values):
-        if ip not in gind:
-            pardict.append(lmout.values[par])
-    for ip in range(ppoff,len(parval)):
-        parOut[ip]=pardict[ip-ppoff]
-    # now extract the perror (stddev for each parameter)
-    perror=list(np.zeros(ppoff))
-    for ip,par in enumerate(lmout.params.items()):
-        if ip not in gind:
-            perror.append(par[1].stderr)
-    
-    return lmout,parOut,specfit,perror
+    print('*****************************************************************')
+
+    # get the param array back into the same format as the IDL mpfit version
+    # Output parameter values and errors; size = len(parinfo)
+    parout = parvals
+    perror = np.zeros(len(parinfo))
+    # includes line parameters flx; cwv; and sig
+    # loop size is # fitted pars - # lines (no srsigslam)
+    for ip, parname in enumerate(parnames):
+        parout[iparinfo[ip]] = lmout.values[parname]
+        perror[iparinfo[ip]] = lmout.params[parname].stderr
+
+    return lmout, parout, specfit, perror
 
 
-def manygauss(x,flx, cwv, sig,srsigslam):
+def manygauss(x, flx, cwv, sig, srsigslam):
     # param 0 flux
     # param 1 central wavelength
     # param 2 sigma
-    c=299792.458
-    sigs = np.sqrt(np.power((sig/c)*cwv,2.) + np.power(srsigslam,2.))
-    gaussian = flx*np.exp(-np.power((x-cwv) / sigs,2.)/2.)
+    c = 299792.458
+    sigs = np.sqrt(np.power((sig/c)*cwv, 2.) + np.power(srsigslam, 2.))
+    gaussian = flx*np.exp(-np.power((x-cwv) / sigs, 2.)/2.)
     return gaussian
 
-# def manygauss(wave,param,specresarr=None):
-#     c=299792.458
 
-#     ppoff = param[0].astype(int)
-#     nwave = len(wave)
-#     nline = ((len(param)-ppoff)/3).astype(int)
-
-#     find = ppoff+np.arange(nline)*3
-#     wind = find + 1
-#     sind = find + 2
-
-#     dispersion = wave[1] - wave[0]
-    
-    
-#     if specresarr:
-#         # flipped the (row,column) indices of specresarr
-#         # np.searchsorted() works a little differently from value_locate() in IDL
-#         wsr = np.searchsorted(specresarr[0,:],param[wind])
-#         # switched from [wsr,1] since Python reads [row,column] and IDL reads [column, row]
-#         srsigslam = param[wind]/specresarr[1,wsr]/2.35 
-#     else:
-#         srsigslam = np.zeros(nline)+param[2]
-  
-#     # resolution in wavelength space [sigma] assumed to be in third element of PARAM
-
-#     sigs = np.sqrt(np.power((param[sind]/c)*param[wind],2.) + np.power(srsigslam,2.))
-#     maxsig = np.max(sigs)
-    
-#     nsubwave = np.round(10. * maxsig / dispersion)
-#     halfnsubwave = np.round(nsubwave / 2)
-#     nsubwave = (halfnsubwave*2+1).astype(int)
-    
-    
-#     # indsubwaves = rebin(transpose(fix(indgen(nsubwave)-halfnsubwave)),nline,nsubwave)
-#     # in the Python version, the transpose happens after the np.resize rebinning
-#     indsubwaves = np.transpose(np.resize((np.arange(nsubwave)-halfnsubwave).astype(int),[nline,nsubwave])) 
-
-#     fluxes = param[find]
-#     refwaves = param[wind]
-#     indrefwaves_real = (refwaves - wave[0]) / dispersion
-#     indrefwaves = (indrefwaves_real).astype(int)
-#     indrefwaves_frac = indrefwaves_real - indrefwaves.astype(float)
-#     # flipped the (row,column) indices of indrefwaves_frac rebin (not sure if it works)
-#     dwaves = (indsubwaves - np.resize(indrefwaves_frac,[nsubwave,nline]))*dispersion
-#     # flipped the (row,column) indices of indrefwaves rebin
-#     indsubwaves += np.resize(indrefwaves,[nsubwave,nline])
-    
-#     yvals = np.zeros(nwave)
-#     for i in range (0,nline):
-#         # flipped the (row,column) indices for indsubwaves
-#         # Python cannot do a where(condition 1 and condition 2)  extraction like in IDL, 
-#         # so I need to treat the limits separately and merge the indices for the 2 conditions
-#         gind1 = np.where(indsubwaves[:,i] >= 0)[0]    
-#         gind2 = np.where(indsubwaves[:,i] <= nwave-1)[0]
-#         gind=list(set(gind1) & set(gind2))
-#         count = len(gind)
-#         # The "mask" parameter eliminates floating underflow by removing very large
-#         # negative exponents. See http://www.idlcoyote.com/math_tips/underflow.html
-#         # for more details.
-#         if count > 0:
-#             exparg = -np.power((dwaves[gind,i]/sigs[i]),2.)/2.    # flipped the (row,column) indices 
-#             # edited the masking code
-#             # mask = (abs(exparg) lt 80)
-#             ms = np.where(abs(exparg) < 80)[0]
-#             mask = np.zeros(len(exparg))
-#             mask[ms] = np.ones(len(ms))
-#             # flipped the (row,column) indices for indsubwaves
-#             yvals[indsubwaves[gind,i]] = np.add(yvals[indsubwaves[gind,i]],np.transpose(fluxes[i]*mask*np.exp(exparg*mask)))
-#             # yvals[indsubwaves[gind,i]] = np.transpose(fluxes[i]*mask*np.exp(exparg*mask))
-
-#     return yvals
-
+def lineratio(x, lrat):
+    return lrat

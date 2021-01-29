@@ -1,6 +1,7 @@
 import numpy
 from q3dfit.common.fitqsohost import *
 
+
 def qsotemplate_model_exponential(wave,qso_model,a,b,c,d,e,f,g,h):
     
     '''Function defined for fitting a qsotemplate
@@ -122,7 +123,7 @@ def qsohostfcn(wave, params_fit, quiet=None, blrpar=None, qsoxdr=None,
                          polyspec_refit=None, fitran=None, fittol=None,
                          qsoord=None, hostonly=None, hostord=None,
                          blronly=None,qsoflux=None, **kwargs):
-
+    pass
 
 
     '''Function defined to recreate the best fit continuum model.
@@ -250,7 +251,7 @@ def qsohostfcn(wave, params_fit, quiet=None, blrpar=None, qsoxdr=None,
 
 
     comps = ymod.eval_components(params=params_fit,wave=wave, qso_model=qsoflux, x=wave)
-    continuum = ymod.eval(params,wave=wave, qso_model=qsoflux, x=wave)
+    continuum = ymod.eval(params_fit,wave=wave, qso_model=qsoflux, x=wave)
 
     return continuum
 

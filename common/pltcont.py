@@ -7,15 +7,15 @@ import pdb
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
-from more_itertools import consecutive_groups
+#from more_itertools import consecutive_groups
 
 
 def pltcont(instr, outfile, compspec=None, comptitles=None, ps=None,
             title=None, fitran=None, yranminmax=None):
 
     if compspec is not None:
-        if compspec.ndim > 1:
-            ncomp = len(compspec[0])
+        if len(compspec) > 1:
+            ncomp = len(compspec)
         else:
             ncomp = 1
         compcolors = ['c', 'y', 'm']
@@ -161,7 +161,7 @@ def pltcont(instr, outfile, compspec=None, comptitles=None, ps=None,
 
         if ncomp > 0:
             for i in range(0, ncomp):
-                plt.plot(wave, compspec[:, i], compcolors[i], linewidth=3)
+                plt.plot(wave, compspec[i], compcolors[i], linewidth=3)
 
         plt.plot(wave, ymod, 'r', linewidth=4, label='Total')
 
@@ -226,7 +226,7 @@ def pltcont(instr, outfile, compspec=None, comptitles=None, ps=None,
 
         if ncomp > 0:
             for i in range(0, ncomp):
-                plt.plot(wave, compspec[:, i], compcolors[i], linewidth=3)
+                plt.plot(wave, compspec[i], compcolors[i], linewidth=3)
 
         plt.plot(wave, ymod, 'r', linewidth=4)
 
@@ -292,7 +292,7 @@ def pltcont(instr, outfile, compspec=None, comptitles=None, ps=None,
         plt.plot(wave, ydat, 'w', linewidth=1)
         if ncomp > 0:
             for i in range(0, ncomp):
-                plt.plot(wave, compspec[:, i], compcolors[i], linewidth=3)
+                plt.plot(wave, compspec[i], compcolors[i], linewidth=3)
 
         plt.plot(wave, ymod, 'r', linewidth=4)
 

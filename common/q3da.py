@@ -576,10 +576,11 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                     qsowave = qsotemplate['wave']
                     qsoflux_full = qsotemplate['flux']
                     # non zero could be uncessesary
-                    iqsoflux = \
-                        np.flatnonzero(np.where((
-                            qsowave > struct_tmp['fitran'][0]*0.99999) & (
-                                qsowave < struct_tmp['fitran'][1]*1.00001)))
+#                    iqsoflux = \
+#                        np.flatnonzero(np.where((
+#                            qsowave > struct_tmp['fitran'][0]*0.99999) & (
+#                                qsowave < struct_tmp['fitran'][1]*1.00001)))
+                    iqsoflux = np.where((qsowave >= struct_tmp['fitran'][0]) & (qsowave <= struct_tmp['fitran'][1]))
                     # line 611
                     qsoflux = qsoflux_full[iqsoflux]
                     qsoflux /= np.median(qsoflux)
@@ -592,17 +593,17 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                         par_qsohost = struct['ct_coeff']['qso_host']
                         par_stel = struct['ct_coeff']['stel']
                         #line 622
-                        dumy_log, wave_rebin = log_rebin([struct['wave'][0],
+                        dumy_log, wave_rebin,_ = log_rebin([struct['wave'][0],
                             struct['wave'][len(struct['wave'])-1]],
                             struct['spec'])
-                        xnorm = cap_range(-1.0, 1.0, len(wave_log)) #1D?
+                        xnorm = cap_range(-1.0, 1.0, len(wave_rebin)) #1D?
                         if add_poly_degree > 0:
                             par_poly = struct['ct_coeff']['poly']
                             polymod_log = 0.0 # Additive polynomial
                             for k in range(0, add_poly_degree):
                                 cfpllegfun = legendre(k)
                                 polymod_log += cfpllegfun(xnorm) * par_poly[k]
-                            interpfunct = interpolate.interp1d(polymod_log, wave_log, kind='linear')
+                            interpfunct = interpolate.interp1d(polymod_log, wave_rebin, kind='linear',fill_value="extrapolate")
                             polymod_refit = interpfunct(np.log(struct['wave']))
                         else:
                             polymod_refit = np.zeros(len(struct['wave']), dtype=float)
@@ -630,10 +631,8 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                     #produce fit with template only and with template + host. Also
                     #output QSO multiplicative polynomial
                     qsomod_polynorm = 0.0
-                    qsomod = qsohostfcn(struct['wave'], par_qsohost, qsoflux = qsoflux,
-                                      qsoonly=True, blrterms = blrterms,
-                                      qsoscl = qsomod_polynorm, qsoord = qsoord,
-                                      hostord = hostord)
+                    qsomod = qsohostfcn.qsohostfcn(struct['wave'], par_qsohost, qsoflux = qsoflux,
+                                      blrpar = initdat['argscontfit']['blrpar'])
                     hostmod = struct['cont_fit_pretweak'] - qsomod
 
                     #if continuum is tweaked in any region, subide resulting residual
@@ -641,8 +640,8 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                     qsomod_notweak = qsomod
                     if 'tweakcntfit' in initdat:
                         modresid = struct['cont_fit'] - struct['cont_fit_pretweak']
-                        inz = np.where(qsomod != 0 and hostmod != 0)
-                        qsofrac = np.array(len(qsomod), dtype=float)
+                        inz = np.where((qsomod != 0) & (hostmod != 0))[0]
+                        qsofrac = np.zeros(len(qsomod))
                         for ind in inz:
                             qsofrac[ind] = qsomod[ind] / (qsomod[ind] + hostmod[ind])
                         qsomod += modresid * qsofrac
@@ -650,9 +649,9 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                     #components of qso fit for plotting
                     qsomod_normonly = qsoflux
                     if 'blrpar' in initdat['argscontfit']:
-                        qsomod_blronly = qsohostfcn(struct['wave'], par_qsohost,
+                        qsomod_blronly = qsohostfcn.qsohostfcn(struct['wave'], par_qsohost,
                                          qsoflux = qsoflux, blronly=True,
-                                         blrterms = blrterms, qsoord = qsoord,
+                                         blrpar = initdat['argscontfit']['blrpar'], qsoord = qsoord,
                                          hostord = hostord)
             elif initdat['fcncontfit'] == 'ppxf' and 'qsotempfile' in initdat:
                 qsotempfile = np.load(initdat['qsotempfile'], allow_pickle='TRUE').item()
@@ -804,20 +803,22 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
             # Make sure fit doesn't indicate no continuum; avoids
             # plot range error in continuum fitting routine, as well as a blank
             # plot!
-            if noplots is None and sum(struct['cont_fit']) != 0.0:
+            print(struct['cont_fit'])
+            if noplots is None:# and sum(struct['cont_fit']) != 0.0:
+                
                 module = importlib.import_module('q3dfit.common.'+fcnpltcont)
                 pltcontfcn = getattr(module, fcnpltcont)
                 if 'decompose_qso_fit' in initdat:
                     if 'argspltcont' in initdat:
                         pltcontfcn(struct, outfile + '_cnt',
                                    compspec=[[qsomod], [hostmod]],
-                                   title='Total', comptit=['QSO', 'host'],
+                                   title='Total', comptitles=['QSO', 'host'],
                                    fitran=initdat.fitran,
                                    **initdat['argspltcont'])
                     else:
                         pltcontfcn(struct, outfile + '_cnt',
-                                   compspec=[[qsomod], [hostmod]],
-                                   title='Total', comptit=['QSO', 'host'],
+                                   compspec=np.array([qsomod, hostmod]),
+                                   title='Total', comptitles=['QSO', 'host'],
                                    fitran=initdat['fitran'])
                 elif 'decompose_ppxf_fit' in initdat:
                     if 'argspltcont' in initdat:
@@ -1019,10 +1020,10 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
 def cap_range(x1, x2, n):
     a = np.zeros(1, dtype=float)
     interval = (x2 - x1) / (n - 1)
-    print(interval)
+    #    print(interval)
     num = x1
     for i in range(0, n):
-        print(num)
+        #print(num)
         a = np.append(a, num)
         num += interval
     a = a[1:]

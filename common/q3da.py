@@ -632,7 +632,7 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                     #output QSO multiplicative polynomial
                     qsomod_polynorm = 0.0
                     qsomod = qsohostfcn.qsohostfcn(struct['wave'], par_qsohost, qsoflux = qsoflux,
-                                      blrpar = initdat['argscontfit']['blrpar'])
+                                      blrpar = initdat['argscontfit']['blrpar'],qsoonly=True,hostonly=True,qsoord=qsoord,hostord=hostord)
                     hostmod = struct['cont_fit_pretweak'] - qsomod
 
                     #if continuum is tweaked in any region, subide resulting residual
@@ -738,13 +738,13 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
 #            Plot QSO and host only continuum fit
             if 'decompose_qso_fit' in initdat:
                 struct_host = struct
-                struct_host['spec'] -= qsomod
-                struct_host['cont_dat'] -= qsomod
-                struct_host['cont_fit'] -= qsomod
+#                struct_host['spec'] -= qsomod
+#                struct_host['cont_dat'] -= qsomod
+#                struct_host['cont_fit'] -= qsomod
                 struct_qso = struct
-                struct_qso['spec'] -= hostmod
-                struct_qso['cont_dat'] -= hostmod
-                struct_qso['cont_fit'] -= hostmod
+#                struct_qso['spec'] -= hostmod
+#                struct_qso['cont_dat'] -= hostmod
+#                struct_qso['cont_fit'] -= hostmod
                 contcube['qso_mod'][j, i, struct['fitran_indx']] = qsomod
                 contcube['qso_poly_mod'][j, i, struct['fitran_indx']] = \
                     qsomod_polynorm
@@ -761,50 +761,50 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                     = struct['cont_dat'] - qsomod_notweak
                 if noplots is None and \
                         np.sum(struct_host['cont_fit']) != 0.0:
-                    if 'refit' in initdat['argscontfot']:
-                        compspec = [[polymod_refit], [hostmod-polymod_refit]]
-                        comptit = ['ord. ' + str(add_poly_degree) +
+                    if 'refit' in initdat['argscontfit']:
+                        compspec = np.array([polymod_refit, hostmod-polymod_refit])
+                        compfit = ['ord. ' + str(add_poly_degree) +
                                    ' Leg. poly.', 'stel. temp.']
                     else:
                         compspec = hostmod
-                        comptit = ['exponential terms']
+                        compfit = ['exponential terms']
                     module = importlib.import_module('q3dfit.common.' +
                                                      fcnpltcont)
                     pltcontfcn = getattr(module, fcnpltcont)
                     if 'argspltcont' in initdat:
                         pltcontfcn(struct_host, str(outfile) + '_cnt_host',
-                                   compspec=compspec, comptit=comptit,
+                                   compspec=compspec, compfit=compfit,
                                    title='Host', fitran=initdat['fitran'],
                                    **initdat['argspltcont'])
                     else:
                         pltcontfcn(struct_host, str(outfile) + '_cnt_host',
-                                   compspec=compspec, comptit=comptit,
+                                   compspec=compspec,
                                    title='Host', fitran=initdat['fitran'])
                     if 'blrpar' in initdat['argscontfit']:
                         qsomod_blrnorm = np.median(qsomod) / \
                             max(qsomod_blronly)
-                        compspec = [[qsomod_normonly],
-                                    [qsomod_blronly * qsomod_blrnorm]]
-                        comptit = ['raw template', 'scattered\times' +
+                        compspec = np.array([qsomod_normonly,
+                                    qsomod_blronly * qsomod_blrnorm])
+                        compfit = ['raw template', 'scattered\times' +
                                    str(qsomod_blrnorm)]
                     else:
                         compspec = [[qsomod_normonly]]
-                        comptit = ['raw template']
+                        compfit = ['raw template']
                     if 'argspltcont' in initdat:
                         pltcontfcn(struct_qso, str(outfile) + '_cnt_qso',
-                                   compspec=compspec, comptit=comptit,
+                                   compspec=compspec, compfit=compfit,
                                    title='QSO', fitran=initdat['fitran'],
                                    **initdat['argspltcont'])
                     else:
                         pltcontfcn(struct_qso, outfile + '_cnt_qso',
-                                   compspec=compspec, comptit=comptit,
+                                   compspec=compspec,
                                    title='QSO', fitran=initdat['fitran'])
             # Plot continuum
             # Make sure fit doesn't indicate no continuum; avoids
             # plot range error in continuum fitting routine, as well as a blank
             # plot!
-            print(struct['cont_fit'])
-            if noplots is None:# and sum(struct['cont_fit']) != 0.0:
+            print(sum(struct['cont_fit']))
+            if noplots is None and sum(struct['cont_fit']) != 0.0:
                 
                 module = importlib.import_module('q3dfit.common.'+fcnpltcont)
                 pltcontfcn = getattr(module, fcnpltcont)
@@ -825,7 +825,7 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                         pltcontfcn(struct, outfile + '_cnt',
                                    compspec=[[cont_fit_stel], [cont_fit_poly]],
                                    title='Total',
-                                   comptit=['stel. temp.',
+                                   compfit=['stel. temp.',
                                             'ord. ' + str(add_poly_degree) +
                                             'Leg.poly'],
                                    fitran=initdat['fitran'],
@@ -834,7 +834,7 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                         pltcontfcn(struct, outfile + '_cnt',
                                    compspec=[[cont_fit_stel], [cont_fit_poly]],
                                    title='Total',
-                                   comptit=['stel. temp.', 'ord. ' +
+                                   compfit=['stel. temp.', 'ord. ' +
                                             str(add_poly_degree) +
                                             ' Leg. poly'],
                                    fitran=initdat['fitran'])

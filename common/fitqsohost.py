@@ -177,6 +177,8 @@ def set_up_fit_continuum_additive_polynomial_model(p):
     return continuum_additive_polynomial_model,continuum_additive_polynomial_model_parameters
 
 
+
+
 def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
                zstar, quiet=None, blrpar=None, qsoxdr=None,
                qsoonly=None, index_log=None, refit=None,
@@ -321,6 +323,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
 #    plt.plot(wave, continuum, label='best-fit')
 #    plt.plot(wave,flux,label='flux')
 #    plt.plot(wave,flux-continuum,label='resid')
+#    plt.plot(wave,test_qsofcn,label='test')
 #    plt.legend(loc='best')
 #    plt.show()
 

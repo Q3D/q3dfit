@@ -631,8 +631,13 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                     #produce fit with template only and with template + host. Also
                     #output QSO multiplicative polynomial
                     qsomod_polynorm = 0.0
-                    qsomod = qsohostfcn.qsohostfcn(struct['wave'], par_qsohost, qsoflux = qsoflux,
-                                      blrpar = initdat['argscontfit']['blrpar'],qsoonly=True,hostonly=True,qsoord=qsoord,hostord=hostord)
+#                    qsomod = qsohostfcn.qsohostfcn(struct['wave'], params_fit=par_qsohost, qsoflux = qsoflux,
+#                                      blrpar = initdat['argscontfit']['blrpar'],qsoonly=True,hostonly=True,qsoord=qsoord,hostord=hostord)
+
+                    qsomod = qsohostfcn.qsohostfcn(struct['wave'], params_fit=par_qsohost, qsoflux = qsoflux,
+                                      qsoonly=True, blrterms = blrterms,
+                                      qsoscl = qsomod_polynorm, qsoord = qsoord,
+                                      hostord = hostord)
                     hostmod = struct['cont_fit_pretweak'] - qsomod
 
                     #if continuum is tweaked in any region, subide resulting residual

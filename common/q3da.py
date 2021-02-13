@@ -44,6 +44,7 @@ from scipy.special import legendre
 from scipy import interpolate
 from ppxf.ppxf_util import log_rebin
 import os
+import copy
 # from astropy.io import fits
 
 
@@ -638,6 +639,10 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                                       qsoonly=True, blrterms = blrterms,
                                       qsoscl = qsomod_polynorm, qsoord = qsoord,
                                       hostord = hostord)
+
+#                    qsomod = qsohostfcn.qsohostfcn(struct['wave'], params_fit=par_qsohost, qsoflux = qsoflux
+#                                                   ,blrterms = blrterms)
+
                     hostmod = struct['cont_fit_pretweak'] - qsomod
 
                     #if continuum is tweaked in any region, subide resulting residual
@@ -742,14 +747,17 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
 
 #            Plot QSO and host only continuum fit
             if 'decompose_qso_fit' in initdat:
-                struct_host = struct
-#                struct_host['spec'] -= qsomod
-#                struct_host['cont_dat'] -= qsomod
-#                struct_host['cont_fit'] -= qsomod
-                struct_qso = struct
-#                struct_qso['spec'] -= hostmod
-#                struct_qso['cont_dat'] -= hostmod
-#                struct_qso['cont_fit'] -= hostmod
+                
+                struct_host = copy.deepcopy(struct)
+                struct_qso = copy.deepcopy(struct_host)
+                
+                struct_host['spec'] -= qsomod
+                struct_host['cont_dat'] -= qsomod
+                struct_host['cont_fit'] -= qsomod
+                
+                struct_qso['spec'] -= hostmod
+                struct_qso['cont_dat'] -= hostmod
+                struct_qso['cont_fit'] -= hostmod
                 contcube['qso_mod'][j, i, struct['fitran_indx']] = qsomod
                 contcube['qso_poly_mod'][j, i, struct['fitran_indx']] = \
                     qsomod_polynorm
@@ -764,8 +772,9 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                 # included in QSO model)
                 hostcube['dat'][j, i, struct['fitran_indx']] \
                     = struct['cont_dat'] - qsomod_notweak
-                if noplots is None and \
-                        np.sum(struct_host['cont_fit']) != 0.0:
+
+#
+                if noplots is None and np.sum(struct_host['cont_fit']) != 0.0:
                     if 'refit' in initdat['argscontfit']:
                         compspec = np.array([polymod_refit, hostmod-polymod_refit])
                         compfit = ['ord. ' + str(add_poly_degree) +

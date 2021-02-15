@@ -137,7 +137,7 @@ from scipy import interpolate
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
-            initdat, maskwidths=None, peakinit=None, quiet=None,
+            initdat, maskwidths=None, peakinit=None, quiet=True,
             siginit_gas=None, siglim_gas=None, tweakcntfit=None,
             col=None, row=None):
 
@@ -166,10 +166,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     lines_arr = {name: listlines['lines'][idx] for idx, name in
                  enumerate(listlines['name'])}
 
-    if quiet:
-        quiet = b'1'
-    else:
-        quiet = b'0'
     if siglim_gas.all():
         siglim_gas = siglim_gas
     else:
@@ -314,8 +310,12 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     if ctzerinf > 0:
         flux[zerinf_indx]= np.median(flux[gd_indx_full])
         err[zerinf_indx]=maxerr*100.
-        if quiet != None:
-            print('{:s}{:0.1f}{:s}'.format('Setting ',ctzerinf,' points from zero/inf./NaN flux or '+'neg./zero/inf./NaN error to med(flux) and max(err)x100.'))
+        if not quiet:
+            print('{:s}{:0.1f}{:s}'.
+                  format('FITLOOP: Setting ', ctzerinf,
+                         ' points from zero/inf./NaN flux or ' +
+                         'neg./zero/inf./NaN error to med(flux) ' +
+                         'and max(err)x100.'))
 
     # indices locating data within actual fit range
     fitran_indx1 = np.where(wlambda >= fitran[0])[0]
@@ -558,7 +558,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         ppxf_sigma_err=0.
 
     fit_time1 = time.time()
-    if quiet != None:
+    if not quiet:
         print('{:s}{:0.1f}{:s}'.format('FITSPEC: Continuum fit took ',fit_time1-fit_time0,' s.'))
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -625,7 +625,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         elin_lmfit = getattr(efitModule, 'run_'+fcnlinefit)
         lmout, parout, specfit, perror = \
             elin_lmfit(gdlambda, gdflux_nocnt, gdweight_nocnt, parinfo=parinit,
-                       maxiter=1000)
+                       maxiter=1000, quiet=quiet)
 
         param = parout
         covar = lmout.covar
@@ -696,7 +696,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     if ebv_star == None:
         ebv_star=0.
         fit_time2 = time.time()
-        if quiet != None:
+        if not quiet:
             print('{:s}{:0.1f}{:s}'.format('FITSPEC: Line fit took ',fit_time2-fit_time1,' s.'))
 
 

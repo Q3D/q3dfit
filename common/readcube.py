@@ -95,8 +95,8 @@ cube = CUBE(fp='/jwst1/lwz/KCWI_dwarf/pg1411/PG1411/',infile='pg1411rb3.fits')
 ;      2018aug12, DSNR, ensure values of DATEXT, VAREXT, DQEXT don't get changed
 ;      2020may05, DSNR, new treatment of default axes in 2D images; added CUNIT
 ;                       and BUNIT to output
-;      2020may31, Weizhe, translated into python 3  
-;    
+;      2020may31, Weizhe, translated into python 3
+;
 ; :Copyright:
 ;    Copyright (C) 2013--2020 David S. N. Rupke
 ;
@@ -133,7 +133,7 @@ class CUBE:
             print(infile+' does not exist!')
         hdu = fits.open(fp+infile,ignore_missing_end=True)
         #hdu.info()
-        # fits extensions to be read 
+        # fits extensions to be read
         datext = kwargs.get('datext',1)
         varext = kwargs.get('varext',2)
         dqext =  kwargs.get('dqext',3)
@@ -149,7 +149,7 @@ class CUBE:
         self.dqext = dqext
         self.hdu = hdu
         self.phu = hdu[0]
-        try: 
+        try:
             self.dat = (hdu[datext].data).T
         except:
             print('data extension does not exist')
@@ -158,7 +158,7 @@ class CUBE:
             self.err = copy.copy(self.var) ** 0.5
             badvar = np.where(self.var < 0)
             if np.size(badvar) > 0:
-                print('Warning: Negative values encountered in variance array.')
+                print('CUBE: Negative values encountered in variance array.')
         except:
             print('variance extension does not exist')
         try:
@@ -175,14 +175,14 @@ class CUBE:
         self.header_phu = hdu[0].header
         self.header_dat = hdu[datext].header
         self.header_var = hdu[varext].header
-        self.header_dq = hdu[dqext].header 
+        self.header_dq = hdu[dqext].header
 
         datashape = np.shape(self.dat)
         if np.size(datashape) == 3:
             ncols = (datashape)[0]
             nrows = (datashape)[1]
             nw = (datashape)[2]
-            try: 
+            try:
                 np.max([nrows,ncols]) < nw
             except:
                 print('data cube dimensions not in [nw,nrows,ncols] format')
@@ -257,12 +257,12 @@ class CUBE:
             waveold = copy.copy(self.wave)
             datold = copy.copy(self.dat)
             varold = copy.copy(self.var)
-            dqold = copy.copy(self.dq)   
+            dqold = copy.copy(self.dq)
             self.crpix = 1
             self.cdelt = (waveold[-1]-waveold[0]) / (self.nz-1)
             wave = np.linspace(aveold[0],waveold[-1],num=self.nz)
             self.wave = wave
-            spldat = interpolate.splrep(waveold,datold,s=0) 
+            spldat = interpolate.splrep(waveold,datold,s=0)
             self.dat = interpolate.splev(waveold,spldat,der=0)
             splvar = interpolate.splrep(waveold,varold,s=0)
             self.var = interpolate.splev(waveold,splvar,der=0)

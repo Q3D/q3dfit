@@ -55,7 +55,7 @@ from q3dfit.common.sepfitpars import sepfitpars
 
 
 def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
-            quiet, logfile=None):
+            quiet=True, logfile=None):
 
     if logfile:
         if isinstance(logfile, str):
@@ -74,7 +74,6 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
     print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]',
           file=loglun)
 
-    print(i, j)
     if oned:
         flux = cube.dat[:, i]
         err = abs(cube.var[:, i])**0.5
@@ -224,8 +223,8 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                                  siginit_gas=siginit_gas,
                                  tweakcntfit=tweakcntfit, col=i+1, row=j+1)
 
-            if not quiet:
-                print('FIT STATUS: '+structinit['fitstatus'])
+            # if not quiet:
+            #    print('FIT STATUS: '+structinit['fitstatus'])
             # To-do: Need to add a check on fit status here.
 
             # Second fit
@@ -268,8 +267,8 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                                  siglim_gas=siglim_gas,
                                  tweakcntfit=tweakcntfit, col=i+1, row=j+1)
 
-                if not quiet:
-                    print('FIT STATUS: '+structinit['fitstatus'])
+                # if not quiet:
+                #    print('FIT STATUS: '+structinit['fitstatus'])
                 # To-do: Need to add a check on fit status here.
 
             else:

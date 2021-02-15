@@ -53,12 +53,13 @@ __last_modified__ = '2020 Jun 29'
 #   distribution for this to work. There may be a better way with an
 #   arbitrary path.
 def __get_initdat(initproc):
-#   add folder "init" to python PATH variable, to avoid importing beyond top-level package
+    # add folder "init" to python PATH variable, to avoid importing beyond
+    # top-level package
     from sys import path
     import importlib
     path.append("init")
     module = importlib.import_module("q3dfit.init." + initproc)
-    fcninitproc = getattr(module,initproc)
+    fcninitproc = getattr(module, initproc)
     return fcninitproc()
 
 
@@ -158,15 +159,14 @@ def execute_fitloop( nspax, colarr, rowarr, cube, initdat, linelist, oned, onefi
             # delete log file, if it exists
             try: remove(initdat["logfile"])
             except FileNotFoundError: pass
-        # TODO: delete next line when fitloop has been written
-        print(ispax, "["+str(rowarr[ispax])+", " + str(colarr[ispax]) + "]")
         # TODO: Uncomment this command once fitloop has been written
         fitloop(ispax, colarr, rowarr, cube, initdat, linelist,\
                             oned, onefit, quiet, logfile=logloop)
 
+
 # q3df setup for single-threaded execution
-def q3df_oneCore( initproc, cols=None, rows=None, oned=False, onefit=False, quiet=True ):
-    import pdb
+def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
+                 quiet=True):
     import time
     from sys import path
     # add common subdirectory to Python PATH for ease of importing
@@ -177,7 +177,7 @@ def q3df_oneCore( initproc, cols=None, rows=None, oned=False, onefit=False, quie
     cube, vormap = __get_CUBE(initdat, oned, quiet)
     if cols and rows and vormap:
         cols = __get_voronoi(cols, rows, vormap)
-        rows=1
+        rows = 1
     nspax, colarr, rowarr = __get_spaxels(cube, cols, rows)
     # execute FITLOOP
     execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, oned, onefit, quiet)

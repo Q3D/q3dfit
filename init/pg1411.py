@@ -195,7 +195,7 @@ def pg1411():
             'startempfile': stellartemplates,
             'argspltlin1': argspltlin1,
             # 'donad': 1,
-            # 'decompose_qso_fit': 1,
+            'decompose_qso_fit': 1,
             # 'remove_scattered': 1,
             'fcncheckcomp': 'checkcomp',
             'fcncontfit': 'fitqsohost',

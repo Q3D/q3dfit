@@ -130,7 +130,8 @@ def set_params(fit_params, NAME=None, VALUE=None, VARY=True, LIMITED=None,
     return fit_params
 
 
-def run_manygauss(wave, flux_nocnt, flux_weight, parinfo, maxiter=1000):
+def run_manygauss(wave, flux_nocnt, flux_weight, parinfo, maxiter=1000, \
+                  quiet=True):
 
     ppoff = parinfo[0]['value']
     nline = (len(parinfo)-ppoff)/3  # number of emission lines
@@ -253,9 +254,8 @@ def run_manygauss(wave, flux_nocnt, flux_weight, parinfo, maxiter=1000):
                           method='least_squares', weights=flux_weight,
                           max_nfev=maxiter, nan_policy='omit')
     specfit = manyGauss.eval(lmout.params, x=wave)
-    print('*****************************************************************')
-    print(lmout.fit_report())
-    print('*****************************************************************')
+    if not quiet:
+        print(lmout.fit_report())
 
     # get the param array back into the same format as the IDL mpfit version
     # Output parameter values and errors; size = len(parinfo)

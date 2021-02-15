@@ -747,14 +747,14 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
 
 #            Plot QSO and host only continuum fit
             if 'decompose_qso_fit' in initdat:
-                
+
                 struct_host = copy.deepcopy(struct)
                 struct_qso = copy.deepcopy(struct_host)
-                
+
                 struct_host['spec'] -= qsomod
                 struct_host['cont_dat'] -= qsomod
                 struct_host['cont_fit'] -= qsomod
-                
+
                 struct_qso['spec'] -= hostmod
                 struct_qso['cont_dat'] -= hostmod
                 struct_qso['cont_fit'] -= hostmod
@@ -817,9 +817,8 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
             # Make sure fit doesn't indicate no continuum; avoids
             # plot range error in continuum fitting routine, as well as a blank
             # plot!
-            print(sum(struct['cont_fit']))
             if noplots is None and sum(struct['cont_fit']) != 0.0:
-                
+
                 module = importlib.import_module('q3dfit.common.'+fcnpltcont)
                 pltcontfcn = getattr(module, fcnpltcont)
                 if 'decompose_qso_fit' in initdat:

@@ -123,17 +123,17 @@
 """
 
 import copy
-import importlib
 import numpy as np
 import pdb
 import time
 from astropy.table import Table
+from importlib import import_module
 from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
 from q3dfit.common.airtovac import airtovac
 from q3dfit.common.masklin import masklin
 from q3dfit.common import interptemp
-from scipy import interpolate
+from scipy.interpolate import interp1d
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
@@ -245,8 +245,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         if 'waveunit' in initdat:
             templatelambdaz *= initdat['waveunit']
         if 'fcnconvtemp' in initdat:
-            impModule = importlib.import_module('q3dfit.common.' +
-                                                initdat['fcnconvtemp'])
+            impModule = import_module('q3dfit.common.'+initdat['fcnconvtemp'])
             fcnconvtemp = getattr(impModule, initdat['fcnconvtemp'])
             if 'argsconvtemp' in initdat:
                 newtemplate = fcnconvtemp(templatelambdaz, template,
@@ -409,8 +408,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if initdat['fcncontfit'] != 'ppxf':
 
-            module = importlib.import_module('q3dfit.common.' +
-                                             initdat['fcncontfit'])
+            module = import_module('q3dfit.common.' + initdat['fcncontfit'])
             fcncontfit = getattr(module, initdat['fcncontfit'])
 
             if istemp:
@@ -477,8 +475,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             error = pp.error
 
             # Resample the best fit into linear space
-            cinterp = interpolate.interp1d(gdlambda_log, continuum_log,
-                                           kind='cubic',fill_value="extrapolate")
+            cinterp = interp1d(gdlambda_log, continuum_log,
+                               kind='cubic', fill_value="extrapolate")
             continuum = cinterp(np.log(gdlambda))
 
             # Adjust stellar redshift based on fit
@@ -561,46 +559,41 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     if not quiet:
         print('{:s}{:0.1f}{:s}'.format('FITSPEC: Continuum fit took ',fit_time1-fit_time0,' s.'))
 
-# ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-# Fit emission lines
-# ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    #
+    # Fit emission lines
+    #
+
     if noemlinfit != b'1':
-    # Initial guesses for emission line peak fluxes (above continuum)
-    # If initial guess is negative, set to 0 to prevent MPFITFUN from choking
-    #  (since we limit peak to be >= 0).
-        if peakinit == None:
+
+        # Initial guesses for emission line peak fluxes (above continuum)
+        if peakinit is None:
             if 'peakinit' in initdat:
                 peakinit = initdat['peakinit']
             else:
-                peakinit = {line:None for line in initdat['lines']}
+                peakinit = {line: None for line in initdat['lines']}
                 for line in initdat['lines']:
-                    fline = interpolate.interp1d(gdlambda,gdflux_nocnt, kind='linear')
-                    peakinit[line] = np.array([fline(listlinesz[line][0]).item()])
-                    neg = np.where(peakinit[line] < 0)[0]
-                    ct = len(neg)
-                    if ct > 0:
-                        peakinit[line] = [0]
+                    fline = interp1d(gdlambda, gdflux_nocnt, kind='linear')
+                    # Check that line wavelength is in data range
+                    # Use first component as a proxy for all components
+                    if listlinesz[line][0] >= min(gdlambda) and \
+                        listlinesz[line][0] <= max(gdlambda):
+                        peakinit[line] = fline(listlinesz[line])
+                        # If initial guess is negative, set to 0 to prevent
+                        # fitter from choking (since we limit peak to be >= 0)
+                        peakinit[line] = \
+                            np.where(peakinit[line] < 0., 0., peakinit[line])
+                    else:
+                        peakinit[line] = np.zeros(initdat['maxncomp'])
 
         # Initial guesses for emission line widths
-        if siginit_gas == None:
-            siginit_gas = {k:None for k in initdat['lines']}
+        if siginit_gas is None:
+            siginit_gas = {k: None for k in initdat['lines']}
             for line in initdat['lines']:
-                siginit_gas[line] = np.zeros(initdat['maxncomp'])+siginit_gas_def
-
-        ## Normalize data so it's near 1. Use 95th percentile of flux. If it's far from
-        ## 1, results are different, and probably less correct b/c of issues of numerical
-        ## precision in calculating line properties.
-        #  ifsort = sort(gdflux_nocnt)
-        #  fsort = gdflux_nocnt[ifsort]
-        #  i95 = fix(n_elements(gdflux_nocnt)*0.95d)
-        #  fnorm = fsort[i95]
-        #  gdflux_nocnt /= fnorm
-        #  gderr_nocnt /= fnorm
-        #  foreach line,initdat.lines do peakinit[line] /= fnorm
+                siginit_gas[line] = \
+                    np.zeros(initdat['maxncomp']) + siginit_gas_def
 
         # Fill out parameter structure with initial guesses and constraints
-        impModule = importlib.import_module('q3dfit.init.' +
-                                            initdat['fcninitpar'])
+        impModule = import_module('q3dfit.init.' + initdat['fcninitpar'])
         fcninitpar = getattr(impModule, initdat['fcninitpar'])
 
         # running test functions for now.....
@@ -621,7 +614,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         if testsize == 0:
             raise Exception('Bad initial parameter guesses.')
 
-        efitModule = importlib.import_module('q3dfit.common.'+fcnlinefit)
+        efitModule = import_module('q3dfit.common.'+fcnlinefit)
         elin_lmfit = getattr(efitModule, 'run_'+fcnlinefit)
         lmout, parout, specfit, perror = \
             elin_lmfit(gdlambda, gdflux_nocnt, gdweight_nocnt, parinfo=parinit,
@@ -693,7 +686,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         perror_resid = 0
         covar = 0
     # This sets the output reddening to a numerical 0 instead of NULL
-    if ebv_star == None:
+    if ebv_star is None:
         ebv_star=0.
         fit_time2 = time.time()
         if not quiet:

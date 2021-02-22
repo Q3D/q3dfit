@@ -68,41 +68,55 @@ def __get_linelist(initdat):
     from q3dfit.common.linelist import linelist
     if initdat.__contains__('lines'):
         if initdat.__contains__('argslinelist'):
-            linelist=linelist(initdat['lines'],**initdat['argslinelist'])
-        else: linelist=linelist(initdat['lines'])
-    else: linelist=linelist()
+            linelist = linelist(initdat['lines'], **initdat['argslinelist'])
+        else:
+            linelist = linelist(initdat['lines'])
+    else: linelist = linelist()
     return linelist
 
 
 # initialize CUBE object
-def __get_CUBE(initdat, oned, quiet):
+def __get_CUBE(initdat, oned, quiet, logfile=None):
     from q3dfit.common.readcube import CUBE
+
 #   Read data
 #   Set default extensions
-    if not initdat.__contains__('datext'): datext=1
-    else: datext=initdat['datext']
-    if not initdat.__contains__('varext'): varext=2
-    else: varext=initdat['varext']
-    if not initdat.__contains__('dqext'): dqext=3
-    else: dqext=initdat['dqext']
-#   Check for additional arguments
-    if not initdat.__contains__('vormap'): vormap=False
-    else: vormap=initdat['vormap']
-    if initdat.__contains__('argsreadcube'):
-        cube = CUBE(infile=initdat['infile'],datext=datext,dqext=dqext,\
-                    oned=oned,quiet=quiet,varext=varext,vormap=vormap,\
-                    **initdat['argsreadcube'])
+    if not initdat.__contains__('datext'):
+        datext = 1
     else:
-        cube = CUBE(infile=initdat['infile'],datext=datext,dqext=dqext,\
-                    oned=oned,quiet=quiet,varext=varext,vormap=vormap)
+        datext = initdat['datext']
+    if not initdat.__contains__('varext'):
+        varext = 2
+    else:
+        varext = initdat['varext']
+    if not initdat.__contains__('dqext'):
+        dqext = 3
+    else:
+        dqext = initdat['dqext']
+#   Check for additional arguments
+    if not initdat.__contains__('vormap'):
+        vormap = False
+    else:
+        vormap = initdat['vormap']
+    if logfile is None:
+        from sys import stdout
+        logfile = stdout
+    if initdat.__contains__('argsreadcube'):
+        cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+                    oned=oned, quiet=quiet, varext=varext, vormap=vormap,
+                    logfile=logfile, **initdat['argsreadcube'])
+    else:
+        cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+                    oned=oned, quiet=quiet, varext=varext, vormap=vormap,
+                    logfile=logfile)
     return cube, vormap
 
 
 # construct voronoi map
 def __get_voronoi(cols, rows, vormap):
-#   Voronoi binned case
+    # Voronoi binned case
     if len(cols) == 1 and len(rows) == 1:
-        cols=vormap[cols[0]-1,rows[0]-1]
+        cols = vormap[cols[0]-1, rows[0]-1]
         return cols
     else:
         raise ValueError('Q3DF: ERROR: Can only specify 1 spaxel, or all spaxels, \
@@ -116,52 +130,58 @@ def __get_spaxels(cube, cols=None, rows=None):
     # Set up 2-element arrays with starting and ending columns/rows
     # These are unity-offset to reflect pixel labels
     if not cols:
-        cols=[1,cube.ncols]
+        cols = [1, cube.ncols]
         ncols = cube.ncols
+#   case: cols is a scalar
+    elif not isinstance(cols, (list, np.ndarray)):
+        cols = [cols, cols]
+        ncols = 1
     elif len(cols) == 1:
         cols = [cols[0], cols[0]]
         ncols = 1
     else:
         ncols = cols[1]-cols[0]+1
     if not rows:
-        rows=[1,cube.nrows]
+        rows = [1, cube.nrows]
         nrows = cube.nrows
+    elif not isinstance(rows, (list, np.ndarray)):
+        rows = [rows, rows]
+        nrows = 1
     elif len(rows) == 1:
         rows = [rows[0], rows[0]]
         nrows = 1
     else:
         nrows = rows[1]-rows[0]+1
-    colarr = np.empty((ncols,nrows), dtype=np.int32)
-    rowarr = np.empty((ncols,nrows), dtype=np.int32)
-    for i in range(nrows): colarr[:,i] = np.arange(cols[0]-1,cols[1], dtype=np.int32)
-    for i in range(ncols): rowarr[i,:] = np.arange(rows[0]-1,rows[1], dtype=np.int32)
+    colarr = np.empty((ncols, nrows), dtype=np.int32)
+    rowarr = np.empty((ncols, nrows), dtype=np.int32)
+    for i in range(nrows):
+        colarr[:, i] = np.arange(cols[0]-1, cols[1], dtype=np.int32)
+    for i in range(ncols):
+        rowarr[i, :] = np.arange(rows[0]-1, rows[1], dtype=np.int32)
     # Flatten from 2D to 1D arrays to preserve indexing using only ispax
     # currently not needed. fitloop expects 2D lists.
-    #colarr = colarr.flatten()
-    #rowarr = rowarr.flatten()
+    colarr = colarr.flatten()
+    rowarr = rowarr.flatten()
     nspax = ncols * nrows
     return nspax, colarr, rowarr
 
 
 # handle the FITLOOP execution.
-# In its own function due to commonality between single- and multi-threaded execution
-def execute_fitloop( nspax, colarr, rowarr, cube, initdat, linelist, oned, onefit,\
-        quiet):
+# In its own function due to commonality between single- and
+# multi-threaded execution
+def execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, oned,
+                    onefit, quiet, logfile=None):
     from q3dfit.common.fitloop import fitloop
-    dolog = 0
-    if "logfile" in initdat:
-        dolog = 1
-        logloop = []
-        for i in range(nspax): logloop.append(initdat["logfile"])
     for ispax in range(0, nspax):
-        if ispax == 0 and dolog:
-            from os import remove
-            # delete log file, if it exists
-            try: remove(initdat["logfile"])
-            except FileNotFoundError: pass
-        # TODO: Uncomment this command once fitloop has been written
-        fitloop(ispax, colarr, rowarr, cube, initdat, linelist,\
-                            oned, onefit, quiet, logfile=logloop)
+        # if ispax == 0 and logloop is not None:
+        # from os import remove
+        # delete log file, if it exists
+        # try:
+        #     remove(initdat['logfile'])
+        # except FileNotFoundError:
+        #     pass
+        fitloop(ispax, colarr, rowarr, cube, initdat, linelist,
+                oned, onefit, quiet, logfile=logfile)
 
 
 # q3df setup for single-threaded execution
@@ -174,29 +194,50 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
     starttime = time.time()
     initdat = __get_initdat(initproc)
     linelist = __get_linelist(initdat)
-    cube, vormap = __get_CUBE(initdat, oned, quiet)
+
+    if 'logfile' in initdat:
+        logfile = open(initdat['logfile'], 'w+')
+    else:
+        logfile = None
+
+    cube, vormap = __get_CUBE(initdat, oned, quiet, logfile=logfile)
     if cols and rows and vormap:
         cols = __get_voronoi(cols, rows, vormap)
         rows = 1
     nspax, colarr, rowarr = __get_spaxels(cube, cols, rows)
     # execute FITLOOP
-    execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, oned, onefit, quiet)
-    print('Q3DF: Total time for calculation: '+ str(time.time()-starttime) + ' s.')
+    execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, oned,
+                    onefit, quiet, logfile=logfile)
+    if logfile is None:
+        from sys import stdout
+        logtmp = stdout
+    else:
+        logtmp = logfile
+    timediff = time.time()-starttime
+    print(f'Q3DF: Total time for calculation: {timediff:.2f} s.',
+          file=logtmp)
+    if logfile is not None:
+        logfile.close()
 
 
 # q3df setup for multi-threaded execution
-def q3df_multiCore( rank, initproc, cols=None, rows=None, oned=False, onefit=False, ncores=1, \
-          quiet=True ):
-    import pdb
+def q3df_multiCore(rank, initproc, cols=None, rows=None, oned=False,
+                   onefit=False, ncores=1, quiet=True):
     import time
     from numpy import floor
-    if rank == 0: starttime = time.time()
+    starttime = time.time()
     initdat = __get_initdat(initproc)
     linelist = __get_linelist(initdat)
-    cube, vormap = __get_CUBE(initdat, oned, quiet)
+
+    if 'logfile' in initdat:
+        logfile = open(initdat['logfile'] + '_core'+str(rank+1), 'w+')
+    else:
+        logfile = None
+
+    cube, vormap = __get_CUBE(initdat, oned, quiet, logfile=logfile)
     if cols and rows and vormap:
         cols = __get_voronoi(cols, rows, vormap)
-        rows=1
+        rows = 1
     nspax, colarr, rowarr = __get_spaxels(cube, cols, rows)
     # get the range of spaxels this core is responsible for
     start = int(floor(nspax * rank / size))
@@ -206,10 +247,18 @@ def q3df_multiCore( rank, initproc, cols=None, rows=None, oned=False, onefit=Fal
     # number of spaxels THIS CORE is responsible for
     nspax_thisCore = stop-start
     # execute FITLOOP
-    execute_fitloop(nspax_thisCore, colarr, rowarr, cube, initdat, linelist, oned, onefit, quiet)
-    if rank == 0:
-        print('Q3DF: Total time for calculation: ' +
-              str(time.time()-starttime) + ' s.')
+    execute_fitloop(nspax_thisCore, colarr, rowarr, cube, initdat, linelist,
+                    oned, onefit, quiet, logfile=logfile)
+    if logfile is None:
+        from sys import stdout
+        logtmp = stdout
+    else:
+        logtmp = logfile
+    timediff = time.time()-starttime
+    print(f'Q3DF: Total time for calculation: {timediff:.2f} s.',
+          file=logtmp)
+    if logfile is not None:
+        logfile.close()
 
 
 # if called externally, default to MPI behavior
@@ -220,15 +269,16 @@ if __name__ == "__main__":
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
     rank = comm.Get_rank()
+
     # helper function: convert a string representing a list of integers
     # of form [1, 2, 3...] or [1,2,3...] to an actual list of integers
-
     def string_to_intArray(strArray):
         if strArray.startswith("N"):
             return None
         # strip leading and trailing brackets
-        strArray = strArray[1:-1]
-        # form an list by splitting on commas
+        if strArray.startswith("["):
+            strArray = strArray[1:-1]
+        # form a list by splitting on commas
         intList = strArray.split(",")
         for i in range(len(intList)):
             # remove whitespace
@@ -241,15 +291,15 @@ if __name__ == "__main__":
     cols = string_to_intArray(argv[2])
     rows = string_to_intArray(argv[3])
     if argv[4].startswith("T"):
-        oned=True
+        oned = True
     else:
-        oned=False
+        oned = False
     if argv[5].startswith("T"):
-        onefit=True
+        onefit = True
     else:
-        onefit=False
+        onefit = False
     if argv[6].startswith("T"):
-        quiet=True
+        quiet = True
     else:
-        quiet=False
+        quiet = False
     q3df_multiCore(rank, initproc, cols, rows, oned, onefit, size, quiet)

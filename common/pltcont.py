@@ -153,8 +153,10 @@ def pltcont(instr, outfile, compspec=None, comptitles=None, ps=None,
         plt.tick_params(which='major', length=20, pad=30)
         plt.tick_params(which='minor', length=10)
         plt.xticks(np.arange(xran1[0], xran1[1], 200), fontsize=30)
+        # This will fail if fluxes are very low (<~1e-10)
         plt.yticks(np.arange(yran[0], yran[1],
-                             round(((yran[1] - yran[0])/5), 2)), fontsize=25)
+                             np.around((yran[1] - yran[0])/5.,
+                                       decimals=10)), fontsize=25)
 
         # actually plotting
         plt.plot(wave, ydat, 'w', linewidth=1)

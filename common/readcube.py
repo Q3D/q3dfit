@@ -1,15 +1,10 @@
-import numpy as np
-from matplotlib import pyplot as plt
 from astropy.io import fits
-import pdb
-from astropy import units as u
-from astropy.io.fits import update
-
-from scipy import constants as ct
-import copy
 from scipy import interpolate
-import os
+from sys import stdout
 
+import copy
+import numpy as np
+import os
 import warnings
 
 
@@ -23,7 +18,7 @@ Extract data and information from an IFS data cube FITS file.
 
 :Usage:
 from readcube import *
-cube = CUBE(fp='/jwst1/lwz/KCWI_dwarf/pg1411/PG1411/',infile='pg1411rb3.fits')
+cube = CUBE(fp='/path/to/data/', infile='datafits')
 
 :Returns:
     python class CUBE
@@ -31,7 +26,8 @@ cube = CUBE(fp='/jwst1/lwz/KCWI_dwarf/pg1411/PG1411/',infile='pg1411rb3.fits')
         phu: primary fits extension
         dat: data array
         var: variance array
-        err: error array, the values are recorded as nan when the variances are negative.
+        err: error array, the values are recorded as nan when the
+             variances are negative.
         dq: dq array
         wave: wavelength array
         header_phu: header for the primary fits extension
@@ -96,9 +92,10 @@ cube = CUBE(fp='/jwst1/lwz/KCWI_dwarf/pg1411/PG1411/',infile='pg1411rb3.fits')
 ;      2020may05, DSNR, new treatment of default axes in 2D images; added CUNIT
 ;                       and BUNIT to output
 ;      2020may31, Weizhe, translated into python 3
+;      2021feb22, DSNR, can now output print statements to log file
 ;
 ; :Copyright:
-;    Copyright (C) 2013--2020 David S. N. Rupke
+;    Copyright (C) 2013--2021 David S. N. Rupke
 ;
 ;    This program is free software: you can redistribute it and/or
 ;    modify it under the terms of the GNU General Public License as
@@ -114,24 +111,25 @@ cube = CUBE(fp='/jwst1/lwz/KCWI_dwarf/pg1411/PG1411/',infile='pg1411rb3.fits')
 ;    along with this program.  If not, see
 ;    http://www.gnu.org/licenses/.
 ;
-
 '''
 
+
 class CUBE:
-    def __init__(self,**kwargs):
+    def __init__(self, **kwargs):
         warnings.filterwarnings("ignore")
         fp = kwargs.get('fp','')
         self.fp = fp
-        self.cspeed = 299792.458
+        # self.cspeed = 299792.458
         infile=kwargs.get('infile','')
         self.infile = infile
+        logfile = kwargs.get('logfile', stdout)
         try:
             os.path.isfile(fp+infile)
             #hdu = fits.open(fp+infile,ignore_missing_end=True)
             #hdu.info()
         except:
-            print(infile+' does not exist!')
-        hdu = fits.open(fp+infile,ignore_missing_end=True)
+            print('CUBE:' + infile + ' does not exist.', file=logfile)
+        hdu = fits.open(fp+infile, ignore_missing_end=True)
         #hdu.info()
         # fits extensions to be read
         datext = kwargs.get('datext',1)
@@ -152,19 +150,20 @@ class CUBE:
         try:
             self.dat = (hdu[datext].data).T
         except:
-            print('data extension does not exist')
+            print('CUBE: Data extension does not exist.', file=logfile)
         try:
             self.var = (hdu[varext].data).T
             self.err = copy.copy(self.var) ** 0.5
             badvar = np.where(self.var < 0)
             if np.size(badvar) > 0:
-                print('CUBE: Negative values encountered in variance array.')
+                print('CUBE: Negative values encountered in variance array.',
+                      file=logfile)
         except:
-            print('variance extension does not exist')
+            print('CUBE: Variance extension does not exist.', file=logfile)
         try:
             self.dq = (hdu[dqext].data).T
         except:
-            print('quality flag extension does not exist')
+            print('CUBE: Quality flag extension does not exist.', file=logfile)
         if zerodq == True:
             self.dq = np.zeros(np.shape(self.data))
         if waveext:
@@ -185,7 +184,8 @@ class CUBE:
             try:
                 np.max([nrows,ncols]) < nw
             except:
-                print('data cube dimensions not in [nw,nrows,ncols] format')
+                print('CUBE: Data cube dimensions not in [nw, nrows, ncols] ',
+                      'format.', file=logfile)
             CDELT = 'CDELT3'
             CRVAL ='CRVAL3'
             CRPIX = 'CRPIX3'
@@ -194,7 +194,8 @@ class CUBE:
             CUNIT = 'CUNIT3'
             BUNIT = 'BUNIT'
         elif np.size(datashape) == 2:
-            print('READCUBE: Reading 2D image. Assuming dispersion direction is along rows')
+            print('CUBE: Reading 2D image. Assuming dispersion direction ' +
+                  'is along rows.', file=logfile)
             nrows = 1
             ncols = (datashape)[1]
             nw = (datashape)[-1]
@@ -236,17 +237,17 @@ class CUBE:
         if vormap:
             ncols = np.max(vormap)
             nrows = 1
-            vordat = np.zeros((ncols,nrows,nz))
-            vorvar = np.zeros((ncols,nrows,nz))
-            vordq = np.zeros((ncols,nrows,nz))
+            vordat = np.zeros((ncols,nrows,nw))
+            vorvar = np.zeros((ncols,nrows,nw))
+            vordq = np.zeros((ncols,nrows,nw))
             vorcoords = np.zeros((ncols,2),dtype=int)
             nvor = np.zeros((ncols))
             for i in np.arange(ncols):
                 ivor = np.where(vormap == i+1)
                 xyvor = [ivor[0][0],ivor[0][1]]
-                vordat[i,0,:] = dat[xyvor[0],xyvor[1],:]
-                vorvar[i,0,:] = var[xyvor[0],xyvor[1],:]
-                vordq[i,0,:] = dq[xyvor[0],xyvor[1],:]
+                vordat[i,0,:] = self.dat[xyvor[0],xyvor[1],:]
+                vorvar[i,0,:] = self.var[xyvor[0],xyvor[1],:]
+                vordq[i,0,:] = self.dq[xyvor[0],xyvor[1],:]
                 vorcoords[i,:] = xyvor
                 nvor[i] = (np.shape(ivor))[1]
             dat = vordat
@@ -260,7 +261,7 @@ class CUBE:
             dqold = copy.copy(self.dq)
             self.crpix = 1
             self.cdelt = (waveold[-1]-waveold[0]) / (self.nz-1)
-            wave = np.linspace(aveold[0],waveold[-1],num=self.nz)
+            wave = np.linspace(waveold[0],waveold[-1],num=self.nz)
             self.wave = wave
             spldat = interpolate.splrep(waveold,datold,s=0)
             self.dat = interpolate.splev(waveold,spldat,der=0)
@@ -268,12 +269,13 @@ class CUBE:
             self.var = interpolate.splev(waveold,splvar,der=0)
             spldq = interpolate.splrep(waveold,dqold,s=0)
             self.dq = interpolate.splev(waveold,spldq,der=0)
-            print('READCUBE: Interpolating DQ; values > 0.01 set to 1.')
+            print('CUBE: Interpolating DQ; values > 0.01 set to 1.',
+                  sfile=logfile)
             ibd = np.where(self.dq > 0.01)
             if np.size(ibd) > 0:
                 dq[ibd] = 1
         hdu.close()
+
+
 if __name__ == "__main__":
-    #c = constants.c/1000.
-    #main(J0906=True)
-    cube=CUBE(fp='/jwst1/lwz/KCWI_dwarf/pg1411/PG1411/',infile='pg1411rb3.fits')
+    cube = CUBE(fp='/path/to/data/', infile='data.fits')

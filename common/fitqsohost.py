@@ -134,7 +134,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
         # t = clock()
         start = [0, siginit_stars]  # (km/s), starting guess for [V, sigma]
         pp = ppxf(temp_log, resid_log, residerr_log, velscale, start,
-                  goodpixels=index_log,  quiet=quiet, # plot=True, moments=2
+                  goodpixels=index_log,  quiet=quiet,  # plot=True, moments=2
                   degree=add_poly_degree)  # clean=False
 
         # resample additive polynomial to linear grid

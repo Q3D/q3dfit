@@ -1,13 +1,14 @@
-from q3dfit.common import q3df, q3da, makeqsotemplate
+from q3dfit.common.q3df import q3df
+from q3dfit.common.q3da import q3da
+# from q3dfit.common.makeqsotemplate import makeqsotemplate
 
 volume = '/Volumes/fingolfin/ifs/gmos/cubes/pg1411/'
 outpy = volume + 'pg1411qsotemplate.npy'
 infits = volume + 'pg1411rb1.fits'
 
-makeqsotemplate.makeqsotemplate(infits, outpy, dataext=None, dqext=None,
-                                waveext=None)
-q3df.q3df('pg1411', cols=[14], rows=[11])
-q3da.q3da('pg1411', cols=14, rows=11)
+# makeqsotemplate(infits, outpy, dataext=None, dqext=None, waveext=None)
+q3df('pg1411', ncores=10)
+q3da('pg1411')
 
 # Test creation of Gonzalez-Delgado templates
 # from q3dfit.common.gdtemp import gdtemp

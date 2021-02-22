@@ -220,7 +220,7 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
         cols = np.array([cols, cols], dtype=int)
 #   case: cols is a 1-element list
     elif len(cols) == 1:
-        cols = np.array([cols[0], cols[0]] ,dtype=int)
+        cols = np.array([cols[0], cols[0]], dtype=int)
 #   case: cols is a 2-element list
     else:
         cols = np.array(cols, dtype=int)

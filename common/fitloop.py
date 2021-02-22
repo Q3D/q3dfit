@@ -43,36 +43,36 @@ Take outputs from Q3DF and perform fitting loop.
      2016nov17, DSNR, added flux calibration
      2018jun25, DSNR, added MC error calculation on stellar parameters
      2021jan20, DSNR, finished translating to Python
+     2021feb22, DSNR, updated logfile treatment
 
 """
 
-import importlib
-# import pdb
-import numpy as np
 from q3dfit.exceptions import InitializationError
 from q3dfit.common.fitspec import fitspec
 from q3dfit.common.sepfitpars import sepfitpars
+
+import importlib
+import numpy as np
+import pdb
 
 
 def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
             quiet=True, logfile=None):
 
-    if logfile:
-        if isinstance(logfile, str):
-            uselogfile = logfile
-        else:
-            uselogfile = logfile[ispax]
-        loglun = open(uselogfile, 'w')
+    if logfile is None:
+        from sys import stdout
+        logfile = stdout
 
     # When computing masking half-widths before second fit, sigmas from first
     # fit are multiplied by this number.
     masksig_secondfit_def = 2.
-    colind = ispax % cube.ncols
-    rowind = int(ispax / cube.ncols)
-    i = colarr[colind, rowind]
-    j = rowarr[colind, rowind]
+    # colind = ispax % cube.ncols
+    # rowind = int(ispax / cube.ncols)
+    # pdb.set_trace()
+    i = colarr[ispax]  # colind, rowind]
+    j = rowarr[ispax]  # colind, rowind]
     print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]',
-          file=loglun)
+          file=logfile)
 
     if oned:
         flux = cube.dat[:, i]
@@ -89,7 +89,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
         tmpj = cube.vorcoords[i, 1]
         i = tmpi
         j = tmpj
-        print(f'Reference coordinate: [col, row]=[{i+1}, {j+1}]', file=loglun)
+        print(f'Reference coordinate: [col, row]=[{i+1}, {j+1}]', file=logfile)
 
     if oned:
         outlab = '{[outdir]}{[label]}_{:04d}'.format(initdat, initdat, i+1)
@@ -207,11 +207,13 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                 for line in initdat['lines']:
                     if oned:
                         listlinesz[line] = \
-                            listlines['lines'][(listlines['name'] == line)] * \
+                            np.array(listlines['lines']
+                                     [(listlines['name'] == line)]) * \
                             (1. + initdat['zinit_gas'][line][i, ])
                     else:
                         listlinesz[line] = \
-                            listlines['lines'][(listlines['name'] == line)] * \
+                            np.array(listlines['lines']
+                                     [(listlines['name'] == line)]) * \
                             (1. + initdat['zinit_gas'][line][i, j, ])
 
             if not quiet:
@@ -303,9 +305,9 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                                      ncomp, siglim_gas)
 
                 if len(newncomp) > 0:
-                    for nc, line in newncomp.items():
-                        print(f'Q3DF: Repeating the fit of {line} with {nc} \
-                              components.')  # , file=loglun)
+                    for line, nc in newncomp.items():
+                        print(f'FITLOOP: Repeating the fit of {line} with ' +
+                              f'{nc} components.', file=logfile)
                 else:
                     dofit = False
             else:

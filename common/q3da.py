@@ -490,13 +490,13 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                 = np.subtract(struct['cont_dat'], struct['cont_fit'])
 
             if 'decompose_ppxf_fit' in initdat:
-                add_poly_degree = 4.0  # should match fitspec
+                add_poly_degree = 4  # should match fitspec
                 if 'argscontfit' in initdat:
                     if 'add_poly_degree' in initdat['argscontfit']:
                         add_poly_degree = \
                             initdat['argscontfit']['add_poly_degree']
                 # Compute polynomial
-                dumy_log, wave_log = \
+                dumy_log, wave_log,_ = \
                     log_rebin([struct['wave'][0],
                                struct['wave'][len(struct['wave'])-1]],
                               struct['spec'])
@@ -505,10 +505,10 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                 for k in range(0, add_poly_degree):
                     cfpllegfun = legendre(k)
                     cont_fit_poly_log += \
-                        cfpllegfun(xnorm) * struct['ct_add_poly_weight'][k]
+                        cfpllegfun(xnorm) * struct['ct_add_poly_weights'][k]
                 interpfunction = \
                     interpolate.interp1d(cont_fit_poly_log, wave_log,
-                                         kind='linear')
+                                         kind='linear',fill_value="extrapolate")
                 cont_fit_poly = interpfunction(np.log(struct['wave']))
                 # Compute stellar continuum
                 cont_fit_stel = np.subtract(struct['cont_fit'], cont_fit_poly)
@@ -543,7 +543,7 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                     contcube['stel_z_err'][j, i, :] \
                         = [struct['zstar_err'], struct['zstar_err']]
 
-            elif 'decompose_qso_fit' in initdat:
+            if 'decompose_qso_fit' in initdat:
                 if initdat['fcncontfit'] == 'fitqsohost':
                     if 'qsoord' in initdat['argscontfit']:
                         qsoord = initdat['argscontfit']['qsoord']
@@ -604,7 +604,7 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                             for k in range(0, add_poly_degree):
                                 cfpllegfun = legendre(k)
                                 polymod_log += cfpllegfun(xnorm) * par_poly[k]
-                            interpfunct = interpolate.interp1d(polymod_log, wave_rebin, kind='linear',fill_value="extrapolate")
+                            interpfunct = interpolate.interp1d(wave_rebin,polymod_log, kind='cubic',fill_value="extrapolate")
                             polymod_refit = interpfunct(np.log(struct['wave']))
                         else:
                             polymod_refit = np.zeros(len(struct['wave']), dtype=float)
@@ -640,6 +640,10 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                                       qsoscl = qsomod_polynorm, qsoord = qsoord,
                                       hostord = hostord)
 
+#                    qsomod = qsohostfcn.qsohostfcn(struct['wave'], params_fit=par_qsohost, blrpar=initdat['argscontfit']['blrpar']
+#                               ,add_poly_degree=add_poly_degree, qsoord=qsoord
+#                               ,hostord=hostord
+#                               ,qsoflux=qsoflux)
 #                    qsomod = qsohostfcn.qsohostfcn(struct['wave'], params_fit=par_qsohost, qsoflux = qsoflux
 #                                                   ,blrterms = blrterms)
 
@@ -793,7 +797,7 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                     else:
                         pltcontfcn(struct_host, str(outfile) + '_cnt_host',
                                    compspec=compspec,
-                                   title='Host', fitran=initdat['fitran'])
+                                   title='Host',comptitles=compfit, fitran=initdat['fitran'])
                     if 'blrpar' in initdat['argscontfit']:
                         qsomod_blrnorm = np.median(qsomod) / \
                             max(qsomod_blronly)
@@ -811,7 +815,7 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                                    **initdat['argspltcont'])
                     else:
                         pltcontfcn(struct_qso, outfile + '_cnt_qso',
-                                   compspec=compspec,
+                                   compspec=compspec,comptitles=compfit,
                                    title='QSO', fitran=initdat['fitran'])
             # Plot continuum
             # Make sure fit doesn't indicate no continuum; avoids
@@ -836,18 +840,18 @@ def q3da(initproc, cols=None, rows=None, noplots=None, oned=None,
                 elif 'decompose_ppxf_fit' in initdat:
                     if 'argspltcont' in initdat:
                         pltcontfcn(struct, outfile + '_cnt',
-                                   compspec=[[cont_fit_stel], [cont_fit_poly]],
+                                   compspec=np.array([cont_fit_stel,cont_fit_poly]),
                                    title='Total',
-                                   compfit=['stel. temp.',
+                                   comptitles=['stel. temp.',
                                             'ord. ' + str(add_poly_degree) +
                                             'Leg.poly'],
                                    fitran=initdat['fitran'],
                                    **initdat['argspltcont'])
                     else:
                         pltcontfcn(struct, outfile + '_cnt',
-                                   compspec=[[cont_fit_stel], [cont_fit_poly]],
+                                   compspec=np.array([cont_fit_stel,cont_fit_poly]),
                                    title='Total',
-                                   compfit=['stel. temp.', 'ord. ' +
+                                   comptitles=['stel. temp.', 'ord. ' +
                                             str(add_poly_degree) +
                                             ' Leg. poly'],
                                    fitran=initdat['fitran'])

@@ -53,17 +53,6 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
          quiet=True):
 
     bad = 1.0 * 10**99
-#    fwhmtosig = 2.0 * math.sqrt(2.0 * np.log(2.0))
-
-    if verbose is not None:
-        quiet = False
-    else:
-        quiet = True
-
-    if oned is not None:
-        oned = True
-    else:
-        oned = False
 
 # reads initdat from initialization file ie pg1411 (initproc is a string)
     module = importlib.import_module('q3dfit.init.' + initproc)

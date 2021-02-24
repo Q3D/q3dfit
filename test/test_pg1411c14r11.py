@@ -7,10 +7,10 @@
 # makeqsotemplate(infits, outpy, dataext=None, dqext=None, waveext=None)
 
 from q3dfit.common.q3df import q3df
-q3df('pg1411', ncores=10)
+q3df('pg1411', cols=14, rows=11, quiet=False)
 
 from q3dfit.common.q3da import q3da
-q3da('pg1411', quiet=False)
+q3da('pg1411', cols=14, rows=11, quiet=False)
 
 # Test creation of Gonzalez-Delgado templates
 # from q3dfit.common.gdtemp import gdtemp

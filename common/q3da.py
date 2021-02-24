@@ -34,7 +34,6 @@ Created: 7/9/2020
 import copy
 import importlib
 import numpy as np
-# import math
 import pdb
 import os
 
@@ -58,7 +57,6 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
     module = importlib.import_module('q3dfit.init.' + initproc)
     fcninitproc = getattr(module, initproc)
     initdat = fcninitproc()
-
     #if 'donad' in initdat: do later
 
     if 'noemlinfit' not in initdat:
@@ -856,13 +854,6 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                             pltcontfcn(struct, outfile + '_cnt',
                                        fitran=initdat['fitran'])
 
-
-
-
-
-
-
-
     # Save emission line and continuum dictionaries
     np.savez('{[outdir]}{[label]}'.format(initdat, initdat)+'.lin.npz',
              emlwav=emlwav, emlwaverr=emlwaverr,
@@ -872,9 +863,6 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
     np.save('{[outdir]}{[label]}'.format(initdat, initdat)+'.cont.npy',
             contcube)
 
-        # endelse
-
-        # for
 
 def cap_range(x1, x2, n):
     a = np.zeros(1, dtype=float)
@@ -882,7 +870,6 @@ def cap_range(x1, x2, n):
     #    print(interval)
     num = x1
     for i in range(0, n):
-        #print(num)
         a = np.append(a, num)
         num += interval
     a = a[1:]

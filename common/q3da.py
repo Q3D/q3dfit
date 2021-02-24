@@ -379,7 +379,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                             isort = linepars['wave'][igd, line].sort(reverse=True)
 
                         if 'flipsort' in initdat:
-                            if flipsort[i,j ] is not None:
+                            if flipsort[j, i] is not None:
                                 isort = isort.sort(reverse=True)
                     if thisncomp > 0:
                         for line in lines_with_doublets:
@@ -609,21 +609,21 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                             polymod_refit = interpfunct(np.log(struct['wave']))
                         else:
                             polymod_refit = np.zeros(len(struct['wave']), dtype=float)
-                        contcube['stel_sigma'][j, i] = struct['ct_coeff']['ppxf_sigma']
-                        contcube['stel_z'][j, i] = struct['zstar']
+                        contcube['stel_sigma'][i, j] = struct['ct_coeff']['ppxf_sigma']
+                        contcube['stel_z'][i, j] = struct['zstar']
 
                         #Don't know ct_error's type
                         if 'ct_errors' in struct:
-                            contcube['stel_sigma_err'][j, i, :] \
+                            contcube['stel_sigma_err'][i, j, :] \
                                 = struct['ct_errors']['ct_ppxf_sigma']
                         else:
-                            contcube['stel_sigma_err'][j, i, :] \
+                            contcube['stel_sigma_err'][i, j, :] \
                                 = [struct['ct_ppxf_sigma_err'], struct['ct_ppxf_sigma_err']]
                         if 'ct_errors' in struct:
-                            contcube['stel_z_err'][j, i, :] \
+                            contcube['stel_z_err'][i, j, :] \
                                 = struct['ct_errors']['zstar']
                         else:
-                            contcube['stel_z_err'][j, i, :] \
+                            contcube['stel_z_err'][i, j, :] \
                                 = [struct['zstar_err'], struct['zstar_err']]
                         #again why aren't those two if statements combined
                     else:
@@ -670,14 +670,14 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                 qsomod = struct_qso['cont_fit'] * struct['ct_coeff'][len(struct['ct_coeff']) - 1]
                 hostmod = struct['cont_fit'] - qsomod
             else:
-                contcube['all_mod'][j, i, struct['fitran_indx']] = struct['cont_fit']
-                contcube['stel_z'][j, i] = struct['zstar']
+                contcube['all_mod'][i, j, struct['fitran_indx']] = struct['cont_fit']
+                contcube['stel_z'][i, j] = struct['zstar']
                 if 'ct_errors' in struct:
-                    contcube['stel_z_err'][j, i, :] = struct['ct_errors']['zstar']
+                    contcube['stel_z_err'][i, j, :] = struct['ct_errors']['zstar']
                 else:
-                    contcube['stel_z_err'][j, i, :] = [0, 0]
+                    contcube['stel_z_err'][i, j, :] = [0, 0]
 
-            contcube['stel_ebv'][j, i] = struct['ct_ebv']
+            contcube['stel_ebv'][i, j] = struct['ct_ebv']
             if 'ct_errors' in struct:
                 contcube['stel_ebv_err'][j,i,:]=struct['ct_errors']['ct_ebv']
             else:
@@ -691,7 +691,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                         print("PPXF results: ")
                         if 'decompose_ppxf_fit' in initdat:
                             ct_coeff_tmp = struct['ct_coeff']
-                            poly_tmp_pct = contcube['poly_mod_tot_pct'][j, i]
+                            poly_tmp_pct = contcube['poly_mod_tot_pct'][i, j]
                         else:
                             ct_coeff_tmp = struct['ct_coeff']['stel']
                             poly_tmp_pct = \
@@ -759,19 +759,19 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                 struct_qso['spec'] -= hostmod
                 struct_qso['cont_dat'] -= hostmod
                 struct_qso['cont_fit'] -= hostmod
-                contcube['qso_mod'][j, i, struct['fitran_indx']] = qsomod
-                contcube['qso_poly_mod'][j, i, struct['fitran_indx']] = \
+                contcube['qso_mod'][i, j, struct['fitran_indx']] = qsomod
+                contcube['qso_poly_mod'][i, j, struct['fitran_indx']] = \
                     qsomod_polynorm
-                contcube['host_mod'][j, i, struct['fitran_indx']] = hostmod
-                contcube['poly_mod'][j, i, struct['fitran_indx']] = \
+                contcube['host_mod'][i, j, struct['fitran_indx']] = hostmod
+                contcube['poly_mod'][i, j, struct['fitran_indx']] = \
                     polymod_refit
-                contcube['npts'][j, i] = len(struct['fitran_indx'])
+                contcube['npts'][i, j] = len(struct['fitran_indx'])
                 if 'remove_scattered' in initdat:
-                    contcube['host_mod'][j, i, struct['fitran_indx']] -= polymod_refit
+                    contcube['host_mod'][i, j, struct['fitran_indx']] -= polymod_refit
                 # Update hostcube.dat to remove tweakcnt mods
                 # Data minus (emission line model + QSO model, tweakcnt mods not
                 # included in QSO model)
-                hostcube['dat'][j, i, struct['fitran_indx']] \
+                hostcube['dat'][i, j, struct['fitran_indx']] \
                     = struct['cont_dat'] - qsomod_notweak
 
 #

@@ -3,7 +3,6 @@
 """
 Created on Tue Jun  9 12:35:25 2020
 
-Returns an array of Decimals (fluxes representing emission line profile)
 """
 
 import numpy as np
@@ -11,10 +10,9 @@ import numpy as np
 from astropy.table import Table
 # import math
 # import pdb
-from decimal import *
 
 
-def cmplin(instr, line, comp, velsig=None):
+def cmplin(instr, line, comp, velsig=False):
 
     # From sepfitpars.py
     parinfo_new = {}
@@ -49,33 +47,32 @@ def cmplin(instr, line, comp, velsig=None):
         gausspar = []
         for i in indices:
             gausspar.append(instr['param'][i])
-        if velsig is not None:
+        if velsig:
             gausspar[2] = np.sqrt((gausspar[2] * gausspar[1]/c)**2.0
                                   + specres ** 2.0)
         else:
             gausspar[2] = np.sqrt(gausspar[2]**2.0 + specres**2.0)
 
-        if gausspar[2] == 0.0:
-            flux = 0.0
+        if gausspar[2] == 0.:
+            flux = np.zeros(1, dtype=np.float32)
         else:
             flux = gaussian(instr['wave'], gausspar)
 
     else:
-        flux = 0.0
-#    print(type(flux[0]))
+        flux = np.zeros(1, dtype=np.float32)
+
     return flux
 
 
 def gaussian(xi, parms):
-    getcontext().prec = 40
+
     a = parms[0]  # amp
     b = parms[1]  # mean
     c = parms[2]  # standard dev
-    g = [0.0]  # gaussian
 
-    for x in xi:
-        hl = Decimal(a) * Decimal(-0.5 * ((x - b) / c)**2).exp()
-        g.append(hl)
-    g = g[1:]
+    # Anything higher-precision than this (e.g., float64) slows things down
+    # a bunch. longdouble completely chokes on lack of memory.
+    arg = np.array(-0.5 * ((xi - b)/c)**2, dtype=np.float32)
+    g = a * np.exp(arg)
 
     return g

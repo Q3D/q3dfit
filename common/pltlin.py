@@ -3,15 +3,11 @@
 
 @author: Lily Whitesell
 """
-# docformat= 'rst'
+# Plot emission line fit and output to JPG
 
-#+
+# Categories: IFSFIT
 
-#Plot emission line fit and output to JPG
-
-#Categories: IFSFIT
-
-#Returns: None.
+# Returns: None.
 
 #Params:
 #instr:in, required, type=structure
@@ -73,19 +69,15 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see
 #    http://www.gnu.org/licenses/.
-#
-#-
+
 # Translated into python by Lily Whitesell, June 2020
 
 from q3dfit.common.cmplin import cmplin
+
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-# from matplotlib.lines import Line2D
 import numpy as np
-# from astropy import modeling
-# import math
 import pdb
-from decimal import *
 
 
 def pltlin(instr, pltpar, outfile):
@@ -123,6 +115,7 @@ def pltlin(instr, pltpar, outfile):
     plt.style.use('dark_background')
     fig = plt.figure(figsize=(16, 13))
     for i in range(0, nlin):
+
         outer = gridspec.GridSpec(ny, nx, wspace=0.2, hspace=0.2)
         inner = \
             gridspec.GridSpecFromSubplotSpec(2, 1,
@@ -130,6 +123,7 @@ def pltlin(instr, pltpar, outfile):
                                              wspace=0.1, hspace=0,
                                              height_ratios=[4, 2],
                                              width_ratios=None)
+
         # create xran and ind
         linwavtmp = linwav[i]
         offtmp = np.array(off)[i, :]
@@ -227,15 +221,14 @@ def pltlin(instr, pltpar, outfile):
             ytit = ''
             ax0.plot(wave, ymod, color='Red', linewidth=2)
             for j in range(1, ncomp+1):
-                flux = np.array(cmplin(instr, linlab[i], j, velsig=1))
-                ax0.plot(wave, (Decimal(yran[0]) + flux), color=colors[j-1],
+                flux = cmplin(instr, linlab[i], j, velsig=True)
+                ax0.plot(wave, yran[0] + flux, color=colors[j-1],
                          linewidth=1, linestyle='dashed')
                 if linoth[0, i] != '':
                     for k in range(0, (len(linoth[:, i]))):
                         if linoth[k, i] != '':
-                            flux = np.array(cmplin(instr, linoth[k, i], j,
-                                                   velsig=1))
-                            ax0.plot(wave, (Decimal(yran[0]) + flux),
+                            flux = cmplin(instr, linoth[k, i], j, velsig=True)
+                            ax0.plot(wave, yran[0] + flux,
                                      color=colors[j-1],
                                      linewidth=1, linestyle='dashed')
             xloc = xran[0]+(xran[1]-xran[0])*(float(0.05))

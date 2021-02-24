@@ -646,29 +646,40 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         #     print('LMFIT: Max. iterations reached.')
 
         # Errors from covariance matrix. [Let's not multiply by reduced
-        # chi-squared for now -- not clear that it's ocrrect ...)
+        # chi-squared for now -- not clear that it's correct ...)
         # perror = np.multiply(perror, np.sqrt(rchisq))
         # ... and from fit residual.
         resid=gdflux-continuum-specfit
         perror_resid = perror
         sigrange = 20.
         for line in lines_arr:
-            # iline = next(idx for idx,item in enumerate(parinit) if item['line'] == line)
-            iline = np.array([ip for ip,item in enumerate(parinit) if item['line'] == line])
-            ifluxpk = np.intersect1d(iline,np.array([ip for ip,item in enumerate(parinit) if item['parname'] == 'flux_peak']))
+            iline = np.array([ip for ip, item in enumerate(parinit)
+                              if item['line'] == line])
+            ifluxpk = \
+                np.intersect1d(iline,
+                               np.array([ip for ip, item in enumerate(parinit)
+                                         if item['parname'] == 'flux_peak']))
             ctfluxpk = len(ifluxpk)
-            isigma = np.intersect1d(iline,np.array([ip for ip,item in enumerate(parinit) if item['parname'] == 'sigma']))
-            iwave = np.intersect1d(iline,np.array([ip for ip,item in enumerate(parinit) if item['parname'] == 'wavelength']))
-            for i in range(0,ctfluxpk):
-                waverange = sigrange*np.sqrt(np.power((param[isigma[i]]/c*param[iwave[i]]),2.) + np.power(param[2],2.))
-                wlo = np.searchsorted(gdlambda,param[iwave[i]]-waverange/2.)
-                whi = np.searchsorted(gdlambda,param[iwave[i]]+waverange/2.)
-                if gdlambda[wlo] < gdlambda[0] or wlo == -1:
-                    wlo=0
-                if gdlambda[whi] > gdlambda[len(gdlambda)-1] or whi == -1:
-                    whi=len(gdlambda)-1
+            isigma = \
+                np.intersect1d(iline,
+                               np.array([ip for ip, item in enumerate(parinit)
+                                         if item['parname'] == 'sigma']))
+            iwave = \
+                np.intersect1d(iline,
+                               np.array([ip for ip, item in enumerate(parinit)
+                                         if item['parname'] == 'wavelength']))
+            for i in range(0, ctfluxpk):
+                waverange = \
+                    sigrange * np.sqrt(np.power((param[isigma[i]] /
+                                                 c*param[iwave[i]]), 2.) +
+                                       np.power(param[2], 2.))
+                wlo = np.searchsorted(gdlambda, param[iwave[i]] - waverange/2.)
+                whi = np.searchsorted(gdlambda, param[iwave[i]] + waverange/2.)
+                if whi == len(gdlambda)+1:
+                    whi = len(gdlambda)-1
                 if param[ifluxpk[i]] > 0:
-                    perror_resid[ifluxpk[i]] = np.sqrt(np.mean(np.power(resid[wlo:whi],2.)))
+                    perror_resid[ifluxpk[i]] = \
+                        np.sqrt(np.mean(np.power(resid[wlo:whi], 2.)))
 
         outlistlines = listlines # this bit of logic prevents overwriting of listlines
         cont_dat = gdflux - specfit
@@ -690,7 +701,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         ebv_star=0.
         fit_time2 = time.time()
         if not quiet:
-            print('{:s}{:0.1f}{:s}'.format('FITSPEC: Line fit took ',fit_time2-fit_time1,' s.'))
+            print('{:s}{:0.1f}{:s}'.format('FITSPEC: Line fit took ',
+                                           fit_time2-fit_time1,' s.'))
 
 
 #;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

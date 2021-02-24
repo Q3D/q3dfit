@@ -145,7 +145,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
 
         ct_coeff = {'qso_host': result.params,
                     'stel': pp.weights,
-                    'poly': poly,
+                    'poly': pp.polyweights,
                     'ppxf_sigma': pp.sol[1]}
 
         zstar += pp.sol[0]/c.to('km/s').value

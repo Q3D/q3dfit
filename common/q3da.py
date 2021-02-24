@@ -34,6 +34,7 @@ Created: 7/9/2020
 import copy
 import importlib
 import numpy as np
+# import math
 import pdb
 import os
 
@@ -41,6 +42,7 @@ from ppxf.ppxf_util import log_rebin
 from q3dfit.common.linelist import linelist
 from q3dfit.common.readcube import CUBE
 from q3dfit.common.sepfitpars import sepfitpars
+from q3dfit.common.cmpweq import cmpweq
 from q3dfit.common import qsohostfcn
 from scipy.special import legendre
 from scipy import interpolate
@@ -51,11 +53,24 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
          quiet=True):
 
     bad = 1.0 * 10**99
+#    fwhmtosig = 2.0 * math.sqrt(2.0 * np.log(2.0))
+
+    if verbose is not None:
+        quiet = False
+    else:
+        quiet = True
+
+    if oned is not None:
+        oned = True
+    else:
+        oned = False
 
 # reads initdat from initialization file ie pg1411 (initproc is a string)
     module = importlib.import_module('q3dfit.init.' + initproc)
     fcninitproc = getattr(module, initproc)
     initdat = fcninitproc()
+
+    #if 'donad' in initdat: do later
 
     if 'noemlinfit' not in initdat:
         # get linelist
@@ -536,321 +551,315 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                         contcube['stel_z_err'][i, j, :] \
                             = [struct['zstar_err'], struct['zstar_err']]
 
-                elif 'decompose_qso_fit' in initdat:
-                    if initdat['fcncontfit'] == 'fitqsohost':
-                        if 'qsoord' in initdat['argscontfit']:
-                            qsoord = initdat['argscontfit']['qsoord']
-                        else:
-                            qsoord = False  # ?
-
-                        if 'hostord' in initdat['argscontfit']:
-                            hostord = initdat['argscontfit']['hostord']
-                        else:
-                            hostord = False  # ?
-
-                        if 'blrpar' in initdat['argscontfit']:
-                            blrterms = len(initdat['argscontfit']['blrpar'])
-                            # blrpar a 1D array
-                        else:
-                            blrterms = 0  # ?
-                        # default here must be same as in IFSF_FITQSOHOST
-                        if 'add_poly_degree' in initdat['argscontfit']:
-                            add_poly_degree = \
-                                initdat['argscontfit']['add_poly_degree']
-                        else:
-                            add_poly_degree = 30
-
-                        # These lines mirror ones in IFSF_FITQSOHOST
-                        struct_tmp = struct
-
-                        # Get and renormalize template
-                        qsotemplate = \
-                            np.load(initdat['argscontfit']['qsoxdr'],
-                                    allow_pickle='TRUE').item()
-                        qsowave = qsotemplate['wave']
-                        qsoflux_full = qsotemplate['flux']
-                        # non zero could be uncessesary
-    #                    iqsoflux = \
-    #                        np.flatnonzero(np.where((
-    #                            qsowave > struct_tmp['fitran'][0]*0.99999) & (
-    #                                qsowave < struct_tmp['fitran'][1]*1.00001)))
-                        iqsoflux = np.where((qsowave >= struct_tmp['fitran'][0]) & (qsowave <= struct_tmp['fitran'][1]))
-                        # line 611
-                        qsoflux = qsoflux_full[iqsoflux]
-                        qsoflux /= np.median(qsoflux)
-                        struct = struct_tmp
-                        #If polynomial residual is re-fit with PPXF, separate out best-fit
-                        #parameter structure created in IFSF_FITQSOHOST and compute polynomial
-                        #and stellar components
-                        #TODO who is ct coeff help
-                        if 'refit' in initdat['argscontfit']:
-                            par_qsohost = struct['ct_coeff']['qso_host']
-                            par_stel = struct['ct_coeff']['stel']
-                            #line 622
-                            dumy_log, wave_rebin,_ = log_rebin([struct['wave'][0],
-                                struct['wave'][len(struct['wave'])-1]],
-                                struct['spec'])
-                            xnorm = cap_range(-1.0, 1.0, len(wave_rebin)) #1D?
-                            if add_poly_degree > 0:
-                                par_poly = struct['ct_coeff']['poly']
-                                polymod_log = 0.0 # Additive polynomial
-                                for k in range(0, add_poly_degree):
-                                    cfpllegfun = legendre(k)
-                                    polymod_log += cfpllegfun(xnorm) * par_poly[k]
-                                interpfunct = interpolate.interp1d(polymod_log, wave_rebin, kind='linear',fill_value="extrapolate")
-                                polymod_refit = interpfunct(np.log(struct['wave']))
-                            else:
-                                polymod_refit = np.zeros(len(struct['wave']), dtype=float)
-                            contcube['stel_sigma'][i, j] = struct['ct_coeff']['ppxf_sigma']
-                            contcube['stel_z'][i, j] = struct['zstar']
-
-                            #Don't know ct_error's type
-                            if 'ct_errors' in struct:
-                                contcube['stel_sigma_err'][i, j, :] \
-                                    = struct['ct_errors']['ct_ppxf_sigma']
-                            else:
-                                contcube['stel_sigma_err'][i, j, :] \
-                                    = [struct['ct_ppxf_sigma_err'], struct['ct_ppxf_sigma_err']]
-                            if 'ct_errors' in struct:
-                                contcube['stel_z_err'][i, j, :] \
-                                    = struct['ct_errors']['zstar']
-                            else:
-                                contcube['stel_z_err'][i, j, :] \
-                                    = [struct['zstar_err'], struct['zstar_err']]
-                            #again why aren't those two if statements combined
-                        else:
-                            par_qsohost = struct['ct_coeff']
-                            polymod_refit = 0.0
-
-                        #produce fit with template only and with template + host. Also
-                        #output QSO multiplicative polynomial
-                        qsomod_polynorm = 0.0
-    #                    qsomod = qsohostfcn.qsohostfcn(struct['wave'], params_fit=par_qsohost, qsoflux = qsoflux,
-    #                                      blrpar = initdat['argscontfit']['blrpar'],qsoonly=True,hostonly=True,qsoord=qsoord,hostord=hostord)
-
-                        qsomod = qsohostfcn.qsohostfcn(struct['wave'], params_fit=par_qsohost, qsoflux = qsoflux,
-                                          qsoonly=True, blrterms = blrterms,
-                                          qsoscl = qsomod_polynorm, qsoord = qsoord,
-                                          hostord = hostord)
-
-    #                    qsomod = qsohostfcn.qsohostfcn(struct['wave'], params_fit=par_qsohost, qsoflux = qsoflux
-    #                                                   ,blrterms = blrterms)
-
-                        hostmod = struct['cont_fit_pretweak'] - qsomod
-
-                        #if continuum is tweaked in any region, subide resulting residual
-                        #proportionality @ each wavelength btwn qso and host components
-                        qsomod_notweak = qsomod
-                        if 'tweakcntfit' in initdat:
-                            modresid = struct['cont_fit'] - struct['cont_fit_pretweak']
-                            inz = np.where((qsomod != 0) & (hostmod != 0))[0]
-                            qsofrac = np.zeros(len(qsomod))
-                            for ind in inz:
-                                qsofrac[ind] = qsomod[ind] / (qsomod[ind] + hostmod[ind])
-                            qsomod += modresid * qsofrac
-                            hostmod += modresid * (1.0 - qsofrac)
-                        #components of qso fit for plotting
-                        qsomod_normonly = qsoflux
-                        if 'blrpar' in initdat['argscontfit']:
-                            qsomod_blronly = qsohostfcn.qsohostfcn(struct['wave'], par_qsohost,
-                                             qsoflux = qsoflux, blronly=True,
-                                             blrpar = initdat['argscontfit']['blrpar'], qsoord = qsoord,
-                                             hostord = hostord)
-                elif initdat['fcncontfit'] == 'ppxf' and 'qsotempfile' in initdat:
-                    qsotempfile = np.load(initdat['qsotempfile'], allow_pickle='TRUE').item()
-                    struct_qso = qsotempfile
-                    qsomod = struct_qso['cont_fit'] * struct['ct_coeff'][len(struct['ct_coeff']) - 1]
-                    hostmod = struct['cont_fit'] - qsomod
-                else:
-                    contcube['all_mod'][i, j, struct['fitran_indx']] = struct['cont_fit']
-                    contcube['stel_z'][i, j] = struct['zstar']
-                    if 'ct_errors' in struct:
-                        contcube['stel_z_err'][i, j, :] = struct['ct_errors']['zstar']
+                    if 'hostord' in initdat['argscontfit']:
+                        hostord = initdat['argscontfit']['hostord']
                     else:
-                        contcube['stel_z_err'][i, j, :] = [0, 0]
+                        hostord = False  # ?
 
-                contcube['stel_ebv'][i, j] = struct['ct_ebv']
+                    if 'blrpar' in initdat['argscontfit']:
+                        blrterms = len(initdat['argscontfit']['blrpar'])
+                        # blrpar a 1D array
+                    else:
+                        blrterms = 0  # ?
+                    # default here must be same as in IFSF_FITQSOHOST
+                    if 'add_poly_degree' in initdat['argscontfit']:
+                        add_poly_degree = \
+                            initdat['argscontfit']['add_poly_degree']
+                    else:
+                        add_poly_degree = 30
+
+                    # These lines mirror ones in IFSF_FITQSOHOST
+                    struct_tmp = struct
+
+                    # Get and renormalize template
+                    qsotemplate = \
+                        np.load(initdat['argscontfit']['qsoxdr'],
+                                allow_pickle='TRUE').item()
+                    qsowave = qsotemplate['wave']
+                    qsoflux_full = qsotemplate['flux']
+                    # non zero could be uncessesary
+#                    iqsoflux = \
+#                        np.flatnonzero(np.where((
+#                            qsowave > struct_tmp['fitran'][0]*0.99999) & (
+#                                qsowave < struct_tmp['fitran'][1]*1.00001)))
+                    iqsoflux = np.where((qsowave >= struct_tmp['fitran'][0]) & (qsowave <= struct_tmp['fitran'][1]))
+                    # line 611
+                    qsoflux = qsoflux_full[iqsoflux]
+                    qsoflux /= np.median(qsoflux)
+                    struct = struct_tmp
+                    #If polynomial residual is re-fit with PPXF, separate out best-fit
+                    #parameter structure created in IFSF_FITQSOHOST and compute polynomial
+                    #and stellar components
+                    #TODO who is ct coeff help
+                    if 'refit' in initdat['argscontfit']:
+                        par_qsohost = struct['ct_coeff']['qso_host']
+                        par_stel = struct['ct_coeff']['stel']
+                        #line 622
+                        dumy_log, wave_rebin,_ = log_rebin([struct['wave'][0],
+                            struct['wave'][len(struct['wave'])-1]],
+                            struct['spec'])
+                        xnorm = cap_range(-1.0, 1.0, len(wave_rebin)) #1D?
+                        if add_poly_degree > 0:
+                            par_poly = struct['ct_coeff']['poly']
+                            polymod_log = 0.0 # Additive polynomial
+                            for k in range(0, add_poly_degree):
+                                cfpllegfun = legendre(k)
+                                polymod_log += cfpllegfun(xnorm) * par_poly[k]
+                            interpfunct = interpolate.interp1d(polymod_log, wave_rebin, kind='linear',fill_value="extrapolate")
+                            polymod_refit = interpfunct(np.log(struct['wave']))
+                        else:
+                            polymod_refit = np.zeros(len(struct['wave']), dtype=float)
+                        contcube['stel_sigma'][j, i] = struct['ct_coeff']['ppxf_sigma']
+                        contcube['stel_z'][j, i] = struct['zstar']
+
+                        #Don't know ct_error's type
+                        if 'ct_errors' in struct:
+                            contcube['stel_sigma_err'][j, i, :] \
+                                = struct['ct_errors']['ct_ppxf_sigma']
+                        else:
+                            contcube['stel_sigma_err'][j, i, :] \
+                                = [struct['ct_ppxf_sigma_err'], struct['ct_ppxf_sigma_err']]
+                        if 'ct_errors' in struct:
+                            contcube['stel_z_err'][j, i, :] \
+                                = struct['ct_errors']['zstar']
+                        else:
+                            contcube['stel_z_err'][j, i, :] \
+                                = [struct['zstar_err'], struct['zstar_err']]
+                        #again why aren't those two if statements combined
+                    else:
+                        par_qsohost = struct['ct_coeff']
+                        polymod_refit = 0.0
+
+                    #produce fit with template only and with template + host. Also
+                    #output QSO multiplicative polynomial
+                    qsomod_polynorm = 0.0
+#                    qsomod = qsohostfcn.qsohostfcn(struct['wave'], params_fit=par_qsohost, qsoflux = qsoflux,
+#                                      blrpar = initdat['argscontfit']['blrpar'],qsoonly=True,hostonly=True,qsoord=qsoord,hostord=hostord)
+
+                    qsomod = qsohostfcn.qsohostfcn(struct['wave'], params_fit=par_qsohost, qsoflux = qsoflux,
+                                      qsoonly=True, blrterms = blrterms,
+                                      qsoscl = qsomod_polynorm, qsoord = qsoord,
+                                      hostord = hostord)
+
+#                    qsomod = qsohostfcn.qsohostfcn(struct['wave'], params_fit=par_qsohost, qsoflux = qsoflux
+#                                                   ,blrterms = blrterms)
+
+                    hostmod = struct['cont_fit_pretweak'] - qsomod
+
+                    #if continuum is tweaked in any region, subide resulting residual
+                    #proportionality @ each wavelength btwn qso and host components
+                    qsomod_notweak = qsomod
+                    if 'tweakcntfit' in initdat:
+                        modresid = struct['cont_fit'] - struct['cont_fit_pretweak']
+                        inz = np.where((qsomod != 0) & (hostmod != 0))[0]
+                        qsofrac = np.zeros(len(qsomod))
+                        for ind in inz:
+                            qsofrac[ind] = qsomod[ind] / (qsomod[ind] + hostmod[ind])
+                        qsomod += modresid * qsofrac
+                        hostmod += modresid * (1.0 - qsofrac)
+                    #components of qso fit for plotting
+                    qsomod_normonly = qsoflux
+                    if 'blrpar' in initdat['argscontfit']:
+                        qsomod_blronly = qsohostfcn.qsohostfcn(struct['wave'], par_qsohost,
+                                         qsoflux = qsoflux, blronly=True,
+                                         blrpar = initdat['argscontfit']['blrpar'], qsoord = qsoord,
+                                         hostord = hostord)
+            elif initdat['fcncontfit'] == 'ppxf' and 'qsotempfile' in initdat:
+                qsotempfile = np.load(initdat['qsotempfile'], allow_pickle='TRUE').item()
+                struct_qso = qsotempfile
+                qsomod = struct_qso['cont_fit'] * struct['ct_coeff'][len(struct['ct_coeff']) - 1]
+                hostmod = struct['cont_fit'] - qsomod
+            else:
+                contcube['all_mod'][j, i, struct['fitran_indx']] = struct['cont_fit']
+                contcube['stel_z'][j, i] = struct['zstar']
                 if 'ct_errors' in struct:
-                    contcube['stel_ebv_err'][i, j,:]=struct['ct_errors']['ct_ebv']
+                    contcube['stel_z_err'][j, i, :] = struct['ct_errors']['zstar']
                 else:
-                    contcube['stel_rchisq'][i, j]=0.0
+                    contcube['stel_z_err'][j, i, :] = [0, 0]
 
-                # Print ppxf results to stdout
-                if ('decompose_ppxf_fit' in initdat) or \
-                        ('decompose_qso_fit' in initdat):
-                    if 'argscontfit' in initdat:
-                        if 'print_output' in initdat['argscontfit']:
-                            print("PPXF results: ")
-                            if 'decompose_ppxf_fit' in initdat:
-                                ct_coeff_tmp = struct['ct_coeff']
-                                poly_tmp_pct = contcube['poly_mod_tot_pct'][i, j]
+            contcube['stel_ebv'][j, i] = struct['ct_ebv']
+            if 'ct_errors' in struct:
+                contcube['stel_ebv_err'][j,i,:]=struct['ct_errors']['ct_ebv']
+            else:
+                contcube['stel_rchisq'][j,i]=0.0
+
+            # Print ppxf results to stdout
+            if ('decompose_ppxf_fit' in initdat) or \
+                    ('decompose_qso_fit' in initdat):
+                if 'argscontfit' in initdat:
+                    if 'print_output' in initdat['argscontfit']:
+                        print("PPXF results: ")
+                        if 'decompose_ppxf_fit' in initdat:
+                            ct_coeff_tmp = struct['ct_coeff']
+                            poly_tmp_pct = contcube['poly_mod_tot_pct'][j, i]
+                        else:
+                            ct_coeff_tmp = struct['ct_coeff']['stel']
+                            poly_tmp_pct = \
+                                np.sum(polymod_refit) / np.sum(hostmod)
+                        inz = np.where(ct_coeff_tmp != 0.0)
+                        ctnz = len(inz)
+                        if ctnz > 0:
+                            coeffgd = ct_coeff_tmp[inz]
+                            # normalize coefficients to % of total stellar coeffs.
+                            totcoeffgd = np.sum(coeffgd)
+                            coeffgd /= totcoeffgd
+                            # re-normalize to % of total flux
+                            coeffgd *= (1.0 - poly_tmp_pct)
+                            # TODO: xdr file
+                            startempfile = \
+                                np.load(initdat['startempfile']+".npy",
+                                        allow_pickle='TRUE').item()
+                            agesgd = startempfile['ages'][inz]  # check
+                            # sum coefficients over age ranges
+                            iyoung = np.where(agesgd < 1e7)
+                            ctyoung = len(iyoung)
+                            iinter1 = np.where(agesgd > 1e7 and agesgd < 1e8)
+                            ctinter1 = len(iinter1)
+                            iinter2 = np.where(agesgd > 1e8 and agesgd < 1e9)
+                            ctinter2 = len(iinter2)
+                            iold = np.where(agesgd > 1e9)
+                            ctold = len(iold)
+                            if ctyoung > 0:
+                                coeffyoung = np.sum(coeffgd[iyoung]) * 100.0
                             else:
-                                ct_coeff_tmp = struct['ct_coeff']['stel']
-                                poly_tmp_pct = \
-                                    np.sum(polymod_refit) / np.sum(hostmod)
-                            inz = np.where(ct_coeff_tmp != 0.0)
-                            ctnz = len(inz)
-                            if ctnz > 0:
-                                coeffgd = ct_coeff_tmp[inz]
-                                # normalize coefficients to % of total stellar coeffs.
-                                totcoeffgd = np.sum(coeffgd)
-                                coeffgd /= totcoeffgd
-                                # re-normalize to % of total flux
-                                coeffgd *= (1.0 - poly_tmp_pct)
-                                # TODO: xdr file
-                                startempfile = \
-                                    np.load(initdat['startempfile']+".npy",
-                                            allow_pickle='TRUE').item()
-                                agesgd = startempfile['ages'][inz]  # check
-                                # sum coefficients over age ranges
-                                iyoung = np.where(agesgd < 1e7)
-                                ctyoung = len(iyoung)
-                                iinter1 = np.where(agesgd > 1e7 and agesgd < 1e8)
-                                ctinter1 = len(iinter1)
-                                iinter2 = np.where(agesgd > 1e8 and agesgd < 1e9)
-                                ctinter2 = len(iinter2)
-                                iold = np.where(agesgd > 1e9)
-                                ctold = len(iold)
-                                if ctyoung > 0:
-                                    coeffyoung = np.sum(coeffgd[iyoung]) * 100.0
-                                else:
-                                    coeffyoung = 0.0
-                                if ctinter1 > 0:
-                                    coeffinter1 = np.sum(coeffgd[iinter1]) * 100.0
-                                else:
-                                    coeffinter1 = 0.0
-                                if ctinter2 > 0:
-                                    coeffinter2 = np.sum(coeffgd[iinter2]) * 100.0
-                                else:
-                                    coeffinter2 = 0.0
-                                if ctold > 0:
-                                    coeffold = np.sum(coeffgd[iold]) * 100.0
-                                else:
-                                    coeffold = 0.0
-                                print(str(round(coeffyoung)) +
-                                      ' contribution from ages <= 10 Myr.')
-                                print(str(round(coeffinter1)) +
-                                      ' contribution from 10 Myr < age <= 100 Myr.')
-                                print(str(round(coeffinter2)) +
-                                      ' contribution from 100 Myr < age <= 1 Gyr.')
-                                print(str(round(coeffold)) +
-                                      ' contribution from ages > 1 Gyr.')
-                                print(' Stellar template convolved with sigma = ' +
-                                      str(struct['ct_ppxf_sigma']) + 'km/s')
+                                coeffyoung = 0.0
+                            if ctinter1 > 0:
+                                coeffinter1 = np.sum(coeffgd[iinter1]) * 100.0
+                            else:
+                                coeffinter1 = 0.0
+                            if ctinter2 > 0:
+                                coeffinter2 = np.sum(coeffgd[iinter2]) * 100.0
+                            else:
+                                coeffinter2 = 0.0
+                            if ctold > 0:
+                                coeffold = np.sum(coeffgd[iold]) * 100.0
+                            else:
+                                coeffold = 0.0
+                            print(str(round(coeffyoung)) +
+                                  ' contribution from ages <= 10 Myr.')
+                            print(str(round(coeffinter1)) +
+                                  ' contribution from 10 Myr < age <= 100 Myr.')
+                            print(str(round(coeffinter2)) +
+                                  ' contribution from 100 Myr < age <= 1 Gyr.')
+                            print(str(round(coeffold)) +
+                                  ' contribution from ages > 1 Gyr.')
+                            print(' Stellar template convolved with sigma = ' +
+                                  str(struct['ct_ppxf_sigma']) + 'km/s')
 
-    #            Plot QSO and host only continuum fit
-                if 'decompose_qso_fit' in initdat:
+#            Plot QSO and host only continuum fit
+            if 'decompose_qso_fit' in initdat:
 
-                    struct_host = copy.deepcopy(struct)
-                    struct_qso = copy.deepcopy(struct_host)
+                struct_host = copy.deepcopy(struct)
+                struct_qso = copy.deepcopy(struct_host)
 
-                    struct_host['spec'] -= qsomod
-                    struct_host['cont_dat'] -= qsomod
-                    struct_host['cont_fit'] -= qsomod
+                struct_host['spec'] -= qsomod
+                struct_host['cont_dat'] -= qsomod
+                struct_host['cont_fit'] -= qsomod
 
-                    struct_qso['spec'] -= hostmod
-                    struct_qso['cont_dat'] -= hostmod
-                    struct_qso['cont_fit'] -= hostmod
-                    contcube['qso_mod'][i, j, struct['fitran_indx']] = qsomod
-                    contcube['qso_poly_mod'][i, j, struct['fitran_indx']] = \
-                        qsomod_polynorm
-                    contcube['host_mod'][i, j, struct['fitran_indx']] = hostmod
-                    contcube['poly_mod'][i, j, struct['fitran_indx']] = \
-                        polymod_refit
-                    contcube['npts'][i, j] = len(struct['fitran_indx'])
-                    if 'remove_scattered' in initdat:
-                        contcube['host_mod'][i, j, struct['fitran_indx']] -= polymod_refit
-                    # Update hostcube.dat to remove tweakcnt mods
-                    # Data minus (emission line model + QSO model, tweakcnt mods not
-                    # included in QSO model)
-                    hostcube['dat'][i, j, struct['fitran_indx']] \
-                        = struct['cont_dat'] - qsomod_notweak
+                struct_qso['spec'] -= hostmod
+                struct_qso['cont_dat'] -= hostmod
+                struct_qso['cont_fit'] -= hostmod
+                contcube['qso_mod'][j, i, struct['fitran_indx']] = qsomod
+                contcube['qso_poly_mod'][j, i, struct['fitran_indx']] = \
+                    qsomod_polynorm
+                contcube['host_mod'][j, i, struct['fitran_indx']] = hostmod
+                contcube['poly_mod'][j, i, struct['fitran_indx']] = \
+                    polymod_refit
+                contcube['npts'][j, i] = len(struct['fitran_indx'])
+                if 'remove_scattered' in initdat:
+                    contcube['host_mod'][j, i, struct['fitran_indx']] -= polymod_refit
+                # Update hostcube.dat to remove tweakcnt mods
+                # Data minus (emission line model + QSO model, tweakcnt mods not
+                # included in QSO model)
+                hostcube['dat'][j, i, struct['fitran_indx']] \
+                    = struct['cont_dat'] - qsomod_notweak
 
-                    if not noplots and np.sum(struct_host['cont_fit']) != 0.0:
-                        if 'refit' in initdat['argscontfit']:
-                            compspec = np.array([polymod_refit, hostmod-polymod_refit])
-                            compfit = ['ord. ' + str(add_poly_degree) +
-                                       ' Leg. poly.', 'stel. temp.']
-                        else:
-                            compspec = hostmod
-                            compfit = ['exponential terms']
-                        module = importlib.import_module('q3dfit.common.' +
-                                                         fcnpltcont)
-                        pltcontfcn = getattr(module, fcnpltcont)
-                        if 'argspltcont' in initdat:
-                            pltcontfcn(struct_host, outfile + '_cnt_host',
-                                       compspec=compspec, compfit=compfit,
-                                       title='Host', fitran=initdat['fitran'],
-                                       **initdat['argspltcont'])
-                        else:
-                            pltcontfcn(struct_host, outfile + '_cnt_host',
-                                       compspec=compspec,
-                                       title='Host', fitran=initdat['fitran'])
-                        if 'blrpar' in initdat['argscontfit']:
-                            qsomod_blrnorm = np.median(qsomod) / \
-                                max(qsomod_blronly)
-                            compspec = np.array([qsomod_normonly,
-                                        qsomod_blronly * qsomod_blrnorm])
-                            compfit = ['raw template', 'scattered\times' +
-                                       str(qsomod_blrnorm)]
-                        else:
-                            compspec = [[qsomod_normonly]]
-                            compfit = ['raw template']
-                        if 'argspltcont' in initdat:
-                            pltcontfcn(struct_qso, str(outfile) + '_cnt_qso',
-                                       compspec=compspec, compfit=compfit,
-                                       title='QSO', fitran=initdat['fitran'],
-                                       **initdat['argspltcont'])
-                        else:
-                            pltcontfcn(struct_qso, outfile + '_cnt_qso',
-                                       compspec=compspec,
-                                       title='QSO', fitran=initdat['fitran'])
-                # Plot continuum
-                # Make sure fit doesn't indicate no continuum; avoids
-                # plot range error in continuum fitting routine, as well as a blank
-                # plot!
-                if not noplots and sum(struct['cont_fit']) != 0.0:
-
-                    module = importlib.import_module('q3dfit.common.'+fcnpltcont)
-                    pltcontfcn = getattr(module, fcnpltcont)
-                    if 'decompose_qso_fit' in initdat:
-                        if 'argspltcont' in initdat:
-                            pltcontfcn(struct, outfile + '_cnt',
-                                       compspec=[[qsomod], [hostmod]],
-                                       title='Total', comptitles=['QSO', 'host'],
-                                       fitran=initdat.fitran,
-                                       **initdat['argspltcont'])
-                        else:
-                            pltcontfcn(struct, outfile + '_cnt',
-                                       compspec=np.array([qsomod, hostmod]),
-                                       title='Total', comptitles=['QSO', 'host'],
-                                       fitran=initdat['fitran'])
-                    elif 'decompose_ppxf_fit' in initdat:
-                        if 'argspltcont' in initdat:
-                            pltcontfcn(struct, outfile + '_cnt',
-                                       compspec=[[cont_fit_stel], [cont_fit_poly]],
-                                       title='Total',
-                                       compfit=['stel. temp.',
-                                                'ord. ' + str(add_poly_degree) +
-                                                'Leg.poly'],
-                                       fitran=initdat['fitran'],
-                                       **initdat['argspltcont'])
-                        else:
-                            pltcontfcn(struct, outfile + '_cnt',
-                                       compspec=[[cont_fit_stel], [cont_fit_poly]],
-                                       title='Total',
-                                       compfit=['stel. temp.', 'ord. ' +
-                                                str(add_poly_degree) +
-                                                ' Leg. poly'],
-                                       fitran=initdat['fitran'])
+#
+                if noplots is None and np.sum(struct_host['cont_fit']) != 0.0:
+                    if 'refit' in initdat['argscontfit']:
+                        compspec = np.array([polymod_refit, hostmod-polymod_refit])
+                        compfit = ['ord. ' + str(add_poly_degree) +
+                                   ' Leg. poly.', 'stel. temp.']
                     else:
-                        if 'argspltcont' in initdat:
-                            pltcontfcn(struct, outfile + '_cnt',
-                                       fitran=initdat['fitran'],
-                                       **initdat['argspltcont'])
-                        else:
-                            pltcontfcn(struct, outfile + '_cnt',
-                                       fitran=initdat['fitran'])
+                        compspec = hostmod
+                        compfit = ['exponential terms']
+                    module = importlib.import_module('q3dfit.common.' +
+                                                     fcnpltcont)
+                    pltcontfcn = getattr(module, fcnpltcont)
+                    if 'argspltcont' in initdat:
+                        pltcontfcn(struct_host, str(outfile) + '_cnt_host',
+                                   compspec=compspec, compfit=compfit,
+                                   title='Host', fitran=initdat['fitran'],
+                                   **initdat['argspltcont'])
+                    else:
+                        pltcontfcn(struct_host, str(outfile) + '_cnt_host',
+                                   compspec=compspec,
+                                   title='Host', fitran=initdat['fitran'])
+                    if 'blrpar' in initdat['argscontfit']:
+                        qsomod_blrnorm = np.median(qsomod) / \
+                            max(qsomod_blronly)
+                        compspec = np.array([qsomod_normonly,
+                                    qsomod_blronly * qsomod_blrnorm])
+                        compfit = ['raw template', 'scattered\times' +
+                                   str(qsomod_blrnorm)]
+                    else:
+                        compspec = [[qsomod_normonly]]
+                        compfit = ['raw template']
+                    if 'argspltcont' in initdat:
+                        pltcontfcn(struct_qso, str(outfile) + '_cnt_qso',
+                                   compspec=compspec, compfit=compfit,
+                                   title='QSO', fitran=initdat['fitran'],
+                                   **initdat['argspltcont'])
+                    else:
+                        pltcontfcn(struct_qso, outfile + '_cnt_qso',
+                                   compspec=compspec,
+                                   title='QSO', fitran=initdat['fitran'])
+            # Plot continuum
+            # Make sure fit doesn't indicate no continuum; avoids
+            # plot range error in continuum fitting routine, as well as a blank
+            # plot!
+            if noplots is None and sum(struct['cont_fit']) != 0.0:
+
+                module = importlib.import_module('q3dfit.common.'+fcnpltcont)
+                pltcontfcn = getattr(module, fcnpltcont)
+                if 'decompose_qso_fit' in initdat:
+                    if 'argspltcont' in initdat:
+                        pltcontfcn(struct, outfile + '_cnt',
+                                   compspec=[[qsomod], [hostmod]],
+                                   title='Total', comptitles=['QSO', 'host'],
+                                   fitran=initdat.fitran,
+                                   **initdat['argspltcont'])
+                    else:
+                        pltcontfcn(struct, outfile + '_cnt',
+                                   compspec=np.array([qsomod, hostmod]),
+                                   title='Total', comptitles=['QSO', 'host'],
+                                   fitran=initdat['fitran'])
+                elif 'decompose_ppxf_fit' in initdat:
+                    if 'argspltcont' in initdat:
+                        pltcontfcn(struct, outfile + '_cnt',
+                                   compspec=[[cont_fit_stel], [cont_fit_poly]],
+                                   title='Total',
+                                   compfit=['stel. temp.',
+                                            'ord. ' + str(add_poly_degree) +
+                                            'Leg.poly'],
+                                   fitran=initdat['fitran'],
+                                   **initdat['argspltcont'])
+                    else:
+                        pltcontfcn(struct, outfile + '_cnt',
+                                   compspec=[[cont_fit_stel], [cont_fit_poly]],
+                                   title='Total',
+                                   compfit=['stel. temp.', 'ord. ' +
+                                            str(add_poly_degree) +
+                                            ' Leg. poly'],
+                                   fitran=initdat['fitran'])
+                else:
+                    if 'argspltcont' in initdat:
+                        pltcontfcn(struct, outfile + '_cnt',
+                                   fitran=initdat['fitran'],
+                                   **initdat['argspltcont'])
+                    else:
+                        pltcontfcn(struct, outfile + '_cnt',
+                                   fitran=initdat['fitran'])
 
     # Save emission line and continuum dictionaries
     np.savez('{[outdir]}{[label]}'.format(initdat, initdat)+'.lin.npz',
@@ -861,6 +870,9 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
     np.save('{[outdir]}{[label]}'.format(initdat, initdat)+'.cont.npy',
             contcube)
 
+        # endelse
+
+        # for
 
 def cap_range(x1, x2, n):
     a = np.zeros(1, dtype=float)
@@ -868,6 +880,7 @@ def cap_range(x1, x2, n):
     #    print(interval)
     num = x1
     for i in range(0, n):
+        #print(num)
         a = np.append(a, num)
         num += interval
     a = a[1:]

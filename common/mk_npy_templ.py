@@ -5,7 +5,8 @@ and stores them in a more easily python-readable .npy format.
 The header is stored as text in a separate .meta file.
 Any of the resulting .npy files, say draine03.npy f.ex., can then be read in python as follows:
   import numpy as np;  wave = np.load('draine03.npy', allow_pickle=True)['WAVE']
-or analogously for the the 'FLUX', 'STDEV' and 'FLAG' columns.
+or analogously for the the 'FLUX', 'STDEV' and 'FLAG' columns. ( The column names
+can be retrieved by printing np.load('draine03.npy', allow_pickle=True)[0].dtype.names ).
 
 Optionally, two test sources 4978688_0.ideos.xdr and IRAS21219m1757_dlw_qst.xdr are also 
 converted into .npy format (only the 'WAVE', 'FLUX' and 'EFLUX' entries for 4978688_0.ideos.xdr, 

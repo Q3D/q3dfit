@@ -1,0 +1,14 @@
+source          4978688_0.ideos.xdr      -1	-1	derp	0.0	0.0	X	0.0	0.0
+template	smith_nftemp3.xdr	0.0	0.	Chiar06	0.0	1.0	S	0.0	0.0
+absorption	ice+hc_abs.xdr		0.0	1.	ice_hc	0.0	0.0	X	0.0	0.0
+template	smith_nftemp4.xdr	0.0	0.	Chiar06	0.0	1.0	S	0.0	0.0
+absorption	ice+hc_abs.xdr		0.0	1.	ice_hc	0.0	0.0	X	0.0	0.0
+blackbody	hot			0.0	0.	Chiar06	0.0	0.0	S	600.0	0.0
+absorption	ice+hc_abs.xdr		0.0	0.	ice_hc	0.0	0.0	X	0.0	0.0
+blackbody	lukewarm		0.0	0.	Chiar06	0.0	0.0	S	250.0	0.0
+absorption	ice+hc_abs.xdr		0.0	0.	ice_hc	0.0	0.0	X	0.0	0.0
+blackbody	warm			0.0	0.	Chiar06	0.0	0.0	S	150.0	0.0
+absorption	ice+hc_abs.xdr		0.0	0.	ice_hc	0.0	0.0	X	0.0	0.0
+blackbody	cold			0.0	0.	Chiar06	0.0	0.0	S	50.0	0.0
+absorption	ice+hc_abs.xdr		0.0	0.	ice_hc	0.0	0.0	X	0.0	0.0
+extinction	chiar06_edit_Av_0.xdr	0.0	0.	Chiar06	0.0	0.0	X	0.0	0.0

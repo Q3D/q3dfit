@@ -21,14 +21,14 @@ def interp_lis(spec_lam, temp_lam_lis, template_lis):
 	the wavelength array of the input observed spectrum.
 
 	:Params: 
-	  spec_lam: in, type = 1D array
+	  spec_lam: in, type = 1D array/list
 	  		reference wavelength array onto which the templates(s) are interpolated
 	  temp_lam_lis: in, type = 1D array or list of arrays
-	  		1D template wavelength array or list containing the wavelength arrays of the different 
-	  		templates (not required to be at same length)
+	  		1D template wavelength array or list containing the wavelength arrays of the different templates 
+	  		(not required to be at same length). (Also accepts 1D list, list containing a 1D array, or list of lists)
 	  template_lis: in, type = 1D array or list of arrays
 	  		1D template flux array or list containing the flux arrays of the different templates 
-	  		(not required to be at same length)
+	  		(not required to be at same length). (Also accepts 1D list, list containing a 1D array, or list of lists)
 
 	  new_temp: out, type = 1D or 2D array
 	  		single or 2D array containing the flux of the templates interpolated onto the spec_lam input array. 
@@ -43,9 +43,11 @@ def interp_lis(spec_lam, temp_lam_lis, template_lis):
 	bounds_error=False # -- Keyword to fill output array with NaNs beyond the interpolation range.
 	fill_value=np.nan
 
-	if isinstance(template_lis, list) and hasattr(template_lis[0], "__len__"):
+	if isinstance(template_lis, list) and hasattr(template_lis[0], "__len__"):   # (not triggered for a single 1D list)
 		ntemp = len(template_lis)
 		new_temp = np.zeros((spec_lam.shape[0],ntemp))
+		if ntemp==1: # If a list containing just a 1D array is entered
+			template_lis = template_lis[0]; temp_lam_lis=temp_lam_lis[0] 
 	else:
 		ntemp = 1
 
@@ -99,7 +101,7 @@ def example_interp():
 	temp_flux = interp_lis(source1['WAVE'], tpl_wave_lis, tpl_flux_lis)
 
 	wave_noNaN, temp_flux_NoNaN = cutoff_NaNs(source1['WAVE'], temp_flux)	
-
+	import pdb; pdb.set_trace()
 
 
 example_interp()

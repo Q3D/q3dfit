@@ -30,14 +30,15 @@ def readcf(filename):
             #col 2: upper wavelength limit or fix/free parameter (1 or 0) for normalization
             #col 3: name of ext. curve or ice feature
             #col 4: initial guess for Av
-            #col 5: fix/free parameter (1/0) for Av
+            #col 5: fix/free parameter (0/1) for Av
             #col 6: S,M = screen or mixed extinction
             #col 7: initial guess for BB temperature or powerlaw index
             #col 8: fix/free parameter (1/0) for BB temperature or powerlaw index
-            init_questfit[i[1]+' '+i[4]] = [i[1:]]
+            init_questfit[i[0]+'_'+i[1]+'_'+i[4]+'_'+i[10]] = i[1:]
 
         if i[0] == 'absorption' or i[0] == 'extinction':
-            init_questfit[i[1]+' '+i[4]] = [i[1:]]
+            #init_questfit[i[0]+'_'+i[1]+'_'+i[4]+'_'+i[10]] = i[1:]
+            init_questfit[i[4]] = i[1]
              
              
              

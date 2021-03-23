@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed Dec 16 13:54:17 2020
-
 @author: drupke
 """
 
@@ -88,3 +87,4 @@ def interptemp(spec_lam, temp_lam, template):
             interpolate.interp1d(temp_lam, template, kind='linear')
         new_temp = interpfunc(spec_lam)
     return new_temp
+    

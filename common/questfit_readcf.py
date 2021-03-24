@@ -27,7 +27,7 @@ def readcf(filename):
 
             #col 0: filename (if nessesary; path hardcoded in readcf.pro)
             #col 1: lower wavelength limit or normalization factor
-            #col 2: upper wavelength limit or fix/free parameter (1 or 0) for normalization
+            #col 2: upper wavelength limit or fix/free parameter (0 or 1) for normalization
             #col 3: name of ext. curve or ice feature
             #col 4: initial guess for Av
             #col 5: fix/free parameter (0/1) for Av
@@ -40,8 +40,9 @@ def readcf(filename):
             #init_questfit[i[0]+'_'+i[1]+'_'+i[4]+'_'+i[10]] = i[1:]
             init_questfit[i[4]] = i[1]
              
-             
-             
-             
+        
+        if i[0] == 'source' :
+            init_questfit['source'] = i[1:]
+
              
     return init_questfit

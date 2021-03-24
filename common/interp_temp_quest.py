@@ -41,7 +41,9 @@ def interp_lis(spec_lam, temp_lam_lis, template_lis):
 
 	
 	bounds_error=False # -- Keyword to fill output array with NaNs beyond the interpolation range.
-	fill_value=np.nan
+
+
+#    fill_value = 0
 
 	if isinstance(template_lis, list) and hasattr(template_lis[0], "__len__"):   # (not triggered for a single 1D list)
 		ntemp = len(template_lis)
@@ -54,11 +56,11 @@ def interp_lis(spec_lam, temp_lam_lis, template_lis):
 	if ntemp >1:
 		for i in range(ntemp):
 			interpfunc = \
-				interpolate.interp1d(temp_lam_lis[i], template_lis[i], kind='cubic', bounds_error=bounds_error, fill_value=fill_value)
+				interpolate.interp1d(temp_lam_lis[i], template_lis[i], kind='cubic', bounds_error=bounds_error, fill_value=0)
 			new_temp[:, i] = interpfunc(spec_lam)
 	else:
 		interpfunc = \
-			interpolate.interp1d(temp_lam_lis, template_lis, kind='cubic', bounds_error=bounds_error, fill_value=fill_value)
+			interpolate.interp1d(temp_lam_lis, template_lis, kind='linear', bounds_error=bounds_error, fill_value=np.float(0))
 		new_temp = interpfunc(spec_lam)
 	return new_temp
 
@@ -104,5 +106,5 @@ def example_interp():
 	import pdb; pdb.set_trace()
 
 
-example_interp()
+#example_interp()
 

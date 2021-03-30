@@ -4,7 +4,7 @@ from q3dfit.common import interptemp
 from q3dfit.common import questfitfcn
 from q3dfit.common import questfit_readcf
 from lmfit.models import ExpressionModel
-from matplotlib.pyplot import *
+from matplotlib import pyplot as plt
 from q3dfit.common import interp_temp_quest
 from q3dfit.common import writeout_quest
 
@@ -160,15 +160,18 @@ eval = model.eval(param,**models_dictionary)
 
 comp=dict(model.eval_components(params=param,**models_dictionary))
 
-plot(wave,np.log10(eval),label='total_model')
+fig = plt.figure(figsize=(12, 7))
+gs = fig.add_gridspec(2,1)
+ax1 = fig.add_subplot(gs[0, :])
+ax1.plot(wave,np.log10(eval),label='total_model')
 for i in comp.keys():
-    plot(wave,np.log10(comp[i]),label=i,linestyle='--',alpha=0.5)
+    ax1.plot(wave,np.log10(comp[i]),label=i,linestyle='--',alpha=0.5)
 
 
-#plot(wave_temp,np.log10(comp['blackbody_cold_DRAINE03_H2ice_']),label='blackbody_cold_DRAINE03_H2ice_')
-#plot(wave_temp,np.log10(comp['blackbody_hot_DRAINE03_H2ice_']),label='blackbody_hot_DRAINE03_H2ice_')
-legend()
-xlabel('wavelength [micron]')
+#plt.plot(wave_temp,np.log10(comp['blackbody_cold_DRAINE03_H2ice_']),label='blackbody_cold_DRAINE03_H2ice_')
+#plt.plot(wave_temp,np.log10(comp['blackbody_hot_DRAINE03_H2ice_']),label='blackbody_hot_DRAINE03_H2ice_')
+ax1.legend()
+ax1.set_xlabel('wavelength [micron]')
 
 
 result = model.fit(flux,param,**models_dictionary,max_nfev=int(1e5),method='least_squares',nan_policy='omit')#method='least_squares'nan_policy='omit'
@@ -176,24 +179,42 @@ result = model.fit(flux,param,**models_dictionary,max_nfev=int(1e5),method='leas
 best_fit = result.eval(**models_dictionary)
 comp_best_fit = result.eval_components()
 
-close("all")
-plot(wave,flux,color='black')
-plot(wave,best_fit)
+plt.close("all")
+
+
+fig = plt.figure(figsize=(6, 7))
+gs = fig.add_gridspec(4,1)
+ax1 = fig.add_subplot(gs[:3, :])
+
+ax1.plot(wave,flux,color='black')
+ax1.plot(wave,best_fit)
 
 for i in np.arange(0,len(comp.keys()),3):
-    plot(wave,comp_best_fit[list(comp.keys())[i]]*comp_best_fit[list(comp.keys())[i+1]]*comp_best_fit[list(comp.keys())[i+2]],label=list(comp.keys())[i],linestyle='--',alpha=0.5)
-legend()
-#plot(wave,comp_best_fit['template_smith_nftemp3'])
-#plot(wave,comp_best_fit['template_smith_nftemp4'])
+    ax1.plot(wave,comp_best_fit[list(comp.keys())[i]]*comp_best_fit[list(comp.keys())[i+1]]*comp_best_fit[list(comp.keys())[i+2]],label=list(comp.keys())[i],linestyle='--',alpha=0.5)
+ax1.legend()
+#plt.plot(wave,comp_best_fit['template_smith_nftemp3'])
+#plt.plot(wave,comp_best_fit['template_smith_nftemp4'])
 
 
-xscale('log')
-yscale('log')
+ax1.set_xscale('log')
+ax1.set_yscale('log')
+ax1.set_xticklabels([])
 #template    smith_nftemp3.npy    1.0    1.    Chiar06    0.0    1.0    S    0.0    0.0 ice_hc    0.0    1.0
 #template    smith_nftemp4.npy    1.0    1.    Chiar06    0.0    1.0    S    0.0    0.0 ice_hc    0.0    1.0
 
-show()
+ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
+ax2.plot(wave,flux/best_fit,color='black')
+ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
+ax2.set_ylabel('Data/Model')
+ax2.set_xlabel('Wavelength [micron]')
+gs.update(wspace=0.0, hspace=0.05)
 
+plt.show()
+import pdb; pdb.set_trace()
+
+# fig = gcf()
+# gs = fig.add_gridspec(2,1)
+# ax2 = fig.add_subplot(222, sharex=ax1, sharey=ax1)
 
 # -- Save output --
 

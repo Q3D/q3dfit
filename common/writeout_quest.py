@@ -15,7 +15,7 @@ import sys
 def write_dict_fits(filename, x, xname, dict_y, xfmt='20A', comm = ''):
 	'''
 	Create a new table fits from a "reference array" (e.g. wavelengths) and a dictionary 
-	containing arrays of length equal to the reference array. 
+	containing arrays of length equal to the reference array (e.g. fluxes of different components). 
 	
 	:Params: 
 	  filename: in, type=str

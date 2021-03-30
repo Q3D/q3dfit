@@ -6,6 +6,7 @@ from q3dfit.common import questfit_readcf
 from lmfit.models import ExpressionModel
 from matplotlib.pyplot import *
 from q3dfit.common import interp_temp_quest
+from q3dfit.common import writeout_quest
 
 #filename = '../test/example_cf.cf'
 directory = '../test/test_questfit/'
@@ -27,11 +28,12 @@ for i in config_file.keys(): #populating the models dictionary and setting up lm
         ice_model = config_file[i][9]
         print(name_model,extinction_model,ice_model)
 
+
+
         model_temp_BB,param_temp_BB = questfitfcn.set_up_fit_blackbody_model([float(model_parameters[1]),float(model_parameters[7])],[float(model_parameters[2]),float(model_parameters[8])],name_model[:])
 
         model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],'blackbody'+str(int(float(model_parameters[7])))+'_ext',extinction_model,model_parameters[6])
-        
-        
+                
         model_temp = model_temp_BB*model_temp_extinction
         param_temp = param_temp_BB + param_temp_extinction
 
@@ -189,5 +191,14 @@ xscale('log')
 yscale('log')
 #template    smith_nftemp3.npy    1.0    1.    Chiar06    0.0    1.0    S    0.0    0.0 ice_hc    0.0    1.0
 #template    smith_nftemp4.npy    1.0    1.    Chiar06    0.0    1.0    S    0.0    0.0 ice_hc    0.0    1.0
+
+show()
+
+
+# -- Save output --
+
+writeout_quest.save_spectral_comp(wave, flux, best_fit, comp_best_fit, filename)
+writeout_quest.save_params(result, filename)
+
 
 

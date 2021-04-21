@@ -9,27 +9,12 @@ from q3dfit.common import interp_temp_quest
 from q3dfit.common import writeout_quest
 import q3dfit
 
-#filename = '../test/example_cf.cf'
-directory = '../test/test_questfit/'
-filename = '../test/test_questfit/4978688_0.ideos.cf'
-loc_models = '../data/questfit_templates/'
-config_file = questfit_readcf.readcf(filename)
-
-
-models_dictionary = {}
-template_dictionary = {}
-extinction_absorption_dictionary = {}
-
-global_extinction = False
-global_ice_model = 'ice_hc'
-global_ext_model = 'Chiar06'
-z=0.04147
-
 def questfit(wlambda,flux,err,z,index=None,config_file=None,fitran=None,global_extinction=False):
 
     config_file = questfit_readcf.readcf(config_file)
     loc_models = q3dfit.__path__[0]+'/data/questfit_templates/'
-
+    n_temp = 0
+    
     for i in config_file.keys(): #populating the models dictionary and setting up lmfit models
         if 'blackbody' in i: #starting with the blackbodies
             model_parameters = config_file[i]
@@ -69,7 +54,7 @@ def questfit(wlambda,flux,err,z,index=None,config_file=None,fitran=None,global_e
 
         if 'powerlaw' in i: #powerlaw model
             model_parameters = config_file[i]
-            name_model = i
+            name_model = 'powerlaw'+str(int(float(model_parameters[7])))
             extinction_model = config_file[i][3]
             ice_model = config_file[i][9]
             print(name_model,extinction_model,ice_model)
@@ -96,24 +81,26 @@ def questfit(wlambda,flux,err,z,index=None,config_file=None,fitran=None,global_e
                 model += model_temp
                 param += param_temp
 
-        n_temp = 0
+
         if 'template' in i: #template model
             model_parameters = config_file[i]
-            name_model = i
+            name_model = 'template_'+str(n_temp)#i
             extinction_model = config_file[i][3]
             ice_model = config_file[i][9]
             print(name_model,extinction_model,ice_model)
 
-            model_temp_template,param_temp_template = questfitfcn.set_up_fit_model_scale([float(model_parameters[1])],[float(model_parameters[2])],name_model.split('.')[0],config_file[i][0])#name_model.split('.')[0]template+'_'+str(n_temp)
+            model_temp_template,param_temp_template = questfitfcn.set_up_fit_model_scale([float(model_parameters[1])],[float(model_parameters[2])],name_model,name_model)#name_model.split('.')[0]template+'_'+str(n_temp)
             
-            if 'si' in i[0]:
-                template_dictionary[config_file[i][0].split('.')[0]] = 'silicatemodels/'+config_file[i][0]
+            if 'si' in i:
+                #config_file[i][0].split('.')[0]
+                template_dictionary[name_model] = 'silicatemodels/'+config_file[i][0]
             else:
-                template_dictionary[config_file[i][0].split('.')[0]] = config_file[i][0]
+
+                template_dictionary[name_model] = config_file[i][0]
         
             if global_extinction == False:
 
-                model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],i.split('.')[0]+'_ext',extinction_model,model_parameters[6])
+                model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],name_model+'_ext',extinction_model,model_parameters[6])
             
                 model_temp = model_temp_template*model_temp_extinction
                 param_temp = param_temp_template + param_temp_extinction
@@ -125,7 +112,7 @@ def questfit(wlambda,flux,err,z,index=None,config_file=None,fitran=None,global_e
                 param_temp = param_temp_template
 
             if 'ice' in i and global_extinction == False: #checking if we need to add ice absorption
-                model_temp_ice,param_temp_ice = questfitfcn.set_up_absorption([float(model_parameters[10])],[float(model_parameters[11])],name_model.split('.')[0]+'_abs',model_parameters[9])
+                model_temp_ice,param_temp_ice = questfitfcn.set_up_absorption([float(model_parameters[10])],[float(model_parameters[11])],name_model+'_abs',model_parameters[9])
                 model_temp = model_temp*model_temp_ice
                 param_temp += param_temp_ice
                 models_dictionary[model_parameters[9]] = config_file[model_parameters[9]]
@@ -137,7 +124,7 @@ def questfit(wlambda,flux,err,z,index=None,config_file=None,fitran=None,global_e
                 model += model_temp
                 param += param_temp
 
-
+            n_temp+=1
     if global_extinction == True: #Check to see if we are using global extinction, where the total model flux is extincted by the same ice and dust model.
         model_global_ext,param_global_ext = questfitfcn.set_up_fit_extinction([0],[1],'global_ext',global_ext_model,'S')
         model = model*model_global_ext
@@ -166,6 +153,7 @@ def questfit(wlambda,flux,err,z,index=None,config_file=None,fitran=None,global_e
 
 
     for i in template_dictionary.keys(): #loop over template dictionary, load them in and resample.
+
         temp_model = np.load(loc_models+template_dictionary[i],allow_pickle=True)
         temp_wave = []
         temp_value = []
@@ -175,10 +163,10 @@ def questfit(wlambda,flux,err,z,index=None,config_file=None,fitran=None,global_e
         
         
         #temp_value_rebin = interptemp.interptemp(wave_temp,temp_wave,temp_value)
-        temp_value_rebin = interp_temp_quest.interp_lis(wave, temp_wave, temp_value)
+        temp_value_rebin = interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
         models_dictionary[i] = temp_value_rebin/temp_value_rebin.max()
 
-    models_dictionary['wave'] = wave/(1+z)
+    models_dictionary['wave'] = wlambda/(1+z)
 
     result = model.fit(flux,param,**models_dictionary,max_nfev=int(1e5),method='least_squares',nan_policy='omit')#method='least_squares'nan_policy='omit'
 
@@ -186,15 +174,46 @@ def questfit(wlambda,flux,err,z,index=None,config_file=None,fitran=None,global_e
     comp_best_fit = result.eval_components()
 
 
-    return best_fit,comp_best_fit
-
-data_to_fit = np.load(directory+config_file['source'][0],allow_pickle=True)
-wave = data_to_fit['WAVE'].astype('float')[37:350]#np.arange(6,30,0.01)
-flux = data_to_fit['FLUX'].astype('float')[37:350]
-weights = data_to_fit['eflux'].astype('float')[37:350]
+    return best_fit,comp_best_fit,result
 
 
-best_fit,comp_best_fit = questfit(wave,flux,weights,z,index=None,config_file=filename,fitran=None,global_extinction=False)
+
+directory = '../test/test_questfit/'
+loc_models = '../data/questfit_templates/'
+models_dictionary = {}
+template_dictionary = {}
+extinction_absorption_dictionary = {}
+
+global_extinction = False
+global_ice_model = 'ice_hc'
+global_ext_model = 'Chiar06'
+
+
+
+#For testing MRK 231
+#z=0.04147
+#filename = '../test/test_questfit/4978688_0.ideos.cf'
+#config_file = questfit_readcf.readcf(filename)
+#data_to_fit = np.load(directory+config_file['source'][0],allow_pickle=True)
+#wave = data_to_fit['WAVE'].astype('float')[37:350]#np.arange(6,30,0.01)
+#flux = data_to_fit['FLUX'].astype('float')[37:350]
+#weights = data_to_fit['eflux'].astype('float')[37:350]
+
+#For testing IRAS21219
+filename = '../test/test_questfit/IRAS21219m1757_dlw_qst.cf'
+config_file = questfit_readcf.readcf(filename)
+z=0.112
+data_to_fit = np.load(directory+config_file['source'][0],allow_pickle=True)[0]
+wave = data_to_fit['WAVE'].astype('float')
+wave_min = np.where(wave>=float(config_file['source'][1]))[0][0]
+wave_max = np.where(wave>=float(config_file['source'][2]))[0][0]
+
+wave = data_to_fit['WAVE'].astype('float')[wave_min:wave_max]
+flux = data_to_fit['FLUX'].astype('float')[wave_min:wave_max]
+weights = data_to_fit['stdev'].astype('float')[wave_min:wave_max]
+
+
+best_fit,comp_best_fit,result = questfit(wave,flux,weights,z,index=None,config_file=filename,fitran=None,global_extinction=False)
 
 
 
@@ -224,6 +243,7 @@ best_fit,comp_best_fit = questfit(wave,flux,weights,z,index=None,config_file=fil
 #plt.close("all")
 
 
+
 fig = plt.figure(figsize=(6, 7))
 gs = fig.add_gridspec(4,1)
 ax1 = fig.add_subplot(gs[:3, :])
@@ -231,13 +251,27 @@ ax1 = fig.add_subplot(gs[:3, :])
 ax1.plot(wave,flux,color='black')
 ax1.plot(wave,best_fit)
 
-if global_extinction == True:
-    for i in np.arange(0,len(comp_best_fit.keys())-2,1):
-        ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[i]]*comp_best_fit[list(comp_best_fit.keys())[-2]]*comp_best_fit[list(comp_best_fit.keys())[-1]],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
+#if global_extinction == True:
+#    for i in np.arange(0,len(comp_best_fit.keys())-2,1):
+#        ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[i]]*comp_best_fit[list(comp_best_fit.keys())[-2]]*comp_best_fit[list(comp_best_fit.keys())[-1]],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
+#
+#
+#if global_extinction == False:
+#    for i in np.arange(0,len(comp_best_fit.keys()),3):
+#        ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[i]]*comp_best_fit[list(comp_best_fit.keys())[i+1]]*comp_best_fit[list(comp_best_fit.keys())[i+2]],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
 
-if global_extinction == False:
-    for i in np.arange(0,len(comp_best_fit.keys()),3):
-        ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[i]]*comp_best_fit[list(comp_best_fit.keys())[i+1]]*comp_best_fit[list(comp_best_fit.keys())[i+2]],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
+counter = 0
+
+while counter < len(comp_best_fit.keys()):
+    if list(comp_best_fit.keys())[counter]+'_abs' in list(comp_best_fit.keys()):
+        ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[counter]]*comp_best_fit[list(comp_best_fit.keys())[counter+1]]*comp_best_fit[list(comp_best_fit.keys())[counter+2]],label=list(comp_best_fit.keys())[counter],linestyle='--',alpha=0.5)
+        counter+=3
+
+    else:
+        ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[counter]]*comp_best_fit[list(comp_best_fit.keys())[counter+1]],label=list(comp_best_fit.keys())[counter],linestyle='--',alpha=0.5)
+        counter+=2
+
+
 ax1.legend()
 
 #plt.plot(wave,comp_best_fit['template_smith_nftemp3'])
@@ -258,8 +292,8 @@ ax2.set_ylabel('Data/Model')
 ax2.set_xlabel('Wavelength [micron]')
 gs.update(wspace=0.0, hspace=0.05)
 
-plt.show()
-import pdb; pdb.set_trace()
+#plt.show()
+#import pdb; pdb.set_trace()
 
 # fig = gcf()
 # gs = fig.add_gridspec(2,1)
@@ -267,8 +301,8 @@ import pdb; pdb.set_trace()
 
 # -- Save output --
 
-writeout_quest.save_spectral_comp(wave, flux, best_fit, comp_best_fit, filename)
-writeout_quest.save_params(result, filename)
+#writeout_quest.save_spectral_comp(wave, flux, best_fit, comp_best_fit, filename)
+#writeout_quest.save_params(result, filename)
 
 
 

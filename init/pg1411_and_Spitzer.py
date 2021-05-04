@@ -4,8 +4,15 @@
 import os.path
 import numpy as np
 
+# This may be unique to the user, insert your path to the q3dfit/ folder here
+import sys
+if '../../' not in sys.path:
+    sys.path.append('../../')
+from q3dfit.common import questfit_readcf
+
+
 # This is unique to the user, name the function after your object. 
-def pg1411():
+def pg1411_and_Spitzer():
 
     # These are unique to the user
     # bad=1e99
@@ -37,6 +44,24 @@ def pg1411():
     
     ### for our test object, pg1411, nothing needs to be changed here for now, make more flexible later
     
+    #   These are unique to the user
+    #  Include Spitzer source (independently of PG1411 for now for testing purposes)
+    global_extinction = True
+    global_ice_model = 'ice_hc'
+    global_ext_model = 'CHIAR06'
+    directory = '../test/test_questfit/'
+    MIRcffile = '../test/test_questfit/IRAS21219m1757_dlw_qst.cf'
+    config_file = questfit_readcf.readcf(MIRcffile)
+    MIRz=0.112
+    data_to_fit = np.load(directory+config_file['source'][0],allow_pickle=True)[0]
+    wave = data_to_fit['WAVE'].astype('float')
+    wave_min = np.where(wave>=float(config_file['source'][1]))[0][0]  # TO DO: Automise min/max wavelength
+    wave_max = np.where(wave>=float(config_file['source'][2]))[0][0]
+    wave = data_to_fit['WAVE'].astype('float')[wave_min:wave_max]
+    flux = data_to_fit['FLUX'].astype('float')[wave_min:wave_max]
+    weights = data_to_fit['stdev'].astype('float')[wave_min:wave_max]
+
+
     
     # Required parameters
 
@@ -169,6 +194,16 @@ def pg1411():
             # 'cvdf_vstep': 10d,
             # 'host': {'dat_fits': volume+'ifs/gmos/cubes/'+gal+'/'+\
             #         gal+outstr+'_host_dat_2.fits'} \
+            
+            'doMIRcontfit': True,
+            'MIRcffile': MIRcffile,
+            'global_extinction': global_extinction,
+            'global_ice_model': global_ice_model,
+            'global_ext_model': global_ext_model,
+            'MIRz': MIRz,
+            'MIRwave': wave,
+            'MIRflux': flux,
+            'MIRweights': weights
         }
 
     return(init)

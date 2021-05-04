@@ -9,7 +9,13 @@ from q3dfit.common import interp_temp_quest
 from q3dfit.common import writeout_quest
 import q3dfit
 
-def questfit(wlambda,flux,err,z,index=None,config_file=None,fitran=None,global_extinction=False):
+def questfit(wlambda,flux,err,z,index=None,config_file=None,fitran=None,global_extinction=False, \
+    models_dictionary={}, template_dictionary={}, global_ice_model='', global_ext_model=''):
+
+    # global models_dictionary
+    # global template_dictionary
+    # global global_ice_model
+    # global global_ext_model
 
     config_file = questfit_readcf.readcf(config_file)
     loc_models = q3dfit.__path__[0]+'/data/questfit_templates/'
@@ -140,6 +146,7 @@ def questfit(wlambda,flux,err,z,index=None,config_file=None,fitran=None,global_e
 
     for i in models_dictionary.keys(): #loop over models dictionary, load them in and resample.
         temp_model = np.load(loc_models+models_dictionary[i],allow_pickle=True)
+
         temp_wave = []
         temp_value = []
         
@@ -148,7 +155,8 @@ def questfit(wlambda,flux,err,z,index=None,config_file=None,fitran=None,global_e
         
         
         #temp_value_rebin = interptemp.interptemp(wave_temp,temp_wave,temp_value)
-        temp_value_rebin = interp_temp_quest.interp_lis(wave, temp_wave, temp_value)
+        #temp_value_rebin = interp_temp_quest.interp_lis(wave, temp_wave, temp_value)
+        temp_value_rebin = interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
         models_dictionary[i] = temp_value_rebin#/temp_value_rebin.max()
 
 
@@ -177,132 +185,138 @@ def questfit(wlambda,flux,err,z,index=None,config_file=None,fitran=None,global_e
     return best_fit,comp_best_fit,result
 
 
+do_test = False
+if do_test:
+    directory = '../test/test_questfit/'
+    loc_models = '../data/questfit_templates/'
+    models_dictionary = {}
+    template_dictionary = {}
+    extinction_absorption_dictionary = {}
 
-directory = '../test/test_questfit/'
-loc_models = '../data/questfit_templates/'
-models_dictionary = {}
-template_dictionary = {}
-extinction_absorption_dictionary = {}
-
-global_extinction = False
-global_ice_model = 'ice_hc'
-global_ext_model = 'Chiar06'
-
-
-
-#For testing MRK 231
-#z=0.04147
-#filename = '../test/test_questfit/4978688_0.ideos.cf'
-#config_file = questfit_readcf.readcf(filename)
-#data_to_fit = np.load(directory+config_file['source'][0],allow_pickle=True)
-#wave = data_to_fit['WAVE'].astype('float')[37:350]#np.arange(6,30,0.01)
-#flux = data_to_fit['FLUX'].astype('float')[37:350]
-#weights = data_to_fit['eflux'].astype('float')[37:350]
-
-#For testing IRAS21219
-filename = '../test/test_questfit/IRAS21219m1757_dlw_qst.cf'
-config_file = questfit_readcf.readcf(filename)
-z=0.112
-data_to_fit = np.load(directory+config_file['source'][0],allow_pickle=True)[0]
-wave = data_to_fit['WAVE'].astype('float')
-wave_min = np.where(wave>=float(config_file['source'][1]))[0][0]
-wave_max = np.where(wave>=float(config_file['source'][2]))[0][0]
-
-wave = data_to_fit['WAVE'].astype('float')[wave_min:wave_max]
-flux = data_to_fit['FLUX'].astype('float')[wave_min:wave_max]
-weights = data_to_fit['stdev'].astype('float')[wave_min:wave_max]
-
-
-best_fit,comp_best_fit,result = questfit(wave,flux,weights,z,index=None,config_file=filename,fitran=None,global_extinction=False)
+    global_extinction = True
+    global_ice_model = 'ice_hc'
+    global_ext_model = 'Chiar06'
 
 
 
+    #For testing MRK 231
+    #z=0.04147
+    #filename = '../test/test_questfit/4978688_0.ideos.cf'
+    #config_file = questfit_readcf.readcf(filename)
+    #data_to_fit = np.load(directory+config_file['source'][0],allow_pickle=True)
+    #wave = data_to_fit['WAVE'].astype('float')[37:350]#np.arange(6,30,0.01)
+    #flux = data_to_fit['FLUX'].astype('float')[37:350]
+    #weights = data_to_fit['eflux'].astype('float')[37:350]
 
-#eval = model.eval(param,**models_dictionary)
+    #For testing IRAS21219
+    filename = '../test/test_questfit/IRAS21219m1757_dlw_qst.cf'
+    config_file = questfit_readcf.readcf(filename)
+    z=0.112
+    data_to_fit = np.load(directory+config_file['source'][0],allow_pickle=True)[0]
+    wave = data_to_fit['WAVE'].astype('float')
+    wave_min = np.where(wave>=float(config_file['source'][1]))[0][0]
+    wave_max = np.where(wave>=float(config_file['source'][2]))[0][0]
 
-#model_temp_extinction.eval(params=param_temp_extinction,DRAINE03 = models_dictionary['DRAINE03'])
+    wave = data_to_fit['WAVE'].astype('float')[wave_min:wave_max]
+    flux = data_to_fit['FLUX'].astype('float')[wave_min:wave_max]
+    weights = data_to_fit['stdev'].astype('float')[wave_min:wave_max]
 
-#comp=dict(model.eval_components(params=param,**models_dictionary))
-#
-#fig = plt.figure(figsize=(12, 7))
-#gs = fig.add_gridspec(2,1)
-#ax1 = fig.add_subplot(gs[0, :])
-#ax1.plot(wave,np.log10(eval),label='total_model')
-#for i in comp.keys():
-#    ax1.plot(wave,np.log10(comp[i]),label=i,linestyle='--',alpha=0.5)
-
-
-#plt.plot(wave_temp,np.log10(comp['blackbody_cold_DRAINE03_H2ice_']),label='blackbody_cold_DRAINE03_H2ice_')
-#plt.plot(wave_temp,np.log10(comp['blackbody_hot_DRAINE03_H2ice_']),label='blackbody_hot_DRAINE03_H2ice_')
-#ax1.legend()
-#ax1.set_xlabel('wavelength [micron]')
+    global_ext_model = 'CHIAR06'
+    best_fit,comp_best_fit,result = questfit(wave,flux,weights,z,index=None,config_file=filename, \
+        fitran=None,global_extinction=global_extinction,models_dictionary=models_dictionary, \
+        template_dictionary=template_dictionary, global_ice_model=global_ice_model, global_ext_model=global_ext_model)
 
 
 
 
-#plt.close("all")
+    #eval = model.eval(param,**models_dictionary)
+
+    #model_temp_extinction.eval(params=param_temp_extinction,DRAINE03 = models_dictionary['DRAINE03'])
+
+    #comp=dict(model.eval_components(params=param,**models_dictionary))
+    #
+    #fig = plt.figure(figsize=(12, 7))
+    #gs = fig.add_gridspec(2,1)
+    #ax1 = fig.add_subplot(gs[0, :])
+    #ax1.plot(wave,np.log10(eval),label='total_model')
+    #for i in comp.keys():
+    #    ax1.plot(wave,np.log10(comp[i]),label=i,linestyle='--',alpha=0.5)
+
+
+    #plt.plot(wave_temp,np.log10(comp['blackbody_cold_DRAINE03_H2ice_']),label='blackbody_cold_DRAINE03_H2ice_')
+    #plt.plot(wave_temp,np.log10(comp['blackbody_hot_DRAINE03_H2ice_']),label='blackbody_hot_DRAINE03_H2ice_')
+    #ax1.legend()
+    #ax1.set_xlabel('wavelength [micron]')
 
 
 
-fig = plt.figure(figsize=(6, 7))
-gs = fig.add_gridspec(4,1)
-ax1 = fig.add_subplot(gs[:3, :])
 
-ax1.plot(wave,flux,color='black')
-ax1.plot(wave,best_fit)
-
-#if global_extinction == True:
-#    for i in np.arange(0,len(comp_best_fit.keys())-2,1):
-#        ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[i]]*comp_best_fit[list(comp_best_fit.keys())[-2]]*comp_best_fit[list(comp_best_fit.keys())[-1]],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
-#
-#
-#if global_extinction == False:
-#    for i in np.arange(0,len(comp_best_fit.keys()),3):
-#        ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[i]]*comp_best_fit[list(comp_best_fit.keys())[i+1]]*comp_best_fit[list(comp_best_fit.keys())[i+2]],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
-
-counter = 0
-
-while counter < len(comp_best_fit.keys()):
-    if list(comp_best_fit.keys())[counter]+'_abs' in list(comp_best_fit.keys()):
-        ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[counter]]*comp_best_fit[list(comp_best_fit.keys())[counter+1]]*comp_best_fit[list(comp_best_fit.keys())[counter+2]],label=list(comp_best_fit.keys())[counter],linestyle='--',alpha=0.5)
-        counter+=3
-
-    else:
-        ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[counter]]*comp_best_fit[list(comp_best_fit.keys())[counter+1]],label=list(comp_best_fit.keys())[counter],linestyle='--',alpha=0.5)
-        counter+=2
+    #plt.close("all")
 
 
-ax1.legend()
 
-#plt.plot(wave,comp_best_fit['template_smith_nftemp3'])
-#plt.plot(wave,comp_best_fit['template_smith_nftemp4'])
+    fig = plt.figure(figsize=(6, 7))
+    gs = fig.add_gridspec(4,1)
+    ax1 = fig.add_subplot(gs[:3, :])
 
+    ax1.plot(wave,flux,color='black')
+    ax1.plot(wave,best_fit)
 
-ax1.set_xscale('log')
-ax1.set_yscale('log')
-ax1.set_xticklabels([])
-ax1.set_ylim(1e-4,1e2)
-#template    smith_nftemp3.npy    1.0    1.    Chiar06    0.0    1.0    S    0.0    0.0 ice_hc    0.0    1.0
-#template    smith_nftemp4.npy    1.0    1.    Chiar06    0.0    1.0    S    0.0    0.0 ice_hc    0.0    1.0
-
-ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
-ax2.plot(wave,flux/best_fit,color='black')
-ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
-ax2.set_ylabel('Data/Model')
-ax2.set_xlabel('Wavelength [micron]')
-gs.update(wspace=0.0, hspace=0.05)
-
-#plt.show()
-#import pdb; pdb.set_trace()
-
-# fig = gcf()
-# gs = fig.add_gridspec(2,1)
-# ax2 = fig.add_subplot(222, sharex=ax1, sharey=ax1)
-
-# -- Save output --
-
-#writeout_quest.save_spectral_comp(wave, flux, best_fit, comp_best_fit, filename)
-#writeout_quest.save_params(result, filename)
+    if global_extinction == True:
+       for i in np.arange(0,len(comp_best_fit.keys())-2,1):
+           ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[i]]*comp_best_fit[list(comp_best_fit.keys())[-2]]*comp_best_fit[list(comp_best_fit.keys())[-1]],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
 
 
+    if global_extinction == False:
+       for i in np.arange(0,len(comp_best_fit.keys()),3):
+           ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[i]]*comp_best_fit[list(comp_best_fit.keys())[i+1]]*comp_best_fit[list(comp_best_fit.keys())[i+2]],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
+
+    counter = 0
+
+    # while counter < len(comp_best_fit.keys()):
+    #     if list(comp_best_fit.keys())[counter]+'_abs' in list(comp_best_fit.keys()):
+    #         ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[counter]]*comp_best_fit[list(comp_best_fit.keys())[counter+1]]*comp_best_fit[list(comp_best_fit.keys())[counter+2]],label=list(comp_best_fit.keys())[counter],linestyle='--',alpha=0.5)
+    #         counter+=3
+
+    #     else:
+    #         ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[counter]]*comp_best_fit[list(comp_best_fit.keys())[counter+1]],label=list(comp_best_fit.keys())[counter],linestyle='--',alpha=0.5)
+    #         counter+=2
+
+
+    ax1.legend(ncol=2)
+
+    #plt.plot(wave,comp_best_fit['template_smith_nftemp3'])
+    #plt.plot(wave,comp_best_fit['template_smith_nftemp4'])
+
+
+    ax1.set_xscale('log')
+    ax1.set_yscale('log')
+    ax1.set_xticklabels([])
+    ax1.set_ylim(1e-4,1e2)
+    #template    smith_nftemp3.npy    1.0    1.    Chiar06    0.0    1.0    S    0.0    0.0 ice_hc    0.0    1.0
+    #template    smith_nftemp4.npy    1.0    1.    Chiar06    0.0    1.0    S    0.0    0.0 ice_hc    0.0    1.0
+
+    ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
+    ax2.plot(wave,flux/best_fit,color='black')
+    ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
+    ax2.set_ylabel('Data/Model')
+    ax2.set_xlabel('Wavelength [micron]')
+    gs.update(wspace=0.0, hspace=0.05)
+
+    plt.show()
+
+    # fig = gcf()
+    # gs = fig.add_gridspec(2,1)
+    # ax2 = fig.add_subplot(222, sharex=ax1, sharey=ax1)
+
+    # -- Save output --
+
+    #writeout_quest.save_spectral_comp(wave, flux, best_fit, comp_best_fit, filename)
+    #writeout_quest.save_params(result, filename)
+
+
+    # Reset
+    models_dictionary = {}
+    template_dictionary = {}
+    extinction_absorption_dictionary = {}
 

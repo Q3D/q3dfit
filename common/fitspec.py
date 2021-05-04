@@ -134,6 +134,7 @@ from q3dfit.common.airtovac import airtovac
 from q3dfit.common.masklin import masklin
 from q3dfit.common import interptemp
 from scipy.interpolate import interp1d
+from q3dfit.common.questfit import questfit
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
@@ -499,6 +500,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             ppxf_sigma = 0.
             ppxf_sigma_err = 0.
 
+
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Option to tweak cont. fit with local polynomial fits
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -703,6 +705,28 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         if not quiet:
             print('{:s}{:0.1f}{:s}'.format('FITSPEC: Line fit took ',
                                            fit_time2-fit_time1,' s.'))
+
+
+# ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+# # Fit continuum - MIR
+# ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    if 'doMIRcontfit' in initdat:
+      if initdat['doMIRcontfit']:
+        MIRwave = initdat['MIRwave']
+        MIRflux = initdat['MIRflux']
+        MIRweights = initdat['MIRweights']
+        MIRz = initdat['MIRz']
+        global_extinction = initdat['global_extinction']
+        global_ice_model = initdat['global_ice_model']
+        global_ext_model = initdat['global_ext_model']
+        MIRcffile = initdat['MIRcffile']
+            
+        models_dictionary = {}  # global dict, overwritten by calling questfit()
+        template_dictionary = {}
+        best_fit,comp_best_fit,result = questfit(MIRwave,MIRflux,MIRweights,MIRz,index=None,config_file=MIRcffile, \
+          fitran=None,global_extinction=global_extinction, models_dictionary=models_dictionary, \
+          template_dictionary=template_dictionary, global_ice_model=global_ice_model, global_ext_model=global_ext_model)
+
 
 
 #;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

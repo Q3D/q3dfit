@@ -57,7 +57,7 @@ import pdb
 
 
 def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
-            quiet=True, logfile=None):
+            quiet=True, logfile=None, cubeMIR=None, jspaxMIR=None, colarrMIR=None, rowarrMIR=None):
 
     if logfile is None:
         from sys import stdout
@@ -71,6 +71,9 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
     # pdb.set_trace()
     i = colarr[ispax]  # colind, rowind]
     j = rowarr[ispax]  # colind, rowind]
+
+    iMIR = colarrMIR[jspaxMIR]
+    jMIR = rowarrMIR[jspaxMIR]
     print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]',
           file=logfile)
 
@@ -78,10 +81,19 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
         flux = cube.dat[:, i]
         err = abs(cube.var[:, i])**0.5
         dq = cube.dq[:, i]
+        if cubeMIR:
+          fluxMIR = cubeMIR.dat[:, iMIR]
+          errMIR = abs(cubeMIR.var[:, iMIR])**0.5
+          dqMIR = cubeMIR.dq[:, iMIR]
     else:
         flux = cube.dat[i, j, :]
         err = abs(cube.var[i, j, :])**0.5
         dq = cube.dq[i, j, :]
+        if cubeMIR:
+          fluxMIR = cubeMIR.dat[iMIR, jMIR, :]
+          errMIR = abs(cubeMIR.var[iMIR, jMIR, :])**0.5
+          dqMIR = cubeMIR.dq[iMIR, jMIR, :]
+
     errmax = max(err)
 
     if initdat.__contains__('vormap'):
@@ -223,7 +235,8 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                                  listlinesz, ncomp, initdat, quiet=quiet,
                                  siglim_gas=siglim_gas,
                                  siginit_gas=siginit_gas,
-                                 tweakcntfit=tweakcntfit, col=i+1, row=j+1)
+                                 tweakcntfit=tweakcntfit, col=i+1, row=j+1,
+                                 waveMIR=cubeMIR.wave, fluxMIR=fluxMIR, errMIR=errMIR, dqMIR=dqMIR)
 
             # if not quiet:
             #    print('FIT STATUS: '+structinit['fitstatus'])

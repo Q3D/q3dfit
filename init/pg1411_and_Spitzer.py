@@ -57,9 +57,10 @@ def pg1411_and_Spitzer():
     wave = data_to_fit['WAVE'].astype('float')
     wave_min = np.where(wave>=float(config_file['source'][1]))[0][0]  # TO DO: Automise min/max wavelength
     wave_max = np.where(wave>=float(config_file['source'][2]))[0][0]
-    wave = data_to_fit['WAVE'].astype('float')[wave_min:wave_max]
-    flux = data_to_fit['FLUX'].astype('float')[wave_min:wave_max]
-    weights = data_to_fit['stdev'].astype('float')[wave_min:wave_max]
+    
+    #wave = data_to_fit['WAVE'].astype('float')[wave_min:wave_max]
+    #flux = data_to_fit['FLUX'].astype('float')[wave_min:wave_max]
+    #weights = data_to_fit['stdev'].astype('float')[wave_min:wave_max]
 
 
     
@@ -197,13 +198,17 @@ def pg1411_and_Spitzer():
             
             'doMIRcontfit': True,
             'MIRcffile': MIRcffile,
+            'infile_MIR': directory+config_file['source'][0].replace('.ideos','').split('.npy')[0]+'_mock_cube.fits',
             'global_extinction': global_extinction,
             'global_ice_model': global_ice_model,
             'global_ext_model': global_ext_model,
             'MIRz': MIRz,
-            'MIRwave': wave,
-            'MIRflux': flux,
-            'MIRweights': weights
+            #'MIRwave': wave,
+            #'MIRflux': flux,
+            #'MIRweights': weights,
+            'MIRwave_min_idx': wave_min,
+            'MIRwave_max_idx': wave_max,
+            'plotMIR': True
         }
 
     return(init)

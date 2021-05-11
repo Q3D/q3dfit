@@ -200,18 +200,19 @@ if do_test:
 
 
     #For testing MRK 231
-    #z=0.04147
-    #filename = '../test/test_questfit/4978688_0.ideos.cf'
-    #config_file = questfit_readcf.readcf(filename)
-    #data_to_fit = np.load(directory+config_file['source'][0],allow_pickle=True)
-    #wave = data_to_fit['WAVE'].astype('float')[37:350]#np.arange(6,30,0.01)
-    #flux = data_to_fit['FLUX'].astype('float')[37:350]
-    #weights = data_to_fit['eflux'].astype('float')[37:350]
+    # z=0.04147
+    # filename = '../test/test_questfit/4978688_0.ideos.cf'
+    # config_file = questfit_readcf.readcf(filename)
+    # data_to_fit = np.load(directory+config_file['source'][0],allow_pickle=True)
+    # wave = data_to_fit['WAVE'].astype('float')[37:350]#np.arange(6,30,0.01)
+    # flux = data_to_fit['FLUX'].astype('float')[37:350]
+    # weights = data_to_fit['eflux'].astype('float')[37:350]
 
     #For testing IRAS21219
     filename = '../test/test_questfit/IRAS21219m1757_dlw_qst.cf'
     config_file = questfit_readcf.readcf(filename)
     z=0.112
+    global_ext_model = 'CHIAR06'
     data_to_fit = np.load(directory+config_file['source'][0],allow_pickle=True)[0]
     wave = data_to_fit['WAVE'].astype('float')
     wave_min = np.where(wave>=float(config_file['source'][1]))[0][0]
@@ -220,8 +221,8 @@ if do_test:
     wave = data_to_fit['WAVE'].astype('float')[wave_min:wave_max]
     flux = data_to_fit['FLUX'].astype('float')[wave_min:wave_max]
     weights = data_to_fit['stdev'].astype('float')[wave_min:wave_max]
+    
 
-    global_ext_model = 'CHIAR06'
     best_fit,comp_best_fit,result = questfit(wave,flux,weights,z,index=None,config_file=filename, \
         fitran=None,global_extinction=global_extinction,models_dictionary=models_dictionary, \
         template_dictionary=template_dictionary, global_ice_model=global_ice_model, global_ext_model=global_ext_model)

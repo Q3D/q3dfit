@@ -140,7 +140,7 @@ from q3dfit.common.questfit import questfit
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             initdat, maskwidths=None, peakinit=None, quiet=True,
             siginit_gas=None, siglim_gas=None, tweakcntfit=None,
-            col=None, row=None):
+            col=None, row=None, waveMIR=None, fluxMIR=None, errMIR=None, dqMIR=None):
 
     flux_out = flux
     err_out = err
@@ -710,22 +710,76 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Fit continuum - MIR
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    if 'doMIRcontfit' in initdat:
-      if initdat['doMIRcontfit']:
-        MIRwave = initdat['MIRwave']
-        MIRflux = initdat['MIRflux']
-        MIRweights = initdat['MIRweights']
+    if waveMIR is not None:
         MIRz = initdat['MIRz']
         global_extinction = initdat['global_extinction']
         global_ice_model = initdat['global_ice_model']
         global_ext_model = initdat['global_ext_model']
+
+        if len(waveMIR.shape)>1:
+          waveMIR = waveMIR[:,0,0]
+
+        wave_min = int(initdat['MIRwave_min_idx'])
+        wave_max = int(initdat['MIRwave_max_idx'])
+        waveMIR = waveMIR[wave_min:wave_max]
+        fluxMIR = fluxMIR[wave_min:wave_max]
+        MIRweights = errMIR
+        MIRweights = MIRweights[wave_min:wave_max]
+
+
         MIRcffile = initdat['MIRcffile']
             
         models_dictionary = {}  # global dict, overwritten by calling questfit()
         template_dictionary = {}
-        best_fit,comp_best_fit,result = questfit(MIRwave,MIRflux,MIRweights,MIRz,index=None,config_file=MIRcffile, \
-          fitran=None,global_extinction=global_extinction, models_dictionary=models_dictionary, \
-          template_dictionary=template_dictionary, global_ice_model=global_ice_model, global_ext_model=global_ext_model)
+        best_fit,comp_best_fit,result = questfit(waveMIR,fluxMIR,MIRweights,MIRz,index=None,config_file=MIRcffile, \
+         fitran=None,global_extinction=global_extinction, models_dictionary=models_dictionary, \
+         template_dictionary=template_dictionary, global_ice_model=global_ice_model, global_ext_model=global_ext_model)
+
+
+        if 'plotMIR' in initdat.keys(): # Test plot - To do: move this to the correct place in q3da
+          if initdat['plotMIR']:
+            from matplotlib import pyplot as plt
+            fig = plt.figure(figsize=(6, 7))
+            gs = fig.add_gridspec(4,1)
+            ax1 = fig.add_subplot(gs[:3, :])
+
+            ax1.plot(waveMIR,fluxMIR,color='black')
+            ax1.plot(waveMIR,best_fit)
+
+            if global_extinction == True:
+               for i in np.arange(0,len(comp_best_fit.keys())-2,1):
+                  if len(comp_best_fit[list(comp_best_fit.keys())[i]].shape) > 1:
+                    comp_best_fit[list(comp_best_fit.keys())[i]] = comp_best_fit[list(comp_best_fit.keys())[i]] [:,0,0]
+                  if len(comp_best_fit[list(comp_best_fit.keys())[-2]].shape) > 1:
+                    comp_best_fit[list(comp_best_fit.keys())[-2]] = comp_best_fit[list(comp_best_fit.keys())[-2]] [:,0,0]
+                  if len(comp_best_fit[list(comp_best_fit.keys())[-1]].shape) > 1:
+                    comp_best_fit[list(comp_best_fit.keys())[-1]] = comp_best_fit[list(comp_best_fit.keys())[-1]] [:,0,0]
+                  ax1.plot(waveMIR,comp_best_fit[list(comp_best_fit.keys())[i]]*comp_best_fit[list(comp_best_fit.keys())[-2]]*comp_best_fit[list(comp_best_fit.keys())[-1]],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
+        
+            if global_extinction == False:
+               for i in np.arange(0,len(comp_best_fit.keys()),3):
+                  if len(comp_best_fit[list(comp_best_fit.keys())[i]].shape) > 1:
+                    comp_best_fit[list(comp_best_fit.keys())[i]] = comp_best_fit[list(comp_best_fit.keys())[i]] [:,0,0]
+                  if len(comp_best_fit[list(comp_best_fit.keys())[i+1]].shape) > 1:
+                    comp_best_fit[list(comp_best_fit.keys())[i+1]] = comp_best_fit[list(comp_best_fit.keys())[i+1]] [:,0,0]
+                  if len(comp_best_fit[list(comp_best_fit.keys())[i+2]].shape) > 1:
+                    comp_best_fit[list(comp_best_fit.keys())[i+2]] = comp_best_fit[list(comp_best_fit.keys())[i+2]] [:,0,0]
+                  ax1.plot(waveMIR,comp_best_fit[list(comp_best_fit.keys())[i]]*comp_best_fit[list(comp_best_fit.keys())[i+1]]*comp_best_fit[list(comp_best_fit.keys())[i+2]],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
+
+            ax1.legend(ncol=2)
+            ax1.set_xscale('log')
+            ax1.set_yscale('log')
+            ax1.set_xticklabels([])
+            ax1.set_ylim(1e-4,1e2)
+
+            ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
+            ax2.plot(waveMIR,fluxMIR/best_fit,color='black')
+            ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
+            ax2.set_ylabel('Data/Model')
+            ax2.set_xlabel('Wavelength [micron]')
+            gs.update(wspace=0.0, hspace=0.05)
+
+            plt.show()
 
 
 

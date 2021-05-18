@@ -46,6 +46,7 @@ def pg1411_and_Spitzer():
     
     #   These are unique to the user
     #  Include Spitzer source (independently of PG1411 for now for testing purposes)
+    global_extinction = True
     global_ice_model = 'ice_hc'
     global_ext_model = 'CHIAR06'
     directory = '../test/test_questfit/'
@@ -54,8 +55,13 @@ def pg1411_and_Spitzer():
     MIRz=0.112
     data_to_fit = np.load(directory+config_file['source'][0],allow_pickle=True)[0]
     wave = data_to_fit['WAVE'].astype('float')
-    #wave_min = np.where(wave>=float(config_file['source'][1]))[0][0]  # TO DO: Automise min/max wavelength
-    #wave_max = np.where(wave>=float(config_file['source'][2]))[0][0]    
+    wave_min = np.where(wave>=float(config_file['source'][1]))[0][0]  # TO DO: Automise min/max wavelength
+    wave_max = np.where(wave>=float(config_file['source'][2]))[0][0]
+    
+    #wave = data_to_fit['WAVE'].astype('float')[wave_min:wave_max]
+    #flux = data_to_fit['FLUX'].astype('float')[wave_min:wave_max]
+    #weights = data_to_fit['stdev'].astype('float')[wave_min:wave_max]
+
 
     
     # Required parameters
@@ -192,14 +198,16 @@ def pg1411_and_Spitzer():
             
             'doMIRcontfit': True,
             'MIRcffile': MIRcffile,
-            'MIRfcncontfit': 'questfit',
-            'MIRfitran' : [ float(config_file['source'][1]), float(config_file['source'][2]) ],
             'infile_MIR': directory+config_file['source'][0].replace('.ideos','').split('.npy')[0]+'_mock_cube.fits',
+            'global_extinction': global_extinction,
             'global_ice_model': global_ice_model,
             'global_ext_model': global_ext_model,
             'MIRz': MIRz,
-            #'MIRwave_min_idx': wave_min,
-            #'MIRwave_max_idx': wave_max,
+            #'MIRwave': wave,
+            #'MIRflux': flux,
+            #'MIRweights': weights,
+            'MIRwave_min_idx': wave_min,
+            'MIRwave_max_idx': wave_max,
             'plotMIR': True
         }
 

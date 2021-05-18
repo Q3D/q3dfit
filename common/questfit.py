@@ -9,180 +9,231 @@ from q3dfit.common import interp_temp_quest
 from q3dfit.common import writeout_quest
 import q3dfit
 
-def questfit(wlambda,flux,err,z,index=None,config_file=None,fitran=None,global_extinction=False, \
-    models_dictionary={}, template_dictionary={}, global_ice_model='', global_ext_model=''):
 
-    # global models_dictionary
-    # global template_dictionary
-    # global global_ice_model
-    # global global_ext_model
 
-    config_file = questfit_readcf.readcf(config_file)
-    loc_models = q3dfit.__path__[0]+'/data/questfit_templates/'
-    n_temp = 0
+def questfit(wlambda_all, flux_all, weights, singletemplatelambda, singletemplateflux, index, 
+    z, quiet=True, config_file=None, global_ice_model='', global_ext_model='', \
+    models_dictionary={}, template_dictionary={}, fitran=None):
+    '''Function defined to fit the MIR continuum
+
+    Parameters
+    -----
+    wlambda: array
+        wavelength
+
+    flux: array
+        Flux values to be fit
+
+    weight: array
+        Weights of each individual pixel to be fit
+
+    singletemplatelambda: array
+        Disregarded if set to b'0'. 
+        Otherwise, this is a wavelength array for any continuum template separate from the simple empirical BB, power-law etc. components.
+
+    singletemplateflux: array
+        Disregarded if set to b'0'. 
+        Otherwise, this is a flux array for any continuum template separate from the simple empirical BB, power-law etc. components.
+
+    index: array
+        Pixels used in the fit
+
+    z: float
+        redshift
+
+
+
+    returns
+    -------
+    continuum: array
+        best fit continuum model
+
+    ct_coeff: dictionary or lmfit best fit params structure
+        best fit parameters
+
+    '''
     
-    for i in config_file.keys(): #populating the models dictionary and setting up lmfit models
-        if 'blackbody' in i: #starting with the blackbodies
-            model_parameters = config_file[i]
-            name_model = 'blackbody'+str(int(float(model_parameters[7])))#i
-            extinction_model = config_file[i][3]
-            ice_model = config_file[i][9]
-            print(name_model,extinction_model,ice_model)
+
+    models_dictionary = {}
+    template_dictionary = {}
+
+    wlambda = wlambda_all[index]
+    flux = flux_all[index]
+    if fitran:
+        flux = flux[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
+        wlambda = wlambda[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
+    if len(global_ext_model)>0:     global_extinction = True
 
 
+    if singletemplatelambda!=b'0':
+        print('Trying to pass a single separate template to questfit, which is not implemented ... Halting.')
+        import sys; sys.exit()
 
-            model_temp_BB,param_temp_BB = questfitfcn.set_up_fit_blackbody_model([float(model_parameters[1]),float(model_parameters[7])],[float(model_parameters[2]),float(model_parameters[8])],name_model[:])
-            
-            if global_extinction == False:
-                model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],name_model+'_ext',extinction_model,model_parameters[6])
+    else:
+        config_file = questfit_readcf.readcf(config_file)
+        loc_models = q3dfit.__path__[0]+'/data/questfit_templates/'
+        n_temp = 0
+        
+        for i in config_file.keys(): #populating the models dictionary and setting up lmfit models
+
+            if 'blackbody' in i: #starting with the blackbodies
+                model_parameters = config_file[i]
+                name_model = 'blackbody'+str(int(float(model_parameters[7])))#i
+                extinction_model = config_file[i][3]
+                ice_model = config_file[i][9]
+
+                model_temp_BB,param_temp_BB = questfitfcn.set_up_fit_blackbody_model([float(model_parameters[1]),float(model_parameters[7])],[float(model_parameters[2]),float(model_parameters[8])],name_model[:])
                 
-                model_temp = model_temp_BB*model_temp_extinction
-                param_temp = param_temp_BB + param_temp_extinction
+                if global_extinction == False:
+                    model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],name_model+'_ext',extinction_model,model_parameters[6])
+                    
+                    model_temp = model_temp_BB*model_temp_extinction
+                    param_temp = param_temp_BB + param_temp_extinction
 
-                models_dictionary[extinction_model] = config_file[extinction_model]
-            
-            else:
-                model_temp = model_temp_BB
-                param_temp = param_temp_BB
-            
-            if 'ice' in i and global_extinction == False: #checking if we need to add ice absorption
-                model_temp_ice,param_temp_ice = questfitfcn.set_up_absorption([float(model_parameters[10])],[float(model_parameters[11])],name_model+'_abs',model_parameters[9])
-                model_temp = model_temp*model_temp_ice
-                param_temp += param_temp_ice
-                models_dictionary[model_parameters[9]] = config_file[model_parameters[9]]
-            if 'model' not in vars():
-                model,param = model_temp,param_temp
+                    models_dictionary[extinction_model] = config_file[extinction_model]
+                
+                else:
+                    model_temp = model_temp_BB
+                    param_temp = param_temp_BB
+                
+                if 'ice' in i and global_extinction == False: #checking if we need to add ice absorption
+                    model_temp_ice,param_temp_ice = questfitfcn.set_up_absorption([float(model_parameters[10])],[float(model_parameters[11])],name_model+'_abs',model_parameters[9])
+                    model_temp = model_temp*model_temp_ice
+                    param_temp += param_temp_ice
+                    models_dictionary[model_parameters[9]] = config_file[model_parameters[9]]
+                if 'model' not in vars():
+                    model,param = model_temp,param_temp
 
-            else:
-                model += model_temp
-                param += param_temp
-
-
-        if 'powerlaw' in i: #powerlaw model
-            model_parameters = config_file[i]
-            name_model = 'powerlaw'+str(int(float(model_parameters[7])))
-            extinction_model = config_file[i][3]
-            ice_model = config_file[i][9]
-            print(name_model,extinction_model,ice_model)
-
-            model_temp_powerlaw,param_temp_powerlaw = questfitfcn.set_up_fit_powerlaw_model([1,float(model_parameters[7])],[float(model_parameters[2]),float(model_parameters[8])],name_model[:])
-
-            model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],'powerlaw'+str(int(float(model_parameters[7])))+'_ext',extinction_model,model_parameters[6])
-            
-            model_temp = model_temp_powerlaw*model_temp_extinction
-            param_temp = param_temp_powerlaw + param_temp_extinction
-
-            models_dictionary[extinction_model] = config_file[extinction_model]
-
-            if 'ice' in i and global_extinction == False: #checking if we need to add ice absorption
-                model_temp_ice,param_temp_ice = questfitfcn.set_up_absorption([float(model_parameters[10])],[float(model_parameters[11])],name_model+'_abs',model_parameters[9])
-                model_temp = model_temp*model_temp_ice
-                param_temp += param_temp_ice
-                models_dictionary[model_parameters[9]] = config_file[model_parameters[9]]
-
-            if 'model' not in vars():
-                model,param = model_temp,param_temp
-
-            else:
-                model += model_temp
-                param += param_temp
+                else:
+                    model += model_temp
+                    param += param_temp
 
 
-        if 'template' in i: #template model
-            model_parameters = config_file[i]
-            name_model = 'template_'+str(n_temp)#i
-            extinction_model = config_file[i][3]
-            ice_model = config_file[i][9]
-            print(name_model,extinction_model,ice_model)
+            if 'powerlaw' in i: #powerlaw model
+                model_parameters = config_file[i]
+                name_model = 'powerlaw'+str(int(float(model_parameters[7])))
+                extinction_model = config_file[i][3]
+                ice_model = config_file[i][9]
 
-            model_temp_template,param_temp_template = questfitfcn.set_up_fit_model_scale([float(model_parameters[1])],[float(model_parameters[2])],name_model,name_model)#name_model.split('.')[0]template+'_'+str(n_temp)
-            
-            if 'si' in i:
-                #config_file[i][0].split('.')[0]
-                template_dictionary[name_model] = 'silicatemodels/'+config_file[i][0]
-            else:
+                model_temp_powerlaw,param_temp_powerlaw = questfitfcn.set_up_fit_powerlaw_model([1,float(model_parameters[7])],[float(model_parameters[2]),float(model_parameters[8])],name_model[:])
 
-                template_dictionary[name_model] = config_file[i][0]
-        
-            if global_extinction == False:
-
-                model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],name_model+'_ext',extinction_model,model_parameters[6])
-            
-                model_temp = model_temp_template*model_temp_extinction
-                param_temp = param_temp_template + param_temp_extinction
+                model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],'powerlaw'+str(int(float(model_parameters[7])))+'_ext',extinction_model,model_parameters[6])
+                
+                model_temp = model_temp_powerlaw*model_temp_extinction
+                param_temp = param_temp_powerlaw + param_temp_extinction
 
                 models_dictionary[extinction_model] = config_file[extinction_model]
 
-            else:
-                model_temp = model_temp_template
-                param_temp = param_temp_template
+                if 'ice' in i and global_extinction == False: #checking if we need to add ice absorption
+                    model_temp_ice,param_temp_ice = questfitfcn.set_up_absorption([float(model_parameters[10])],[float(model_parameters[11])],name_model+'_abs',model_parameters[9])
+                    model_temp = model_temp*model_temp_ice
+                    param_temp += param_temp_ice
+                    models_dictionary[model_parameters[9]] = config_file[model_parameters[9]]
 
-            if 'ice' in i and global_extinction == False: #checking if we need to add ice absorption
-                model_temp_ice,param_temp_ice = questfitfcn.set_up_absorption([float(model_parameters[10])],[float(model_parameters[11])],name_model+'_abs',model_parameters[9])
-                model_temp = model_temp*model_temp_ice
-                param_temp += param_temp_ice
-                models_dictionary[model_parameters[9]] = config_file[model_parameters[9]]
+                if 'model' not in vars():
+                    model,param = model_temp,param_temp
 
-            if 'model' not in vars():
-                model,param = model_temp,param_temp
-
-            else:
-                model += model_temp
-                param += param_temp
-
-            n_temp+=1
-    if global_extinction == True: #Check to see if we are using global extinction, where the total model flux is extincted by the same ice and dust model.
-        model_global_ext,param_global_ext = questfitfcn.set_up_fit_extinction([0],[1],'global_ext',global_ext_model,'S')
-        model = model*model_global_ext
-        param += param_global_ext
-        models_dictionary[extinction_model] = config_file[global_ext_model]
-
-        model_global_ice,param_global_ice = questfitfcn.set_up_absorption([0],[1],'global_ice',global_ice_model)
-
-        model = model*model_global_ice
-        param += param_global_ice
-        models_dictionary[ice_model] = config_file[global_ice_model]
+                else:
+                    model += model_temp
+                    param += param_temp
 
 
-    for i in models_dictionary.keys(): #loop over models dictionary, load them in and resample.
-        temp_model = np.load(loc_models+models_dictionary[i],allow_pickle=True)
+            if 'template' in i: #template model
+                model_parameters = config_file[i]
+                name_model = 'template_'+str(n_temp)#i
+                extinction_model = config_file[i][3]
+                ice_model = config_file[i][9]
 
-        temp_wave = []
-        temp_value = []
-        
-        temp_wave=temp_model['WAVE']
-        temp_value=temp_model['FLUX']
-        
-        
-        #temp_value_rebin = interptemp.interptemp(wave_temp,temp_wave,temp_value)
-        #temp_value_rebin = interp_temp_quest.interp_lis(wave, temp_wave, temp_value)
-        temp_value_rebin = interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
-        models_dictionary[i] = temp_value_rebin#/temp_value_rebin.max()
+                model_temp_template,param_temp_template = questfitfcn.set_up_fit_model_scale([float(model_parameters[1])],[float(model_parameters[2])],name_model,name_model)#name_model.split('.')[0]template+'_'+str(n_temp)
+                
+                if 'si' in i:
+                    #config_file[i][0].split('.')[0]
+                    template_dictionary[name_model] = 'silicatemodels/'+config_file[i][0]
+                else:
+
+                    template_dictionary[name_model] = config_file[i][0]
+            
+                if global_extinction == False:
+
+                    model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],name_model+'_ext',extinction_model,model_parameters[6])
+                
+                    model_temp = model_temp_template*model_temp_extinction
+                    param_temp = param_temp_template + param_temp_extinction
+
+                    models_dictionary[extinction_model] = config_file[extinction_model]
+
+                else:
+                    model_temp = model_temp_template
+                    param_temp = param_temp_template
+
+                if 'ice' in i and global_extinction == False: #checking if we need to add ice absorption
+                    model_temp_ice,param_temp_ice = questfitfcn.set_up_absorption([float(model_parameters[10])],[float(model_parameters[11])],name_model+'_abs',model_parameters[9])
+                    model_temp = model_temp*model_temp_ice
+                    param_temp += param_temp_ice
+                    models_dictionary[model_parameters[9]] = config_file[model_parameters[9]]
+
+                if 'model' not in vars():
+                    model,param = model_temp,param_temp
+
+                else:
+                    model += model_temp
+                    param += param_temp
+
+                n_temp+=1
+        if global_extinction == True: #Check to see if we are using global extinction, where the total model flux is extincted by the same ice and dust model.
+
+            model_global_ext,param_global_ext = questfitfcn.set_up_fit_extinction([0],[1],'global_ext',global_ext_model,'S')
+            model = model*model_global_ext
+            param += param_global_ext
+            models_dictionary[extinction_model] = config_file[global_ext_model]
+
+            model_global_ice,param_global_ice = questfitfcn.set_up_absorption([0],[1],'global_ice',global_ice_model)
+
+            model = model*model_global_ice
+            param += param_global_ice
+            models_dictionary[ice_model] = config_file[global_ice_model]
 
 
-    for i in template_dictionary.keys(): #loop over template dictionary, load them in and resample.
+        for i in models_dictionary.keys(): #loop over models dictionary, load them in and resample.
+            temp_model = np.load(loc_models+models_dictionary[i],allow_pickle=True)
 
-        temp_model = np.load(loc_models+template_dictionary[i],allow_pickle=True)
-        temp_wave = []
-        temp_value = []
-        
-        temp_wave=temp_model['WAVE']
-        temp_value=temp_model['FLUX']
-        
-        
-        #temp_value_rebin = interptemp.interptemp(wave_temp,temp_wave,temp_value)
-        temp_value_rebin = interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
-        models_dictionary[i] = temp_value_rebin/temp_value_rebin.max()
-
-    models_dictionary['wave'] = wlambda/(1+z)
-
-    result = model.fit(flux,param,**models_dictionary,max_nfev=int(1e5),method='least_squares',nan_policy='omit')#method='least_squares'nan_policy='omit'
-
-    best_fit = result.eval(**models_dictionary)
-    comp_best_fit = result.eval_components()
+            temp_wave = []
+            temp_value = []
+            
+            temp_wave=temp_model['WAVE']
+            temp_value=temp_model['FLUX']
+            
+            
+            #temp_value_rebin = interptemp.interptemp(wave_temp,temp_wave,temp_value)
+            #temp_value_rebin = interp_temp_quest.interp_lis(wave, temp_wave, temp_value)
+            temp_value_rebin = interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
+            models_dictionary[i] = temp_value_rebin#/temp_value_rebin.max()
 
 
-    return best_fit,comp_best_fit,result
+        for i in template_dictionary.keys(): #loop over template dictionary, load them in and resample.
+
+            temp_model = np.load(loc_models+template_dictionary[i],allow_pickle=True)
+            temp_wave = []
+            temp_value = []
+            
+            temp_wave=temp_model['WAVE']
+            temp_value=temp_model['FLUX']
+            
+            
+            #temp_value_rebin = interptemp.interptemp(wave_temp,temp_wave,temp_value)
+            temp_value_rebin = interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
+            models_dictionary[i] = temp_value_rebin/temp_value_rebin.max()
+
+        models_dictionary['wave'] = wlambda/(1+z)
+
+        result = model.fit(flux,param,**models_dictionary,max_nfev=int(1e5),method='least_squares',nan_policy='omit')#method='least_squares'nan_policy='omit'
+
+        best_fit = result.eval(**models_dictionary)
+        comp_best_fit = result.eval_components()
+        ct_coeff = {'MIRparams': result.params, 'comp_best_fit': comp_best_fit}
+
+        #return best_fit,comp_best_fit,result
+        return best_fit, ct_coeff, z
 
 
 do_test = False
@@ -223,10 +274,17 @@ if do_test:
     weights = data_to_fit['stdev'].astype('float')[wave_min:wave_max]
     
 
-    best_fit,comp_best_fit,result = questfit(wave,flux,weights,z,index=None,config_file=filename, \
-        fitran=None,global_extinction=global_extinction,models_dictionary=models_dictionary, \
-        template_dictionary=template_dictionary, global_ice_model=global_ice_model, global_ext_model=global_ext_model)
 
+    singletemplatelambda = b'0'
+    singletemplateflux = b'0'
+    index = None
+    best_fit, MIRct_coeff, MIRz = questfit(wave,flux,weights,singletemplatelambda, singletemplateflux, \
+        index,z, quiet=True, config_file=filename, global_ice_model=global_ice_model, global_ext_model=global_ext_model, \
+        models_dictionary={}, template_dictionary={}, fitran=None)
+
+    if len(best_fit)==1:    best_fit=best_fit[0]
+
+    comp_best_fit = MIRct_coeff['comp_best_fit']
 
 
 
@@ -265,8 +323,10 @@ if do_test:
 
     if global_extinction == True:
        for i in np.arange(0,len(comp_best_fit.keys())-2,1):
-           ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[i]]*comp_best_fit[list(comp_best_fit.keys())[-2]]*comp_best_fit[list(comp_best_fit.keys())[-1]],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
-
+           try:
+              ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[i]]*comp_best_fit[list(comp_best_fit.keys())[-2]]*comp_best_fit[list(comp_best_fit.keys())[-1]],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
+           except:
+              ax1.plot(wave,comp_best_fit[list(comp_best_fit.keys())[i]][0]*comp_best_fit[list(comp_best_fit.keys())[-2]][0]*comp_best_fit[list(comp_best_fit.keys())[-1]][0],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
 
     if global_extinction == False:
        for i in np.arange(0,len(comp_best_fit.keys()),3):

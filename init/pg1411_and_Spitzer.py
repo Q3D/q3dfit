@@ -18,8 +18,8 @@ def pg1411_and_Spitzer():
     # bad=1e99
     gal = 'pg1411'
     outstr = 'rb3'
-    ncols = 1
-    nrows = 1
+    ncols = 17
+    nrows = 26
     # centcol = 9.002
     # centrow = 14.002
     platescale = 0.3
@@ -29,7 +29,7 @@ def pg1411_and_Spitzer():
     #   These are unique to the user
     # volume = '/Users/dwylezal/EmmyNoether_Science/Q3D/JWST_ERS_Planning/Software/PG1411/'
     #volume = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/PG1411/pg1411/'
-    volume =  = '/Users/Endeavour/Projects/Q3D_dev/pyfsfit'
+    volume = '/Users/Endeavour/Projects/Q3D_dev/pyfsfit'
     test_cube = 'test/test_questfit/IRAS21219m1757_dlw_qst_mock_cube.fits'
     infile = test_cube#volume+gal+outstr+'.fits'
     mapdir = volume+gal+'/'+outstr+'/'

@@ -31,6 +31,7 @@ def pg1411_and_Spitzer():
     volume = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/PG1411/pg1411/'
     #volume = '/Users/Endeavour/Projects/Q3D_dev/pyfsfit'
     test_cube = '../test/test_questfit/IRAS21219m1757_dlw_qst_mock_cube.fits'
+
     infile = test_cube#volume+gal+outstr+'.fits'
     mapdir = volume+gal+'/'+outstr+'/'
     outdir = volume+gal+'/'+outstr+'/'
@@ -51,8 +52,8 @@ def pg1411_and_Spitzer():
     global_extinction = True
     global_ice_model = 'ice_hc'
     global_ext_model = 'CHIAR06'
-    directory = '../test/test_questfit/'
-    MIRcffile = '../test/test_questfit/IRAS21219m1757_dlw_qst.cf'
+    directory = 'test/test_questfit/'
+    MIRcffile = 'test/test_questfit/IRAS21219m1757_dlw_qst.cf'
     config_file = questfit_readcf.readcf(MIRcffile)
     MIRz=0.112
     data_to_fit = np.load(directory+config_file['source'][0],allow_pickle=True)[0]
@@ -163,6 +164,7 @@ def pg1411_and_Spitzer():
 #            'argscheckcomp': {'sigcut': 3,
 #                              'ignore': ['[OI]6300', '[OI]6364',
 #                                         '[SII]6716', '[SII]6731']},
+
             'argscontfit': {'config_file':MIRcffile,
                             'global_ice_model':global_ice_model,
                             'global_ext_model':global_ext_model,

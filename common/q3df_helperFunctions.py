@@ -180,29 +180,16 @@ def __get_spaxels(cube, cols=None, rows=None):
 # In its own function due to commonality between single- and
 # multi-threaded execution
 def execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, oned,
-                    onefit, quiet, logfile=None, cubeMIR=None, nspaxMIR=None, colarrMIR=None, rowarrMIR=None):
+                    onefit, quiet, logfile=None):
     from q3dfit.common.fitloop import fitloop
     for ispax in range(0, nspax):
-        # if ispax == 0 and logloop is not None:
-        # from os import remove
-        # delete log file, if it exists
-        # try:
-        #     remove(initdat['logfile'])
-        # except FileNotFoundError:
-        #     pass
-        if (ispax==0) and cubeMIR:
-            for jspaxMIR in range(0, nspaxMIR):
-                fitloop(ispax, colarr, rowarr, cube, initdat, linelist,
-                    oned, onefit, quiet, logfile=logfile, cubeMIR=cubeMIR, 
-                    jspaxMIR=jspaxMIR, colarrMIR=colarrMIR, rowarrMIR=rowarrMIR)
-        else:
-            fitloop(ispax, colarr, rowarr, cube, initdat, linelist,
+        fitloop(ispax, colarr, rowarr, cube, initdat, linelist,
                 oned, onefit, quiet, logfile=logfile)
 
 
 # q3df setup for single-threaded execution
 def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
-                 quiet=True, colsMIR=None, rowsMIR=None):
+                 quiet=True):
     import time
     from sys import path
     import copy
@@ -224,42 +211,10 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
         rows = 1
     nspax, colarr, rowarr = __get_spaxels(cube, cols, rows)
 
-
     # execute FITLOOP
-    if 'doMIRcontfit' in initdat:
-        initdat2 = copy.deepcopy(initdat)
-        initdat2['waveext'] = 4
-        initdat2['datext'] = 1
-        initdat2['varext'] = 2
-        initdat2['dqext'] = 3
-        initdat2['zerodq'] = True
-        initdat2['noemlinfit'] = True
-        initdat2['infile'] = initdat['infile_MIR']
-        #initdat2['cutrange'] = np.array([ initdat2['MIRwave_min'], initdat2['MIRwave_max'] ])
-        if 'cutrange' in initdat2.keys():
-            initdat2.pop('cutrange')
-        if 'siglim_gas' in initdat2.keys():
-            initdat2.pop('siglim_gas')
-        if 'vormap' in initdat2.keys():
-            initdat2.pop('vormap')
-        if 'siginit_gas' in initdat2.keys():
-            initdat2.pop('siginit_gas')
-        if 'cutrange' in initdat2.keys():
-            initdat2.pop('cutrange')
-        if 'tweakcntfit' in initdat2.keys():
-            initdat2.pop('tweakcntfit')
-        cubeMIR, vormapMIR = __get_CUBE(initdat2, oned, quiet, logfile=logfile)
-        if cols and rows and vormapMIR:
-            colsMIR = __get_voronoi(colsMIR, rowsMIR, vormapMIR)
-            rowsMIR = 1
-        nspaxMIR, colarrMIR, rowarrMIR = __get_spaxels(cubeMIR, colsMIR, rowsMIR)
-        if colsMIR and rowsMIR:
-            execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, oned,
-                    onefit, quiet, logfile=logfile, cubeMIR=cubeMIR, nspaxMIR=nspaxMIR, 
-                    colarrMIR=colarrMIR, rowarrMIR=rowarrMIR)
-    else:
-        execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, oned,
-                    onefit, quiet, logfile=logfile, cubeMIR=None)
+
+    execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, oned,
+                    onefit, quiet, logfile=logfile)
 
     if logfile is None:
         from sys import stdout

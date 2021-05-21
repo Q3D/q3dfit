@@ -1,5 +1,6 @@
 import numpy as np
 import lmfit
+import copy
 from q3dfit.common import interptemp
 from q3dfit.common import questfitfcn
 from q3dfit.common import questfit_readcf
@@ -11,7 +12,7 @@ import q3dfit
 
 
 
-def questfit(wlambda_all, flux_all, weights, singletemplatelambda, singletemplateflux, index, 
+def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, index, 
     z, quiet=True, config_file=None, global_ice_model='', global_ext_model='', \
     models_dictionary={}, template_dictionary={}, fitran=None):
     '''Function defined to fit the MIR continuum
@@ -57,8 +58,6 @@ def questfit(wlambda_all, flux_all, weights, singletemplatelambda, singletemplat
     models_dictionary = {}
     template_dictionary = {}
 
-    wlambda = wlambda_all[index]
-    flux = flux_all[index]
     if fitran:
         flux = flux[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
         wlambda = wlambda[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
@@ -226,7 +225,13 @@ def questfit(wlambda_all, flux_all, weights, singletemplatelambda, singletemplat
 
         models_dictionary['wave'] = wlambda/(1+z)
 
-        result = model.fit(flux,param,**models_dictionary,max_nfev=int(1e5),method='least_squares',nan_policy='omit')#method='least_squares'nan_policy='omit'
+        
+        flux_cut = flux[index]
+        models_dictionary_cut = copy.deepcopy(models_dictionary)
+        for el in models_dictionary.keys():
+            models_dictionary_cut[el] = models_dictionary_cut[el][index]
+
+        result = model.fit(flux_cut,param,**models_dictionary_cut,max_nfev=int(1e5),method='least_squares',nan_policy='omit')#method='least_squares'nan_policy='omit'
 
         best_fit = result.eval(**models_dictionary)
         comp_best_fit = result.eval_components()

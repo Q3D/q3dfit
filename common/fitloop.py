@@ -57,7 +57,7 @@ import pdb
 
 
 def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
-            quiet=True, logfile=None, cubeMIR=None, jspaxMIR=None, colarrMIR=None, rowarrMIR=None):
+            quiet=True, logfile=None):
 
     if logfile is None:
         from sys import stdout
@@ -72,8 +72,6 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
     i = colarr[ispax]  # colind, rowind]
     j = rowarr[ispax]  # colind, rowind]
 
-    iMIR = colarrMIR[jspaxMIR]
-    jMIR = rowarrMIR[jspaxMIR]
     print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]',
           file=logfile)
 
@@ -81,18 +79,10 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
         flux = cube.dat[:, i]
         err = abs(cube.var[:, i])**0.5
         dq = cube.dq[:, i]
-        if cubeMIR:
-          fluxMIR = cubeMIR.dat[:, iMIR]
-          errMIR = abs(cubeMIR.var[:, iMIR])**0.5
-          dqMIR = cubeMIR.dq[:, iMIR]
     else:
         flux = cube.dat[i, j, :]
         err = abs(cube.var[i, j, :])**0.5
         dq = cube.dq[i, j, :]
-        if cubeMIR:
-          fluxMIR = cubeMIR.dat[iMIR, jMIR, :]
-          errMIR = abs(cubeMIR.var[iMIR, jMIR, :])**0.5
-          dqMIR = cubeMIR.dq[iMIR, jMIR, :]
 
     errmax = max(err)
 
@@ -121,12 +111,12 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                 (flux != np.nan).any())
     if somedata:
 
+        ncomp = dict()
         if 'noemlinfit' not in initdat:
 
             # Extract # of components specific to this spaxel and
             # write as dict
             # Each dict key (line) will have one value (# comp)
-            ncomp = dict()
             for line in initdat['lines']:
                 if oned:
                     ncomp[line] = initdat['ncomp'][line][i]
@@ -235,8 +225,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                                  listlinesz, ncomp, initdat, quiet=quiet,
                                  siglim_gas=siglim_gas,
                                  siginit_gas=siginit_gas,
-                                 tweakcntfit=tweakcntfit, col=i+1, row=j+1,
-                                 waveMIR=cubeMIR.wave, fluxMIR=fluxMIR, errMIR=errMIR, dqMIR=dqMIR)
+                                 tweakcntfit=tweakcntfit, col=i+1, row=j+1)
 
             # if not quiet:
             #    print('FIT STATUS: '+structinit['fitstatus'])

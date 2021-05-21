@@ -7,14 +7,15 @@ The resulting mock cube can then be fed to readcube.py .
 
 import numpy as np
 from astropy.io import fits
+import pdb
 
 
 path_in = '../test/test_questfit/'
 file_in = path_in + '4978688_0.ideos.npy'
 data = np.load(file_in, allow_pickle=True)
 
-# file_in = path_in + 'IRAS21219m1757_dlw_qst.npy'
-# data = np.load(file_in, allow_pickle=True)[0]
+file_in = path_in + 'IRAS21219m1757_dlw_qst.npy'
+data = np.load(file_in, allow_pickle=True)[0]
 
 
 def From_1D_to_mock3D(data, savename=''):
@@ -61,9 +62,9 @@ def From_1D_to_mock3D(data, savename=''):
 	hdu3.header
 
 	# -- Create extension 4 - wavelengths
-	val_1D = data['WAVE'].astype(float)
+	val_1D = data['WAVE'].astype(float) * 1e4
 	len_1D = len(val_1D)
-	data4 = np.array([np.array([ val_1D ])]).reshape( len_1D, 1, 1 )
+	data4 = val_1D # np.array([np.array([ val_1D ])]).reshape( len_1D, 1, 1 )
 	len_str = str(data4.shape[0])
 	hdu4 = fits.ImageHDU(data4, name='wave')
 	hdu4.header

@@ -21,6 +21,9 @@ from q3dfit.common.linelist import linelist
 from q3dfit.common.readcube import readcube
 from q3dfit.common.rebin import rebin
 from q3dfit.common.hstsubim import hstsubim
+from q3dfit.common.cmpcvdf import cmpcvdf
+from q3dfit.common.cmpcompvals import cmpcompvals
+from q3dfit.common.lineratios import lineratios
 
 
 
@@ -30,7 +33,6 @@ from astropy.io import fits
 #for congrid
 import scipy.interpolate
 import scipy.ndimage
-
 
 def posangle (xaxis, yaxis): 
     return None
@@ -148,7 +150,7 @@ def makemaps (initproc):
     fwhm2sig = 2.0 * np.sqrt(2.0 * np.log(2.0))
     plotquantum = 2.5                       #in inches
     bad = 1e99
-    c_kmPerS = 299792.458
+    c_kms = 299792.458
     ncbdivmax = 7
     maxnadabscomp = 3
     maxnademcomp = 3
@@ -255,7 +257,7 @@ def makemaps (initproc):
     if 'donad' in initdat:
         if 'argslinelist' in initdat:
             nadlinelist = linelist(['NaD1','NaD2','HeI5876'], \
-                                     _extra = initdat['argslinelist'])
+                                     extra = initdat['argslinelist'])
         else:
             nadlinelist = linelist(['NaD1','NaD2','HeI5876'])
 
@@ -294,7 +296,7 @@ def makemaps (initproc):
         file = initdat['outdir'] + initdat['label'] + '.nadspec.xdr'
         nadcube = (np.load(file, allow_pickle='TRUE')).item()
         file = initdat['outdir'] + initdat['label'] + '.nadfit.xdr'
-        struct4 = (np.load(file, allow_pickle='TRUE')).item()        
+        nadfit = (np.load(file, allow_pickle='TRUE')).item()        
         
         if 'badnademp' in initmaps:
             tagstobad = np.array(['WEQ','IWEQ','EMFLUX','EMUL','VEL'])
@@ -468,7 +470,7 @@ def makemaps (initproc):
                 #if ctbadhst > 0: hstbltmp[ibadhst] = !values.d_nan
                 fwhm = initmaps['hst']['smoothfwhm']
                 boxwidth = round((fwhm ^ 2.0) / 2.0 + 1.0)
-                if not boxwidth: ++boxwidth
+                if not boxwidth: boxwidth + 1
                 #hstblsm = filter_image(hstbl,fwhm=initmaps.hst.smoothfwhm,/all)
                 hstblsm = cv2.blur(hstbl)
                 #hstblsm = filter_image(hstbltmp,smooth=boxwidth,/iter,/all)
@@ -584,7 +586,7 @@ def makemaps (initproc):
                 #if ctbadhst > 0: hstrdtmp[ibadhst] = !values.d_nan
                 fwhm = initmaps['hst']['smoothfwhm']
                 boxwidth = round((fwhm ^ 2.0) / 2.0 + 1.0)
-                if not boxwidth: ++boxwidth
+                if not boxwidth: boxwidth + 1
                 #hstrdsm = filter_image(hstrd,fwhm=initmaps.hst.smoothfwhm,/all)
                 #hstrdsm = filter_image(hstrdtmp,smooth=boxwidth,/iter,/all)
                 hstrdsm = cv2.blur(hstrdtmp)
@@ -1047,5 +1049,689 @@ def makemaps (initproc):
         else: map_rkpc_hst = 0.0
 
 
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' Process emission lines                                  '
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-      
+    emlvel = 0.0
+    emlflxcor_pp = 0.0
+    emlflxcor_med = 0.0
+    ebv = 0.0
+    ebvmed = 0.0
+    errebv = 0.0
+    lr = dict()
+    lrerrlo = dict()
+    lrerrhi = dict()
+    elecdenmap = dict()
+    elecdenmap_errlo = dict()
+    elecdenmap_errhi = dict()
+    if 'noemlinfit' not in initdat:
+        '''
+;;     Sort emission line components if requested
+;      if tag_exist(initmaps,'fcnsortcomp') AND $
+;         tag_exist(initmaps,'sortlines') AND $
+;         tag_exist(initmaps,'sorttype') then begin
+;         if tag_exist(initmaps,'argssortcomp') then $
+;            linmaps = call_function(initmaps.fcnsortcomp,dx,dy,linmaps,$
+;                                    initdat.linetie,initmaps.sortlines,$
+;                                    initmaps.sorttype,$
+;                                    _extra=initmaps.argssortcomp) $
+;         else $
+;            linmaps = call_function(initmaps.fcnsortcomp,dx,dy,linmaps,$
+;                                    initdat.linetie,initmaps.sortlines,$
+;                                    initmaps.sorttype)
+;      endif
+        '''
+
+        '''
+;;     Set reference line for rotation curve, for defining outflows, by resorting
+;;     OUTLINES so that reference line comes first.
+;      if ~ tag_exist(initmaps,'diskline') then diskline='Halpha' $
+;      else diskline = initmaps.diskline
+;      idiskline = outlines.where(diskline,count=ctdiskline)
+;      if ctdiskline gt 0 then outlines.move,idiskline,0 $
+;      else message,$
+;         'Disk line not found; using first line in OUTLINES hash.',/cont
+        '''
+        '''                            
+;      ofpars_line=0b
+;      sigthresh=0b
+;      ofthresh=0b ; threshold for defining outflow
+;      ofignore=0b
+;      diffthresh=0b
+;      if tag_exist(initmaps,'compof') then begin
+;         ofpars_line=1b
+;         if tag_exist(initmaps,'compof_sigthresh') then $
+;            sigthresh=initmaps.compof_sigthresh
+;         if tag_exist(initmaps,'compof_ofthresh') then $
+;            ofthresh=initmaps.compof_ofthresh
+;         if tag_exist(initmaps,'compof_diffthresh') then $
+;            diffthresh=initmaps.compof_diffthresh
+;         if tag_exist(initmaps,'compof_ignore') then $
+;            ofignore=initmaps.compof_ignore
+;      endif
+;      if line eq diskline then diskrot=0b $
+;      else diskrot=linspecpars[diskline].vpk
+;      if tag_exist(initmaps,'compof') then ofpars[line] = ofpars_line
+;      endforeach
+;      linspecpars_tags = tag_names(linspecpars[outlines[0]])
+;      if tag_exist(initmaps,'compof') then $
+;         ofpars_tags = tag_names(ofpars[outlines[0]])
+        '''
+#     Compute CVDF velocities and fluxes
+        if 'cvdf' in initmaps:
+            if 'flux_maps' in initmaps['cvdf']:
+                fluxvels = initmaps['cvdf']['flux_maps']
+            else: fluxvels = 0.0
+            if 'sigcut' in initmaps['cvdf']:
+                sigcut=initmaps['cvdf']['sigcut']
+            else: sigcut = 0.0
+        #TODO
+        emlcompvel = cmpcompvals(emlwav,emlsig,emlflx,initdat['zsys_gas'], \
+                                    emlwaverr = True, emlsigerr = True)
+        emlvel = emlcompvel
+        if 'nocvdf' not in initdat:
+            emlcvdfvel = cmpcvdf(emlcvdf,emlflx,emlflxerr, \
+                                       fluxvels = True, sigcut = True)
+            emlvel = emlcvdfvel + emlcompvel
+        
+        #Extinction maps
+        #flux summed over components
+        if 'ebv' in initmaps:
+            #Calculate ...
+            if 'calc' in initmaps['ebv']:
+                ebv = dict()
+                errebv = dict()
+                ebvmed = dict()
+                for key in initmaps['ebv']['calc']:
+                    if 'argslineratios' in initmaps:
+                        '''
+                        ebvtmp = lineratios(emlflx[key], emlflxerr[key], listlines, \
+                                            ebvonly = True, errlo=errtmp, \
+                                            extra = initmaps['argslineratios'])
+                        '''
+                        ebvtmp = lineratios(emlflx[key], emlflxerr[key], listlines, \
+                                            ebvonly = True)
+                        errtmp = ebvtmp[1]
+                        ebvtmp = ebvtmp[0]
+                    else: 
+                        ebvtmp =  lineratios(emlflx[key], emlflxerr[key],listlines, \
+                                             ebvonly = True)
+                        errtmp = ebvtmp[1]
+                        ebvtmp = ebvtmp[0]
+                    ebv[key] = ebvtmp['ebv']
+                    errebv[key] = errtmp['ebv']
+                    igdebv = np.where(ebv[key] != bad)
+                    ctgdebv = len(igdebv)
+                    if ctgdebv > 0: ebvmed[key] = np.median(ebv[key,igdebv])
+            
+                #... and apply.
+                if 'apply' in initmaps['ebv']:
+                    ebvkey = 'ftot'
+                    emlflxcor_pp = dict()
+                    emlflxcor_med = dict()
+                    emlflxerrcor_pp = dict()
+                    emlflxerrcor_med = dict()
+                    emlflxcor_pp['ftot'] = dict()
+                    emlflxcor_med['ftot'] = dict()
+                    emlflxerrcor_pp['ftot'] = dict()
+                    emlflxerrcor_med['ftot'] = dict()
+                    for i in range (1, initdat['maxncomp']):
+                        stric = str(icomp)
+                        emlflxcor_pp['fc' + stric] = hash()
+                        emlflxcor_med['fc' + stric] = hash()
+                        emlflxerrcor_pp['fc' + stric] = hash()
+                        emlflxerrcor_med['fc' + stric] = hash()
+                        for line in listlines.keys:
+                            emlflxcor_pp['fc'+stric,line] = emlflx['fc'+stric,line]
+                            emlflxcor_med['fc'+stric,line] = emlflx['fc'+stric,line]
+                            emlflxerrcor_pp['fc'+stric,line] = emlflx['fc'+stric,line]
+                            emlflxerrcor_med['fc'+stric,line] = emlflx['fc'+stric,line]
+                            flx = emlflx['fc'+stric,line]
+                            flxerr = emlflxerr['fc'+stric,line]
+                            igdflx = np.where(flx > 0 and flx != bad)
+                            ctgdflx = len(igdflx)
+                            igdebv = np.where(ebv[ebvkey] != bad)
+                            ctgdebv = len(igdebv)
+                            if (ctgdflx > 0) and (ctgdebv > 0):
+                                ebvuse = ebv[ebvkey]
+                                ibadebv = list(set(igdflx) - set(igdebv))
+                                ctbadebv = len(ibadebv)
+                                if ctbadebv > 0: ebvuse[ibadebv] = ebvmed[ebvkey]
+                                emlflxcor_pp['fc'+stric,line,igdflx] = \
+                                    dustcor_ccm(linelist[line],flx[igdflx], \
+                                            ebvuse[igdflx])
+                                emlflxcor_med['fc'+stric,line,igdflx] = \
+                                    dustcor_ccm(linelist[line],flx[igdflx], \
+                                            ebvmed[ebvkey])
+                                #Should really propagate E(B-V) error as well ...
+                                emlflxerrcor_pp['fc'+stric,line,igdflx] = \
+                                    dustcor_ccm(linelist[line],flxerr[igdflx], \
+                                            ebvuse[igdflx])
+                                emlflxerrcor_med['fc'+stric,line,igdflx] = \
+                                    dustcor_ccm(linelist[line],flxerr[igdflx], \
+                                            ebvmed[ebvkey])
+
+
+         
+            else:
+                ebv = 0.0
+                errebv = 0.0
+
+        #Line ratios
+        if 'lr' in initmaps:
+            if 'calc' in initmaps['lr']:
+                for key in initmaps['lr']['calc']:
+                    lrtmp =  lineratios(emlflx[key], emlflxerr[key], listlines, \
+                                        lronly = True)
+                    errlotmp = lrtmp[1]
+                    errhitmp = lrtmp[2]
+                    lrtmp = lrtmp[0]
+                    lr[key] = dict()
+                    lrerrlo[key] = dict()
+                    lrerrhi[key] = dict()
+                    for lrloop in lrtmp.keys:
+                        lr[key, lrloop] = lrtmp[lrloop]
+                        lrerrlo[key, lrloop] = errlotmp[lrloop]
+                        lrerrhi[key, lrloop] = errhitmp[lrloop]
+               
+
+
+                    #Compute electron densities
+                    #Use numbers from Sanders, Shapley, et al. 2015
+                    if 's2' in lrtmp.keys:
+                        #Densities
+                        tmps2map = lrtmp['s2']
+                        igds2 = np.where(tmps2map != bad and np.isfinite(tmps2map))
+                        ctgd = len(igds2)
+                        #ibds2 = where(tmps2map eq bad OR ~ finite(tmps2map),ctgd)
+                        tmps2mapgd = 10.0 ^ tmps2map[igds2]
+                        tmpdenmap = np.zeros((dx, dy), float) + bad
+                        igdden = np.where((tmps2mapgd > s2_minratio) and \
+                                 (tmps2mapgd < s2_maxratio))
+                        tmpdenmapgd = tmpdenmap[igds2]
+                        tmpdenmapgd[igdden] = math.log10((s2_c * tmps2mapgd[igdden] - s2_a * s2_b)/ \
+                                               (s2_a - tmps2mapgd[igdden]))
+                        ilo = np.where((tmps2mapgd < s2_maxratio) or \
+                              (tmpdenmapgd < math.log10(s2_mindensity)) )
+                        ctlo = len(ilo)
+                        ihi = np.where(tmps2mapgd < s2_minratio or \
+                              (tmpdenmapgd > math.log10(s2_maxdensity) and \
+                               tmpdenmapgd != bad))
+                        cthi = len(ihi)
+                        if ctlo > 0: tmpdenmapgd[ilo] = math.log10(s2_mindensity)
+                        if cthi > 0: tmpdenmapgd[ihi] = math.log10(s2_maxdensity)
+                        tmpdenmap[igds2] = tmpdenmapgd
+
+                        #Density upper limits
+                        tmps2maperrlo = errlotmp['s2']
+                        tmps2mapgderrlo = tmps2mapgd - \
+                                    10.0 ^ (tmps2map[igds2] - tmps2maperrlo[igds2])
+                        tmpdenmaperrhi = np.zeros((dx,dy), float) + bad
+                        tmpdenmaperrhigd = tmpdenmaperrhi[igds2]
+                        tmpdenmaphi = np.zeros((dx,dy), float) + bad
+                        tmpdenmaphigd = tmpdenmaphi[igds2]
+                        igdden = np.where(tmps2mapgd - tmps2mapgderrlo > s2_minratio and \
+                                 tmps2mapgd - tmps2mapgderrlo < s2_maxratio)
+                        tmpdenmaphigd[igdden] = \
+                            math.log10((s2_c * (tmps2mapgd[igdden]-tmps2mapgderrlo[igdden]) - s2_a * s2_b)/ \
+                                       (s2_a - (tmps2mapgd[igdden]-tmps2mapgderrlo[igdden])))
+                        tmpdenmaperrhigd[igdden] = tmpdenmaphigd[igdden] - \
+                            tmpdenmapgd[igdden]
+                        ilo = np.where(tmps2mapgd - tmps2mapgderrlo > s2_maxratio or \
+                              tmpdenmaphigd < math.log10(s2_mindensity))
+                        ctlo = len(ilo)
+                        ihi = np.where((tmps2mapgd - tmps2mapgderrlo < s2_minratio and \
+                              tmps2mapgd - tmps2mapgderrlo > 0.0) or \
+                              (tmpdenmaphigd > math.log10(s2_maxdensity) and \
+                               tmpdenmaphigd != bad))
+                        cthi = len(ihi)
+                        if ctlo > 0: tmpdenmaperrhigd[ilo] = 0.0
+                        if cthi > 0: tmpdenmaperrhigd[ihi] = \
+                            math.log10(s2_maxdensity) - tmpdenmapgd[ihi]
+                        tmpdenmaperrhi[igds2] = tmpdenmaperrhigd
+
+                        #Density lower limits
+                        tmps2maperrhi = errhitmp['s2']
+                        tmps2mapgderrhi = 10.0 ^ (tmps2map[igds2] + tmps2maperrhi[igds2]) - \
+                                         tmps2mapgd
+                        tmpdenmaperrlo = np.zeros((dx,dy), float) + bad
+                        tmpdenmaperrlogd = tmpdenmaperrlo[igds2]
+                        tmpdenmaplo = np.zeros((dx,dy), float) + bad
+                        tmpdenmaplogd = tmpdenmaplo[igds2]
+                        igdden = np.where(tmps2mapgd + tmps2mapgderrhi > s2_minratio and \
+                                 tmps2mapgd + tmps2mapgderrhi < s2_maxratio)
+                        tmpdenmaplogd[igdden] = \
+                            math.log10((s2_c * (tmps2mapgd[igdden]+tmps2mapgderrhi[igdden]) - s2_a * s2_b)/ \
+                            (s2_a - (tmps2mapgd[igdden] + tmps2mapgderrhi[igdden])))
+                        tmpdenmaperrlogd[igdden] = tmpdenmapgd[igdden] - \
+                            tmpdenmaplogd[igdden]
+                        ilo = np.where(tmps2mapgd + tmps2mapgderrhi > s2_maxratio or \
+                            tmpdenmaplogd < math.log10(s2_mindensity))
+                        ctlo = len(ilo)
+                        ihi = np.where((tmps2mapgd + tmps2mapgderrhi < s2_minratio and \
+                              tmps2mapgd + tmps2mapgderrhi > 0.0) or \
+                              (tmpdenmaplogd > math.log10(s2_maxdensity) and \
+                               tmpdenmaplogd != bad))
+                        cthi = len(ihi)
+                        if ctlo > 0: tmpdenmaperrlogd[ilo] = \
+                            tmpdenmapgd[ilo] - math.log10(s2_mindensity)
+                        if cthi > 0: tmpdenmaperrlogd[ihi] = 0.0
+                        tmpdenmaperrlo[igds2] = tmpdenmaperrlogd
+
+                        elecdenmap[key] = tmpdenmap
+                        elecdenmap_errlo[key] = tmpdenmaperrlo
+                        elecdenmap_errhi[key] = tmpdenmaperrhi
+
+    else:
+        emlflx = 0.0
+
+
+    if 'donad' in initdat:
+        #Apply S/N cut. Funny logic is to avoid loops.
+        #TODO: working w an xdr file
+        nadmap = nadfit.weqabs[:, :, 0]
+        maperravg = (nadfit.weqabserr[:, :,0] + nadfit.weqabserr[:, :, 1]) / 2.0
+        mask1 = np.zeros((dx,dy), float)
+        mask2 = np.zeros((dx,dy), float)
+        igd = np.where(nadmap > 0.0 and \
+                    nadmap != bad and \
+                    nadmap > initmaps['nadabsweq_snrthresh'] * maperravg)
+        ibd = np.where(map == 0.0 or \
+                    map == bad or \
+                    map < initmaps['nadabsweq_snrthresh'] * maperravg)
+        mask1[igd] = 1.0
+        mask2[ibd] = bad
+        rbmask1 = rebin(mask1, dx, dy, initnad['maxncomp'])
+        rbmask2 = rebin(mask2, dx, dy, initnad['maxncomp'])
+        nadfit.waveabs *= rbmask1
+        nadfit.waveabserr *= rbmask1
+        nadfit.sigmaabs *= rbmask1
+        nadfit.sigmaabserr *= rbmask1
+        nadfit.tau *= rbmask1
+        nadfit.tauerr *= rbmask1
+        nadfit.waveabs += rbmask2
+        nadfit.waveabserr += rbmask2
+        nadfit.sigmaabs += rbmask2
+        nadfit.sigmaabserr += rbmask2
+        nadfit.tau += rbmask2
+        nadfit.tauerr += rbmask2
+
+
+        #Compute velocities and column densities of NaD model fits
+        nadabscftau = np.zeros((dx, dy, maxnadabscomp + 1), float) + bad
+        errnadabscftau = np.zeros((dx, dy, maxnadabscomp + 1, 2), float) + bad
+        nadabstau = np.zeros((dx, dy, maxnadabscomp + 1), float) + bad
+        errnadabstau = np.zeros((dx, dy, maxnadabscomp + 1, 2), float) + bad
+        nadabscf = np.zeros((dx, dy, maxnadabscomp + 1), float) + bad
+        nadabsvel = np.zeros((dx, dy, maxnadabscomp + 1), float) + bad
+        errnadabsvel = np.zeros((dx, dy, maxnadabscomp + 1, 2), float) + bad
+        nademvel = np.zeros((dx, dy, maxnademcomp + 1), float) + bad
+        errnademvel = np.zeros((dx, dy, maxnademcomp + 1), float) + bad
+        nadabssig = np.zeros((dx, dy, maxnadabscomp + 1), float) + bad
+        errnadabssig = np.zeros((dx, dy, maxnadabscomp + 1, 2), float) + bad
+        nademsig = np.zeros((dx, dy, maxnademcomp + 1), float) + bad
+        errnademsig = np.zeros((dx, dy, maxnademcomp + 1), float) + bad
+        nadabsv98 = np.zeros((dx, dy, maxnadabscomp + 1), float) + bad
+        #errnadabsv98 = dblarr(dx,dy,maxnadabscomp+1,2)+bad
+        nademv98 = np.zeros((dx, dy, maxnademcomp + 1), float) + bad
+        #errnademv98 = dblarr(dx,dy,maxnademcomp+1,2)+bad
+        nadabsnh = np.zeros((dx, dy), float) + bad
+        #llnadabsnh = bytarr(dx,dy)
+        llnadabsnh = np.array(bytearray(dx * dy), dtype=np.byte)
+        llnadabsnh.shape(dx, dy)
+        
+        errnadabsnh = np.zeros((dx, dy, 2), float) + bad
+        nadabslnnai = np.zeros((dx,dy), float) + bad
+        
+        llnadabslnnai = np.array(bytearray(dx * dy), dtype=np.byte)
+        llnadabslnnai.shape(dx, dy)
+        
+        errnadabslnnai = np.zeros((dx, dy, 2), float) + bad
+        nadabsnhcf = np.zeros((dx, dy), float) + bad
+        errnadabsnhcf = np.zeros((dx, dy, 2), float) + bad
+        nadabscnhcf = np.zeros((dx, dy, maxnadabscomp + 1), float) + bad
+        errnadabscnhcf = np.zeros((dx, dy, maxnadabscomp + 1, 2), float) + bad
+        nadabsncomp = np.zeros((dx, dy), dtype = int) + bad
+        nademncomp = np.zeros((dx,dy), dtype = int) + bad
+        for i in range (0, dx - 1):
+            for j in range (0, dy - 1):
+                igd = np.where(nadfit.waveabs[i, j, :] != bad and \
+                        nadfit.waveabs[i, j, :] != 0)
+                ctgd = len(igd)
+                if ctgd > 0:
+                    tmpcftau=nadfit.cf[i,j,igd] * nadfit.tau[i,j,igd]
+                    tmpcf=nadfit.cf[i,j,igd]
+                    tmptau=nadfit.tau[i,j,igd]
+                    tmpcftauerr = nadfit.cferr[i,j,igd,:]
+                    tmpltauerrlo = nadfit.tauerr[i,j,igd,0]     #errors are in log(tau) space
+                    tmpltauerrhi = nadfit.tauerr[i,j,igd,1]     #errors are in log(tau) space
+                    tmpwaveabs = nadfit.waveabs[i,j,igd]
+                    tmpwaveabserr = nadfit.waveabserr[i,j,igd,:]
+                    tmpsigabs=nadfit.sigmaabs[i,j,igd]
+                    tmpsigabserr = nadfit.sigmaabserr[i,j,igd,:]
+                    ineg = np.where(tmpcftau[0,0,igd] > 0.0 and \
+                            tmpcftau[0,0,igd] < tmpcftauerr[0,0,igd,0])
+                    ctneg = len(ineg)
+                    if ctneg > 0: tmpcftau[0,0,igd,0] = 0.0
+                    nnai = sum(tmptau * nadfit.sigmaabs[i,j,igd]) / \
+                            (1.497 - 15 / np.sqrt(2.0) * nadlinelist['NaD1'] * 0.3180)
+                    nadabslnnai[i,j] = math.log10(nnai)
+                    nnaicf = sum(tmpcftau*nadfit.sigmaabs[i,j,igd] * \
+                        nadfit.cf[i,j,igd]) / \
+                        (1.497 - 15 / np.sqrt(2.0) * nadlinelist['NaD1'] * 0.3180)
+                    tmptauerrlo = tmptau - 10.0 ^ (math.log10(tmptau) - tmpltauerrlo)
+                    tmptauerrhi = 10.0 ^ (math.log10(tmptau) + tmpltauerrhi) - tmptau
+                    #get saturated points
+                    isat = np.where(tmptau == taumax)
+                    ctsat = len(isat)
+                    if ctsat > 0: tmptauerrhi[isat] = 0.0
+                    nnaierrlo = \
+                        nnai * np.sqrt(sum((tmptauerrlo / tmptau) ^ 2.0 + \
+                                  (nadfit.sigmaabserr[i,j,igd,0]/ \
+                                   nadfit.sigmaabs[i,j,igd])^2.0))
+                    nnaierrhi = \
+                        nnai * np.sqrt(sum((tmptauerrhi / tmptau) ^ 2.0 + \
+                                  (nadfit.sigmaabserr[i,j,igd,1]/ \
+                                   nadfit.sigmaabs[i,j,igd])^2.0))
+                    nnaicferr = \
+                        [nnaicf, nnaicf] * np.sqrt(sum((nadfit.cferr[i,j,igd,:]/ \
+                        rebin(tmpcftau,ctgd,2))^2.0 + \
+                        (nadfit.sigmaabserr[i,j,igd,:]/ \
+                        rebin(nadfit.sigmaabs[i,j,igd],ctgd,2))^2.0,3))
+                    nadabsnh[i,j] = nnai/(1-ionfrac)/10^(naabund - nadep)
+                    nadabsnhcf[i,j] = nnaicf/(1-ionfrac)/10^(naabund - nadep)
+                    errnadabsnh[i,j,:] = [nnaierrlo,nnaierrhi]/ \
+                                    (1-ionfrac)/10^(naabund - nadep)
+                    errnadabsnhcf[i,j,:] = \
+                        nadabsnhcf[i,j] * np.sqrt((nnaicferr/nnaicf)^2.0 + \
+                                       (oneminusionfrac_relerr)^2.0)
+                    nadabsncomp[i,j] = ctgd
+                    if ctsat > 0:
+                        llnadabsnh[i,j] = bytes(1)
+                        errnadabsnh[i,j,1] = 0.0
+                        llnadabslnnai[i,j] = bytes(1)
+                        errnadabslnnai[i,j,1] = 0.0
+               
+                '''
+;           Sort absorption line wavelengths. In output arrays,
+;           first element of third dimension holds data for spaxels with only
+;           1 component. Next elements hold velocities for spaxels with more than
+;           1 comp, in order of increasing blueshift. Formula for computing error
+;           in velocity results from computing derivative in Wolfram Alpha w.r.t.
+;           lambda and rearranging on paper.
+                '''
+                if ctgd == 1:
+                    '''
+;              Set low sigma error equal to best-fit minus 5 km/s 
+;              (unlikely that it's actually lower than this!) 
+;              if low is greater than best-fit value
+                    '''
+                    
+                    if tmpsigabs < tmpsigabserr[0]: tmpsigabserr[0] = tmpsigabs-5.0
+                    errnadabslnnai[i,j,0] = \
+                        np.sqrt(tmpltauerrlo^2.0 + \
+                       (math.log10(tmpsigabs)-math.log10(tmpsigabs-tmpsigabserr[0]))^2.0)
+                    errnadabslnnai[i,j,1] = \
+                        np.sqrt(tmpltauerrhi^2.0 + \
+                       (math.log10(tmpsigabs+tmpsigabserr[1])-math.log10(tmpsigabs))^2.0)
+                    nadabscnhcf[i,j,0] = nadabsnhcf[i,j]
+                    errnadabscnhcf[i,j,0,:]=errnadabsnhcf[i,j,:]
+                    zdiff = \
+                        tmpwaveabs/(nadlinelist['NaD1']*(1.0 + initdat['zsys_gas'])) - 1.0
+                    nadabsvel[i,j,0] = c_kms * ((zdiff+1.0)^2.0 - 1.0) / \
+                                          ((zdiff+1.0)^2.0 + 1.0)
+                    errnadabsvel[i,j,0,:] = \
+                        c_kms * (4.0/(nadlinelist['NaD1']*(1.0 + initdat['zsys_gas']))* \
+                           ([zdiff,zdiff]+1.0)/(([zdiff,zdiff]+1.0)^2.0 + 1.0)^2.0) * \
+                           tmpwaveabserr
+                    nadabssig[i,j,0] = tmpsigabs
+                    errnadabssig[i,j,0,:] = tmpsigabserr
+                    nadabsv98[i,j,0] = nadabsvel[i,j,0]-2.0*nadabssig[i,j,0]
+                    #errnadabsv98[i,j,0] = $
+                    #sqrt(errnadabsvel[i,j,0]^2d + 4d*errnadabssig[i,j,0]^2d)
+                    nadabscftau[i,j,0] = tmpcftau
+                    errnadabscftau[i,j,0,""] = tmpcftauerr
+                    nadabstau[i,j,0] = tmptau
+                    nadabscf[i,j,0] = tmpcf
+                    errnadabstau[i,j,0,:] = [tmptauerrlo,tmptauerrhi]
+                elif ctgd > 1:
+                    errnadabslnnai[i,j,0] = 0.0
+                    errnadabslnnai[i,j,1] = 0.0
+                    for k in range (0, ctgd-1):
+                        if tmpsigabs[0,0,k] < tmpsigabserr[0,0,k,0]:
+                            tmpsigabserr[0,0,k,0] = tmpsigabs[0,0,k] - 5.0
+                        errnadabslnnai[i,j,0] += \
+                            tmpltauerrlo[0,0,k]^2.0 + \
+                            (math.log10(tmpsigabs[0,0,k])- \
+                             math.log10(tmpsigabs[0,0,k]-tmpsigabserr[0,0,k,0]))^2.0
+                        errnadabslnnai[i,j,1] += \
+                            tmpltauerrhi[0,0,k]^2.0 + \
+                            (math.log10(tmpsigabs[0,0,k]+tmpsigabserr[0,0,k,1])- \
+                             math.log10(tmpsigabs[0,0,k]))^2.0
+                    errnadabslnnai[i,j,:] = np.sqrt(errnadabslnnai[i,j,:])
+                    sortgd = np.argsort(tmpwaveabs)
+                    #nnai = reverse(tmptau[sortgd]*tmpsigabs[sortgd]) / $
+                        #(1.497d-15/sqrt(2d)*nadlinelist['NaD1']*0.3180d)
+                    
+                    nnaicf = (tmpcftau[sortgd]*tmpsigabs[sortgd])[::-1] / \
+                        (1.497-15/np.sqrt(2.0)*nadlinelist['NaD1']*0.3180)
+                    #nadabscnh[i,j,1:ctgd] = nnai/(1-ionfrac)/10^(naabund - nadep)
+                    nadabscnhcf[i,j,1:ctgd] = nnaicf/(1-ionfrac)/10^(naabund - nadep) #TODO
+                    '''
+;               nnaierrlo = $
+;                  nnai*sqrt(reverse((tmptauerrlo[sortgd]/tmptau[sortgd])^2d + $
+;                                    (tmpsigabserr[sortgd]/tmpsigabs[sortgd])^2d))
+;               nnaierrhi = $
+;                  nnai*sqrt(reverse((tmptauerrhi[sortgd]/tmptau[sortgd])^2d + $
+;                                    (tmpsigabserr[sortgd]/tmpsigabs[sortgd])^2d))
+                    '''
+                    nnaicferr = \
+                        rebin(nnaicf,1,1,ctgd,2) * \
+                        np.sqrt(((tmpcftauerr[0,0,sortgd,:]/ \
+                        rebin(tmpcftau[sortgd],1,1,ctgd,2))^2.0 + \
+                        (tmpsigabserr[0,0,sortgd,:]/ \
+                        rebin(tmpsigabs[sortgd],1,1,ctgd,2))^2.0,3)[::-1])
+                    '''
+;               nnaicferrhi = $
+;                  nnaicf*sqrt(reverse((tmpcftauerrhi[sortgd]/tmpcftau[sortgd])^2d + $
+;                                    (tmpsigabserr[sortgd]/tmpsigabs[sortgd])^2d))
+;               errnadabscnh[i,j,1:ctgd,0] = nnaierrlo / $
+;                                            (1-ionfrac)/10^(naabund - nadep)
+;               errnadabscnh[i,j,1:ctgd,1] = nnaierrhi / $
+;                                            (1-ionfrac)/10^(naabund - nadep)
+;               errnadabscnhcf[i,j,1:ctgd,*] = nnaicferr / $
+;                  (1-ionfrac)/10^(naabund - nadep)
+                    '''
+                    errnadabscnhcf[i,j,1:ctgd,:] = \
+                        rebin(nadabscnhcf[i,j,1:ctgd],1,1,ctgd,2)* \
+                        np.sqrt((nnaicferr/rebin(nnaicf,1,1,ctgd,2))^2.0 + \
+                        (rebin(oneminusionfrac_relerr,1,1,ctgd,2))^2.0)
+                    zdiff = (tmpwaveabs[sortgd])[::-1]/ \
+                       (nadlinelist['NaD1']*(1.0 + initdat['zsys_gas'])) - 1.0
+                    nadabsvel[i,j,1:ctgd] = c_kms * ((zdiff+1.0)^2.0 - 1.0) / \
+                        ((zdiff+1.0)^2.0 + 1.0)
+                    errnadabsvel[i,j,1:ctgd,:] = \
+                        c_kms * (4.0/(nadlinelist['NaD1']*(1.0 + initdat['zsys_gas']))* \
+                           (rebin(zdiff,1,1,ctgd,2) + 1.0)/ \
+                           ((rebin(zdiff,1,1,ctgd,2)+1.0)^2.0 + 1.0)^2.0) * \
+                           (tmpwaveabserr[0,0,sortgd,:],3)[::-1]
+                    nadabssig[i,j,1:ctgd] = (tmpsigabs[sortgd])[::-1]
+                    errnadabssig[i,j,1:ctgd,:] = (tmpsigabserr[0,0,sortgd,:],3)[::-1]
+                    nadabsv98[i,j,1:ctgd] = nadabsvel[i,j,1:ctgd]- \
+                                       2.0*nadabssig[i,j,1:ctgd]
+                    '''
+;               errnadabsv98[i,j,1:ctgd] = $
+;                  sqrt(errnadabsvel[i,j,1:ctgd]^2d + $
+;                  4d*errnadabssig[i,j,1:ctgd]^2d)
+                    '''
+                    nadabscftau[i,j,1:ctgd] = (tmpcftau[sortgd])[::-1]
+                    errnadabscftau[i,j,1:ctgd,:] = (tmpcftauerr[0,0,sortgd,:],3)[::-1]
+                    nadabstau[i,j,1:ctgd] = (tmptau[sortgd])[::-1]
+                    errnadabstau[i,j,1:ctgd,0] = (tmptauerrlo[sortgd])[::-1]
+                    errnadabstau[i,j,1:ctgd,1] = (tmptauerrhi[sortgd])[::-1]
+                    nadabscf[i,j,1:ctgd] = (tmpcf[sortgd])[::-1]
+            
+                '''
+;           Sort emission line wavelengths. In output velocity array,
+;           first element of third dimension holds data for spaxels with only
+;           1 component. Next elements hold velocities for spaxels with more than
+;           1 comp, in order of increasing redshift.
+                '''
+                igd = np.where(nadfit.waveem[i,j,:] != bad and 
+                        nadfit.waveem[i,j,:] != 0)
+                ctgd = len(igd)
+                if ctgd > 0:
+                    nademncomp[i,j] = ctgd
+                    tmpwaveem = nadfit.waveem[i,j,igd]
+                    tmpwaveemerr = np.mean(nadfit.waveemerr[i,j,:,:]) #TODO: dim=4
+                    tmpwaveemerr = tmpwaveemerr[igd]
+                    tmpsigem = nadfit.sigmaem[i,j,igd]
+                    tmpsigemerr = np.mean(nadfit.sigmaemerr[i,j,:,:])#dim=4
+                    tmpsigemerr = tmpsigemerr[igd]
+            
+                if ctgd == 1:
+                    zdiff = tmpwaveem/ \
+                        (nadlinelist['NaD1']*(1.0 + initdat['zsys_gas'])) - 1.0
+                    nademvel[i,j,0] = c_kms * ((zdiff+1.0)^2.0 - 1.0) / \
+                        ((zdiff+1.0)^2.0 + 1.0)
+                    errnademvel[i,j,0] = \
+                        c_kms * (4.0/(nadlinelist['NaD1']*(1.0 + initdat['zsys_gas']))* \
+                        (zdiff+1.0)/((zdiff+1.0)^2.0 + 1.0)^2.0) * tmpwaveemerr
+                    nademsig[i,j,0] = tmpsigem
+                    errnadabssig[i,j,0] = tmpsigemerr
+                    nademv98[i,j,0] = nademvel[i,j,0]+2.0*nademsig[i,j,0]
+                    #errnademv98[i,j,0] = $
+                        #sqrt(errnademvel[i,j,0]^2d + 4d*errnademsig[i,j,0]^2d)
+                elif ctgd > 1:
+                    sortgd = np.argsort(tmpwaveem)
+                    zdiff = tmpwaveem[sortgd]/ \
+                        (nadlinelist['NaD1']*(1.0 + initdat['zsys_gas'])) - 1.0
+                    nademvel[i,j,1:ctgd] = c_kms * ((zdiff+1.0)^2.0 - 1.0) / \
+                        ((zdiff+1.0)^2.0 + 1.0)               
+                    errnademvel[i,j,1:ctgd] = \
+                        c_kms * (4.0/(nadlinelist['NaD1']*(1.0 + initdat['zsys_gas']))* \
+                        (zdiff+1.0)/((zdiff+1.0)^2.0 + 1.0)^2.0) * \
+                        tmpwaveemerr[sortgd]
+                    nademsig[i,j,1:ctgd] = tmpsigem[sortgd]
+                    errnademsig[i,j,1:ctgd] = tmpsigemerr[sortgd]
+                    nademv98[i,j,1:ctgd] = nademvel[i,j,1:ctgd]+2.0*nademsig[i,j,1:ctgd]
+                    '''
+;               errnademv98[i,j,1:ctgd] = $
+;                  sqrt(errnademvel[i,j,1:ctgd]^2d + $
+;                  4d*errnademsig[i,j,1:ctgd]^2d)                 
+                    '''    
+
+        #Parse actual numbers of NaD components
+        ionecomp = np.where(nadabsncomp == 1)
+        ctonecomp = len(ionecomp)
+        if ctonecomp > 0: donadabsonecomp = bytes(1) 
+        else: donadabsonecomp = bytes(0)      
+        imulticomp = np.where(nadabsncomp > 1 and nadabsncomp != bad)
+        ctmulticomp = len(imulticomp)
+        if ctmulticomp > 0: donadabsmulticomp = bytes(1) 
+        else: donadabsmulticomp = bytes(0)
+        igd_tmp = np.where(nadabsncomp != bad)
+        ctgd_tmp = len(igd_tmp)
+        if ctgd_tmp > 0: maxnadabsncomp_act = np.max(nadabsncomp[igd_tmp])
+        else: maxnadabsncomp_act = 0
+
+        ionecomp = np.where(nademncomp == 1)
+        ctonecomp = len(ionecomp)
+        if ctonecomp > 0: donademonecomp = bytes(1) 
+        else: donademonecomp = bytes(0)   
+        imulticomp = np.where(nademncomp > 1 and nademncomp != bad)
+        ctmulticomp = len(imulticomp)
+        if ctmulticomp > 0: donademmulticomp = bytes(1) 
+        else: donademmulticomp = bytes(0)     
+        igd_tmp = np.where(nademncomp != bad)
+        ctgd_tmp = len(igd_tmp)
+        if ctgd_tmp > 0: maxnademncomp_act = np.max(nademncomp[igd_tmp])
+        else: maxnademncomp_act = 0
+
+        #Absorption lines: Cumulative velocity distribution functions
+        nadabscvdf = \
+            cmpcvdf_abs(nadfit.waveabs, #TODO
+                          np.mean(nadfit.waveabserr), #TODO: dim=4
+                          nadfit.sigmaabs,
+                          np.mean(nadfit.sigmaabserr), #dim=4
+                          nadfit.tau,
+                          np.mean(nadfit.tauerr), #dim=4
+                          initnad['maxncomp'], nadlinelist['NaD1'],
+                          initdat['zsys_gas'])
+        nadabscvdfvals = cmpcvdfvals_abs(nadabscvdf)
+
+        #Emission lines: Cumulative velocity distribution functions
+        nademcvdf = \
+            cmpcvdf_abs(nadfit.waveem,
+                          np.mean(nadfit.waveemerr), #dim=4
+                          nadfit.sigmaem,
+                          np.mean(nadfit.sigmaemerr), #dim=4
+                          nadfit.flux,
+                          np.mean(nadfit.fluxerr), #dim=4
+                          initnad['maxncomp'], nadlinelist['NaD1'],
+                          initdat['zsys_gas'])
+        nademcvdfvals = cmpcvdfvals_abs(nademcvdf)
+
+
+    else:
+        nadabsvel = bytes(0)
+        nadabsv98 = bytes(0)
+        ibd_nadabs_fitweq = bytes(0)
+        igd_nadabs_fitweq = bytes(0)
+
+    #Compass rose
+    angarr_rad = initdat['positionangle']* math.pi/180.0
+    sinangarr = np.sin(angarr_rad)
+    cosangarr = np.cos(angarr_rad)
+    #starting point and length of compass rose normalized to plot panel
+    xarr0_norm = 0.95
+    yarr0_norm = 0.05
+    rarr_norm = 0.2
+    rlaboff_norm = 0.05
+    laboff_norm = 0.0
+    carr = 'White'
+    
+    '''
+;  Coordinates in kpc for arrow coordinates:
+;  Element 1: starting point
+;  2: end of N arrow
+;  3: end of E arrow
+;  4: N label
+;  5: E label
+    '''
+    
+    xarr_kpc = np.zeros(5, float)
+    yarr_kpc = np.zeros(5, float)
+    #average panel dimension
+    pdim = ((xran_kpc[1]-xran_kpc[0]) + (yran_kpc[1]-yran_kpc[0]))/2.0
+    xarr_kpc[0] = xarr0_norm * (xran_kpc[1]-xran_kpc[0]) + xran_kpc[0]
+    xarr_kpc[1] = xarr_kpc[0] + rarr_norm*pdim*sinangarr
+    xarr_kpc[2] = xarr_kpc[0] - rarr_norm*pdim*cosangarr
+    xarr_kpc[3] = xarr_kpc[0] + (rarr_norm+rlaboff_norm)*pdim*sinangarr
+    xarr_kpc[4] = xarr_kpc[0] - (rarr_norm+rlaboff_norm)*pdim*cosangarr
+    yarr_kpc[0] = yarr0_norm * (yran_kpc[1]-yran_kpc[0]) + yran_kpc[0]
+    yarr_kpc[1] = yarr_kpc[0] + rarr_norm*pdim*cosangarr
+    yarr_kpc[2] = yarr_kpc[0] + rarr_norm*pdim*sinangarr
+    yarr_kpc[3] = yarr_kpc[0] + (rarr_norm+rlaboff_norm)*pdim*cosangarr
+    yarr_kpc[4] = yarr_kpc[0] + (rarr_norm+rlaboff_norm)*pdim*sinangarr
+
+    minyarr_kpc = np.min(yarr_kpc)
+    if minyarr_kpc < yran_kpc[0]: yarr_kpc -= minyarr_kpc - yran_kpc[0]
+    maxxarr_kpc = np.max(xarr_kpc)
+    if maxxarr_kpc > xran_kpc[1]: xarr_kpc -= maxxarr_kpc - xran_kpc[1]
+    
+    #Compute coordinates for disk axis lines
+    diskaxes_endpoints = bytes(0)
+    if 'plotdiskaxes' in initmaps:
+        diskaxes_endpoints = np.zeros((2,2,2), float)
+        for i in range (0, 1):
+            halflength=initmaps['plotdiskaxes']['length'][i]/2.0
+            sinangle_tmp = np.sin(initmaps['plotdiskaxes']['angle'][i]*math.pi/180.0)
+            cosangle_tmp = np.cos(initmaps['plotdiskaxes']['angle'][i]*math.pi/180.0)
+            xends = initmaps['plotdiskaxes']['xcenter'][i]+[halflength*sinangle_tmp, \
+                -halflength*sinangle_tmp]
+            yends = initmaps['plotdiskaxes']['ycenter'][i]+[-halflength*cosangle_tmp, \
+                 halflength*cosangle_tmp]
+            diskaxes_endpoints[:, :, i] = [[xends],[yends]]
+ 

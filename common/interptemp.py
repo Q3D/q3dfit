@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed Dec 16 13:54:17 2020
-
 @author: drupke
 """
 
@@ -81,10 +80,11 @@ def interptemp(spec_lam, temp_lam, template):
     if ntemp !=1:
         for i in range(ntemp - 1):
             interpfunc = \
-                interpolate.interp1d(temp_lam, template[:,i], kind='cubic')
+                interpolate.interp1d(temp_lam, template[:,i], kind='linear')
             new_temp[:, i] = interpfunc(spec_lam)
     else:
         interpfunc = \
-            interpolate.interp1d(temp_lam, template, kind='cubic')
+            interpolate.interp1d(temp_lam, template, kind='linear')
         new_temp = interpfunc(spec_lam)
     return new_temp
+    

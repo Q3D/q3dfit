@@ -71,6 +71,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
     # pdb.set_trace()
     i = colarr[ispax]  # colind, rowind]
     j = rowarr[ispax]  # colind, rowind]
+
     print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]',
           file=logfile)
 
@@ -82,6 +83,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
         flux = cube.dat[i, j, :]
         err = abs(cube.var[i, j, :])**0.5
         dq = cube.dq[i, j, :]
+
     errmax = max(err)
 
     if initdat.__contains__('vormap'):
@@ -109,12 +111,12 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                 (flux != np.nan).any())
     if somedata:
 
+        ncomp = dict()
         if 'noemlinfit' not in initdat:
 
             # Extract # of components specific to this spaxel and
             # write as dict
             # Each dict key (line) will have one value (# comp)
-            ncomp = dict()
             for line in initdat['lines']:
                 if oned:
                     ncomp[line] = initdat['ncomp'][line][i]

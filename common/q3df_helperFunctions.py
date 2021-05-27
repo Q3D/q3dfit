@@ -102,11 +102,21 @@ def __get_CUBE(initdat, oned, quiet, logfile=None):
         from sys import stdout
         logfile = stdout
     if initdat.__contains__('argsreadcube'):
-        cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+        if initdat.__contains__('waveext'):
+            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+                    oned=oned, quiet=quiet, varext=varext, vormap=vormap,
+                    logfile=logfile, waveext=initdat['waveext'], **initdat['argsreadcube'])        
+        else:
+            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
                     oned=oned, quiet=quiet, varext=varext, vormap=vormap,
                     logfile=logfile, **initdat['argsreadcube'])
     else:
-        cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+        if initdat.__contains__('waveext'):
+            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+                    oned=oned, quiet=quiet, varext=varext, vormap=vormap,
+                    logfile=logfile, waveext=initdat['waveext'])
+        else:
+            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
                     oned=oned, quiet=quiet, varext=varext, vormap=vormap,
                     logfile=logfile)
     return cube, vormap
@@ -173,13 +183,6 @@ def execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, oned,
                     onefit, quiet, logfile=None):
     from q3dfit.common.fitloop import fitloop
     for ispax in range(0, nspax):
-        # if ispax == 0 and logloop is not None:
-        # from os import remove
-        # delete log file, if it exists
-        # try:
-        #     remove(initdat['logfile'])
-        # except FileNotFoundError:
-        #     pass
         fitloop(ispax, colarr, rowarr, cube, initdat, linelist,
                 oned, onefit, quiet, logfile=logfile)
 
@@ -189,6 +192,8 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
                  quiet=True):
     import time
     from sys import path
+    import copy
+    import numpy as np
     # add common subdirectory to Python PATH for ease of importing
     path.append("common/")
     starttime = time.time()
@@ -205,9 +210,12 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
         cols = __get_voronoi(cols, rows, vormap)
         rows = 1
     nspax, colarr, rowarr = __get_spaxels(cube, cols, rows)
+
     # execute FITLOOP
+
     execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, oned,
                     onefit, quiet, logfile=logfile)
+
     if logfile is None:
         from sys import stdout
         logtmp = stdout

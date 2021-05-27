@@ -134,6 +134,8 @@ from q3dfit.common.airtovac import airtovac
 from q3dfit.common.masklin import masklin
 from q3dfit.common import interptemp
 from scipy.interpolate import interp1d
+from q3dfit.common.questfit import questfit
+from q3dfit.common.plot_quest import plot_quest
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
@@ -226,7 +228,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     if noemlinfit == b'1' and 'doemlinmask' not in initdat:
         noemlinmask = b'1'
 
-    if bool(int(istemp)):
+    if bool(int(istemp)) and initdat['fcncontfit']!='questfit':
 
         # Get stellar templates
         startempfile = initdat['startempfile']
@@ -261,6 +263,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Pick out regions to fit
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
     flux_raw = flux
     err_raw = err
@@ -411,6 +414,10 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             module = import_module('q3dfit.common.' + initdat['fcncontfit'])
             fcncontfit = getattr(module, initdat['fcncontfit'])
 
+            if initdat['fcncontfit']=='questfit':
+              istemp=None
+              gdlambda = gdlambda*1e-4  # angstrom
+
             if istemp:
                 templatelambdaz_tmp = templatelambdaz
                 templateflux_tmp = template['flux']
@@ -426,10 +433,15 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     argscontfit_use['index_log'] = ct_indx_log
                 if 'usecolrow' in initdat['argscontfit'] and col and row:
                     argscontfit_use['colrow'] = [col, row]
+
                 continuum, ct_coeff, zstar = \
                     fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
+                if initdat['plotMIR']:    # Test plot here - need to transfer this to q3dfa later
+                  print('Plotting')
+                  plot_quest(gdlambda[ct_indx], gdflux[ct_indx], continuum[ct_indx], ct_coeff, initdat)
+
                 ppxf_sigma = 0.
                 if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
                     'refit' in initdat['argscontfit']:
@@ -499,6 +511,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             ppxf_sigma = 0.
             ppxf_sigma_err = 0.
 
+
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Option to tweak cont. fit with local polynomial fits
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -558,6 +571,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     fit_time1 = time.time()
     if not quiet:
         print('{:s}{:0.1f}{:s}'.format('FITSPEC: Continuum fit took ',fit_time1-fit_time0,' s.'))
+
 
     #
     # Fit emission lines
@@ -705,6 +719,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                                            fit_time2-fit_time1,' s.'))
 
 
+
 #;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # Output structure
 #;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -752,6 +767,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               'perror_resid': perror_resid,  # error from fit residual
 #              'covar': covar,
               'siglim': siglim_gas}
+
+
     # finish:
     return outstr
 

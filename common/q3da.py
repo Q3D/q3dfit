@@ -569,8 +569,16 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                         qsotemplate = \
                             np.load(initdat['argscontfit']['qsoxdr'],
                                     allow_pickle='TRUE').item()
-                        qsowave = qsotemplate['wave']
-                        qsoflux_full = qsotemplate['flux']
+                        try:
+                            qsowave = qsotemplate['wave']
+                            qsoflux_full = qsotemplate['flux']
+                        except:
+                            qsotemplate = \
+                                np.load(initdat['argscontfit']['qsoxdr'],
+                                    allow_pickle='TRUE')
+                            qsowave = qsotemplate['wave'][0]
+                            qsoflux_full = qsotemplate['flux'][0]
+
                         # non zero could be uncessesary
     #                    iqsoflux = \
     #                        np.flatnonzero(np.where((

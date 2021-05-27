@@ -227,13 +227,18 @@ class CUBE:
                 self.wav0 = header[CRVAL] - (header[CRPIX] - 1) * header[CD]
                 self.wave = self.wav0 + np.arange(nw)*header[CD]
                 self.cdelt = header[CD]
-        self.crval = header[CRVAL]
-        self.crpix = header[CRPIX]
-        if CUNIT in header:
-            self.cunit = header[CUNIT]
-        BUNIT = 'BUNIT'
-        if BUNIT in header:
-            self.bunit = header[BUNIT]
+        try:
+            self.crval = header[CRVAL]
+            self.crpix = header[CRPIX]
+            if CUNIT in header:
+                self.cunit = header[CUNIT]
+            BUNIT = 'BUNIT'
+            if BUNIT in header:
+                self.bunit = header[BUNIT]
+        except Exception as e:
+            print(e)
+            print('... Continuing anyway ...')
+            pass
         if vormap:
             ncols = np.max(vormap)
             nrows = 1

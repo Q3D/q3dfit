@@ -132,9 +132,10 @@ class CUBE:
         hdu = fits.open(fp+infile, ignore_missing_end=True)
         #hdu.info()
         # fits extensions to be read
-        datext = kwargs.get('datext',1)
-        varext = kwargs.get('varext',2)
-        dqext =  kwargs.get('dqext',3)
+        datext = kwargs.get('datext',1) # data
+        varext = kwargs.get('varext',2) # inverse variance
+        dqext =  kwargs.get('dqext',3)  # DQ
+        wmapext = kwargs.get('wmapext',4) # WMAP
         error = kwargs.get('error',False)
         invvar = kwargs.get('invvar',False)
         linearize = kwargs.get('linearize',False)

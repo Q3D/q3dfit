@@ -1,6 +1,7 @@
 #%%writefile /Users/dwylezal/EmmyNoether_Science/Q3D/JWST_ERS_Planning/Software/q3dfit/init/pg1411.py
 # This is unique to the user, save file to /Your/Path/q3dfit/init/
 
+
 import os.path
 import numpy as np
 
@@ -24,46 +25,41 @@ def pg1411_and_Spitzer():
     # centrow = 14.002
     platescale = 0.3
     #fitrange = [4620,7450]
-    fitrange = np.array([5.422479152679443,29.980998992919922])*10000
+    fitrange = np.array([5.422479152679443,29.980998992919922])*10000  # angstrom
     
     #   These are unique to the user
     # volume = '/Users/dwylezal/EmmyNoether_Science/Q3D/JWST_ERS_Planning/Software/PG1411/'
     volume = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/PG1411/pg1411/'
     #volume = '/Users/Endeavour/Projects/Q3D_dev/pyfsfit'
     test_cube = '../test/test_questfit/IRAS21219m1757_dlw_qst_mock_cube.fits'
-
-    infile = test_cube#volume+gal+outstr+'.fits'
-    mapdir = volume+gal+'/'+outstr+'/'
-    outdir = volume+gal+'/'+outstr+'/'
+    infile = test_cube #volume+gal+outstr+'.fits'
+    #mapdir = volume+gal+'/'+outstr+'/'
+    #outdir = volume+gal+'/'+outstr+'/'
+    mapdir = '../test/test_questfit/'
+    outdir = mapdir
     qsotemplate = volume+gal+'qsotemplate.npy'
     stellartemplates =  \
         volume+gal+'hosttemplate.npy'
     logfile = outdir+gal+'_fitlog.txt'
     #batchfile = '/Users/dwylezal/ESO_Fellowship/JWST_ERS_Planning/Software/ifsfit-master/common/fitloop.pro'
     #batchdir = '/Users/dwylezal/ESO_Fellowship/JWST_ERS_Planning/Software/'
-    batchfile = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/IFSFIT/ifsfit/common/ifsf_fitloop.pro'
+    batchfile = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/IFSFIT/ifsfit/common/ifsf_fitloop.pro' 
     batchdir = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/IFSFIT/'
-    
+
     
     ### for our test object, pg1411, nothing needs to be changed here for now, make more flexible later
+
     
+    ### more MIR settings
     #   These are unique to the user
     #  Include Spitzer source (independently of PG1411 for now for testing purposes)
     global_extinction = True
     global_ice_model = 'ice_hc'
     global_ext_model = 'CHIAR06'
-    directory = 'test/test_questfit/'
-    MIRcffile = 'test/test_questfit/IRAS21219m1757_dlw_qst.cf'
-    config_file = questfit_readcf.readcf(MIRcffile)
-    MIRz=0.112
-    data_to_fit = np.load(directory+config_file['source'][0],allow_pickle=True)[0]
-    wave = data_to_fit['WAVE'].astype('float')
-    wave_min = np.where(wave>=float(config_file['source'][1]))[0][0]  # TO DO: Automise min/max wavelength
-    wave_max = np.where(wave>=float(config_file['source'][2]))[0][0]
-    
-    #wave = data_to_fit['WAVE'].astype('float')[wave_min:wave_max]
-    #flux = data_to_fit['FLUX'].astype('float')[wave_min:wave_max]
-    #weights = data_to_fit['stdev'].astype('float')[wave_min:wave_max]
+    directory = '../test/test_questfit/'
+    cffilename = '../test/test_questfit/IRAS21219m1757_dlw_qst.cf'
+    config_file = questfit_readcf.readcf(cffilename)
+    #MIRz=0.112    
 
 
 
@@ -150,7 +146,7 @@ def pg1411_and_Spitzer():
             'lines': lines,
             'linetie': linetie,
             'maxncomp': maxncomp,
-            'name': 'PG1411+442',
+            'name': 'IRAS21219m1757_dlw_qst', #'PG1411+442',
             'ncomp': ncomp,
             'mapdir': mapdir,
             'outdir': outdir,
@@ -165,7 +161,7 @@ def pg1411_and_Spitzer():
 #                              'ignore': ['[OI]6300', '[OI]6364',
 #                                         '[SII]6716', '[SII]6731']},
 
-            'argscontfit': {'config_file':MIRcffile,
+            'argscontfit': {'config_file':cffilename,
                             'global_ice_model':global_ice_model,
                             'global_ext_model':global_ext_model,
                             'models_dictionary':{},
@@ -201,20 +197,6 @@ def pg1411_and_Spitzer():
             'dqext': 3,
             'zerodq': True,
             'plotMIR': True,
-            
-            #'doMIRcontfit': False,
-            'MIRcffile': MIRcffile,
-            'infile_MIR': directory+config_file['source'][0].replace('.ideos','').split('.npy')[0]+'_mock_cube.fits',
-            'global_extinction': global_extinction,
-            'global_ice_model': global_ice_model,
-            'global_ext_model': global_ext_model,
-            'MIRz': MIRz,
-            #'MIRwave': wave,
-            #'MIRflux': flux,
-            #'MIRweights': weights,
-            'MIRwave_min_idx': wave_min,
-            'MIRwave_max_idx': wave_max,
-            'plotMIR': True
         }
 
     return(init)

@@ -146,6 +146,7 @@ class CUBE:
         self.datext = datext
         self.varext = varext
         self.dqext = dqext
+        self.wmapext = wmapext
         self.hdu = hdu
         self.phu = hdu[0]
         try:
@@ -165,8 +166,16 @@ class CUBE:
             self.dq = (hdu[dqext].data).T
         except:
             print('CUBE: Quality flag extension does not exist.', file=logfile)
+        try:
+            self.wmap = (hdu[wmapext].data).T
+        except:
+            print('CUBE: WMAP extension does not exist.', file=logfile)
+
+        # put all dq to good (0)
         if zerodq == True:
             self.dq = np.zeros(np.shape(self.data))
+
+        # reading wavelength from wavelength extention
         if waveext:
             self.wave = hdu[waveext].data
             self.crval = 0
@@ -255,6 +264,7 @@ class CUBE:
             var = vorvar
             dq = vordq
 
+        # linearize in the wavelength direction
         if linearize:
             waveold = copy.copy(self.wave)
             datold = copy.copy(self.dat)

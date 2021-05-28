@@ -438,7 +438,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
-                if initdat['plotMIR']:    # Test plot here - need to transfer this to q3dfa later
+                if 'plotMIR' in initdat:    # Test plot here - need to transfer this to q3dfa later
                   print('Plotting')
                   plot_quest(gdlambda[ct_indx], gdflux[ct_indx], continuum[ct_indx], ct_coeff, initdat)
 
@@ -515,7 +515,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Option to tweak cont. fit with local polynomial fits
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        if 'tweakcntfit' not in initdat:
+        if 'tweakcntfit' in initdat:
             continuum_pretweak=continuum
         # Arrays holding emission-line-masked data
             ct_lambda=gdlambda[ct_indx]

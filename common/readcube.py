@@ -241,7 +241,7 @@ class CUBE:
                 self.wav0 = header[CRVAL] - (header[CRPIX] - 1) * header[CD]
                 self.wave = self.wav0 + np.arange(nw)*header[CD]
                 self.cdelt = header[CD]
-<<<<<<< HEAD
+        ### updated with try and except by cbertemes
         try:
             self.crval = header[CRVAL]
             self.crpix = header[CRPIX]
@@ -254,7 +254,7 @@ class CUBE:
             print(e)
             print('... Continuing anyway ...')
             pass
-=======
+        ###
         if self.waveunit == 'um':
             self.wave = self.wave * 1e4 # change wavelength to A, for nirspec test temporarily
         try:
@@ -269,15 +269,7 @@ class CUBE:
             self.var = self.var / (convert_flux**2)
             self.err = self.err * convert_flux
     
-
-        self.crval = header[CRVAL]
-        self.crpix = header[CRPIX]
-        if CUNIT in header:
-            self.cunit = header[CUNIT]
-        BUNIT = 'BUNIT'
-        if BUNIT in header:
-            self.bunit = header[BUNIT]
->>>>>>> readcube-dev
+        
         if vormap:
             ncols = np.max(vormap)
             nrows = 1

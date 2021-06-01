@@ -170,7 +170,11 @@ class CUBE:
             self.wmap = (hdu[wmapext].data).T
         except:
             print('CUBE: WMAP extension does not exist.', file=logfile)
-
+        try:
+            self.waveunit = hdu[datext].header['CUNIT3']
+        except:
+            self.waveunit = None
+            print('CUBE: wavelength unit does not exist in the header of sci hdu.', file=logfile)
         # put all dq to good (0)
         if zerodq == True:
             self.dq = np.zeros(np.shape(self.data))
@@ -237,6 +241,14 @@ class CUBE:
                 self.wav0 = header[CRVAL] - (header[CRPIX] - 1) * header[CD]
                 self.wave = self.wav0 + np.arange(nw)*header[CD]
                 self.cdelt = header[CD]
+        if self.waveunit == 'um':
+            self.wave = self.wave * 1e4 # change wavelength to A, for nirspec test temporarily
+        try:
+            self.wave
+        except:
+            print('wavelength array not loaded successfully!', file=logfile)
+            breakpoint()
+
         self.crval = header[CRVAL]
         self.crpix = header[CRPIX]
         if CUNIT in header:

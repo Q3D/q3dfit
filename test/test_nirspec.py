@@ -10,21 +10,22 @@ from q3dfit.common import readcube
 # infits = volume + 'pg1411rb1.fits'
 # makeqsotemplate(infits, outpy, dataext=None, dqext=None, waveext=None)
 
-cube = readcube.CUBE(infile='/jwst0nb/lwz/jwst_q3d_data/NRS00001-QG-F100LP-G140H_comb_1234_g140h-f100lp_s3d.fits')
-plt.imshow(np.log10(cube.dat[:,:,2871]))
-plt.imshow(np.log10(cube.wmap[:,:,2871]))
 
-#ax = plt.axes(projection='3d')
-#ax.plot3d(np.log10(cube.dat))
-plt.show()
-breakpoint()
-
+#cube = readcube.CUBE(infile='/jwst0nb/lwz/jwst_q3d_data/NRS00001-QG-F100LP-G140H_comb_1234_g140h-f100lp_s3d.fits')
+#cube = readcube.CUBE(infile='/jwst0nb/lwz/jwst_q3d_data/det_image_seq1_MIRIFUSHORT_12SHORTexp1_s3d.fits')
+#plt.plot(cube.wave,cube.dat[17,21,:])
+#plt.show()
+#plt.imshow(np.log10(cube.dat[:,:,2871]))
+#plt.imshow(np.log10(cube.wmap[:,:,2871]))
 
 from q3dfit.common.q3df import q3df
-q3df('pg1411', cols=14, rows=11, quiet=False)
-
+q3df('nirtest', cols=20, rows=21, quiet=False)
 from q3dfit.common.q3da import q3da
-q3da('pg1411', cols=14, rows=11, quiet=False)
+q3da('nirtest', cols=20, rows=21, quiet=False)
+
+
+breakpoint()
+
 
 # Test creation of Gonzalez-Delgado templates
 # from q3dfit.common.gdtemp import gdtemp

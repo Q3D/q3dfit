@@ -28,3 +28,14 @@ Data "cube" is single spectrum of IRAS21219
 
 1. Run `./test/test_f21219mir.py`.
 2. Verify output plot in `./test/test_questfit/`.
+<<<<<<< HEAD
+=======
+
+
+## NIRSPEC simulation data in the hei box
+
+Data cube can be downloaded from the hei box (https://heibox.uni-heidelberg.de/library/06eb022c-6252-40ea-aaa9-88af6d7d876d/Q3D/Simulations/May_2021)
+
+1. Modify ./init/nirtest.py accordingly and prepare the qso template to use (using test_makeqsotemplate_nir.py for now)
+2. Run `./test/test_nirspec.py'
+>>>>>>> readcube-dev

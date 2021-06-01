@@ -35,4 +35,4 @@ Data "cube" is single spectrum of IRAS21219
 Data cube can be downloaded from the hei box (https://heibox.uni-heidelberg.de/library/06eb022c-6252-40ea-aaa9-88af6d7d876d/Q3D/Simulations/May_2021)
 
 1. Modify ./init/nirtest.py accordingly and prepare the qso template to use (using test_makeqsotemplate_nir.py for now)
-2. Run `./test/test_nirspec.py'
+2. Run ./test/test_nirspec.py

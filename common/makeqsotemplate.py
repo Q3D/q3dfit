@@ -1,5 +1,6 @@
 import numpy
 from q3dfit.common import readcube
+from matplotlib import pyplot as plt
 
 def makeqsotemplate(infits,outpy,dataext=None,dqext=None,waveext=None):
     '''Function defined to extract the quasar spectrum
@@ -47,7 +48,8 @@ def makeqsotemplate(infits,outpy,dataext=None,dqext=None,waveext=None):
 
     loc_max = numpy.where(white_light_image == white_light_image.max())
 
-
+    plt.plot(cube.wave,cube.dat[loc_max[0][0],loc_max[1][0]])
+    plt.show()
     qsotemplate = {'wave':cube.wave,'flux':cube.dat[loc_max[0][0],loc_max[1][0]],'dq':cube.dq[loc_max[0][0],loc_max[1][0]]}
 
 

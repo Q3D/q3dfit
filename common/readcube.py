@@ -119,7 +119,7 @@ class CUBE:
         warnings.filterwarnings("ignore")
         fp = kwargs.get('fp','')
         self.fp = fp
-        # self.cspeed = 299792.458
+        cspeed = 299792.458 *1e5 # cm/s
         infile=kwargs.get('infile','')
         self.infile = infile
         logfile = kwargs.get('logfile', stdout)
@@ -248,6 +248,13 @@ class CUBE:
         except:
             print('wavelength array not loaded successfully!', file=logfile)
             breakpoint()
+
+        # convert the flux unit to erg/s/cm^2/A/sr
+            convert_flux = 1e6*1e-23*cspeed/((self.wave*1e-8)**2)
+            self.dat = self.dat * convert_flux
+            self.var = self.var / (convert_flux**2)
+            self.err = self.err * convert_flux
+    
 
         self.crval = header[CRVAL]
         self.crpix = header[CRPIX]

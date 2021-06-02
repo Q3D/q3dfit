@@ -89,7 +89,7 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
             if (u=='Angstrom'): 
                 all_tables[i]['lines']=all_tables[i]['lines']*1.e-4
                 all_tables[i]['lines'].unit='micron'
-    if (waveunit=='Angstrom'):
+    else:
         for i,u in enumerate(all_units):
             if (u=='micron'): 
                 all_tables[i]['lines']=all_tables[i]['lines']*1.e4

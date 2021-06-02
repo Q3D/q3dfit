@@ -78,8 +78,9 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
     # handle them through this list, but the default is they are all in vacuum
     lines_DSNR=Table.read('../data/linelists/linelist_DSNR.tbl',format='ipac')
     lines_H2=Table.read('../data/linelists/linelist_H2.tbl',format='ipac')
-    all_tables=[lines_DSNR,lines_H2]
-    all_units=[lines_DSNR['lines'].unit,lines_H2['lines'].unit]
+    lines_MIRtest=Table.read('../data/linelists/linelist_MIRtest.tbl',format='ipac')
+    all_tables=[lines_DSNR,lines_H2,lines_MIRtest]
+    all_units=[lines_DSNR['lines'].unit,lines_H2['lines'].unit,lines_MIRtest['lines'].unit]
 
     # get everything on the user-requested units:
     if ((waveunit!='Angstrom') & (waveunit!='micron')):

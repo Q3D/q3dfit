@@ -602,6 +602,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     else:
                         peakinit[line] = np.zeros(initdat['maxncomp'])
 
+
         # Initial guesses for emission line widths
         if siginit_gas is None:
             siginit_gas = {k: None for k in initdat['lines']}
@@ -609,9 +610,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 siginit_gas[line] = \
                     np.zeros(initdat['maxncomp']) + siginit_gas_def
         if initdat['fcncontfit']=='questfit':
-          for el in siginit_gas.keys():   siginit_gas[el] *= 1e-4  # micron
+          for el in siginit_gas.keys():   siginit_gas[el][0] *= 1e-4  # micron
           siglim_gas *= 1e-4  # micron
-
 
         # Fill out parameter structure with initial guesses and constraints
         impModule = import_module('q3dfit.init.' + initdat['fcninitpar'])

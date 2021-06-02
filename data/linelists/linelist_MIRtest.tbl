@@ -1,0 +1,9 @@
+\ Created 2021 June 2 by C. Bertemes - these are just test lines for trying out MIR line fitting
+\ Wavelengths are in vacuum!
+|                    name|          lines|              linelab|
+|                    char|         double|                 char|
+|                        |       Angstrom|                     |
+|                    null|           null|                 null|
+             test-MIRLINE        168000.0               MIRLINE
+             [NeII]128130        128130.0          [Ne II] 12.8
+

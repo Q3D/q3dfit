@@ -1,7 +1,6 @@
-
 # Make quasar template
 # from q3dfit.common.makeqsotemplate import makeqsotemplate
-# volume = '/Volumes/fingolfin/ifs/gmos/cubes/pg1411/'
+# volume = '/Users/drupke/Box Sync/q3d/pg1411/'
 # outpy = volume + 'pg1411qsotemplate.npy'
 # infits = volume + 'pg1411rb1.fits'
 # makeqsotemplate(infits, outpy, dataext=None, dqext=None, waveext=None)

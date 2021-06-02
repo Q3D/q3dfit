@@ -119,7 +119,7 @@ class CUBE:
         warnings.filterwarnings("ignore")
         fp = kwargs.get('fp','')
         self.fp = fp
-        # self.cspeed = 299792.458
+        cspeed = 299792.458 *1e5 # cm/s
         infile=kwargs.get('infile','')
         self.infile = infile
         logfile = kwargs.get('logfile', stdout)
@@ -132,9 +132,10 @@ class CUBE:
         hdu = fits.open(fp+infile, ignore_missing_end=True)
         #hdu.info()
         # fits extensions to be read
-        datext = kwargs.get('datext',1)
-        varext = kwargs.get('varext',2)
-        dqext =  kwargs.get('dqext',3)
+        datext = kwargs.get('datext',1) # data
+        varext = kwargs.get('varext',2) # inverse variance
+        dqext =  kwargs.get('dqext',3)  # DQ
+        wmapext = kwargs.get('wmapext',4) # WMAP
         error = kwargs.get('error',False)
         invvar = kwargs.get('invvar',False)
         linearize = kwargs.get('linearize',False)
@@ -145,6 +146,7 @@ class CUBE:
         self.datext = datext
         self.varext = varext
         self.dqext = dqext
+        self.wmapext = wmapext
         self.hdu = hdu
         self.phu = hdu[0]
         try:
@@ -164,8 +166,20 @@ class CUBE:
             self.dq = (hdu[dqext].data).T
         except:
             print('CUBE: Quality flag extension does not exist.', file=logfile)
+        try:
+            self.wmap = (hdu[wmapext].data).T
+        except:
+            print('CUBE: WMAP extension does not exist.', file=logfile)
+        try:
+            self.waveunit = hdu[datext].header['CUNIT3']
+        except:
+            self.waveunit = None
+            print('CUBE: wavelength unit does not exist in the header of sci hdu.', file=logfile)
+        # put all dq to good (0)
         if zerodq == True:
             self.dq = np.zeros(np.shape(self.data))
+
+        # reading wavelength from wavelength extention
         if waveext:
             self.wave = hdu[waveext].data
             self.crval = 0
@@ -227,6 +241,7 @@ class CUBE:
                 self.wav0 = header[CRVAL] - (header[CRPIX] - 1) * header[CD]
                 self.wave = self.wav0 + np.arange(nw)*header[CD]
                 self.cdelt = header[CD]
+        ### updated with try and except by cbertemes
         try:
             self.crval = header[CRVAL]
             self.crpix = header[CRPIX]
@@ -239,6 +254,22 @@ class CUBE:
             print(e)
             print('... Continuing anyway ...')
             pass
+        ###
+        if self.waveunit == 'um':
+            self.wave = self.wave * 1e4 # change wavelength to A, for nirspec test temporarily
+        try:
+            self.wave
+        except:
+            print('wavelength array not loaded successfully!', file=logfile)
+            breakpoint()
+
+        # convert the flux unit to erg/s/cm^2/A/sr
+            convert_flux = 1e6*1e-23*cspeed/((self.wave*1e-8)**2)
+            self.dat = self.dat * convert_flux
+            self.var = self.var / (convert_flux**2)
+            self.err = self.err * convert_flux
+    
+        
         if vormap:
             ncols = np.max(vormap)
             nrows = 1
@@ -259,6 +290,7 @@ class CUBE:
             var = vorvar
             dq = vordq
 
+        # linearize in the wavelength direction
         if linearize:
             waveold = copy.copy(self.wave)
             datold = copy.copy(self.dat)

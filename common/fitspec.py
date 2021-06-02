@@ -416,7 +416,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
             if initdat['fcncontfit']=='questfit':
               istemp=None
-              gdlambda = gdlambda*1e-4  # angstrom
+              gdlambda = gdlambda*1e-4  # micron
 
             if istemp:
                 templatelambdaz_tmp = templatelambdaz
@@ -438,7 +438,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
-                if initdat['plotMIR']:    # Test plot here - need to transfer this to q3dfa later
+                if False: # initdat['plotMIR']:    # Test plot here - need to transfer this to q3dfa later
                   print('Plotting')
                   plot_quest(gdlambda[ct_indx], gdflux[ct_indx], continuum[ct_indx], ct_coeff, initdat)
 
@@ -481,7 +481,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             poly_mod = pp.apoly
             continuum_log = pp.bestfit
             add_poly_weights = pp.polyweights
-            #ct_coeff = pp.weights
+            ct_coeff = pp.weights
             ebv_star = pp.reddening
             sol = pp.sol
             error = pp.error
@@ -504,6 +504,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             # solerr *= np.sqrt(sol[6])
             # zstar_err = np.sqrt(np.power(zstar_err,2.) + np.power((solerr[0]/c),2.))
             # ppxf_sigma_err=solerr[1]
+            ppxf_sigma_err = 0. # for now; correct this later
+            ct_rchisq = 0.
 
         else:
             add_poly_weights = 0.
@@ -589,6 +591,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     fline = interp1d(gdlambda, gdflux_nocnt, kind='linear')
                     # Check that line wavelength is in data range
                     # Use first component as a proxy for all components
+                    if initdat['fcncontfit']=='questfit': listlinesz[line][0] *= 1e-4 # micron
                     if listlinesz[line][0] >= min(gdlambda) and \
                         listlinesz[line][0] <= max(gdlambda):
                         peakinit[line] = fline(listlinesz[line])
@@ -605,6 +608,10 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             for line in initdat['lines']:
                 siginit_gas[line] = \
                     np.zeros(initdat['maxncomp']) + siginit_gas_def
+        if initdat['fcncontfit']=='questfit':
+          for el in siginit_gas.keys():   siginit_gas[el] *= 1e-4  # micron
+          siglim_gas *= 1e-4  # micron
+
 
         # Fill out parameter structure with initial guesses and constraints
         impModule = import_module('q3dfit.init.' + initdat['fcninitpar'])
@@ -628,11 +635,17 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         if testsize == 0:
             raise Exception('Bad initial parameter guesses.')
 
+
         efitModule = import_module('q3dfit.common.'+fcnlinefit)
         elin_lmfit = getattr(efitModule, 'run_'+fcnlinefit)
         lmout, parout, specfit, perror = \
             elin_lmfit(gdlambda, gdflux_nocnt, gdweight_nocnt, parinfo=parinit,
                        maxiter=1000, quiet=quiet)
+
+        if 'plotMIR' in initdat.keys():    # Test plot here - need to transfer this to q3dfa later
+          print('Plotting')
+          from matplotlib import pyplot as plt
+          plot_quest(gdlambda, gdflux, continuum+specfit, ct_coeff, initdat, templ_mask=ct_indx, lines=[12.8], linespec=specfit)
 
         param = parout
         covar = lmout.covar

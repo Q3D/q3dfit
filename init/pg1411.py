@@ -47,7 +47,7 @@ def pg1411():
     # nlines = len(lines)
 
     # Max no. of components.
-    maxncomp = 1
+    maxncomp = 2
 
     # Initialize line ties, n_comps, z_inits, and sig_inits.
     linetie = dict()

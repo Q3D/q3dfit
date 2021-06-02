@@ -7,6 +7,7 @@ The resulting mock cube can then be fed to readcube.py .
 
 import numpy as np
 from astropy.io import fits
+import pandas as pd
 import pdb
 
 
@@ -16,6 +17,13 @@ data = np.load(file_in, allow_pickle=True)
 
 file_in = path_in + 'IRAS21219m1757_dlw_qst.npy'
 data = np.load(file_in, allow_pickle=True)[0]
+
+
+file_in = path_in+'22128896.csv'
+#file_in = path_in+'15084288.csv'
+data2 = pd.read_csv(file_in)
+data = data2.rename(columns={"wavelength": "WAVE", "flux_jy": "FLUX", "flux_jy_err": "EFLUX"}).to_records()
+np.save(file_in.replace('.csv', '.npy'), data)
 
 
 def From_1D_to_mock3D(data, savename=''):
@@ -74,5 +82,9 @@ def From_1D_to_mock3D(data, savename=''):
 	thdulist.writeto(savename, overwrite=True)
 
 
-From_1D_to_mock3D(data, savename=file_in.replace('.ideos','').split('.npy')[0]+'_mock_cube.fits')
+savename = file_in.replace('.ideos','').split('.npy')[0]+'_mock_cube.fits'
+if '.csv' in file_in:
+	savename = file_in.split('.csv')[0]+'_mock_cube.fits'
+
+From_1D_to_mock3D(data, savename=savename)
 

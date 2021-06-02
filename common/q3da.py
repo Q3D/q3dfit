@@ -54,9 +54,9 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
     bad = 1.0 * 10**99
 
 # reads initdat from initialization file ie pg1411 (initproc is a string)
-    module = importlib.import_module('q3dfit.init.' + initproc)
-    fcninitproc = getattr(module, initproc)
-    initdat = fcninitproc()
+    #module = importlib.import_module('q3dfit.init.' + initproc)
+    #fcninitproc = getattr(module, initproc)
+    initdat = initproc
     #if 'donad' in initdat: do later
 
     if 'noemlinfit' not in initdat:

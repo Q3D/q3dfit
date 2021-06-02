@@ -67,7 +67,7 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
     History:
     2020jun24 Created by Nadia Zakamska to work with two tables, one in air, one
         in vacuum, bringing them on the user-specified wavelength scale
-    2021may31 Updated by NLZ to include new line tables, print warning if Morton
+    2021jun1 Updated by NLZ to include new line tables, print warning if Morton
         conversion from vacuum to air is not applicable    
         
     """
@@ -89,17 +89,13 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
             if (u=='Angstrom'): 
                 all_tables[i]['lines']=all_tables[i]['lines']*1.e-4
                 all_tables[i]['lines'].unit='micron'
-        # now everything is on the same units, let's stack all the tables:
-        all_lines=vstack(all_tables)
-        all_lines['lines'].unit='micron'
     if (waveunit=='Angstrom'):
         for i,u in enumerate(all_units):
             if (u=='micron'): 
                 all_tables[i]['lines']=all_tables[i]['lines']*1.e4
                 all_tables[i]['lines'].unit='Angstrom'
-        # now everything is on the same units, let's stack all the tables:
-        all_lines=vstack(all_tables)
-        all_lines['lines'].unit='Angstrom'
+    # now everything is on the same units, let's stack all the tables:
+    all_lines=vstack(all_tables)
     # and this will be my output variable for the user
     outlines=all_lines
         
@@ -155,7 +151,6 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
             morton_fail=((outlines['lines']<0.2) | (outlines['lines']>2.5))
             if (sum(morton_fail)>0): print('Line(s) ',outlines['name'][morton_fail],
                                            ' outside of Morton validity for conversion to air')
-
         if (outlines['lines'].unit=="Angstrom"): 
             temp=1.e4/outlines['lines']
         else:

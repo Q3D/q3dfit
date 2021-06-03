@@ -29,12 +29,24 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
         
         1. 
         
+        To get the central wavelengths in Angstroms of all lines in Table 2 of 
+        Smith et al. 2007 ApJ 656 770 (PAHFIT paper) plus the high-ionization 
+        [NeVI] line typical of AGN:
+            
+        mylist=['H2_00_S7','H2_00_S6','H2_00_S5','[ArII]6.99','[NeVI]7.65','H2_00_S4',
+                '[ArIII]8.99','H2_00_S3','[SIV]10.51','H2_00_S2','[NeII]12.81',
+                '[NeIII]15.56','H2_00_S1','[SIII]18.71','[OIV]25.89','[FeII]25.99',
+                'H2_00_S0','[SIII]33.48','[SiII]34.82']
+        u=linelist(mylist)
+
+        2. 
+        
         u=linelist()
         
         will return all lines in the catalog with labels and central wavelengths
         in vacuum in Angstroms.
         
-        2.
+        3.
         
         mylist=['Paa', 'Halpha', 'Paa']
         u=linelist(inlines=mylist)
@@ -43,7 +55,7 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
         in the same order as given, and a warning there is a duplicated line 
         in mylist
         
-        3.
+        4.
         
         mylist=['Paa', 'Halpha', 'junk', 'H2_00_S0']
         u=linelist(inlines=mylist,vacuum=False,waveunit='micron',linelab=False)
@@ -53,7 +65,7 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
         to microns, complain that H2_00_S0 is outside the validity of the Morton's
         formula for vacuum to air conversion, and remove the line lables
         
-        4.
+        5.
         
         To get the central wavelength for an individual feature by name:
             
@@ -63,13 +75,14 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
         
         u=linelist()
         wv=np.array(u['lines'][(u['name']=='Halpha')])
-        
+                
     History:
     2020jun24 Created by Nadia Zakamska to work with two tables, one in air, one
         in vacuum, bringing them on the user-specified wavelength scale
     2021jun1 Updated by NLZ to include Rupke table and ISO H2 table, print 
         warning if Morton conversion from vacuum to air is not applicable   
-    2021jun2 Updated by NLZ to include ISO forbidden line table    
+    2021jun2 Updated by NLZ to include ISO forbidden line table and supply
+        the input list for the typical strong Spitzer lines
         
     """
     import pdb

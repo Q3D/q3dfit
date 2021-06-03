@@ -67,8 +67,9 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
     History:
     2020jun24 Created by Nadia Zakamska to work with two tables, one in air, one
         in vacuum, bringing them on the user-specified wavelength scale
-    2021jun1 Updated by NLZ to include new line tables, print warning if Morton
-        conversion from vacuum to air is not applicable    
+    2021jun1 Updated by NLZ to include Rupke table and ISO H2 table, print 
+        warning if Morton conversion from vacuum to air is not applicable   
+    2021jun2 Updated by NLZ to include ISO forbidden line table    
         
     """
     import pdb
@@ -78,8 +79,9 @@ def linelist(inlines=None,linelab=True,waveunit='Angstrom',vacuum=True):
     # handle them through this list, but the default is they are all in vacuum
     lines_DSNR=Table.read('../data/linelists/linelist_DSNR.tbl',format='ipac')
     lines_H2=Table.read('../data/linelists/linelist_H2.tbl',format='ipac')
-    all_tables=[lines_DSNR,lines_H2]
-    all_units=[lines_DSNR['lines'].unit,lines_H2['lines'].unit]
+    lines_fine_str=Table.read('../data/linelists/linelist_fine_str.tbl',format='ipac')
+    all_tables=[lines_DSNR,lines_H2,lines_fine_str]
+    all_units=[lines_DSNR['lines'].unit,lines_H2['lines'].unit,lines_fine_str['lines'].unit]
 
     # get everything on the user-requested units:
     if ((waveunit!='Angstrom') & (waveunit!='micron')):

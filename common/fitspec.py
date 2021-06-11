@@ -128,6 +128,7 @@ import pdb
 import time
 from astropy.table import Table
 from importlib import import_module
+from lmfit import Model
 from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
 from q3dfit.common.airtovac import airtovac
@@ -173,10 +174,10 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     else:
         siglim_gas = b'0'
 
-    if 'fcnlinefit' in initdat:
-        fcnlinefit = initdat['fcnlinefit']
-    else:
-        fcnlinefit = 'manygauss'
+    # if 'fcnlinefit' in initdat:
+        # fcnlinefit = initdat['fcnlinefit']
+    # else:
+        # fcnlinefit = 'manygauss'
     if 'argslinefit' in initdat:
         argslinefit = initdat['argslinefit']
     if 'nomaskran' in initdat:
@@ -205,14 +206,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         maskwidths_def = initdat['maskwidths_def']
     else:
         maskwidths_def = 1000.  # default half-width in km/s for emission line masking
-    if 'mpfit_xtol' in initdat:
-        mpfit_xtol=initdat['mpfit_xtol']
-    else:
-        mpfit_xtol = 1.-10
-    if 'mpfit_ftol' in initdat:
-        mpfit_ftol = initdat['mpfit_ftol']
-    else:
-        mpfit_ftol = 1.-10
 
     noemlinfit = b'0'
     if 'noemlinfit' in initdat:
@@ -614,41 +607,34 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # I need to fix the manygauss() fits
         if 'argsinitpar' in initdat:
             # need to fix the _extra keywords
-            parinit = \
+            manygauss, fit_params = \
                 fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
                            siginit_gas, initdat['maxncomp'], ncomp,
                            siglim=siglim_gas, _extra=initdat['argsinitpar'])
         else:
-            parinit = \
+            manygauss, fit_params = \
                 fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
                            siginit_gas, initdat['maxncomp'], ncomp,
                            siglim=siglim_gas)
 
-        testsize = len(parinit)
-        if testsize == 0:
-            raise Exception('Bad initial parameter guesses.')
+        # testsize = len(parinit)
+        # if testsize == 0:
+            # raise Exception('Bad initial parameter guesses.')
 
-        efitModule = import_module('q3dfit.common.'+fcnlinefit)
-        elin_lmfit = getattr(efitModule, 'run_'+fcnlinefit)
-        lmout, parout, specfit, perror = \
-            elin_lmfit(gdlambda, gdflux_nocnt, gdweight_nocnt, parinfo=parinit,
-                       maxiter=1000, quiet=quiet)
+        # Actual fit
+        lmout = manygauss.fit(gdflux_nocnt, fit_params, x=gdlambda,
+                              method='least_squares', weights=gdweight_nocnt,
+                              max_nfev=1000, nan_policy='omit')
+        specfit = lmout.best_fit()
+        if not quiet:
+            print(lmout.fit_report(show_correl=False))
 
-        param = parout
+        param = lmout.best_values
         covar = lmout.covar
         dof = lmout.nfree
-        # nfev = lmout.nfev
         rchisq = lmout.redchi
         errmsg = lmout.message
         status = lmout.success
-        # the following MPFIT variables that were not compatible with LMFIT,
-        # I have deleted these from the final output structure where applicable
-        # niter=niter
-        # quiet=quiet
-        # npegged=npegged
-        # functargs=argslinefit
-        # xtol=mpfit_xtol
-        # ftol=mpfit_ftol
 
         # error messages corresponding to LMFIT,
         # documentation was not very helpful with the error messages...
@@ -659,41 +645,42 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # if status == 5:
         #     print('LMFIT: Max. iterations reached.')
 
-        # Errors from covariance matrix. [Let's not multiply by reduced
-        # chi-squared for now -- not clear that it's correct ...)
-        # perror = np.multiply(perror, np.sqrt(rchisq))
-        # ... and from fit residual.
-        resid=gdflux-continuum-specfit
+        # Errors from covariance matrix and from fit residual.
+        resid = gdflux-continuum-specfit
+        perror = dict()
+        for p in lmout.params:
+            perror[p] = lmout.params[p].stderr
+        perror = lmout.params.stderr
         perror_resid = perror
         sigrange = 20.
-        for line in lines_arr:
-            iline = np.array([ip for ip, item in enumerate(parinit)
-                              if item['line'] == line])
-            ifluxpk = \
-                np.intersect1d(iline,
-                               np.array([ip for ip, item in enumerate(parinit)
-                                         if item['parname'] == 'flux_peak']))
-            ctfluxpk = len(ifluxpk)
-            isigma = \
-                np.intersect1d(iline,
-                               np.array([ip for ip, item in enumerate(parinit)
-                                         if item['parname'] == 'sigma']))
-            iwave = \
-                np.intersect1d(iline,
-                               np.array([ip for ip, item in enumerate(parinit)
-                                         if item['parname'] == 'wavelength']))
-            for i in range(0, ctfluxpk):
-                waverange = \
-                    sigrange * np.sqrt(np.power((param[isigma[i]] /
-                                                 c*param[iwave[i]]), 2.) +
-                                       np.power(param[2], 2.))
-                wlo = np.searchsorted(gdlambda, param[iwave[i]] - waverange/2.)
-                whi = np.searchsorted(gdlambda, param[iwave[i]] + waverange/2.)
-                if whi == len(gdlambda)+1:
-                    whi = len(gdlambda)-1
-                if param[ifluxpk[i]] > 0:
-                    perror_resid[ifluxpk[i]] = \
-                        np.sqrt(np.mean(np.power(resid[wlo:whi], 2.)))
+        # for line in lines_arr:
+        #     iline = np.array([ip for ip, item in enumerate(parinit)
+        #                       if item['line'] == line])
+        #     ifluxpk = \
+        #         np.intersect1d(iline,
+        #                        np.array([ip for ip, item in enumerate(parinit)
+        #                                  if item['parname'] == 'flux_peak']))
+        #     ctfluxpk = len(ifluxpk)
+        #     isigma = \
+        #         np.intersect1d(iline,
+        #                        np.array([ip for ip, item in enumerate(parinit)
+        #                                  if item['parname'] == 'sigma']))
+        #     iwave = \
+        #         np.intersect1d(iline,
+        #                        np.array([ip for ip, item in enumerate(parinit)
+        #                                  if item['parname'] == 'wavelength']))
+        #     for i in range(0, ctfluxpk):
+        #         waverange = \
+        #             sigrange * np.sqrt(np.power((param[isigma[i]] /
+        #                                          c*param[iwave[i]]), 2.) +
+        #                                np.power(param[2], 2.))
+        #         wlo = np.searchsorted(gdlambda, param[iwave[i]] - waverange/2.)
+        #         whi = np.searchsorted(gdlambda, param[iwave[i]] + waverange/2.)
+        #         if whi == len(gdlambda)+1:
+        #             whi = len(gdlambda)-1
+        #         if param[ifluxpk[i]] > 0:
+        #             perror_resid[ifluxpk[i]] = \
+        #                 np.sqrt(np.mean(np.power(resid[wlo:whi], 2.)))
 
         outlistlines = listlines # this bit of logic prevents overwriting of listlines
         cont_dat = gdflux - specfit
@@ -761,7 +748,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               'fitstatus': status,
               'linelist': outlistlines,
               'linelabel': linelabel,
-              'parinfo': parinit,
+              'parinfo': fit_params,
               'param': param,
               'perror': perror,
               'perror_resid': perror_resid,  # error from fit residual

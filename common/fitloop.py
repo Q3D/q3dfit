@@ -21,8 +21,6 @@ Take outputs from Q3DF and perform fitting loop.
      Output from READCUBE, containing data
    initdat: in, required, type=structure
      Output from initialization routine, containing fit parameters
-   linelist: in, required, type=hash
-     Output from LINELIST.
    oned: in, required, type=byte
      Whether data is in a cube or in one dimension (longslit)
    onefit: in, required, type=byte

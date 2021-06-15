@@ -5,11 +5,15 @@
 # infits = volume + 'pg1411rb1.fits'
 # makeqsotemplate(infits, outpy, dataext=None, dqext=None, waveext=None)
 
+import numpy as np
+import pdb
 from q3dfit.common.q3df import q3df
-q3df('pg1411', cols=14, rows=11, quiet=False)
-
 from q3dfit.common.q3da import q3da
-q3da('pg1411', cols=14, rows=11, quiet=False)
+
+initproc = np.load('/Users/drupke/specfits/gmos/pg1411/rb3/initproc.npy', 
+                   allow_pickle=True)
+q3df(initproc[()], cols=14, rows=11, quiet=False)
+q3da(initproc[()], cols=14, rows=11, quiet=False)
 
 # Test creation of Gonzalez-Delgado templates
 # from q3dfit.common.gdtemp import gdtemp

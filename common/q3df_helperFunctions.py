@@ -192,8 +192,6 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
                  quiet=True):
     import time
     from sys import path
-    import copy
-    import numpy as np
     # add common subdirectory to Python PATH for ease of importing
     path.append("common/")
     starttime = time.time()

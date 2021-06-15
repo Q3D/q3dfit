@@ -174,12 +174,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     else:
         siglim_gas = b'0'
 
-    # if 'fcnlinefit' in initdat:
-        # fcnlinefit = initdat['fcnlinefit']
-    # else:
-        # fcnlinefit = 'manygauss'
-    if 'argslinefit' in initdat:
-        argslinefit = initdat['argslinefit']
     if 'nomaskran' in initdat:
         nomaskran=initdat['nomaskran']
     else:
@@ -607,12 +601,12 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # I need to fix the manygauss() fits
         if 'argsinitpar' in initdat:
             # need to fix the _extra keywords
-            manygauss, fit_params = \
+            emlmod, fit_params = \
                 fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
                            siginit_gas, initdat['maxncomp'], ncomp,
                            siglim=siglim_gas, _extra=initdat['argsinitpar'])
         else:
-            manygauss, fit_params = \
+            emlmod, fit_params = \
                 fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
                            siginit_gas, initdat['maxncomp'], ncomp,
                            siglim=siglim_gas)
@@ -622,9 +616,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             # raise Exception('Bad initial parameter guesses.')
 
         # Actual fit
-        lmout = manygauss.fit(gdflux_nocnt, fit_params, x=gdlambda,
-                              method='least_squares', weights=gdweight_nocnt,
-                              max_nfev=1000, nan_policy='omit')
+        lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
+                           method='least_squares', weights=gdweight_nocnt,
+                           max_nfev=1000, nan_policy='omit')
         specfit = lmout.best_fit()
         if not quiet:
             print(lmout.fit_report(show_correl=False))

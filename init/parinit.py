@@ -10,6 +10,7 @@ Initialize parameters for fitting.
 
 from lmfit import Model
 import numpy as np
+import pdb
 
 
 def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
@@ -36,30 +37,32 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
 
     # the total LMFIT Model
     # size = # model instances
-    manyGauss = []
-    fit_params = manyGauss.make_params()
+    totmod = []
 
     # cycle through lines
     for line in lines_arr:
         # cycle through velocity components
-        for i in range(0, ncomp):
-            mName = '%s_'+str(i)+'_' % (line)
-            imodel = Model(manyGauss, independent_vars=['x'], prefix=mName)
-            if isinstance(manyGauss, Model):
-                manyGauss += imodel
+        for i in range(0, ncomp[line]):
+            # LMFIT parameters can only consist of letters,  numbers, or _
+            line = line.replace('[', 'lb').replace(']', 'rb')
+            mName = '{0}_{1}_'.format(line,i)
+            imodel = Model(manygauss, prefix=mName)
+            if isinstance(totmod, Model):
+                totmod += imodel
             else:
-                manyGauss = imodel
+                totmod = imodel
 
     # Create parameter dictionary
-    fit_params = manyGauss.make_params()
+    fit_params = totmod.make_params()
 
     # Cycle through parameters
     for i, parname in enumerate(fit_params.keys()):
         # split parameter name string into line, component #, and parameter
-        psplit = parname.split(parname)
-        line = psplit[0]  # string for line label
+        psplit = parname.split('_')
+        lmline = psplit[0]  # string for line label
+        line = lmline.replace('lb', '[').replace('rb', ']')
         comp = int(psplit[1])  # string for line component
-        gpar = psplit[2]  # parameter name in manyGauss
+        gpar = psplit[2]  # parameter name in manygauss
         # Process input values
         vary = 'True'
         if gpar == 'flx':
@@ -68,21 +71,23 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             limits = np.array([0., 0.], dtype='float64')
             # Check if it's a doublet; this will break if weaker line
             # is in list, but stronger line is not
-            if line in dblt_pairs.keys():
-                tied = dblt_pairs[line]+'_'+str(comp)+'_flx / 3.'
+            if lmline in dblt_pairs.keys():
+                tied = '{0}_{1}_flx / 3.'.format(dblt_pairs[line],comp)
+                tied = tied.replace('[', 'lb').replace(']', 'rb')
             else:
                 tied = ''
         elif gpar == 'cwv':
             value = linelistz[line][comp]
             limited = np.array([1, 1], dtype='uint8')
             limits = np.array([linelistz[line][comp]*0.997,
-                               linelistz[line][i]*1.003], dtype='float64')
+                               linelistz[line][comp]*1.003], dtype='float64')
             # Check if line is tied to something else
             if linetie[line] != line:
-                tied = '{0:0.6e}{1:1}{2:0.6e}{3:1}{4:1}'.\
-                    format(lines_arr[line], ' / ',
-                           lines_arr[linetie[line]], ' * ',
-                           linetie[line]+'_'+str(comp)+'_'+'cwv')
+                linetie_tmp = linetie[line].replace('[', 'lb').\
+                    replace(']', 'rb')
+                tied = '{0:0.6e} / {1:0.6e} * {2}_{3}_cwv'.\
+                    format(lines_arr[line],lines_arr[linetie[line]],
+                           linetie_tmp,comp)
             else:
                 tied = ''
         elif gpar == 'sig':
@@ -90,7 +95,9 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             limited = np.array([1, 1], dtype='uint8')
             limits = np.array(siglim, dtype='float64')
             if linetie[line] != line:
-                tied = linetie[line]+'_'+str(comp)+'_'+'sig'
+                linetie_tmp = linetie[line].replace('[', 'lb').\
+                    replace(']', 'rb')
+                tied = '{0}_{1}_sig'.format(linetie_tmp,comp)
             else:
                 tied = ''
         else:
@@ -103,6 +110,8 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             set_params(fit_params, parname, VALUE=value,
                        VARY=vary, LIMITED=limited, TIED=tied,
                        LIMITS=limits)
+
+    return totmod, fit_params
 
 
 def set_params(fit_params, NAME, VALUE=None, VARY=True, LIMITED=None,

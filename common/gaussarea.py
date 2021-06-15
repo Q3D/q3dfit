@@ -57,33 +57,23 @@
 #    along with this program.  If not, see
 #    http://www.gnu.org/licenses/.
 #
-#-
-
-
+#
 import numpy as np
 import math
 
-def gaussarea(a, aerr = None):
-    
-    ngauss = a.shape
+
+def gaussarea(a, aerr=None):
+
     sqrtpi = np.sqrt(math.pi)
-    
-    out = np.zeros(ngauss)
-    igda = np.where(a > 0)
-    ctgda = np.count_nonzero(a > 0)
-    
-    if ctgda > 0:
-        sqrta = np.sqrt(a[igda])
-        out[igda] = sqrtpi/sqrta
-    
-    outstr={'area':out}
-    
+    out = 0.
+    if a > 0:
+        sqrta = np.sqrt(a)
+        out = sqrtpi/sqrta
+    outstr = {'area': out}
     if aerr:
-        outerr = np.zeros(ngauss)
-        if ctgda > 0:
-            outerr[igda] = out[igda]*0.5 / a[igda] * aerr[igda]
+        outerr = 0.
+        if a > 0:
+            outerr = out*0.5 / a * aerr
         outstr['area_err'] = outerr
-        
+
     return outstr
-    
-    

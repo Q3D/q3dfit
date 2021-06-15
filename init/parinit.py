@@ -102,10 +102,11 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
                 tied = ''
         else:
             value = specres
-            limited = np.array([1, 1], dtype='uint8')
-            limits = np.array([specres, specres], dtype='float64')
+            limited = None
+            limits = None
             vary = False
             tied = ''
+
         fit_params = \
             set_params(fit_params, parname, VALUE=value,
                        VARY=vary, LIMITED=limited, TIED=tied,
@@ -122,9 +123,10 @@ def set_params(fit_params, NAME, VALUE=None, VARY=True, LIMITED=None,
     if TIED is not None:
         fit_params[NAME].expr = TIED
     if LIMITED is not None and LIMITS is not None:
-        for li in [0, 1]:
-            if LIMITED[li] == 1:
-                fit_params[NAME].min = LIMITS[li]
+        if LIMITED[0] == 1:
+            fit_params[NAME].min = LIMITS[0]
+        if LIMITED[1] == 1:
+            fit_params[NAME].max = LIMITS[1]
     return fit_params
 
 

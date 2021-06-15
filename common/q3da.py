@@ -292,8 +292,9 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                 if struct['noemlinfit'] == b'0':
                     # get line fit params
                     linepars, tflux = \
-                        sepfitpars(listlines, struct['param'], struct['perror'],
-                                   struct['parinfo'], tflux=True,
+                        sepfitpars(listlines, struct['param'],
+                                   struct['perror'],
+                                   initdat['maxncomp'], tflux=True,
                                    doublets=emldoublets)
 #                lineweqs = cmpweq(struct, listlines, doublets = emldoublets)
 

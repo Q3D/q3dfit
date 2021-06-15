@@ -66,6 +66,7 @@ cube = CUBE(fp='/path/to/data/', infile='datafits')
     zerodq: in, optional, type=byte
       Zero out the DQ array.
     vormap: in, optional, 2D array for the voronoi binning map
+    use_angstrom: in, optional, to use angstrom as the wavelength unit
 ; :Author:
 ;    David S. N. Rupke::
 ;      Rhodes College
@@ -115,7 +116,7 @@ cube = CUBE(fp='/path/to/data/', infile='datafits')
 
 
 class CUBE:
-    def __init__(self, **kwargs):
+    def __init__(self, use_angstrom = False, **kwargs):
         warnings.filterwarnings("ignore")
         fp = kwargs.get('fp','')
         self.fp = fp
@@ -241,16 +242,19 @@ class CUBE:
                 self.wav0 = header[CRVAL] - (header[CRPIX] - 1) * header[CD]
                 self.wave = self.wav0 + np.arange(nw)*header[CD]
                 self.cdelt = header[CD]
-        if self.waveunit == 'um':
-            self.wave = self.wave * 1e4 # change wavelength to A, for nirspec test temporarily
+        # The current default is um for the wavelength
+        if use_angstrom:
+             self.wave = self.wave * 1e4 # change wavelength to A
+        #== 'um':
+        #    self.wave = self.wave * 1e4 # change wavelength to A, for nirspec test temporarily
         try:
             self.wave
         except:
             print('wavelength array not loaded successfully!', file=logfile)
             breakpoint()
 
-        # convert the flux unit to erg/s/cm^2/A/sr
-            convert_flux = 1e6*1e-23*cspeed/((self.wave*1e-8)**2)
+        # convert the flux unit to erg/s/cm^2/um/sr
+            convert_flux = 1e6*1e-23*cspeed/((self.wave*1e-4)**2)
             self.dat = self.dat * convert_flux
             self.var = self.var / (convert_flux**2)
             self.err = self.err * convert_flux

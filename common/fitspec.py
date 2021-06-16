@@ -153,59 +153,48 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     # flux.setflags(write=True)
     # err.setflags(write=True)
 
-    bad = 1e99
     c = 299792.458         # speed of light, km/s
     siginit_gas_def = 100.  # default sigma for initial guess
                             # for emission line widths
 
+    if 'ebv_star' in initdat:
+        ebv_star=initdat['ebv_star']
+    else:
+        ebv_star=None
+    if 'fcninitpar' in initdat:
+        fcninitpar = initdat['fcninitpar']
+    else:
+        fcninitpar = 'parinit'
     if 'lines' in initdat:
         # nlines = len(initdat['lines'])
         linelabel = initdat['lines']
     else:
         linelabel = b'0'
-
-    # converts the astropy.Table structure of listlines into a Python
-    # dictionary that is compatible with the code downstream
-    lines_arr = {name: listlines['lines'][idx] for idx, name in
-                 enumerate(listlines['name'])}
-
-    if siglim_gas.all():
-        siglim_gas = siglim_gas
-    else:
-        siglim_gas = b'0'
-
-    if 'nomaskran' in initdat:
-        nomaskran=initdat['nomaskran']
-    else:
-        nomaskran=''
-
-    if 'startempfile' in initdat:
-        istemp = b'1'
-    else:
-        istemp=b'0'
-
-    if 'loglam' in initdat:
-        loglam=b'1'
-    else:
-        loglam=b'0'
-    if 'vacuum' in initdat:
-        vacuum=b'1'
-    else:
-        vacuum=b'0'
-    if 'ebv_star' in initdat:
-        ebv_star=initdat['ebv_star']
-    else:
-        ebv_star=None
     if 'maskwidths_def' in initdat:
         maskwidths_def = initdat['maskwidths_def']
     else:
         maskwidths_def = 1000.  # default half-width in km/s for emission line masking
+    if 'nomaskran' in initdat:
+        nomaskran=initdat['nomaskran']
+    else:
+        nomaskran=''
+    if siglim_gas.all():
+        siglim_gas = siglim_gas
+    else:
+        siglim_gas = b'0'
+    if 'startempfile' in initdat:
+        istemp = b'1'
+    else:
+        istemp=b'0'
+    if 'vacuum' in initdat:
+        vacuum=b'1'
+    else:
+        vacuum=b'0'
 
     noemlinfit = b'0'
     if 'noemlinfit' in initdat:
         ct_comp_emlist = 0
     else:
-        nocomp_emlist = np.where(np.array(list(ncomp.values())) == 0)[0]
         comp_emlist = np.where(np.array(list(ncomp.values())) != 0)[0]
         ct_comp_emlist = len(comp_emlist)
     if ct_comp_emlist == 0:
@@ -594,20 +583,11 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     np.zeros(initdat['maxncomp']) + siginit_gas_def
 
         # Fill out parameter structure with initial guesses and constraints
-        impModule = import_module('q3dfit.init.' + initdat['fcninitpar'])
-        fcninitpar = getattr(impModule, initdat['fcninitpar'])
-
-        # running test functions for now.....
-        # I need to fix the manygauss() fits
-        if 'argsinitpar' in initdat:
-            # need to fix the _extra keywords
-            emlmod, fit_params = \
-                fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
-                           siginit_gas, initdat['maxncomp'], ncomp,
-                           siglim=siglim_gas, _extra=initdat['argsinitpar'])
-        else:
-            emlmod, fit_params = \
-                fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
+        impModule = import_module('q3dfit.init.' + fcninitpar)
+        run_fcninitpar = getattr(impModule, fcninitpar)
+        pdb.set_trace()
+        emlmod, fit_params = \
+            run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
                            siginit_gas, initdat['maxncomp'], ncomp,
                            siglim=siglim_gas)
 

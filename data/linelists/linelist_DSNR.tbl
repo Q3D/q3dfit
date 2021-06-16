@@ -3,7 +3,7 @@
 \ Data Sources: line lists by David S.N. Rupke created both in vacuum 
 \ and in air and recomputed on the common vacuum grid using Morton 1991. 
 \ Morton is only accurate above 2000A, so the six lines with air 
-\ wavelengths under 2000A are explicitly fived based on NIST database. 
+\ wavelengths under 2000A are explicitly fixed based on NIST database. 
 \ A handful of previousy missing Latex labels were added by hand to the 
 \ original two tables before combining. 
 |                    name|          lines|              linelab|

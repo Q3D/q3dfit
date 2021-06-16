@@ -1,8 +1,11 @@
 \ Created 2021 May 30 by Nadia Zakamska 
 \ Wavelengths are in vacuum! 
 \ Data Sources: line lists by David S.N. Rupke created both in vacuum 
-\ and in air and recomputed on the common vacuum grid. 
-\ A handful of previousy missing Latex labels were added by hand.
+\ and in air and recomputed on the common vacuum grid using Morton 1991. 
+\ Morton is only accurate above 2000A, so the six lines with air 
+\ wavelengths under 2000A are explicitly fixed based on NIST database. 
+\ A handful of previousy missing Latex labels were added by hand to the 
+\ original two tables before combining. 
 |                    name|          lines|              linelab|
 |                    char|         double|                 char|
 |                        |       Angstrom|                     |
@@ -10,8 +13,8 @@
                  SiII1304      1304.37000             SiII 1304 
                   NI1200a      1200.22302               NI 1200 
                  NiII1370      1370.14001             NiII 1370 
-                      Paa     18756.00000             P$\alpha$ 
-                      Pag     10941.16992             P$\gamma$ 
+                      Paa     18756.00000            Pa$\alpha$ 
+                      Pag     10941.16992            Pa$\gamma$ 
                       Ly8       923.14801                   Ly8 
                   NI1200b      1200.70996               NI 1200 
                    Lybeta      1025.72803             Ly$\beta$ 
@@ -77,7 +80,7 @@
                 [MgV]2782      2782.69995            [MgV] 2782 
                [FeIV]2836      2836.57007           [FeIV] 2836 
                  SiII1190      1190.42004             SiII 1190 
-                      Pab     12821.57812              P$\beta$ 
+                      Pab     12821.57812             Pa$\beta$ 
                       Brd     19451.00000            Br$\delta$ 
                  HeII2733      2734.10010             HeII 2733 
                       Ly9       920.94702                   Ly9 
@@ -134,7 +137,7 @@
                  FeII1260      1260.52502             FeII 1260 
                  CIIs1335      1335.70801             CII* 1335 
                    NI953b       953.65503                NI 953 
-                      Pad     10052.59961             P$\delta$ 
+                      Pad     10052.59961             Pa$\delta 
                   NI1134b      1134.41504               NI 1134 
                    PII963       963.80103               PII 963 
                  SIII1190      1190.20605             SIII 1190 
@@ -165,13 +168,13 @@
                     OI950       950.88501                OI 950 
                 NIII1751a      1751.21802            NIII] 1751 
                   PII1301      1301.87000              PII 1301 
-                AlIII1854      1855.34331            AlIII 1854 
+                AlIII1854      1854.71640            AlIII 1854 
                    Halpha      6564.61289             H$\alpha$ 
                  [NI]5200      5201.70810             [NI] 5200 
                 [SII]4076      4077.50099            [SII] 4076 
       [OII]3726+[OII]3729      3728.48359      [OII] 3726, 3729 
                  MnII2593      2594.49964             MnII 2593 
-                SiII*1817      1818.07345            SiII* 1817 
+                SiII*1817      1817.45000            SiII* 1817 
                   HeI7065      7067.13808              HeI 7065 
                  FeII2233      2234.44723             FeII 2233 
                  HeII2733      2734.10909             HeII 2733 
@@ -195,7 +198,7 @@
                  FeII2366      2367.59059             FeII 2366 
                 [NII]6583      6585.26845            [NII] 6583 
               [NeIII]3967      3968.59253          [NeIII] 3967 
-                 SiII1808      1808.62279             SiII 1808 
+                 SiII1808      1808.00000             SiII 1808 
                 SiII*2350      2351.60961            SiII* 2350 
                   OH6356a      6357.92437              OH 6356a 
                [NeIV]2425      2425.13921           [NeIV] 2425 
@@ -213,7 +216,7 @@
                [SIII]6312      6313.80553           [SIII] 6312 
                   OH6287b      6289.20084              OH 6287b 
                 FeII*2611      2612.65330            FeII* 2611 
-                SiII*1816      1817.54341            SiII* 1816 
+                SiII*1816      1816.92000            SiII* 1816 
                [OIII]4363      4364.43530           [OIII] 4363 
                 [NeV]3426      3426.85238            [NeV] 3426 
                 FeII*2625      2626.45008            FeII* 2625 
@@ -252,9 +255,9 @@
                 [SII]6716      6718.29421            [SII] 6716 
                      NaD2      5891.58234              NaI 5890 
                [NeIV]2422      2422.56062           [NeIV] 2422 
-                AlIII1862      1863.41731            AlIII 1862 
+                AlIII1862      1862.78950            AlIII 1862 
               [FeVII]6087      6088.68514          [FeVII] 6087 
-                 AlII1670      1671.42462             AlII 1670 
+                 AlII1670      1670.78670             AlII 1670 
                  [NI]5198      5199.34747             [NI] 5198 
                 [SII]6731      6732.67808            [SII] 6731 
                 [FeX]6375      6376.27230            [FeX] 6375 

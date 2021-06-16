@@ -83,8 +83,7 @@ import pdb
 def pltlin(instr, pltpar, outfile):
 
     param = instr['param']
-    ncomp = param[1]
-    ncomp = int(ncomp)
+    ncomp = instr['maxncomp']
     colors = ['Magenta', 'Green', 'Orange', 'Teal']
 
     wave = instr['wave']
@@ -220,9 +219,9 @@ def pltlin(instr, pltpar, outfile):
             xtit = 'Observed Wavelength ($\AA$)'
             ytit = ''
             ax0.plot(wave, ymod, color='Red', linewidth=2)
-            for j in range(1, ncomp+1):
+            for j in range(0, ncomp):
                 flux = cmplin(instr, linlab[i], j, velsig=True)
-                ax0.plot(wave, yran[0] + flux, color=colors[j-1],
+                ax0.plot(wave, yran[0] + flux, color=colors[j],
                          linewidth=1, linestyle='dashed')
                 if linoth[0, i] != '':
                     for k in range(0, (len(linoth[:, i]))):

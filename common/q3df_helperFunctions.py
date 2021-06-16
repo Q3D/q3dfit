@@ -192,12 +192,10 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
                  quiet=True):
     import time
     from sys import path
-    import copy
-    import numpy as np
     # add common subdirectory to Python PATH for ease of importing
     path.append("common/")
     starttime = time.time()
-    initdat = __get_initdat(initproc)
+    initdat = initproc #__get_initdat(initproc)
     linelist = __get_linelist(initdat)
 
     if 'logfile' in initdat:
@@ -234,7 +232,7 @@ def q3df_multiCore(rank, initproc, cols=None, rows=None, oned=False,
     import time
     from numpy import floor
     starttime = time.time()
-    initdat = __get_initdat(initproc)
+    initdat = initproc #__get_initdat(initproc)
     linelist = __get_linelist(initdat)
 
     if 'logfile' in initdat:

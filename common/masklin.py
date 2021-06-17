@@ -71,7 +71,7 @@ def masklin(llambda, linelambda, halfwidth, nomaskran=''):
     """
 
     import numpy as np
-    # import pdb
+    import pdb
 
     c = 299792.458
     # we will return the ones that are not masked
@@ -82,7 +82,8 @@ def masklin(llambda, linelambda, halfwidth, nomaskran=''):
     # line is the index in the linelambda array and
     # cwv is the central wavelength
     # let's flag the indices that are masked
-    for line, cwv in enumerate(linelambda['lines']):
+    pdb.set_trace()
+    for line, cwv in enumerate(linelambda):
         for i in range(halfwidth.columns[line].size):
             temp1 = \
                 np.array((llambda <= cwv*(1. - halfwidth.columns[line][i]/c)),

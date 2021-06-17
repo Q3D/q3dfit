@@ -134,7 +134,7 @@ from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
 from q3dfit.common.airtovac import airtovac
 from q3dfit.common.masklin import masklin
-from q3dfit.common import interptemp
+from q3dfit.common.interptemp import interptemp
 from scipy.interpolate import interp1d
 from q3dfit.common.questfit import questfit
 from q3dfit.common.plot_quest import plot_quest
@@ -395,6 +395,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             if initdat['fcncontfit']=='questfit' or istemp==b'0':
               istemp=None
 
+
             if istemp:
                 templatelambdaz_tmp = templatelambdaz
                 templateflux_tmp = template['flux']
@@ -447,13 +448,12 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                   continuum = \
                     fcncontfit(gdlambda, gdflux, gderr, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, ct_coeff, zstar,
-                               quiet=quiet)[0]
+                               quiet=quiet)
                 ppxf_sigma = 0.
 
             add_poly_weights = 0.
             ct_rchisq = 0.
             ppxf_sigma_err = 0.
-
 
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         # # Option 2: PPXF
@@ -575,6 +575,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     #
     # Fit emission lines
     #
+
     fit_params = []
     if noemlinfit != b'1':
 
@@ -598,7 +599,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     else:
                         peakinit[line] = np.zeros(initdat['maxncomp'])
 
-
         # Initial guesses for emission line widths
         if siginit_gas is None:
             siginit_gas = {k: None for k in initdat['lines']}
@@ -609,10 +609,14 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # Fill out parameter structure with initial guesses and constraints
         impModule = import_module('q3dfit.init.' + fcninitpar)
         run_fcninitpar = getattr(impModule, fcninitpar)
-        emlmod, fit_params = run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
-                                            siginit_gas, initdat['maxncomp'], ncomp,
-                                            siglim=siglim_gas[:])
+        emlmod, fit_params = \
+            run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
+                           siginit_gas, initdat['maxncomp'], ncomp,
+                           siglim=siglim_gas)
 
+        # testsize = len(parinit)
+        # if testsize == 0:
+            # raise Exception('Bad initial parameter guesses.')
 
         # Actual fit
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
@@ -623,13 +627,10 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             print(lmout.fit_report(show_correl=False))
 
         param = lmout.best_values
-
         if 'plotMIR' in initdat.keys():    # Test plot here - need to transfer this to q3dfa later
           print('Plotting')
           from matplotlib import pyplot as plt
           plot_quest(gdlambda, gdflux, continuum+specfit, ct_coeff, initdat, lines=[12.8], linespec=specfit)
-
-
         covar = lmout.covar
         dof = lmout.nfree
         rchisq = lmout.redchi
@@ -754,4 +755,5 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               # 'covar': covar,
               'siglim': siglim_gas}
 
+    # finish:
     return outstr

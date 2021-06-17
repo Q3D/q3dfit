@@ -133,7 +133,7 @@ from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
 from q3dfit.common.airtovac import airtovac
 from q3dfit.common.masklin import masklin
-from q3dfit.common import interptemp
+from q3dfit.common.interptemp import interptemp
 from scipy.interpolate import interp1d
 from q3dfit.common.questfit import questfit
 from q3dfit.common.plot_quest import plot_quest
@@ -370,10 +370,10 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                                                maskwidths_def, dtype='float'),
                                        names=listlines['name'])
 
-            ct_indx = masklin(gdlambda/(1+zstar), listlines, maskwidths,
+            ct_indx = masklin(gdlambda, listlinesz, maskwidths,
                               nomaskran=nomaskran)
             # Mask emission lines in log space
-            ct_indx_log = masklin(np.exp(gdlambda_log)/(1+zstar), listlines,
+            ct_indx_log = masklin(np.exp(gdlambda_log), listlinesz,
                                   maskwidths, nomaskran=nomaskran)
         else:
             ct_indx = np.arange(len(gdlambda))
@@ -440,7 +440,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         elif (istemp == b'1' and 'siginit_stars' in initdat):
 
             # Interpolate template to same grid as data
-            temp_log = interptemp.interptemp(gdlambda_log, np.log(templatelambdaz.T[0]),
+            temp_log = interptemp(gdlambda_log, np.log(templatelambdaz),
                                   template['flux'])
 
             # Check polynomial degree
@@ -450,10 +450,15 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     add_poly_degree = initdat['argscontfit']['add_poly_degree']
 
             # run ppxf
-            pp = \
-                ppxf(temp_log, gdflux_log, gderr_log, velscale,
-                     [0, initdat['siginit_stars']], goodpixels=ct_indx_log,
-                     degree=add_poly_degree, quiet=quiet, reddening=ebv_star)
+            import matplotlib.pyplot as plt
+            plt, ax = plt.subplots()
+            ax.plot(gdlambda_log[ct_indx_log],gdflux_log[ct_indx_log])
+            plt.show()
+            pdb.set_trace()
+
+            pp = ppxf(temp_log, gdflux_log, gderr_log, velscale[0],
+                      [0, initdat['siginit_stars']], goodpixels=ct_indx_log,
+                      degree=add_poly_degree, quiet=quiet, reddening=ebv_star)
             poly_mod = pp.apoly
             continuum_log = pp.bestfit
             add_poly_weights = pp.polyweights
@@ -585,7 +590,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # Fill out parameter structure with initial guesses and constraints
         impModule = import_module('q3dfit.init.' + fcninitpar)
         run_fcninitpar = getattr(impModule, fcninitpar)
-        pdb.set_trace()
         emlmod, fit_params = \
             run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
                            siginit_gas, initdat['maxncomp'], ncomp,

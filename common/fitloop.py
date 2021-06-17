@@ -74,9 +74,14 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
           file=logfile)
 
     if oned:
-        flux = cube.dat[:, i]
-        err = abs(cube.var[:, i])**0.5
-        dq = cube.dq[:, i]
+        if cube.dat.ndim == 1:
+            flux = cube.dat
+            err = abs(cube.var)**0.5
+            dq = cube.dq
+        else:
+            flux = cube.dat[:, i]
+            err = abs(cube.var[:, i])**0.5
+            dq = cube.dq[:, i]
     else:
         flux = cube.dat[i, j, :]
         err = abs(cube.var[i, j, :])**0.5
@@ -116,10 +121,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
             # write as dict
             # Each dict key (line) will have one value (# comp)
             for line in initdat['lines']:
-                if oned:
-                    ncomp[line] = initdat['ncomp'][line][i]
-                else:
-                    ncomp[line] = initdat['ncomp'][line][i, j]
+                ncomp[line] = initdat['ncomp'][line][i, j]
 
         # First fit
 
@@ -139,10 +141,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                 if initdat['siglim_gas'].ndim == 1:
                     siglim_gas = initdat['siglim_gas']
                 else:
-                    if oned:
-                        siglim_gas = initdat['siglim_gas'][i, ]
-                    else:
-                        siglim_gas = initdat['siglim_gas'][i, j, ]
+                    siglim_gas = initdat['siglim_gas'][i, j, ]
             else:
                 siglim_gas = False
 
@@ -152,20 +151,13 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                     siginit_gas = initdat['siginit_gas']
                 else:
                     siginit_gas = dict()
-                    if oned:
-                        for k in initdat['lines']:
-                            siginit_gas[k] = initdat['siginit_gas'][k][i, ]
-                    else:
-                        for k in initdat['lines']:
-                            siginit_gas[k] = initdat['siginit_gas'][k][i, j, ]
+                    for k in initdat['lines']:
+                        siginit_gas[k] = initdat['siginit_gas'][k][i, j, ]
             else:
                 siginit_gas = False
 
 #           initialize stellar redshift initial guess
-            if oned:
-                zstar = initdat['zinit_stars'][i]
-            else:
-                zstar = initdat['zinit_stars'][i, j]
+            zstar = initdat['zinit_stars'][i, j]
 
 #           regions to ignore in fitting. Set to max(err)
             if initdat.__contains__('cutrange'):
@@ -205,16 +197,10 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
             listlinesz = dict()
             if not initdat.__contains__('noemlinfit') and ct_comp_emlist > 0:
                 for line in initdat['lines']:
-                    if oned:
-                        listlinesz[line] = \
-                            np.array(listlines['lines']
-                                     [(listlines['name'] == line)]) * \
-                            (1. + initdat['zinit_gas'][line][i, ])
-                    else:
-                        listlinesz[line] = \
-                            np.array(listlines['lines']
-                                     [(listlines['name'] == line)]) * \
-                            (1. + initdat['zinit_gas'][line][i, j, ])
+                    listlinesz[line] = \
+                        np.array(listlines['lines']
+                                 [(listlines['name'] == line)]) * \
+                        (1. + initdat['zinit_gas'][line][i, j, ])
 
             if not quiet:
                 print('FITLOOP: First call to FITSPEC')

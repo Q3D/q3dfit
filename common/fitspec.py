@@ -438,10 +438,11 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
+                '''
                 if initdat['plotMIR']:    # Test plot here - need to transfer this to q3dfa later
                   print('Plotting')
                   plot_quest(gdlambda[ct_indx], gdflux[ct_indx], continuum[ct_indx], ct_coeff, initdat)
-
+                '''
                 ppxf_sigma = 0.
                 if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
                     'refit' in initdat['argscontfit']:
@@ -734,6 +735,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               'ct_method': method,
               'ct_coeff': ct_coeff,
               'ct_ebv': ebv_star,
+              'ct_indx': ct_indx,
               'zstar': zstar,
               'zstar_err': zstar_err,
               'ct_add_poly_weights': add_poly_weights,
@@ -768,7 +770,10 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 #              'covar': covar,
               'siglim': siglim_gas}
 
-
+    import pickle
+    f = open('fitspec.txt', 'wb')
+    pickle.dump(outstr, f)
+    f.close()
     # finish:
     return outstr
 

@@ -20,19 +20,15 @@ def pg1411():
 
     
     #   These are unique to the user
-    # volume = '/Users/dwylezal/EmmyNoether_Science/Q3D/JWST_ERS_Planning/Software/PG1411/'
-    volume = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/PG1411/pg1411/'
+    volume = '/Users/annamurphree/Docs/Rupke Research/q3d/pg1411/'
     infile = volume+gal+outstr+'.fits'
-    mapdir = volume+gal+'/'+outstr+'/'
-    outdir = volume+gal+'/'+outstr+'/'
+    mapdir = volume+'outdir/'+outstr+'/'
+    outdir = volume+'outdir/'+outstr+'/'
     qsotemplate = volume+gal+'qsotemplate.npy'
-    stellartemplates =  \
-        volume+gal+'hosttemplate.npy'
-    logfile = outdir+gal+'_fitlog.txt'
-    #batchfile = '/Users/dwylezal/ESO_Fellowship/JWST_ERS_Planning/Software/ifsfit-master/common/fitloop.pro'
-    #batchdir = '/Users/dwylezal/ESO_Fellowship/JWST_ERS_Planning/Software/'
-    batchfile = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/IFSFIT/ifsfit/common/ifsf_fitloop.pro'
-    batchdir = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/IFSFIT/'
+    stellartemplates = volume+gal+'hosttemplate.npy'
+    logfile = volume+gal+'_fitlog.txt'
+    batchfile = '/Users/annamurphree/Docs/Rupke Research/q3d/q3dfit/common/fitloop.py'
+    batchdir = '/Users/annamurphree/Docs/Rupke Research/q3d/q3dfit/'
     
     
     ### for our test object, pg1411, nothing needs to be changed here for now, make more flexible later
@@ -146,6 +142,15 @@ def pg1411():
                             'siginit_stars': 50,
                             'uselog': 1,
                             'refit': 1},
+            # in plot_spec: x/ystyle = log or lin (plots it linearly), 
+            #               xunit = micron or Angstrom,
+            #               yunit = flambda, lambdaflambda (= nufnu), or fnu
+            #               mode = light or dark
+            'argscontplot': {'xstyle':'log',
+                             'ystyle':'log',
+                             'xunit': 'Angstrom',
+                             'yunit':'flambda',
+                             'mode':'dark'},
             'argslinelist': {'vacuum': False},
             'startempfile': stellartemplates,
             'argspltlin1': argspltlin1,

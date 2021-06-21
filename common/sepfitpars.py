@@ -81,33 +81,32 @@
 #
 #-
 import numpy as np
-import math
 import pdb
 from astropy.table import Table
 from scipy import constants
 from q3dfit.common.gaussflux import gaussflux
 
 
-def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = False,
+def sepfitpars(linelist, param, perror, maxncomp, waveran = None, tflux = False,
                doublets = None):
 
     # DW: param, perror and parinfo are lists of dictionaries which are not easy to handle
     # I therefore re-structure them into a single dictionary each
 
-    parinfo_new = {}
-    for k, v in [(key, d[key]) for d in parinfo for key in d]:
-        if k not in parinfo_new:
-            parinfo_new[k] = [v]
-        else:
-            parinfo_new[k].append(v)
+    #parinfo_new = {}
+    #for k, v in [(key, d[key]) for d in parinfo for key in d]:
+    #    if k not in parinfo_new:
+    #        parinfo_new[k] = [v]
+    #    else:
+    #        parinfo_new[k].append(v)
 
-    parinfo_new = Table(parinfo_new)
+    #parinfo_new = Table(parinfo_new)
 
-    param = np.array(param)
-    perror = np.array(perror)
+    #param = np.array(param)
+    #perror = np.array(perror)
 
     # Return 0 if no lines were fit
-    if len(param) == 1:  ### DW: this needs to be double checked!!!!###
+    if len(param) == 1:  # DW: this needs to be double checked!!!!###
         outstr = {'nolines': b'0'}
         if tflux is not False:
             tfdict = dict()
@@ -117,145 +116,128 @@ def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = False,
 
     else:
 
-        maxncomp = param[1] ### DW: this needs to be double checked!!!!###
-
-        flux          = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
-        fluxerr       = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
-        fluxpk        = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
-        fluxpkerr     = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
-        fluxpk_obs    = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
-        fluxpkerr_obs = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
-        sigma         = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
-        sigmaerr      = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
-        sigma_obs     = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
-        sigmaerr_obs  = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
-        wave          = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
-        waveerr       = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
+        basearr = np.full(linelist['name'].T.data.shape, np.nan)
+        if maxncomp > 1:
+            basearr = np.tile(basearr, linelist['name'].T.data.shape,maxncomp)
+        flux = Table(basearr, names=linelist['name'])
+        fluxerr = Table(basearr, names=linelist['name'])
+        fluxpk = Table(basearr, names=linelist['name'])
+        fluxpkerr = Table(basearr, names=linelist['name'])
+        fluxpk_obs = Table(basearr, names=linelist['name'])
+        fluxpkerr_obs = Table(basearr, names=linelist['name'])
+        sigma = Table(basearr, names=linelist['name'])
+        sigmaerr = Table(basearr, names=linelist['name'])
+        sigma_obs = Table(basearr, names=linelist['name'])
+        sigmaerr_obs = Table(basearr, names=linelist['name'])
+        wave = Table(basearr, names=linelist['name'])
+        waveerr = Table(basearr, names=linelist['name'])
 
         if tflux is not False:
-            tf =  Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
-            tfe = Table(np.full(linelist['name'].T.data.shape, np.nan), names = linelist['name'])
+            tf = Table(basearr, names=linelist['name'])
+            tfe = Table(basearr, names=linelist['name'])
 
+        #in2ha = np.where(parinfo_new['parname'] == '[NII]/Halpha line ratio')
+        #ctn2ha = np.count_nonzero(parinfo_new['parname'] == '[NII]/Halpha line ratio')
 
-        in2ha = np.where(parinfo_new['parname'] == '[NII]/Halpha line ratio')
-        ctn2ha = np.count_nonzero(parinfo_new['parname'] == '[NII]/Halpha line ratio')
+        #in1rat = np.where(parinfo_new['parname'] == '[NI]5200/5198 line ratio')
+        #ctn1rat = np.count_nonzero(parinfo_new['parname'] == '[NI]5200/5198 line ratio')
 
-        in1rat = np.where(parinfo_new['parname'] == '[NI]5200/5198 line ratio')
-        ctn1rat = np.count_nonzero(parinfo_new['parname'] == '[NI]5200/5198 line ratio')
-
-        is2rat = np.where(parinfo_new['parname'] == '[SII]6716/6731 line ratio')
-        cts2rat = np.count_nonzero(parinfo_new['parname'] == '[SII]6716/6731 line ratio')
+        #is2rat = np.where(parinfo_new['parname'] == '[SII]6716/6731 line ratio')
+        #cts2rat = np.count_nonzero(parinfo_new['parname'] == '[SII]6716/6731 line ratio')
 
         #   ihahb = np.where(parinfo_new['parname'] == 'Halpha/Hbeta line ratio')
         #   cthahb = np.count_nonzero(parinfo_new['parname'] == 'Halpha/Hbeta line ratio')
 
-        io2rat = np.where(parinfo_new['parname'] == '[OII]3729/3726 line ratio')
-        cto2rat = np.count_nonzero(parinfo_new['parname'] == '[OII]3729/3726 line ratio')
+        #io2rat = np.where(parinfo_new['parname'] == '[OII]3729/3726 line ratio')
+        #cto2rat = np.count_nonzero(parinfo_new['parname'] == '[OII]3729/3726 line ratio')
 
         #   Populate Tables
 
         for line in linelist['name']:
 
-            #indices
-            iline =   np.where(parinfo_new['line'] == line)
-            ifluxpk = np.intersect1d(iline, np.where(parinfo_new['parname'] == 'flux_peak'))
-            isigma =  np.intersect1d(iline, np.where(parinfo_new['parname'] == 'sigma'))
-            iwave =   np.intersect1d(iline, np.where(parinfo_new['parname'] == 'wavelength'))
+            for i in range(0, maxncomp):
 
-            # indices for errors, which is more complicated if error comes from line to which this one is tied
-            sigmawave_tie = parinfo_new['sigmawave_tie'][isigma[0]] # line tied to
-            if sigmawave_tie == '':
-                isigmaerr = isigma
-                iwaveerr = iwave
-            else:
-                ilinetie = np.where(parinfo_new['line'] == sigmawave_tie)
-                isigmaerr = np.intersect1d(ilinetie, np.where(parinfo_new['parname'] == 'sigma'))
-                iwaveerr = np.intersect1d(ilinetie, np.where(parinfo_new['parname'] == 'wavelength'))
+                # indices
+                lmline = line.replace('[', 'lb').replace(']', 'rb')
+                ifluxpk = '{0}_{1}_flx'.format(lmline, i)
+                isigma = '{0}_{1}_sig'.format(lmline, i)
+                iwave = '{0}_{1}_cwv'.format(lmline, i)
+                ispecres ='{0}_{1}_srsigslam'.format(lmline, i)
 
-            wave[line] = param[iwave]
-            sigma[line] = param[isigma]
-            fluxpk[line] = param[ifluxpk]
-            sigma_obs[line] = param[isigma]
-            fluxpk_obs[line] = param[ifluxpk]
-            # This bit of jujitsu ensures waveerr doesn't go NaN ...
-            p1tmp = perror[iwaveerr]
-            p2tmp = param[iwaveerr]
-            p3tmp = param[iwave]
-            inz = np.where((p1tmp != 0.) and (p2tmp != 0.) and (p3tmp != 0.))
-            ctnz = np.count_nonzero((p1tmp != 0.) and (p2tmp != 0.) and (p3tmp != 0.))
-            waveerrtmp = np.zeros(p1tmp.shape)
+                wave[line][i] = param[iwave]
+                sigma[line][i] = param[isigma]
+                fluxpk[line][i] = param[ifluxpk]
+                sigma_obs[line][i] = param[isigma]
+                fluxpk_obs[line][i] = param[ifluxpk]
 
-            if ctnz > 0:
-                waveerrtmp[inz] = p1tmp[inz]/p2tmp[inz]*p3tmp[inz]
-
-            waveerr[line] = waveerrtmp
-            sigmaerr[line] = perror[isigmaerr]
-            sigmaerr_obs[line] = perror[isigmaerr]
-            fluxpkerr[line] = perror[ifluxpk]
-            fluxpkerr_obs[line] = perror[ifluxpk]
+                waveerr[line][i] = perror[iwave]
+                sigmaerr[line][i] = perror[isigma]
+                sigmaerr_obs[line][i] = perror[isigma]
+                fluxpkerr[line][i] = perror[ifluxpk]
+                fluxpkerr_obs[line][i] = perror[ifluxpk]
 
             # Because of the way these lines are tied to others (with a division!) they
             # can yield NaNs in components that aren't fit. Correct this.
             # if line eq '[SII]6731' OR line eq 'Hbeta' OR line eq '[NI]5189' then begin
 
-            if (line == '[SII]6731') or (line == '[NI]5189'):
-                inan = np.where(np.isfinite(fluxpk[line]) == False)
-                ctnan = np.count_nonzero(np.isfinite(fluxpk[line]) == False)
-                if ctnan > 0:
-                    fluxpk[line][inan] = 0.
-                    fluxpkerr[line,inan] = 0.
-                    fluxpk_obs[line,inan] = 0.
-                    fluxpkerr_obs[line,inan] = 0.
+            #if (line == '[SII]6731') or (line == '[NI]5189'):
+            #    inan = np.where(np.isfinite(fluxpk[line]) == False)
+            #    ctnan = np.count_nonzero(np.isfinite(fluxpk[line]) == False)
+            #    if ctnan > 0:
+            #        fluxpk[line][inan] = 0.
+            #        fluxpkerr[line,inan] = 0.
+            #        fluxpk_obs[line,inan] = 0.
+            #        fluxpkerr_obs[line,inan] = 0.
 
-        for line in linelist['name']:
+        #for line in linelist['name']:
 
         # Fix flux errors associated with line ratios. E.g., [NII]/Halpha is a fitted
         # parameter and [NII]6583 is tied to it, so the formal error in [NII]6583
         # flux is 0. Add errors in Halpha and [NII]/Halpha in quadrature to get
         #  error in [NII]6583.
 
-            if (line == "[NII]6583") and (ctn2ha > 0):
-                fluxpkerr_obs[line][0:ctn2ha] = fluxpk_obs[line][0:ctn2ha] * \
-                np.sqrt((perror[in2ha]/param[in2ha])**2. + \
-                (fluxpkerr_obs['Halpha'][0:ctn2ha]/ fluxpk_obs['Halpha'][0:ctn2ha])**2.)
-                # In pegged case, set errors equal to each other
-                ipegged = np.where((perror[in2ha] == 0.) and (param[in2ha] != 0.))
-                ctpegged = np.count_nonzero((perror[in2ha] == 0.) and (param[in2ha] != 0.))
-                if ctpegged > 0:
-                    fluxpkerr_obs['[NII]6583'][ipegged] = \
-                    fluxpkerr_obs['Halpha'][ipegged]
-                fluxpkerr[line] = fluxpkerr_obs[line]
+            # if (line == "[NII]6583") and (ctn2ha > 0):
+            #     fluxpkerr_obs[line][0:ctn2ha] = fluxpk_obs[line][0:ctn2ha] * \
+            #     np.sqrt((perror[in2ha]/param[in2ha])**2. + \
+            #     (fluxpkerr_obs['Halpha'][0:ctn2ha]/ fluxpk_obs['Halpha'][0:ctn2ha])**2.)
+            #     # In pegged case, set errors equal to each other
+            #     ipegged = np.where((perror[in2ha] == 0.) and (param[in2ha] != 0.))
+            #     ctpegged = np.count_nonzero((perror[in2ha] == 0.) and (param[in2ha] != 0.))
+            #     if ctpegged > 0:
+            #         fluxpkerr_obs['[NII]6583'][ipegged] = \
+            #         fluxpkerr_obs['Halpha'][ipegged]
+            #     fluxpkerr[line] = fluxpkerr_obs[line]
 
-            if (line == '[SII]6731') and (cts2rat > 0):
-                fluxpkerr_obs[line][0:cts2rat] = \
-                fluxpk_obs[line][0:cts2rat] * \
-                np.sqrt((perror[is2rat]/param[is2rat])**2. + \
-                (fluxpkerr_obs['[SII]6716'][0:cts2rat] / \
-                fluxpk_obs['[SII]6716'][0:cts2rat])**2.)
-                # In pegged case, set errors equal to each other
-                ipegged = np.where((perror[is2rat] == 0.) and (param[is2rat] != 0.))
-                ctpegged = np.count_nonzero((perror[in2ha] == 0.) and (param[in2ha] != 0.))
-                if ctpegged > 0:
-                    fluxpkerr_obs['[SII]6731'][ipegged] = \
-                    fluxpkerr_obs['[SII]6716'][ipegged]
-                fluxpkerr[line] = fluxpkerr_obs[line]
+            # if (line == '[SII]6731') and (cts2rat > 0):
+            #     fluxpkerr_obs[line][0:cts2rat] = \
+            #     fluxpk_obs[line][0:cts2rat] * \
+            #     np.sqrt((perror[is2rat]/param[is2rat])**2. + \
+            #     (fluxpkerr_obs['[SII]6716'][0:cts2rat] / \
+            #     fluxpk_obs['[SII]6716'][0:cts2rat])**2.)
+            #     # In pegged case, set errors equal to each other
+            #     ipegged = np.where((perror[is2rat] == 0.) and (param[is2rat] != 0.))
+            #     ctpegged = np.count_nonzero((perror[in2ha] == 0.) and (param[in2ha] != 0.))
+            #     if ctpegged > 0:
+            #         fluxpkerr_obs['[SII]6731'][ipegged] = \
+            #         fluxpkerr_obs['[SII]6716'][ipegged]
+            #     fluxpkerr[line] = fluxpkerr_obs[line]
 
-            if (line == '[NI]5198') and (ctn1rat > 0):
-                fluxpkerr_obs[line][0:ctn1rat] = \
-                fluxpk_obs[line][0:ctn1rat] * \
-                np.sqrt((perror[in1rat]/param[in1rat])**2. + \
-                (fluxpkerr_obs['[NI]5200'][0:ctn1rat]/ \
-                fluxpk_obs['[NI]5200'][0:ctn1rat])**2.)
+            # if (line == '[NI]5198') and (ctn1rat > 0):
+            #     fluxpkerr_obs[line][0:ctn1rat] = \
+            #     fluxpk_obs[line][0:ctn1rat] * \
+            #     np.sqrt((perror[in1rat]/param[in1rat])**2. + \
+            #     (fluxpkerr_obs['[NI]5200'][0:ctn1rat]/ \
+            #     fluxpk_obs['[NI]5200'][0:ctn1rat])**2.)
 
-                fluxpkerr[line] = fluxpkerr_obs[line]
+            #     fluxpkerr[line] = fluxpkerr_obs[line]
 
-                # In pegged case, set errors equal to each other
-                ipegged = np.where((perror[in1rat] == 0.) and (param[in1rat] != 0.))
-                ctpegged = np.count_nonzero((perror[in1rat] == 0.) and (param[in1rat] != 0.))
-                if ctpegged > 0:
-                    fluxpkerr_obs['[NI]5198'][ipegged] = fluxpkerr_obs['[NI]5200'][ipegged]
+            #     # In pegged case, set errors equal to each other
+            #     ipegged = np.where((perror[in1rat] == 0.) and (param[in1rat] != 0.))
+            #     ctpegged = np.count_nonzero((perror[in1rat] == 0.) and (param[in1rat] != 0.))
+            #     if ctpegged > 0:
+            #         fluxpkerr_obs['[NI]5198'][ipegged] = fluxpkerr_obs['[NI]5200'][ipegged]
 
-                fluxpkerr[line] = fluxpkerr_obs[line]
+            #     fluxpkerr[line] = fluxpkerr_obs[line]
 
 ## DW: the following is a commented section in the IDL code:
 #      if line eq 'Hbeta' AND cthahb gt 0 then begin
@@ -275,88 +257,93 @@ def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = False,
 #            fluxpk_obs[line,ipeggedupper] = 0d
 #         endif
 
-            if (line == 'Hbeta') and (np.count_nonzero(linelist['name'] == 'Halpha') == 1):
-                # If Halpha/Hbeta goes belowlower limit, then we re-calculate the errors
-                # add discrepancy in quadrature to currently calculated error. Assume
-                # error in fitting is in Hbeta and adjust accordingly.
-                fha = fluxpk['Halpha']
-                ihahb = np.where((fluxpk['Halpha'] > 0.) and (fluxpk['Hbeta'] > 0.))
-                cthahb = np.count_nonzero((fluxpk['Halpha'] > 0.) and (fluxpk['Hbeta'] > 0.))
-                if cthahb > 0.:
-                    itoolow = np.where(fluxpk['Halpha'][ihahb]/fluxpk['Hbeta'] < 2.86)
-                    cttoolow = np.count_nonzero(fluxpk['Halpha'][ihahb]/fluxpk['Hbeta'] < 2.86)
-                    if cttoolow > 0:
-                        fluxpkdiff = fluxpk[line][itoolow] - fluxpk['Halpha'][itoolow]/2.86
-                        fluxpk[line][itoolow] -= fluxpkdiff
-                        fluxpk_obs[line][itoolow] -= fluxpkdiff
-                        fluxpkerr[line][itoolow] = np.sqrt(fluxpkerr[line][itoolow]**2. + fluxpkdiff**2.)
-                        fluxpkerr_obs[line][itoolow] = np.sqrt(fluxpkerr_obs[line][itoolow]**2. + fluxpkdiff**2.)
+            # if (line == 'Hbeta') and (np.count_nonzero(linelist['name'] == 'Halpha') == 1):
+            #     # If Halpha/Hbeta goes belowlower limit, then we re-calculate the errors
+            #     # add discrepancy in quadrature to currently calculated error. Assume
+            #     # error in fitting is in Hbeta and adjust accordingly.
+            #     fha = fluxpk['Halpha']
+            #     ihahb = np.where((fluxpk['Halpha'] > 0.) and (fluxpk['Hbeta'] > 0.))
+            #     cthahb = np.count_nonzero((fluxpk['Halpha'] > 0.) and (fluxpk['Hbeta'] > 0.))
+            #     if cthahb > 0.:
+            #         itoolow = np.where(fluxpk['Halpha'][ihahb]/fluxpk['Hbeta'] < 2.86)
+            #         cttoolow = np.count_nonzero(fluxpk['Halpha'][ihahb]/fluxpk['Hbeta'] < 2.86)
+            #         if cttoolow > 0:
+            #             fluxpkdiff = fluxpk[line][itoolow] - fluxpk['Halpha'][itoolow]/2.86
+            #             fluxpk[line][itoolow] -= fluxpkdiff
+            #             fluxpk_obs[line][itoolow] -= fluxpkdiff
+            #             fluxpkerr[line][itoolow] = np.sqrt(fluxpkerr[line][itoolow]**2. + fluxpkdiff**2.)
+            #             fluxpkerr_obs[line][itoolow] = np.sqrt(fluxpkerr_obs[line][itoolow]**2. + fluxpkdiff**2.)
 
-            if (line == '[OII]3729') and (cto2rat > 0.):
-                fluxpkerr_obs[line][0:cto2rat] = \
-                fluxpk_obs[line][0:cto2rat]*np.sqrt( \
-                (perror[io2rat]/param[io2rat])**2. + \
-                (fluxpkerr_obs['[OII]3726'][0:cto2rat]/ \
-                fluxpk_obs['[OII]3726'][0:cto2rat])**2.)
-                # In pegged case, set errors equal to each other
-                ipegged = np.where((perror[io2rat] == 0.) and (param[io2rat] != 0.))
-                ctpegged = np.count_nonzero((perror[io2rat] == 0.) and (param[io2rat] != 0.))
-                if ctpegged > 0:
-                    fluxpkerr_obs['[OII]3729'][ipegged] = fluxpkerr_obs['[OII]3726'][ipegged]
-                fluxpkerr[line] = fluxpkerr_obs[line]
+            # if (line == '[OII]3729') and (cto2rat > 0.):
+            #     fluxpkerr_obs[line][0:cto2rat] = \
+            #     fluxpk_obs[line][0:cto2rat]*np.sqrt( \
+            #     (perror[io2rat]/param[io2rat])**2. + \
+            #     (fluxpkerr_obs['[OII]3726'][0:cto2rat]/ \
+            #     fluxpk_obs['[OII]3726'][0:cto2rat])**2.)
+            #     # In pegged case, set errors equal to each other
+            #     ipegged = np.where((perror[io2rat] == 0.) and (param[io2rat] != 0.))
+            #     ctpegged = np.count_nonzero((perror[io2rat] == 0.) and (param[io2rat] != 0.))
+            #     if ctpegged > 0:
+            #         fluxpkerr_obs['[OII]3729'][ipegged] = fluxpkerr_obs['[OII]3726'][ipegged]
+            #     fluxpkerr[line] = fluxpkerr_obs[line]
 
-#     Add back in spectral resolution
-#     Can't use sigma = 0 as criterion since the line could be fitted but unresolved.
+                # Add back in spectral resolution
+                sigmatmp = sigma[line][i]/(constants.c/1.e3)*wave[line][i]
 
+                # Make sure we're not adding something to 0 --
+                # i.e. the component wasn't fit.
+                # Can't use sigma = 0 as criterion since the line could be
+                # fitted but unresolved.
+                if fluxpk[line][i] > 0:
+                    sigmatmp = np.sqrt(sigmatmp**2. + param[ispecres]**2.)
+                    # in km/s
+                    sigma_obs[line][i] = \
+                        sigmatmp/wave[line][i]*(constants.c/1.e3)
+                    # error propagation for adding in quadrature
+                    sigmaerr_obs[line][i] *= \
+                        sigma[line][i]/(constants.c/1.e3)*wave[line][i] /\
+                        sigmatmp
+                    # Correct peak flux and error for deconvolution
+                    fluxpk[line][i] *= sigma_obs[line][i]/sigma[line][i]
+                    fluxpkerr[line][i] *= sigma_obs[line][i]/sigma[line][i]
 
-            sigmatmp = sigma[line]/(constants.c/1.e3)*wave[line]
-            inz = np.where(fluxpk[line] > 0)
-            ctnz = np.count_nonzero(fluxpk[line] > 0)
+                # Compute total Gaussian flux
+                # sigma and error need to be in wavelength space
+                gflux = gaussflux(fluxpk_obs[line][i],sigmatmp,
+                                  normerr=fluxpkerr_obs[line][i],
+                                  sigerr=sigmaerr_obs[line][i]/
+                                  (constants.c/1.e3)*wave[line][i])
+                flux[line][i] = gflux['flux']
+                fluxerr[line][i] = gflux['flux_err']
 
-            if ctnz > 0:
-            # Make sure we're not adding something to 0 -- i.e. the component wasn't fit.
-                sigmatmp[inz] = np.sqrt(sigmatmp[inz]**2. + param[2]**2.)
-                sigma_obs[line][inz] = sigmatmp[inz]/wave[line][inz]*(constants.c/1.e3) # in km/s
-            # error propagation for adding in quadrature
-                sigmaerr_obs[line][inz] *= \
-                sigma[line][inz]/(constants.c/1.e3)*wave[line][inz] / sigmatmp[inz]
-            # Correct peak flux and error for deconvolution
-                fluxpk[line][inz] *= sigma_obs[line][inz]/sigma[line][inz]
-                fluxpkerr[line][inz] *= sigma_obs[line][inz]/sigma[line][inz]
+                # Set fluxes to 0 outside of wavelength range,
+                # or if NaNs or infinite errors
 
-# Compute total Gaussian flux
-# sigma and error need to be in wavelength space
-            gflux = gaussflux(fluxpk_obs[line],sigmatmp,normerr=fluxpkerr_obs[line],sigerr=sigmaerr_obs[line]/(constants.c/1.e3)*wave[line])
-            flux[line] = gflux['flux']
-            fluxerr[line] = gflux['flux_err']
+                inoflux_wr = False
+                if waveran:
+                    inoflux_wr = \
+                        ((waveran[0] > wave[line][i] *
+                         (1. - 3.*sigma[line][i] /
+                          (constants.c/1.e3))) or
+                         (waveran[1] < wave[line][i] *
+                          (1. + 3.*sigma[line][i] /
+                           (constants.c/1.e3))))
 
-# Set fluxes to 0 outside of wavelength range, or if NaNs or infinite errors
+                inoflux = \
+                    ((np.isfinite(fluxerr[line][i]) is False) or
+                     (np.isfinite(fluxpkerr[line][i]) is False))
 
-            if waveran:
-                inoflux = np.where( (waveran[0] > wave[line]*(1 - 3.*sigma[line]/(constants.c/1.e3))) or \
-                                    (waveran[1] < wave[line]*(1 + 3.*sigma[line]/(constants.c/1.e3))) or \
-                                    (np.isfinite(fluxerr[line]) == False) or \
-                                    (np.isfinite(fluxpkerr[line]) == False) )
+                if inoflux_wr or inoflux:
+                    flux[line][i] = 0.
+                    fluxerr[line][i] = 0.
+                    fluxpk[line][i] = 0.
+                    fluxpkerr[line][i] = 0.
+                    fluxpk_obs[line][i] = 0.
+                    fluxpkerr_obs[line][i] = 0.
 
-                ct = np.count_nonzero( (waveran[0] > wave[line]*(1 - 3.*sigma[line]/(constants.c/1.e3))) or \
-                                       (waveran[1] < wave[line]*(1 + 3.*sigma[line]/(constants.c/1.e3))) or \
-                                       (np.isfinite(fluxerr[line]) == False) or \
-                                       (np.isfinite(fluxpkerr[line]) == False) )
-
-
-                if ct > 0:
-                    flux[line][inoflux] = 0.
-                    fluxerr[line][inoflux] = 0.
-                    fluxpk[line][inoflux] = 0.
-                    fluxpkerr[line][inoflux] = 0.
-                    fluxpk_obs[line][inoflux] = 0.
-                    fluxpkerr_obs[line][inoflux] = 0.
-
-# Compute total fluxes summed over components
-
+            # Compute total fluxes summed over components
             igd = np.where(flux[line] > 0.)
             ctgd = np.count_nonzero(flux[line] > 0.)
-
             if tflux is not False:
                 if ctgd > 0:
                     tf[line] = np.sum(flux[line][igd])
@@ -365,12 +352,11 @@ def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = False,
                     tf[line] = 0.
                     tfe[line] = 0.
 
-
-# Special doublet cases: combine fluxes from each line
+        # Special doublet cases: combine fluxes from each line
         if not (doublets is None):
             ndoublets = doublets.shape[0]
 
-            for i in np.arange(0,ndoublets):
+            for i in np.arange(0, ndoublets):
                 if (np.count_nonzero(linelist['name'] == doublets[i,0]) == 1) \
                     and (np.count_nonzero(linelist['name'] == doublets[i,1]) == 1):
 # new line label
@@ -393,9 +379,13 @@ def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = False,
                     sigma_obs[dkey] = (sigma_obs[doublets[i,0]]+sigma_obs[doublets[i,1]])/2.
                     sigmaerr_obs[dkey] = (sigmaerr_obs[doublets[i,0]]+sigmaerr_obs[doublets[i,1]])/2.
 
-        outstr = {'flux':flux,'fluxerr':fluxerr,'fluxpk':fluxpk,'fluxpkerr':fluxpkerr,\
-                  'wave':wave,'waveerr':waveerr,'sigma':sigma,'sigmaerr':sigmaerr,'sigma_obs':sigma_obs,\
-                  'sigmaerr_obs':sigmaerr_obs, 'fluxpk_obs':fluxpk_obs,'fluxpkerr_obs':fluxpkerr_obs}
+        outstr = {'flux': flux, 'fluxerr': fluxerr,
+                  'fluxpk': fluxpk, 'fluxpkerr': fluxpkerr,
+                  'wave': wave, 'waveerr': waveerr,
+                  'sigma': sigma, 'sigmaerr': sigmaerr,
+                  'sigma_obs': sigma_obs, 'sigmaerr_obs': sigmaerr_obs,
+                  'fluxpk_obs': fluxpk_obs, 'fluxpkerr_obs': fluxpkerr_obs}
+
         if tflux is not False:
             tfdict = {'tflux': tf, 'tfluxerr': tfe}
 
@@ -403,5 +393,3 @@ def sepfitpars(linelist, param, perror, parinfo, waveran = None, tflux = False,
             return outstr, tfdict
         else:
             return outstr
-
-

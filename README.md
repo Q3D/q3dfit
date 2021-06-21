@@ -13,13 +13,11 @@ Data cube is from Gemini/GMOS observations of PG1411+442
    - `./testing/pg1411/pg1411rb3.fits`
    - `./testing/pg1411/pg1411qsotemplate.npy`
    - `./testing/pg1411/pg1411hosttemplate.npy`
-2. Edit `./init/pg1411.py`.
-   - The variable `infile` needs to point to `pg1411rb3.fits`
-   - The variable `qsotemplate` needs to point to `pg1411qsotemplate.npy`
-   - The variable `stellartemplates` needs to point to `pg1411hosttemplate.npy`
-   - `outdir` is the location of the output files, including plots
-   - `logfile` is an ASCII output file
-3. Run `./test/test_pg1411c14r11.py`.
+2. Edit the input/output files in the Jupyter notebook `run_q3dfit.ipynb`.
+   - `infile` needs to point to `pg1411rb3.fits`
+   - `qsotemplate` needs to point to `pg1411qsotemplate.npy`
+   - `stellartemplates` needs to point to `pg1411hosttemplate.npy`
+3. Run q3df/q3da from the notebook.
 4. Compare the output plots to those in the Q3D Box folder (subdirectory `./testing/pg1411/c14r11_output/`).
 
 

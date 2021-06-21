@@ -68,46 +68,12 @@ def pg1411():
     platescale = 0.3
     fitrange = [4620, 7450]
 
-<<<<<<< HEAD
-    
-    #   These are unique to the user
+#   These are unique to the user
     volume = '/Users/annamurphree/Docs/Rupke Research/q3d/pg1411/'
     infile = volume+gal+outstr+'.fits'
-    mapdir = volume+'outdir/'+outstr+'/'
     outdir = volume+'outdir/'+outstr+'/'
     qsotemplate = volume+gal+'qsotemplate.npy'
     stellartemplates = volume+gal+'hosttemplate.npy'
-    logfile = volume+gal+'_fitlog.txt'
-    batchfile = '/Users/annamurphree/Docs/Rupke Research/q3d/q3dfit/common/fitloop.py'
-    batchdir = '/Users/annamurphree/Docs/Rupke Research/q3d/q3dfit/'
-    
-    
-    ### for our test object, pg1411, nothing needs to be changed here for now, make more flexible later
-    
-    
-    # Required parameters
-
-    if not os.path.isfile(infile): print('Data cube not found.')
-
-    # Lines to fit.
-    lines = ['Halpha','Hbeta', '[OI]6300','[OI]6364','[OIII]4959','[OIII]5007', '[NII]6548','[NII]6583','[SII]6716','[SII]6731']
-    # nlines = len(lines)
-
-    # Max no. of components.
-=======
-#   These are unique to the user
-    # volume = '/Users/dwylezal/EmmyNoether_Science/Q3D/JWST_ERS_Planning/Software/PG1411/'
-    # volume = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/PG1411/pg1411/'
-    # infile = volume+gal+outstr+'.fits'
-    # outdir = volume+gal+'/'+outstr+'/'
-    # qsotemplate = volume+gal+'qsotemplate.npy'
-    # stellartemplates =  \
-    #    volume+gal+'hosttemplate.npy'
-    volume = '/Users/drupke/'
-    infile = volume+'Box Sync/q3d/'+gal+'/'+gal+outstr+'.fits'
-    outdir = volume+'specfits/gmos/'+gal+'/'+outstr+'/'
-    qsotemplate = volume+'Box Sync/q3d/'+gal+'/'+gal+'qsotemplate.npy'
-    stellartemplates = volume+'Box Sync/q3d/'+gal+'/'+gal+'hosttemplate.npy'
 
     mapdir = ''
     logfile = outdir+gal+'_fitlog.txt'
@@ -125,7 +91,6 @@ def pg1411():
 #    nlines = len(lines)
 
 # Max no. of components.
->>>>>>> 11c09e4c1011a065371c0899150a2d2ba3aa7c72
     maxncomp = 1
 
 # Initialize line ties, n_comps, z_inits, and sig_inits.

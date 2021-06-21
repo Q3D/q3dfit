@@ -1,4 +1,4 @@
 CUBE: wavelength unit does not exist in the header of sci hdu.
 [col,row]=[1,1] out of [1,1]
 FITLOOP: Repeating the fit of [NeII]128130 with 0 components.
-Q3DF: Total time for calculation: 40.70 s.
+Q3DF: Total time for calculation: 10.39 s.

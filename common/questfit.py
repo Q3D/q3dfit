@@ -1,6 +1,7 @@
 import numpy as np
 import lmfit
 import copy
+from scipy import constants
 from q3dfit.common import interptemp
 from q3dfit.common import questfitfcn
 from q3dfit.common import questfit_readcf
@@ -13,8 +14,8 @@ import q3dfit
 
 
 def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, index, 
-    z, quiet=True, config_file=None, global_ice_model='', global_ext_model='', \
-    models_dictionary={}, template_dictionary={}, fitran=None):
+    z, quiet=True, config_file=None, global_ice_model='None', global_ext_model='None', \
+    models_dictionary={}, template_dictionary={}, fitran=None, convert2Flambda=True):
     '''Function defined to fit the MIR continuum
 
     Parameters
@@ -61,7 +62,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
     if fitran:
         flux = flux[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
         wlambda = wlambda[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
-    if len(global_ext_model)>0:     global_extinction = True
+    if global_ext_model != 'None':     global_extinction = True
 
 
     if singletemplatelambda!=b'0':
@@ -224,17 +225,36 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
             models_dictionary[i] = temp_value_rebin/temp_value_rebin.max()
 
         models_dictionary['wave'] = wlambda/(1+z)
-
         
+        if convert2Flambda:
+            #import pdb; pdb.set_trace()
+            flux *= constants.c/(wlambda*1e-9)**2 *1e-23
+            for el in models_dictionary.keys():
+                if not (global_ext_model in el) and not (global_ice_model in el) and not ('ext' in el) and not ('ice' in el):
+                    models_dictionary[el]*= constants.c/(wlambda*1e-9)**2 *1e-23
+
         flux_cut = flux[index]
         models_dictionary_cut = copy.deepcopy(models_dictionary)
         for el in models_dictionary.keys():
             models_dictionary_cut[el] = models_dictionary_cut[el][index]
 
+
         result = model.fit(flux_cut,param,**models_dictionary_cut,max_nfev=int(1e5),method='least_squares',nan_policy='omit')#method='least_squares'nan_policy='omit'
 
-        best_fit = result.eval(**models_dictionary)
-        comp_best_fit = result.eval_components()
+        best_fit = result.eval(**models_dictionary) # use models_dictionary rather than models_dictionary_cut to evaluate over all wavelengths within fitran (not just [index])
+        comp_best_fit = result.eval_components(**models_dictionary)
+
+        if convert2Flambda:
+            flux /= (constants.c/(wlambda*1e-9)**2 *1e-23)
+            best_fit /= (constants.c/(wlambda*1e-9)**2 *1e-23)
+            for el in comp_best_fit.keys():
+                if not (global_ext_model in el) and not (global_ice_model in el) and not ('ext' in el) and not ('ice' in el):
+                    try:
+                        comp_best_fit[el] /= (constants.c/(wlambda*1e-9)**2 *1e-23)
+                    except Exception as e:
+                        print(e)
+                        import pdb; pdb.set_trace()
+
         ct_coeff = {'MIRparams': result.params, 'comp_best_fit': comp_best_fit}
 
         #return best_fit,comp_best_fit,result

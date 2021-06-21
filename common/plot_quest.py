@@ -22,7 +22,9 @@ def plot_quest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat, templ_ma
           MIRgdlambda_temp = MIRgdlambda
 
         if len(lines)>0:
-          for line_i in lines:  ax1.axvline(line_i, color='grey', linestyle='--', alpha=0.7, zorder=0)
+          for line_i in lines:
+            ax1.axvline(line_i, color='grey', linestyle='--', alpha=0.7, zorder=0)
+            #ax1.axvspan(line_i-max(initdat['siglim_gas']), line_i+max(initdat['siglim_gas']))
           ax1.plot(MIRgdlambda, linespec, color='r', linestyle='-', alpha=0.7, linewidth=1.5)
 
         if 'argscontfit' in initdat:
@@ -52,7 +54,7 @@ def plot_quest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat, templ_ma
         ax1.set_xscale('log')
         ax1.set_yscale('log')
         ax1.set_xticklabels([])
-        ax1.set_ylim(1e-4,1e2)
+        ax1.set_ylim(1e-5,1e2)
 
         ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
         ax2.plot(MIRgdlambda,MIRgdflux/MIRcontinuum,color='black')

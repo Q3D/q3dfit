@@ -438,9 +438,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
-                if 'plotMIR' in initdat:    # Test plot here - need to transfer this to q3dfa later
-                  print('Plotting')
-                  plot_quest(gdlambda[ct_indx], gdflux[ct_indx], continuum[ct_indx], ct_coeff, initdat)
 
                 ppxf_sigma = 0.
                 if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
@@ -591,7 +588,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     fline = interp1d(gdlambda, gdflux_nocnt, kind='linear')
                     # Check that line wavelength is in data range
                     # Use first component as a proxy for all components
-                    if initdat['fcncontfit']=='questfit': listlinesz[line][0] *= 1e-4 # micron
                     if listlinesz[line][0] >= min(gdlambda) and \
                         listlinesz[line][0] <= max(gdlambda):
                         peakinit[line] = fline(listlinesz[line])
@@ -609,9 +605,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             for line in initdat['lines']:
                 siginit_gas[line] = \
                     np.zeros(initdat['maxncomp']) + siginit_gas_def
-        if initdat['fcncontfit']=='questfit':
-          for el in siginit_gas.keys():   siginit_gas[el][0] *= 1e-4  # micron
-          siglim_gas *= 1e-4  # micron
 
         # Fill out parameter structure with initial guesses and constraints
         impModule = import_module('q3dfit.init.' + initdat['fcninitpar'])
@@ -635,6 +628,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         if testsize == 0:
             raise Exception('Bad initial parameter guesses.')
 
+        if initdat['fcncontfit']=='questfit':   # go back to angstrom for emission line fitting
+            gdlambda *= 1e4
 
         efitModule = import_module('q3dfit.common.'+fcnlinefit)
         elin_lmfit = getattr(efitModule, 'run_'+fcnlinefit)
@@ -642,10 +637,14 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             elin_lmfit(gdlambda, gdflux_nocnt, gdweight_nocnt, parinfo=parinit,
                        maxiter=1000, quiet=quiet)
 
+        if initdat['fcncontfit']=='questfit':   # go back to micron again
+            gdlambda *= 1e-4
+
         if 'plotMIR' in initdat.keys():    # Test plot here - need to transfer this to q3dfa later
           print('Plotting')
           from matplotlib import pyplot as plt
-          plot_quest(gdlambda, gdflux, continuum+specfit, ct_coeff, initdat, templ_mask=ct_indx, lines=[12.8], linespec=specfit)
+          plot_quest(gdlambda, gdflux, continuum+specfit, ct_coeff, initdat, lines=[12.8], linespec=specfit)
+          #plot_quest(gdlambda, gdflux, continuum, ct_coeff, initdat)
 
         param = parout
         covar = lmout.covar

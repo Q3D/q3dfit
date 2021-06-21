@@ -63,7 +63,7 @@ def f21219mir():
         linetie[i] = '[NeII]128130'
         ncomp[i] = np.full((ncols,nrows),maxncomp)
         zinit_gas[i] = np.full((ncols,nrows,maxncomp),0.)
-        siginit_gas[i] = np.full(maxncomp,50.)
+        siginit_gas[i] = np.full(maxncomp,1000.)
         zinit_stars=np.full((ncols,nrows),0.0)
 
 
@@ -93,7 +93,7 @@ def f21219mir():
 
     # Velocity dispersion limits and fixed values
     siglim_gas = np.ndarray(2)
-    siglim_gas[:] = [5, 1500]
+    siglim_gas[:] = [5, 4000]
 
     #
     # Output structure
@@ -132,7 +132,7 @@ def f21219mir():
             'logfile': logfile,
             'siglim_gas': siglim_gas,
             'siginit_gas': siginit_gas,
-            'siginit_stars': 50,
+            'siginit_stars': 100,
             'nocvdf': 1,
             'waveext': 4,
             'datext': 1,

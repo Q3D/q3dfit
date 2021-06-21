@@ -414,7 +414,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
-<<<<<<< HEAD
+#<<<<<<< HEAD
                 '''
                 if initdat['plotMIR']:    # Test plot here - need to transfer this to q3dfa later
 =======
@@ -733,12 +733,12 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               # 'covar': covar,
               'siglim': siglim_gas}
 
-<<<<<<< HEAD
+#<<<<<<< HEAD
     import pickle
     f = open('fitspec.txt', 'wb')
     pickle.dump(outstr, f)
     f.close()
-=======
->>>>>>> 11c09e4c1011a065371c0899150a2d2ba3aa7c72
+#=======
+#>>>>>>> 11c09e4c1011a065371c0899150a2d2ba3aa7c72
     # finish:
     return outstr

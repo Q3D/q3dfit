@@ -21,8 +21,6 @@ Take outputs from Q3DF and perform fitting loop.
      Output from READCUBE, containing data
    initdat: in, required, type=structure
      Output from initialization routine, containing fit parameters
-   linelist: in, required, type=hash
-     Output from LINELIST.
    oned: in, required, type=byte
      Whether data is in a cube or in one dimension (longslit)
    onefit: in, required, type=byte
@@ -240,7 +238,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                     # set emission line mask pa rameters
                     linepars = sepfitpars(listlines, structinit['param'],
                                           structinit['perror'],
-                                          structinit['parinfo'])
+                                          initdat['maxncomp'])
                     listlinesz = linepars['wave']
                     # Multiply sigmas from first fit by MASKSIG_SECONDFIT_DEF
                     # to get half-widths for masking
@@ -289,8 +287,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                 siglim_gas = struct['siglim']
 
                 linepars = sepfitpars(listlines, struct['param'],
-                                      struct['perror'],
-                                      struct['parinfo'])
+                                      struct['perror'], initdat['maxncomp'])
                 ccModule = \
                     importlib.import_module('q3dfit.common.' +
                                             initdat['fcncheckcomp'])

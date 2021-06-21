@@ -120,9 +120,10 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
 
     ct_coeff = result.params
 
+    if refit == None:
+        return continuum, ct_coeff, zstar
     # Fit residual with PPXF
     if refit:
-
         resid = flux - continuum
 
         # log rebin residual
@@ -167,3 +168,6 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
         continuum += cont_resid
 
         return continuum, ct_coeff, zstar
+
+
+

@@ -1,11 +1,11 @@
-
 # Make quasar template
 # from q3dfit.common.makeqsotemplate import makeqsotemplate
-# volume = '/Volumes/fingolfin/ifs/gmos/cubes/pg1411/'
+# volume = '/Users/drupke/Box Sync/q3d/pg1411/'
 # outpy = volume + 'pg1411qsotemplate.npy'
 # infits = volume + 'pg1411rb1.fits'
 # makeqsotemplate(infits, outpy, dataext=None, dqext=None, waveext=None)
 
+<<<<<<< HEAD
 #from q3dfit.common.q3df import q3df
 #q3df('pg1411', cols=14, rows=11, quiet=False)
 
@@ -22,6 +22,17 @@ print("Current working directory: {0}".format(cwd))
 
 #from q3dfit.common.q3df import q3df
 #q3df('pg1411_and_Spitzer', cols=0, rows=0, quiet=False)
+=======
+import numpy as np
+import pdb
+from q3dfit.common.q3df import q3df
+from q3dfit.common.q3da import q3da
+
+initproc = np.load('/Users/drupke/specfits/gmos/pg1411/rb3/initproc.npy', 
+                   allow_pickle=True)
+q3df(initproc[()], cols=14, rows=11, quiet=False)
+q3da(initproc[()], cols=14, rows=11, quiet=False)
+>>>>>>> 11c09e4c1011a065371c0899150a2d2ba3aa7c72
 
 from q3dfit.common.q3da import q3da
 q3da('pg1411_and_Spitzer', cols=1, rows=1, quiet=False)

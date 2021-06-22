@@ -126,6 +126,7 @@ import copy
 import numpy as np
 import pdb
 import time
+import pickle
 from astropy.table import Table
 from importlib import import_module
 from lmfit import Model
@@ -136,7 +137,6 @@ from q3dfit.common.masklin import masklin
 from q3dfit.common import interptemp
 from scipy.interpolate import interp1d
 from q3dfit.common.questfit import questfit
-from q3dfit.common.plot_quest import plot_quest
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
@@ -591,10 +591,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         impModule = import_module('q3dfit.init.' + fcninitpar)
         run_fcninitpar = getattr(impModule, fcninitpar)
         pdb.set_trace()
-        emlmod, fit_params = \
-            run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
-                           siginit_gas, initdat['maxncomp'], ncomp,
-                           siglim=siglim_gas)
+        emlmod, fit_params = run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
+                                            siginit_gas, initdat['maxncomp'], ncomp, siglim=siglim_gas)
 
         # testsize = len(parinit)
         # if testsize == 0:
@@ -734,7 +732,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               'siglim': siglim_gas}
 
 #<<<<<<< HEAD
-    import pickle
     f = open('fitspec.txt', 'wb')
     pickle.dump(outstr, f)
     f.close()

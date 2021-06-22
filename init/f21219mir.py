@@ -43,7 +43,9 @@ def f21219mir():
 
     # Lines to fit.
     # lines = ['test-MIRLINE']
-    lines = ['[NeII]128130']
+    #lines = ['[NeII]128130']
+    lines = ['[NeII]12.81']
+    lines = ['[NeII]12.81', '[ArII]6.99', '[SIII]18.71', '[NeIII]15.56', 'H2_65_O13', '[ArIII]8.99']
 
     # Max no. of components.
     maxncomp = 1
@@ -60,10 +62,10 @@ def f21219mir():
     #     siginit_gas[i] = np.full(maxncomp, 50.)
     #     zinit_stars = np.full((ncols, nrows), 0.0898)
     for i in lines:
-        linetie[i] = '[NeII]128130'
+        linetie[i] = '[NeII]12.81'
         ncomp[i] = np.full((ncols,nrows),maxncomp)
         zinit_gas[i] = np.full((ncols,nrows,maxncomp),0.)
-        siginit_gas[i] = np.full(maxncomp,1000.)
+        siginit_gas[i] = np.full(maxncomp, 1000.) #0.1) #1000.)
         zinit_stars=np.full((ncols,nrows),0.0)
 
 
@@ -81,7 +83,7 @@ def f21219mir():
     #                'wave': [168000.0],
     #                'off': [[-500, 500]],
     #                'linoth': linoth}
-    linoth[0, 0] = '[NeII]128130'
+    linoth[0, 0] = '[[NeII]12.81'
     argspltlin1 = {'nx': 1,
                    'ny': 1,
                    'label': ['[Ne II] 12.8'],
@@ -93,7 +95,7 @@ def f21219mir():
 
     # Velocity dispersion limits and fixed values
     siglim_gas = np.ndarray(2)
-    siglim_gas[:] = [5, 4000]
+    siglim_gas[:] = [5, 4000]  #[5*1e-4, 0.4]
 
     #
     # Output structure
@@ -101,7 +103,7 @@ def f21219mir():
 
     init = { \
             # Required pars
-            'fcninitpar': 'gmos',
+            'fcninitpar': 'parinit', #'gmos',
             'fitran': fitrange,
             'fluxunits': 1,
             'infile': infile,
@@ -124,7 +126,7 @@ def f21219mir():
                             'models_dictionary': {},
                             'template_dictionary': {}},
             'argslinelist': {'vacuum': False},
-            'argspltlin1': argspltlin1,
+            #'argspltlin1': argspltlin1,
             'fcncheckcomp': 'checkcomp',
             'fcncontfit': 'questfit',
             'maskwidths_def': 500,

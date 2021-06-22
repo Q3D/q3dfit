@@ -158,7 +158,7 @@ def sepfitpars(linelist, param, perror, maxncomp, waveran = None, tflux = False,
             for i in range(0, maxncomp):
 
                 # indices
-                lmline = line.replace('[', 'lb').replace(']', 'rb')
+                lmline = line.replace('[', 'lb').replace(']', 'rb').replace('.', 'pt')
                 ifluxpk = '{0}_{1}_flx'.format(lmline, i)
                 isigma = '{0}_{1}_sig'.format(lmline, i)
                 iwave = '{0}_{1}_cwv'.format(lmline, i)

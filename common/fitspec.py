@@ -551,7 +551,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     #
     # Fit emission lines
     #
-
+    fit_params = []
     if noemlinfit != b'1':
 
         # Initial guesses for emission line peak fluxes (above continuum)
@@ -585,49 +585,27 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # Fill out parameter structure with initial guesses and constraints
         impModule = import_module('q3dfit.init.' + fcninitpar)
         run_fcninitpar = getattr(impModule, fcninitpar)
-        pdb.set_trace()
         emlmod, fit_params = \
             run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
                            siginit_gas, initdat['maxncomp'], ncomp,
                            siglim=siglim_gas)
 
-        # testsize = len(parinit)
-        # if testsize == 0:
-            # raise Exception('Bad initial parameter guesses.')
-
-        #<<<<<<< HEAD
-        if initdat['fcncontfit']=='questfit':   # go back to angstrom for emission line fitting
-            gdlambda *= 1e4
-
-        # efitModule = import_module('q3dfit.common.'+fcnlinefit)
-        # elin_lmfit = getattr(efitModule, 'run_'+fcnlinefit)
-        # lmout, parout, specfit, perror = \
-        #     elin_lmfit(gdlambda, gdflux_nocnt, gdweight_nocnt, parinfo=parinit,
-        #                maxiter=1000, quiet=quiet)
-
-        #=======
         # Actual fit
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
                            method='least_squares', weights=gdweight_nocnt,
                            max_nfev=1000, nan_policy='omit')
         specfit = lmout.best_fit
+        breakpoint()
         if not quiet:
             print(lmout.fit_report(show_correl=False))
 
         param = lmout.best_values
 
-        #============
-        if initdat['fcncontfit']=='questfit':   # go back to micron again
-            gdlambda *= 1e-4
-
         if 'plotMIR' in initdat.keys():    # Test plot here - need to transfer this to q3dfa later
           print('Plotting')
           from matplotlib import pyplot as plt
           plot_quest(gdlambda, gdflux, continuum+specfit, ct_coeff, initdat, lines=[12.8], linespec=specfit)
-          #plot_quest(gdlambda, gdflux, continuum, ct_coeff, initdat)
 
-        #param = parout
-        #============
 
         covar = lmout.covar
         dof = lmout.nfree

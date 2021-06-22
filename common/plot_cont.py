@@ -100,7 +100,7 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
         # plot on a log scale:
         if xstyle == 'log' or ystyle == 'log':
             plt.style.use(pltstyle)
-            fig = plt.figure(figsize=(50, 30))
+            fig = plt.figure(figsize=(30, 10))
             plt.axis('off')  # so the subplots don't share a y-axis
             
             fig.add_subplot(1, 1, 1)
@@ -194,7 +194,7 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
                 xtit = 'Observed Wavelength ($\AA$)'
             
             plt.style.use(pltstyle)
-            fig = plt.figure(figsize=(50, 50))
+            fig = plt.figure(figsize=(20, 20))
             plt.axis('off')  # so the subplots don't share a y-axis
             
             maximum = 0

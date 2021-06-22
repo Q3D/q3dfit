@@ -585,7 +585,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # Fill out parameter structure with initial guesses and constraints
         impModule = import_module('q3dfit.init.' + fcninitpar)
         run_fcninitpar = getattr(impModule, fcninitpar)
-        pdb.set_trace()
         emlmod, fit_params = \
             run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
                            siginit_gas, initdat['maxncomp'], ncomp,

@@ -102,10 +102,10 @@ def linelist(inlines=None,linelab=True,waveunit='micron',vacuum=True):
     
     # I will have more files here, and hopefully the script will be able to
     # handle them through this list, but the default is they are all in vacuum
-    lines_DSNR=Table.read('/Users/annamurphree/Docs/Rupke Research/q3dfit/q3dfit/data/linelists/linelist_DSNR.tbl',format='ipac')
-    lines_H2=Table.read('/Users/annamurphree/Docs/Rupke Research/q3dfit/q3dfit/data/linelists/linelist_H2.tbl',format='ipac')
-    lines_fine_str=Table.read('/Users/annamurphree/Docs/Rupke Research/q3dfit/q3dfit/data/linelists/linelist_fine_str.tbl',format='ipac')
-    lines_TSB=Table.read('/Users/annamurphree/Docs/Rupke Research/q3dfit/q3dfit/data/linelists/linelist_TSB.tbl',format='ipac')
+    lines_DSNR=Table.read('../data/linelists/linelist_DSNR.tbl',format='ipac')
+    lines_H2=Table.read('../data/linelists/linelist_H2.tbl',format='ipac')
+    lines_fine_str=Table.read('../data/linelists/linelist_fine_str.tbl',format='ipac')
+    lines_TSB=Table.read('../data/linelists/linelist_TSB.tbl',format='ipac')
     all_tables=[lines_DSNR,lines_H2,lines_fine_str,lines_TSB]
     all_units=[lines_DSNR['lines'].unit,lines_H2['lines'].unit,lines_fine_str['lines'].unit,lines_TSB['lines'].unit]
 

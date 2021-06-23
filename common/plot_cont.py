@@ -100,7 +100,8 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
         # plot on a log scale:
         if xstyle == 'log' or ystyle == 'log':
             plt.style.use(pltstyle)
-            fig = plt.figure(figsize=(30, 10))
+            fig = plt.figure(figsize=(20, 10))
+            #fig = plt.figure()
             plt.axis('off')  # so the subplots don't share a y-axis
             
             fig.add_subplot(1, 1, 1)
@@ -110,8 +111,8 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
             plt.xlim(xran[0], xran[1])
             # tick formatting
             plt.minorticks_on()
-            plt.tick_params(which='major', length=20, pad=30)
-            plt.tick_params(which='minor', length=10)
+            plt.tick_params(which='major', length=20, pad=30, fontsize=20)
+            plt.tick_params(which='minor', length=10, fontsize=20)
     
             gs = fig.add_gridspec(4,1)
             ax1 = fig.add_subplot(gs[:3, :])
@@ -121,7 +122,7 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
             #ax1.set_xticklabels([])
             if ystyle == 'log':
                 ax1.set_yscale('log')
-            ax1.set_ylabel(ytit, fontsize=12)
+            ax1.set_ylabel(ytit, fontsize=20)
             if title == 'QSO':
                 ax1.set_ylim(10e-7)
             
@@ -138,11 +139,11 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
             ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
             ax2.plot(wave, np.divide(specstars,modstars), color=dcolor)
             ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
-            ax2.set_ylabel('Data/Model', fontsize=12)
+            ax2.set_ylabel('Data/Model', fontsize=20)
             if xunit == 'micron':
-                ax2.set_xlabel('Wavelength ($\mu$m)', fontsize=12)
+                ax2.set_xlabel('Wavelength ($\mu$m)', fontsize=20)
             else:
-                ax2.set_xlabel('Wavelength ($\AA$)', fontsize=12)
+                ax2.set_xlabel('Wavelength ($\AA$)', fontsize=20)
             gs.update(wspace=0.0, hspace=0.05)
             plt.gcf().subplots_adjust(bottom=0.1)
         

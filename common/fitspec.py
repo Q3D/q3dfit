@@ -126,6 +126,7 @@ import copy
 import numpy as np
 import pdb
 import time
+import pickle
 from astropy.table import Table
 from importlib import import_module
 from lmfit import Model
@@ -136,7 +137,6 @@ from q3dfit.common.masklin import masklin
 from q3dfit.common import interptemp
 from scipy.interpolate import interp1d
 from q3dfit.common.questfit import questfit
-from q3dfit.common.plot_quest import plot_quest
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
@@ -585,10 +585,17 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # Fill out parameter structure with initial guesses and constraints
         impModule = import_module('q3dfit.init.' + fcninitpar)
         run_fcninitpar = getattr(impModule, fcninitpar)
-        emlmod, fit_params = \
-            run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
-                           siginit_gas, initdat['maxncomp'], ncomp,
-                           siglim=siglim_gas)
+# <<<<<<< HEAD
+#         emlmod, fit_params = run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
+#                            siginit_gas, initdat['maxncomp'], ncomp,
+#                            siglim=siglim_gas)
+# =======
+        
+        emlmod, fit_params = run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
+                                            siginit_gas, initdat['maxncomp'], ncomp,
+                                            siglim=siglim_gas[:])
+        
+# >>>>>>> master
 
         # Actual fit
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
@@ -695,6 +702,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               'ct_method': method,
               'ct_coeff': ct_coeff,
               'ct_ebv': ebv_star,
+              'ct_indx': ct_indx,
               'zstar': zstar,
               'zstar_err': zstar_err,
               'ct_add_poly_weights': add_poly_weights,
@@ -730,5 +738,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               # 'covar': covar,
               'siglim': siglim_gas}
 
-    # finish:
+    f = open('fitspec.txt', 'wb')
+    pickle.dump(outstr, f)
+    f.close()
+
     return outstr

@@ -66,7 +66,8 @@ cube = CUBE(fp='/path/to/data/', infile='datafits')
     zerodq: in, optional, type=byte
       Zero out the DQ array.
     vormap: in, optional, 2D array for the voronoi binning map
-    use_angstrom: in, optional, to use angstrom as the wavelength unit
+    use_angstrom: in, optional, to use angstrom as the wavelength unit (The default is micron)
+    user_fluxunit: in, optional, the flux unit input by the user to be multiplide to the flux (The fluxunit is assumed to be JWST default and then converted to erg/s/cm^s/um/sr)
 ; :Author:
 ;    David S. N. Rupke::
 ;      Rhodes College
@@ -124,6 +125,7 @@ class CUBE:
         infile=kwargs.get('infile','')
         self.infile = infile
         logfile = kwargs.get('logfile', stdout)
+        user_fluxunit = kwargs.get('user_fluxunit', None)
         try:
             os.path.isfile(fp+infile)
             #hdu = fits.open(fp+infile,ignore_missing_end=True)
@@ -252,8 +254,10 @@ class CUBE:
         except:
             print('wavelength array not loaded successfully!', file=logfile)
             breakpoint()
-
-        # convert the flux unit to erg/s/cm^2/um/sr
+    
+        if not user_fluxunit:
+            # IR units: https://coolwiki.ipac.caltech.edu/index.php/Units
+            # convert the flux unit from MJy/sr to erg/s/cm^2/um/sr
             convert_flux = 1e6*1e-23*cspeed/((self.wave*1e-4)**2)
             self.dat = self.dat * convert_flux
             self.var = self.var / (convert_flux**2)

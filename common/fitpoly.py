@@ -1,0 +1,75 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jun  4 22:09:04 2021
+
+@author: lily
+"""
+import numpy as np
+from astropy.modeling import models, fitting
+
+def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index,ct_coeff, zstar, 
+            fitord=3, quiet=True, refit=False):
+   
+    deg1=fitord
+    deg2=fitord
+    
+    ilam=lam[index]
+    iflux=flux[index]
+    #the fitter I used puts weights in 1/sigma so I took the square root to make the data correct
+    w=weight[index]
+    iweight=np.sqrt[w]
+
+
+    
+# parinfo is start params, it's unnecessary unless wanted 
+    
+  #  parinfo = np.full(fitord+1, {'value': 0.0}) 
+    #array where every every element is the dictionary: {'value': 0.0}
+
+
+    #degree of polynomial fit defaults to len(x-variable)-1
+    if deg1==0:
+        deg1=len(ilam)-1
+        
+    #making astropy fitter
+    fitter = fitting.LevMarLSQFitter()
+    
+    #making polynomial model
+    polymod1= models.Polynomial1D(deg1)
+    polymod2= models.Polynomial1D(deg2)
+    
+    #creating fluxfit
+    fluxfit=fitter(polymod1, ilam, iflux,z=None, weights=iweight)
+    fluxfitptmp=fluxfit.parameters
+    
+    #flip for numpy.poly1d 
+    fluxfitparam=np.flip(fluxfitptmp)
+                         
+    continuum = np.poly1d(fluxfitparam, variable='lambda')
+    
+    #ct_coeff=0
+    #look in q3da for example on saving @Lily
+    #an out not an an in
+   
+    icontinuum = continuum[index]
+    
+    if refit==True:
+      for i in range (0, np.size(refit['ord']) - 1):
+          tmp_ind=np.where(lam >= refit['ran'][0,i] and lam <= refit['ran'][1,i])
+          tmp_iind=np.where(ilam >= refit['ran'][0,i] and ilam <= refit['ran'][1,i])
+        #  parinfo=np.full(refit['ord'][i]+1, {'value':0.0})
+          
+          #degree of polynomial fit defaults to len(x-variable)-1
+          if deg2==0:
+            deg2=len(ilam[tmp_iind])-1
+    
+              
+          #creating tmp_pars
+          tmp_pars=fitter(polymod2, ilam[tmp_iind], (iflux[tmp_iind]-icontinuum[tmp_iind]),z=None, weights=iweight[tmp_iind])
+          tmp_parsptmp=tmp_pars.parameters    
+          tmp_parsparam=np.flip(tmp_parsptmp)
+          
+         #lam[tmp_ind] doesn't make sense as a variable???
+          continuum[tmp_ind] += np.poly1d(tmp_parsparam, variable='lambda')
+          
+    print(icontinuum)

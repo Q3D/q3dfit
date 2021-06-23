@@ -1,3 +1,3 @@
 CUBE: wavelength unit does not exist in the header of sci hdu.
 [col,row]=[1,1] out of [1,1]
-Q3DF: Total time for calculation: 17.44 s.
+Q3DF: Total time for calculation: 28.19 s.

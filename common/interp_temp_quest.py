@@ -103,7 +103,6 @@ def example_interp():
 	temp_flux = interp_lis(source1['WAVE'], tpl_wave_lis, tpl_flux_lis)
 
 	wave_noNaN, temp_flux_NoNaN = cutoff_NaNs(source1['WAVE'], temp_flux)	
-	import pdb; pdb.set_trace()
 
 
 #example_interp()

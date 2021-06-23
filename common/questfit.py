@@ -227,7 +227,6 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
         models_dictionary['wave'] = wlambda/(1+z)
         
         if convert2Flambda:
-            #import pdb; pdb.set_trace()
             flux *= constants.c/(wlambda*1e-9)**2 *1e-23
             for el in models_dictionary.keys():
                 if not (global_ext_model in el) and not (global_ice_model in el) and not ('ext' in el) and not ('ice' in el):

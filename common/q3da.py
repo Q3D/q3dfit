@@ -59,6 +59,9 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
     #module = importlib.import_module('q3dfit.init.' + initproc)
     #fcninitproc = getattr(module, initproc)
     initdat = initproc
+    if isinstance(initdat, str):
+        from q3dfit.common.q3df_helperFunctions import __get_initdat
+        initdat = __get_initdat(initproc)
     #if 'donad' in initdat: do later
 
     if 'noemlinfit' not in initdat:
@@ -118,11 +121,22 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
     header = bytes(1)
 
     if 'argsreadcube' in initdat:
-        cube = CUBE(infile=initdat['infile'], quiet=quiet, oned=oned,
+        if initdat.__contains__('waveext'):
+            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+                    oned=oned, quiet=quiet, varext=varext,
+                    waveext=initdat['waveext'], **initdat['argsreadcube'])        
+        else:
+            cube = CUBE(infile=initdat['infile'], quiet=quiet, oned=oned,
                     header=header, datext=datext, varext=varext,
                     dqext=dqext, **initdat['argsreadcube'])
+
     else:
-        cube = CUBE(infile=initdat['infile'], quiet=quiet, oned=oned,
+        if initdat.__contains__('waveext'):
+            cube = CUBE(infile=initdat['infile'], quiet=quiet, oned=oned,
+                    header=header, datext=datext, varext=varext,
+                    waveext=initdat['waveext'], dqext=dqext)
+        else:
+            cube = CUBE(infile=initdat['infile'], quiet=quiet, oned=oned,
                     header=header, datext=datext, varext=varext,
                     dqext=dqext)
 

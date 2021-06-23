@@ -137,6 +137,8 @@ from q3dfit.common.masklin import masklin
 from q3dfit.common import interptemp
 from scipy.interpolate import interp1d
 from q3dfit.common.questfit import questfit
+from q3dfit.common.plot_quest import plot_quest
+from q3dfit.common.plot_cont import plot_cont
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
@@ -585,24 +587,16 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # Fill out parameter structure with initial guesses and constraints
         impModule = import_module('q3dfit.init.' + fcninitpar)
         run_fcninitpar = getattr(impModule, fcninitpar)
-# <<<<<<< HEAD
-#         emlmod, fit_params = run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
-#                            siginit_gas, initdat['maxncomp'], ncomp,
-#                            siglim=siglim_gas)
-# =======
-        
         emlmod, fit_params = run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
                                             siginit_gas, initdat['maxncomp'], ncomp,
                                             siglim=siglim_gas[:])
         
-# >>>>>>> master
 
         # Actual fit
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
                            method='least_squares', weights=gdweight_nocnt,
                            max_nfev=1000, nan_policy='omit')
         specfit = lmout.best_fit
-        breakpoint()
         if not quiet:
             print(lmout.fit_report(show_correl=False))
 

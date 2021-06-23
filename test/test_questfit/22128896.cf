@@ -1,4 +1,4 @@
-source		                  15084288.npy    5.4 30.0 dummy         0.0  0.0   X    0.0  0.0   _   _   _
+source		                  22128896.npy    5.4 30.0 dummy         0.0  0.0   X    0.0  0.0   _   _   _
 template                     smith_nftemp3.npy    0.1  1.  CHIAR06       0.0  0.0   S    0.0  0.0 ice_hc 0.0  0.
 template                     smith_nftemp4.npy    0.1  1.  CHIAR06       0.0  0.0   S    0.0  0.0 ice_hc 0.0  0.
 template          dens1e4:sifrom:run010002.npy    0.1  1.  DRAINE03      0.0  0.0   S    0.0  0.0 _   _   _

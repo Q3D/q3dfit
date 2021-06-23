@@ -23,10 +23,16 @@ Data cube is from Gemini/GMOS observations of PG1411+442
 
 ## Spitzer data (emission-line subtracted), rest-frame MIR, single emission-line component, single spaxel, quasar
 
-Data "cube" is single spectrum of IRAS21219
+A) Quasar-dominated example: Data "cube" is single spectrum of IRAS21219
 
 1. Run `./test/test_f21219mir.py`.
 2. Verify output plot in `./test/test_questfit/`.
+
+B) Spectrum with strong MIR lines:  Data "cube" is single spectrum called 22128896 (shared by Erini / Nadia)
+
+1. Run `./test/test_f22128896mir.py`.
+2. Verify output plot in `./test/test_questfit/`.
+   (2 versions are plotted: a jpg is created in q3da.py, and a png in q3df.py via plot_quest() - the latter to be removed later)
 
 
 ## NIRSPEC simulation data in the hei box

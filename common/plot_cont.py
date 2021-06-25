@@ -111,8 +111,8 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
             plt.xlim(xran[0], xran[1])
             # tick formatting
             plt.minorticks_on()
-            plt.tick_params(which='major', length=20, pad=30, fontsize=20)
-            plt.tick_params(which='minor', length=10, fontsize=20)
+            plt.tick_params(which='major', length=20, pad=30)
+            plt.tick_params(which='minor', length=10)
     
             gs = fig.add_gridspec(4,1)
             ax1 = fig.add_subplot(gs[:3, :])
@@ -133,17 +133,17 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
                 for i in range(0, ncomp):
                     plt.plot(wave, compspec[i], compcolors[i], linewidth=3, label=complabels[i])
             
-            l = ax1.legend(loc='upper right')
+            l = ax1.legend(loc='upper right', fontsize=12)
             for text in l.get_texts():
                 text.set_color(dcolor)
             ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
             ax2.plot(wave, np.divide(specstars,modstars), color=dcolor)
             ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
-            ax2.set_ylabel('Data/Model', fontsize=20)
+            ax2.set_ylabel('Data/Model', fontsize=15)
             if xunit == 'micron':
-                ax2.set_xlabel('Wavelength ($\mu$m)', fontsize=20)
+                ax2.set_xlabel('Wavelength ($\mu$m)', fontsize=15)
             else:
-                ax2.set_xlabel('Wavelength ($\AA$)', fontsize=20)
+                ax2.set_xlabel('Wavelength ($\AA$)', fontsize=15)
             gs.update(wspace=0.0, hspace=0.05)
             plt.gcf().subplots_adjust(bottom=0.1)
         

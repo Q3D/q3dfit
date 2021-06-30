@@ -31,7 +31,7 @@ from q3dfit.common.q3da import q3da
 initproc = np.load('/Users/annamurphree/Docs/Rupke Research/q3d/pg1411/initproc.npy', 
                    allow_pickle=True)
 
-q3df(initproc[()], cols=14, rows=11, quiet=False)
+#q3df(initproc[()], cols=14, rows=11, quiet=False)
 q3da(initproc[()], cols=14, rows=11, quiet=False)\
 
 #from q3dfit.common.q3da import q3da

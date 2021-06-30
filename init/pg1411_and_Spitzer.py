@@ -28,15 +28,22 @@ def pg1411_and_Spitzer():
     fitrange = np.array([5.422479152679443,29.980998992919922])*10000  # angstrom
     
     #   These are unique to the user
+    # volume = '/Users/dwylezal/EmmyNoether_Science/Q3D/JWST_ERS_Planning/Software/PG1411/'
     volume = '/Users/annamurphree/Docs/Rupke Research/q3d/pg1411/'
-    test_cube = '/Users/annamurphree/Docs/Rupke Research/q3d/q3dfit_q3da_questfit_plots/test/test_questfit/IRAS21219m1757_dlw_qst_mock_cube.fits'
-    infile = test_cube 
-    mapdir = volume+'outdir/'+outstr+'/'
-    outdir = volume+'outdir/'+outstr+'/'
+    #volume = '/Users/Endeavour/Projects/Q3D_dev/pyfsfit'
+    test_cube = '../test/test_questfit/IRAS21219m1757_dlw_qst_mock_cube.fits'
+    infile = test_cube #volume+gal+outstr+'.fits'
+    #mapdir = volume+gal+'/'+outstr+'/'
+    #outdir = volume+gal+'/'+outstr+'/'
+    mapdir = '../test/test_questfit/'
+    outdir = mapdir
     qsotemplate = volume+gal+'qsotemplate.npy'
-    stellartemplates = volume+gal+'hosttemplate.npy'
-    logfile = volume+gal+'_fitlog.txt'
-    batchfile = '/Users/annamurphree/Docs/Rupke Research/q3d/q3dfit_q3da_questfit_plots/common/fitloop.py'
+    stellartemplates =  \
+        volume+gal+'hosttemplate.npy'
+    logfile = outdir+gal+'_fitlog.txt'
+    #batchfile = '/Users/dwylezal/ESO_Fellowship/JWST_ERS_Planning/Software/ifsfit-master/common/fitloop.pro'
+    #batchdir = '/Users/dwylezal/ESO_Fellowship/JWST_ERS_Planning/Software/'
+    batchfile = '/Users/annamurphree/Docs/Rupke Research/q3d/q3dfit/common/ifsf_fitloop.pro' 
     batchdir = '/Users/annamurphree/Docs/Rupke Research/q3d/q3dfit/'
 
     
@@ -44,13 +51,13 @@ def pg1411_and_Spitzer():
 
     
     ### more MIR settings
-    #  These are unique to the user
+    #   These are unique to the user
     #  Include Spitzer source (independently of PG1411 for now for testing purposes)
     global_extinction = True
     global_ice_model = 'ice_hc'
     global_ext_model = 'CHIAR06'
-    directory = '/Users/annamurphree/Docs/Rupke Research/q3d/q3dfit_q3da_questfit_plots/test/test_questfit/'
-    cffilename = '/Users/annamurphree/Docs/Rupke Research/q3d/q3dfit_q3da_questfit_plots/test/test_questfit/IRAS21219m1757_dlw_qst.cf'
+    directory = '../test/test_questfit/'
+    cffilename = '../test/test_questfit/IRAS21219m1757_dlw_qst.cf'
     config_file = questfit_readcf.readcf(cffilename)
     #MIRz=0.112    
 
@@ -159,20 +166,16 @@ def pg1411_and_Spitzer():
                             'global_ext_model':global_ext_model,
                             'models_dictionary':{},
                             'template_dictionary':{}},
-            # in plot_spec: x/ystyle = log or lin (plots it linearly), 
-            #               xunit = micron or Angstrom,
-            #               yunit = flambda, lambdaflambda (= nufnu), or fnu
-            #               mode = light or dark
-            'argscontplot': {'xstyle':'lin',
-                             'ystyle':'lin',
-                             'xunit':'micron',
+            'argscontplot': {'xstyle':'log',
+                             'ystyle':'log',
+                             'xunit': 'Angstrom',
                              'yunit':'flambda',
                              'mode':'dark'},
             'argslinelist': {'vacuum': False},
             'startempfile': stellartemplates,
             'argspltlin1': argspltlin1,
             # 'donad': 1,
-            #'decompose_qso_fit': 1,
+            'decompose_qso_fit': 1,
             # 'remove_scattered': 1,
             'fcncheckcomp': 'checkcomp',
             'fcncontfit': 'questfit',
@@ -199,9 +202,6 @@ def pg1411_and_Spitzer():
             'dqext': 3,
             'zerodq': True,
             'plotMIR': True,
-            # in plot_spec: plotstyle = 1 plots log(continuum), plotstyle = 2 plots it linearly
-            'plotstyle': 1,
-            'qsotempfile': qsotemplate,
         }
 
     return(init)

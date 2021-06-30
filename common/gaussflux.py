@@ -67,8 +67,9 @@ def gaussflux(norm, sigma, normerr=None, sigerr=None):
     a = 0.5 / sigma**2.
     if sigerr:
         aerr = sigerr/sigma**3.
-
-    gint = gaussarea(a, aerr=aerr)
+        gint = gaussarea(a, aerr=aerr)
+    else:
+        gint = gaussarea(a)
     flux = norm*gint['area']
 
     if sigerr:

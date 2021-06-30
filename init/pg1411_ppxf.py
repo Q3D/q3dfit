@@ -1,63 +1,13 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-; docformat = 'rst'
-;
-;+
-;
-; This function initializes the fitting parameters for PG1411+442
-;
-; :Categories:
-;    IFSF
-;
-; :Returns:
-;    A structure with tags specified in INITTAGS.txt.
-;
-; :Params:
-;
-; :Keywords:
-;    initmaps: out, optional, type=structure
-;      Parameters for map making.
-;    initnad: out, optional, type=structure
-;      Parameters for NaD fitting.
-;
-; :Author:
-;    David S. N. Rupke::
-;      Rhodes College
-;      Department of Physics
-;      2000 N. Parkway
-;      Memphis, TN 38104
-;      drupke@gmail.com
-;
-; :History:
-;    ChangeHistory::
-;      2015aug25, DSNR, created
-;
-; :Copyright:
-;    Copyright (C) 2015 David S. N. Rupke
-;
-;    This program is free software: you can redistribute it and/or
-;    modify it under the terms of the GNU General Public License as
-;    published by the Free Software Foundation, either version 3 of
-;    the License or any later version.
-;
-;    This program is distributed in the hope that it will be useful,
-;    but WITHOUT ANY WARRANTY; without even the implied warranty of
-;    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;    General Public License for more details.
-;
-;    You should have received a copy of the GNU General Public License
-;    along with this program.  If not, see
-;    http://www.gnu.org/licenses/.
-;
-;-
-"""
+#%%writefile /Users/dwylezal/EmmyNoether_Science/Q3D/JWST_ERS_Planning/Software/q3dfit/init/pg1411.py
+# This is unique to the user, save file to /Your/Path/q3dfit/init/
+
 import os.path
 import numpy as np
 
+# This is unique to the user, name the function after your object. 
+def pg1411_ppxf():
 
-def pg1411():
-
+    # These are unique to the user
     # bad=1e99
     gal = 'pg1411'
     outstr = 'rb3'
@@ -66,35 +16,40 @@ def pg1411():
     # centcol = 9.002
     # centrow = 14.002
     platescale = 0.3
-    fitrange = [4620, 7450]
+    fitrange = [4620,7450]
 
-#   These are unique to the user
-    volume = '/Users/annamurphree/Docs/Rupke Research/q3d/pg1411/'
+    
+    #   These are unique to the user
+    # volume = '/Users/dwylezal/EmmyNoether_Science/Q3D/JWST_ERS_Planning/Software/PG1411/'
+    volume = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/PG1411/pg1411/'
     infile = volume+gal+outstr+'.fits'
-    outdir = volume+'outdir/'+outstr+'/'
+    mapdir = volume+gal+'/'+outstr+'/'
+    outdir = volume+gal+'/'+outstr+'/'
     qsotemplate = volume+gal+'qsotemplate.npy'
-    stellartemplates = volume+gal+'hosttemplate.npy'
-
-    mapdir = ''
+    stellartemplates =  \
+        volume+gal+'hosttemplate.npy'
     logfile = outdir+gal+'_fitlog.txt'
+    #batchfile = '/Users/dwylezal/ESO_Fellowship/JWST_ERS_Planning/Software/ifsfit-master/common/fitloop.pro'
+    #batchdir = '/Users/dwylezal/ESO_Fellowship/JWST_ERS_Planning/Software/'
+    batchfile = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/IFSFIT/ifsfit/common/ifsf_fitloop.pro'
+    batchdir = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/IFSFIT/'
+    
+    
+    ### for our test object, pg1411, nothing needs to be changed here for now, make more flexible later
+    
+    
+    # Required parameters
 
-#
-# Required pars
-#
+    if not os.path.isfile(infile): print('Data cube not found.')
 
-    if not os.path.isfile(infile):
-        print('Data cube not found.')
+    # Lines to fit.
+    lines = ['Halpha','Hbeta', '[OI]6300','[OI]6364','[OIII]4959','[OIII]5007', '[NII]6548','[NII]6583','[SII]6716','[SII]6731']
+    # nlines = len(lines)
 
-# Lines to fit.
-    lines = ['Halpha', 'Hbeta',
-             '[OI]6300', '[OI]6364', '[OIII]4959', '[OIII]5007',
-             '[NII]6548', '[NII]6583', '[SII]6716', '[SII]6731']
-#    nlines = len(lines)
+    # Max no. of components.
+    maxncomp = 2
 
-# Max no. of components.
-    maxncomp = 1
-
-# Initialize line ties, n_comps, z_inits, and sig_inits.
+    # Initialize line ties, n_comps, z_inits, and sig_inits.
     linetie = dict()
     ncomp = dict()
     zinit_gas = dict()
@@ -102,32 +57,40 @@ def pg1411():
     for i in lines:
         linetie[i] = 'Halpha'
         ncomp[i] = np.full((ncols,nrows),maxncomp)
+        ncomp[i][8,13] = 0
         zinit_gas[i] = np.full((ncols,nrows,maxncomp),0.0898)
         siginit_gas[i] = np.full(maxncomp,50)
+        zinit_gas[i][2,18,:]=0.091
+        zinit_gas[i][4,21:22,:]=0.091
+        zinit_gas[i][5,21,:]=0.091
+        zinit_gas[i][6:8,23:25,:]=0.091
+        zinit_gas[i][1:4,1:7,:]=0.0894
+        zinit_gas[i][6:16,0:7,:]=0.089
+        zinit_gas[i][11,8:9,:]=0.089
         zinit_stars=np.full((ncols,nrows),0.0898)
 
-#
-# Optional pars
-#
+    #
+    # Optional pars
+    #
 
-# # Tweaked regions are around HeII,Hb/[OIII],HeI5876/NaD,[OI],Halpha, and [SII]
-# # Lower and upper wavelength for re-fit
-#     tw_lo = [4600,5200,6300,6800,7000,7275]
-#     tw_hi = [4800,5500,6500,7000,7275,7375]
-# # Number of wavelength regions to re-fit
-#     tw_n = len(tw_lo)
-# # Fitting orders
-#     deford = 1
-#     tw_ord = np.full(tw_n,deford)
-# # Parameters for continuum fit
-# # In third dimension:
-# #   first element is lower wavelength limit
-# #   second element is upper
-# #   third is fit order
-#     tweakcntfit = np.full((ncols,nrows,3,tw_n),0)
-#     tweakcntfit[:,:,0,:] = tw_lo
-#     tweakcntfit[:,:,1,:] = tw_hi
-#     tweakcntfit[:,:,2,:] = tw_ord
+    # Tweaked regions are around HeII,Hb/[OIII],HeI5876/NaD,[OI],Halpha, and [SII]
+    # Lower and upper wavelength for re-fit
+    tw_lo = [4600,5200,6300,6800,7000,7275]
+    tw_hi = [4800,5500,6500,7000,7275,7375]
+    # Number of wavelength regions to re-fit
+    tw_n = len(tw_lo)
+    # Fitting orders
+    deford = 1
+    tw_ord = np.full(tw_n,deford)
+    # Parameters for continuum fit
+    # In third dimension:
+    #   first element is lower wavelength limit
+    #   second element is upper
+    #   third is fit order
+    tweakcntfit = np.full((ncols,nrows,3,tw_n),0)
+    tweakcntfit[:,:,0,:] = tw_lo
+    tweakcntfit[:,:,1,:] = tw_hi
+    tweakcntfit[:,:,2,:] = tw_ord
 
     # Parameters for emission line plotting
     linoth = np.full((2, 6), '', dtype=object)
@@ -183,27 +146,20 @@ def pg1411():
                             'siginit_stars': 50,
                             'uselog': 1,
                             'refit': 1},
-            # in plot_spec: x/ystyle = log or lin (plots it linearly), 
-            #               xunit = micron or Angstrom,
-            #               yunit = flambda, lambdaflambda (= nufnu), or fnu
-            #               mode = light or dark
-            'argscontplot': {'xstyle':'log',
-                             'ystyle':'log',
-                             'xunit': 'Angstrom',
-                             'yunit':'flambda',
-                             'mode':'dark'},
             'argslinelist': {'vacuum': False},
             'startempfile': stellartemplates,
             'argspltlin1': argspltlin1,
             # 'donad': 1,
-            'decompose_qso_fit': 1,
+            'decompose_ppxf_fit': 1,
             # 'remove_scattered': 1,
             'fcncheckcomp': 'checkcomp',
-            'fcncontfit': 'fitqsohost',
+            'fcncontfit': 'ppxf',
             'maskwidths_def': 500,
-            # 'tweakcntfit': tweakcntfit,
+            'tweakcntfit': tweakcntfit,
             'emlsigcut': 2,
             'logfile': logfile,
+            'batchfile': batchfile,
+            'batchdir': batchdir,
             'siglim_gas': siglim_gas,
             'siginit_gas': siginit_gas,
             'siginit_stars': 50,

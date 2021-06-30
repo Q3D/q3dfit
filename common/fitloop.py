@@ -220,7 +220,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                 print('FITLOOP: First call to FITSPEC')
 
             structinit = fitspec(cube.wave, flux, err, dq, zstar, listlines,
-                                 listlinesz, ncomp, initdat, quiet=quiet,
+                               listlinesz, ncomp, initdat, quiet=quiet,
                                  siglim_gas=siglim_gas,
                                  siginit_gas=siginit_gas,
                                  tweakcntfit=tweakcntfit, col=i+1, row=j+1)

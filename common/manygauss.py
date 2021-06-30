@@ -132,6 +132,7 @@ def set_params(fit_params, NAME=None, VALUE=None, VARY=True, LIMITED=None,
 
 def run_manygauss(wave, flux_nocnt, flux_weight, parinfo, maxiter=1000, \
                   quiet=True):
+    maxncomp = parinfo[1]['value']  ### CB: To be double-checked
 
     ppoff = parinfo[0]['value']
     nline = (len(parinfo)-ppoff)/3  # number of emission lines
@@ -177,7 +178,10 @@ def run_manygauss(wave, flux_nocnt, flux_weight, parinfo, maxiter=1000, \
                 mName = '%s_' % (line)
                 imodel = Model(manygauss, independent_vars=['x'], prefix=mName)
                 if isinstance(manyGauss, Model):
-                    manyGauss += imodel
+                    try:
+                        manyGauss += imodel
+                    except:
+                        manyGauss += Model(manygauss, independent_vars=['x'], prefix=mName+'B')     # if a second component is used, lmfit complains if that has the same linename
                 else:
                     manyGauss = imodel
             elif ip in wind:

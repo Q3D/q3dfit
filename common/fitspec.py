@@ -137,6 +137,8 @@ from q3dfit.common.masklin import masklin
 from q3dfit.common import interptemp
 from scipy.interpolate import interp1d
 from q3dfit.common.questfit import questfit
+from q3dfit.common.plot_quest import plot_quest
+from q3dfit.common.plot_cont import plot_cont
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
@@ -392,7 +394,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
             if initdat['fcncontfit']=='questfit':
               istemp=None
-              gdlambda = gdlambda*1e-4  # angstrom
+              gdlambda = gdlambda*1e-4  # micron
 
             if istemp:
                 templatelambdaz_tmp = templatelambdaz
@@ -414,15 +416,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
-#<<<<<<< HEAD
-                '''
-                if initdat['plotMIR']:    # Test plot here - need to transfer this to q3dfa later
-=======
-                if 'plotMIR' in initdat:    # Test plot here - need to transfer this to q3dfa later
->>>>>>> 11c09e4c1011a065371c0899150a2d2ba3aa7c72
-                  print('Plotting')
-                  plot_quest(gdlambda[ct_indx], gdflux[ct_indx], continuum[ct_indx], ct_coeff, initdat)
-                '''
+
                 ppxf_sigma = 0.
                 if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
                     'refit' in initdat['argscontfit']:
@@ -462,7 +456,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             poly_mod = pp.apoly
             continuum_log = pp.bestfit
             add_poly_weights = pp.polyweights
-            #ct_coeff = pp.weights
+            ct_coeff = pp.weights
             ebv_star = pp.reddening
             sol = pp.sol
             error = pp.error
@@ -485,6 +479,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             # solerr *= np.sqrt(sol[6])
             # zstar_err = np.sqrt(np.power(zstar_err,2.) + np.power((solerr[0]/c),2.))
             # ppxf_sigma_err=solerr[1]
+            ppxf_sigma_err = 0. # for now; correct this later
+            ct_rchisq = 0.
 
         else:
             add_poly_weights = 0.
@@ -557,7 +553,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     #
     # Fit emission lines
     #
-
+    fit_params = []
     if noemlinfit != b'1':
 
         # Initial guesses for emission line peak fluxes (above continuum)
@@ -580,6 +576,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     else:
                         peakinit[line] = np.zeros(initdat['maxncomp'])
 
+
         # Initial guesses for emission line widths
         if siginit_gas is None:
             siginit_gas = {k: None for k in initdat['lines']}
@@ -590,15 +587,10 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # Fill out parameter structure with initial guesses and constraints
         impModule = import_module('q3dfit.init.' + fcninitpar)
         run_fcninitpar = getattr(impModule, fcninitpar)
-        
         emlmod, fit_params = run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
                                             siginit_gas, initdat['maxncomp'], ncomp,
                                             siglim=siglim_gas[:])
         
-
-        # testsize = len(parinit)
-        # if testsize == 0:
-            # raise Exception('Bad initial parameter guesses.')
 
         # Actual fit
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
@@ -609,6 +601,13 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             print(lmout.fit_report(show_correl=False))
 
         param = lmout.best_values
+
+        if 'plotMIR' in initdat.keys():    # Test plot here - need to transfer this to q3dfa later
+          print('Plotting')
+          from matplotlib import pyplot as plt
+          plot_quest(gdlambda, gdflux, continuum+specfit, ct_coeff, initdat, lines=[12.8], linespec=specfit)
+
+
         covar = lmout.covar
         dof = lmout.nfree
         rchisq = lmout.redchi
@@ -733,11 +732,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               # 'covar': covar,
               'siglim': siglim_gas}
 
-#<<<<<<< HEAD
     f = open('fitspec.txt', 'wb')
     pickle.dump(outstr, f)
     f.close()
-#=======
-#>>>>>>> 11c09e4c1011a065371c0899150a2d2ba3aa7c72
-    # finish:
+
     return outstr

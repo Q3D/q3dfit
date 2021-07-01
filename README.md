@@ -1,6 +1,13 @@
 # q3dfit
 Python software for fitting integral field spectroscopic data
 
+# multicore
+
+`q3dfit` can be parallelized across multiple processor cores using the
+Message Passing Interface (MPI) standard. To enable this capability,
+[install](https://www.mpich.org/downloads/) `mpich` on your hardware
+and `pip install` the Python package `mpi4py.`
+
 # Validation and testing
 
 These assume that Python is properly pathed.

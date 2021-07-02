@@ -114,13 +114,17 @@ def checkcomp(linepars, linetie, ncomp, siglim,
                         if ignoreline == line:
                             doignore = True
                 if not doignore:
-                    igd = (linepars['flux'][line][:ncomp[line]] >
-                           sigcut*linepars['fluxerr'][line][:ncomp[line]]
-                           and linepars['fluxerr'][line][:ncomp[line]] > 0
-                           and linepars['sigma'][line][:ncomp[line]] >
-                           siglim[0]
-                           and linepars['sigma'][line][:ncomp[line]] <
-                           siglim[1]).nonzero()
+                    pdb.set_trace()
+                    igd = \
+                        ((linepars['flux'][line][:ncomp[line]] >
+                          sigcut*linepars['fluxerr'][line]
+                          [:ncomp[line]]).any()
+                         or (linepars['fluxerr'][line]
+                              [:ncomp[line]] > 0.).any()
+                         or (linepars['sigma'][line][:ncomp[line]] >
+                              siglim[0]).any()
+                         or (linepars['sigma'][line][:ncomp[line]] <
+                              siglim[1]).any())
                 if np.size(igd) > 0:
                     goodcomp[igd] += 1
             # Find number of good components

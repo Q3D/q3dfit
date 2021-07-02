@@ -105,6 +105,7 @@ def sepfitpars(linelist, param, perror, maxncomp, waveran = None, tflux = False,
     #param = np.array(param)
     #perror = np.array(perror)
 
+
     # Return 0 if no lines were fit
     if len(param) == 1:  # DW: this needs to be double checked!!!!###
         outstr = {'nolines': b'0'}
@@ -118,7 +119,7 @@ def sepfitpars(linelist, param, perror, maxncomp, waveran = None, tflux = False,
 
         basearr = np.full(linelist['name'].T.data.shape, np.nan)
         if maxncomp > 1:
-            basearr = np.tile(basearr, linelist['name'].T.data.shape,maxncomp)
+            basearr = np.tile(basearr, (maxncomp, 1))
         flux = Table(basearr, names=linelist['name'])
         fluxerr = Table(basearr, names=linelist['name'])
         fluxpk = Table(basearr, names=linelist['name'])

@@ -72,8 +72,8 @@ def masklin(llambda, linelambda, halfwidth, nomaskran=''):
 
     import numpy as np
     import pdb
+    from astropy.constants import c
 
-    c = 299792.458
     # we will return the ones that are not masked
 
     # start by retaining all elements -- mark them all True
@@ -82,15 +82,14 @@ def masklin(llambda, linelambda, halfwidth, nomaskran=''):
     # line is the index in the linelambda array and
     # cwv is the central wavelength
     # let's flag the indices that are masked
-    pdb.set_trace()
-    for line, cwv in enumerate(linelambda):
+    for line, cwv in linelambda.items():
         for i in range(halfwidth.columns[line].size):
             temp1 = \
-                np.array((llambda <= cwv*(1. - halfwidth.columns[line][i]/c)),
-                         dtype=bool)
+                np.array((llambda <= cwv[i]*(1. - halfwidth.columns[line][i] /
+                                             c.to('km/s').value)), dtype=bool)
             temp2 = \
-                np.array((llambda >= cwv*(1. + halfwidth.columns[line][i]/c)),
-                         dtype=bool)
+                np.array((llambda >= cwv[i]*(1. + halfwidth.columns[line][i] /
+                                             c.to('km/s').value)), dtype=bool)
             retain = (retain & (temp1 | temp2))
 
     # if the user has defined the regions not to be masked:

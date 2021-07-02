@@ -126,7 +126,6 @@ import copy
 import numpy as np
 import pdb
 import time
-import pickle
 from astropy.table import Table
 from importlib import import_module
 from lmfit import Model
@@ -139,7 +138,7 @@ from scipy.interpolate import interp1d
 from q3dfit.common.questfit import questfit
 from q3dfit.common.plot_quest import plot_quest
 from q3dfit.common.plot_cont import plot_cont
-
+from astropy.constants import c
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             initdat, maskwidths=None, peakinit=None, quiet=True,
@@ -155,7 +154,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     # flux.setflags(write=True)
     # err.setflags(write=True)
 
-    c = 299792.458         # speed of light, km/s
     siginit_gas_def = 100.  # default sigma for initial guess
                             # for emission line widths
 
@@ -395,7 +393,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             if initdat['fcncontfit']=='questfit' or istemp==b'0':
               istemp=None
 
-
             if istemp:
                 templatelambdaz_tmp = templatelambdaz
                 templateflux_tmp = template['flux']
@@ -461,7 +458,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         elif (istemp == b'1' and 'siginit_stars' in initdat):
 
             # Interpolate template to same grid as data
-            temp_log = interptemp.interptemp(gdlambda_log, np.log(templatelambdaz.T[0]),
+            temp_log = interptemp(gdlambda_log, np.log(templatelambdaz),
                                   template['flux'])
 
             # Check polynomial degree
@@ -471,17 +468,16 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     add_poly_degree = initdat['argscontfit']['add_poly_degree']
 
             # run ppxf
-            pp = \
-                ppxf(temp_log, gdflux_log, gderr_log, velscale,
-                     [0, initdat['siginit_stars']], goodpixels=ct_indx_log,
-                     degree=add_poly_degree, quiet=quiet, reddening=ebv_star)
+            pp = ppxf(temp_log, gdflux_log, gderr_log, velscale[0],
+                      [0, initdat['siginit_stars']], goodpixels=ct_indx_log,
+                      degree=add_poly_degree, quiet=quiet, reddening=ebv_star)
             poly_mod = pp.apoly
             continuum_log = pp.bestfit
             add_poly_weights = pp.polyweights
             ct_coeff = pp.weights
             ebv_star = pp.reddening
             sol = pp.sol
-            error = pp.error
+            solerr = pp.error
 
             # Resample the best fit into linear space
             cinterp = interp1d(gdlambda_log, continuum_log,
@@ -489,20 +485,22 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             continuum = cinterp(np.log(gdlambda))
 
             # Adjust stellar redshift based on fit
-            zstar += sol[0]/c
-            ppxf_sigma = sol[1]
-
             # From PPXF docs:
             # - These errors are meaningless unless Chi^2/DOF~1 (see parameter SOL below).
             # However if one *assume* that the fit is good, a corrected estimate of the
             # errors is: errorCorr = error*sqrt(chi^2/DOF) = error*sqrt(sol[6]).
+            zstar += np.exp(sol[0]/c.to('km/s').value)-1.
+            ppxf_sigma = sol[1]
             # ct_rchisq = sol[6]
             # solerr = []
             # solerr *= np.sqrt(sol[6])
-            # zstar_err = np.sqrt(np.power(zstar_err,2.) + np.power((solerr[0]/c),2.))
-            # ppxf_sigma_err=solerr[1]
-            ppxf_sigma_err = 0. # for now; correct this later
-            ct_rchisq = 0.
+            ct_rchisq = pp.chi2
+            solerr *= np.sqrt(pp.chi2)
+            zstar_err = \
+                np.sqrt(np.power(zstar_err, 2.) +
+                        np.power((np.exp(solerr[0]/c.to('km/s').value))-1.,
+                                 2.))
+            ppxf_sigma_err = solerr[1]
 
         else:
             add_poly_weights = 0.

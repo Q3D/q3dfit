@@ -137,6 +137,7 @@ from q3dfit.common.interptemp import interptemp
 from scipy.interpolate import interp1d
 from q3dfit.common.questfit import questfit
 from q3dfit.common.plot_quest import plot_quest
+from astropy.constants import c
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
@@ -153,7 +154,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     # flux.setflags(write=True)
     # err.setflags(write=True)
 
-    c = 299792.458         # speed of light, km/s
     siginit_gas_def = 100.  # default sigma for initial guess
                             # for emission line widths
 
@@ -450,22 +450,16 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     add_poly_degree = initdat['argscontfit']['add_poly_degree']
 
             # run ppxf
-            import matplotlib.pyplot as plt
-            plt, ax = plt.subplots()
-            ax.plot(gdlambda_log[ct_indx_log],gdflux_log[ct_indx_log])
-            plt.show()
-            pdb.set_trace()
-
             pp = ppxf(temp_log, gdflux_log, gderr_log, velscale[0],
                       [0, initdat['siginit_stars']], goodpixels=ct_indx_log,
                       degree=add_poly_degree, quiet=quiet, reddening=ebv_star)
             poly_mod = pp.apoly
             continuum_log = pp.bestfit
             add_poly_weights = pp.polyweights
-            #ct_coeff = pp.weights
+            ct_coeff = pp.weights
             ebv_star = pp.reddening
             sol = pp.sol
-            error = pp.error
+            solerr = pp.error
 
             # Resample the best fit into linear space
             cinterp = interp1d(gdlambda_log, continuum_log,
@@ -473,18 +467,23 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             continuum = cinterp(np.log(gdlambda))
 
             # Adjust stellar redshift based on fit
-            zstar += sol[0]/c
+            # From ppxf docs:
+            # IMPORTANT: The precise relation between the output pPXF velocity
+            # and redshift is Vel = c*np.log(1 + z).
+            # See Section 2.3 of Cappellari (2017) for a detailed explanation.
+            zstar += np.exp(sol[0]/c.to('km/s').value)-1.
             ppxf_sigma = sol[1]
 
             # From PPXF docs:
-            # - These errors are meaningless unless Chi^2/DOF~1 (see parameter SOL below).
-            # However if one *assume* that the fit is good, a corrected estimate of the
-            # errors is: errorCorr = error*sqrt(chi^2/DOF) = error*sqrt(sol[6]).
-            # ct_rchisq = sol[6]
-            # solerr = []
-            # solerr *= np.sqrt(sol[6])
-            # zstar_err = np.sqrt(np.power(zstar_err,2.) + np.power((solerr[0]/c),2.))
-            # ppxf_sigma_err=solerr[1]
+            # These errors are meaningless unless Chi^2/DOF~1.
+            # However if one *assumes* that the fit is good ...
+            ct_rchisq = pp.chi2
+            solerr *= np.sqrt(pp.chi2)
+            zstar_err = \
+                np.sqrt(np.power(zstar_err, 2.) +
+                        np.power((np.exp(solerr[0]/c.to('km/s').value))-1.,
+                                 2.))
+            ppxf_sigma_err = solerr[1]
 
         else:
             add_poly_weights = 0.
@@ -599,10 +598,16 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # if testsize == 0:
             # raise Exception('Bad initial parameter guesses.')
 
+        # import matplotlib.pyplot as plt
+        # plt, ax = plt.subplots()
+        # ax.plot(gdlambda, gdflux_nocnt)
+        # plt.show()
+        # pdb.set_trace()
+
         # Actual fit
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
                            method='least_squares', weights=gdweight_nocnt,
-                           max_nfev=1000, nan_policy='omit')
+                           nan_policy='omit')
         specfit = lmout.best_fit
         if not quiet:
             print(lmout.fit_report(show_correl=False))

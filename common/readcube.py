@@ -66,6 +66,8 @@ cube = CUBE(fp='/path/to/data/', infile='datafits')
     zerodq: in, optional, type=byte
       Zero out the DQ array.
     vormap: in, optional, 2D array for the voronoi binning map
+    use_angstrom: in, optional, to use angstrom as the wavelength unit (The default is micron)
+    user_fluxunit: in, optional, the flux unit input by the user to be multiplide to the flux (The fluxunit is assumed to be JWST default and then converted to erg/s/cm^s/um/sr)
 ; :Author:
 ;    David S. N. Rupke::
 ;      Rhodes College
@@ -115,7 +117,7 @@ cube = CUBE(fp='/path/to/data/', infile='datafits')
 
 
 class CUBE:
-    def __init__(self, **kwargs):
+    def __init__(self, use_angstrom = False, **kwargs):
         warnings.filterwarnings("ignore")
         fp = kwargs.get('fp','')
         self.fp = fp
@@ -123,6 +125,7 @@ class CUBE:
         infile=kwargs.get('infile','')
         self.infile = infile
         logfile = kwargs.get('logfile', stdout)
+        user_fluxunit = kwargs.get('user_fluxunit', None)
         try:
             os.path.isfile(fp+infile)
             #hdu = fits.open(fp+infile,ignore_missing_end=True)
@@ -241,7 +244,7 @@ class CUBE:
                 self.wav0 = header[CRVAL] - (header[CRPIX] - 1) * header[CD]
                 self.wave = self.wav0 + np.arange(nw)*header[CD]
                 self.cdelt = header[CD]
-        ### updated with try and except by cbertemes
+        # updated with try and except by cbertemes
         try:
             self.crval = header[CRVAL]
             self.crpix = header[CRPIX]
@@ -254,22 +257,23 @@ class CUBE:
             print(e)
             print('... Continuing anyway ...')
             pass
-        ###
-        if self.waveunit == 'um':
-            self.wave = self.wave * 1e4 # change wavelength to A, for nirspec test temporarily
-        try:
+        # The current default is um for the wavelength
+         if use_angstrom:
+             self.wave = self.wave * 1e4 # change wavelength to A
+		try:
             self.wave
         except:
             print('wavelength array not loaded successfully!', file=logfile)
             breakpoint()
-
-        # convert the flux unit to erg/s/cm^2/A/sr
-            convert_flux = 1e6*1e-23*cspeed/((self.wave*1e-8)**2)
+    
+        if not user_fluxunit:
+            # IR units: https://coolwiki.ipac.caltech.edu/index.php/Units
+            # convert the flux unit from MJy/sr to erg/s/cm^2/um/sr
+            convert_flux = 1e6*1e-23*cspeed/((self.wave*1e-4)**2)
             self.dat = self.dat * convert_flux
             self.var = self.var / (convert_flux**2)
             self.err = self.err * convert_flux
-    
-        
+            
         if vormap:
             ncols = np.max(vormap)
             nrows = 1

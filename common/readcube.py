@@ -1,10 +1,13 @@
+from astropy.constants import c
 from astropy.io import fits
+from astropy import units as u
 from scipy import interpolate
 from sys import stdout
 
 import copy
 import numpy as np
 import os
+import pdb
 import warnings
 
 
@@ -66,8 +69,12 @@ cube = CUBE(fp='/path/to/data/', infile='datafits')
     zerodq: in, optional, type=byte
       Zero out the DQ array.
     vormap: in, optional, 2D array for the voronoi binning map
-    use_angstrom: in, optional, to use angstrom as the wavelength unit (The default is micron)
-    user_fluxunit: in, optional, the flux unit input by the user to be multiplide to the flux (The fluxunit is assumed to be JWST default and then converted to erg/s/cm^s/um/sr)
+    waveunit: in, optional
+      Default is micron; other option is Angstrom
+    fluxunit: in, optional
+      the flux unit input by the user to be multiplide to the flux
+      (The fluxunit is assumed to be JWST default and then converted to
+       erg/s/cm^s/um/sr)
 ; :Author:
 ;    David S. N. Rupke::
 ;      Rhodes College
@@ -117,15 +124,13 @@ cube = CUBE(fp='/path/to/data/', infile='datafits')
 
 
 class CUBE:
-    def __init__(self, use_angstrom = False, **kwargs):
+    def __init__(self, **kwargs):
         warnings.filterwarnings("ignore")
         fp = kwargs.get('fp','')
         self.fp = fp
-        cspeed = 299792.458 *1e5 # cm/s
         infile=kwargs.get('infile','')
         self.infile = infile
         logfile = kwargs.get('logfile', stdout)
-        user_fluxunit = kwargs.get('user_fluxunit', None)
         try:
             os.path.isfile(fp+infile)
             #hdu = fits.open(fp+infile,ignore_missing_end=True)
@@ -173,14 +178,23 @@ class CUBE:
             self.wmap = (hdu[wmapext].data).T
         except:
             print('CUBE: WMAP extension does not exist.', file=logfile)
+        # The current default input and working wavelengths are um
+        waveunit_tmp = kwargs.get('waveunit_in','micron')
+        waveunit_out = kwargs.get('waveunit_out','micron')
         try:
-            self.waveunit = hdu[datext].header['CUNIT3']
+            self.waveunit_in = hdu[datext].header['CUNIT3']
         except:
-            self.waveunit = None
-            print('CUBE: wavelength unit does not exist in the header of sci hdu.', file=logfile)
+            self.waveunit_in = waveunit_tmp
+            # print('CUBE: wavelength unit does not exist in the header of sci hdu.', file=logfile)
+        self.waveunit_out = waveunit_out
         # put all dq to good (0)
         if zerodq == True:
             self.dq = np.zeros(np.shape(self.data))
+
+        fluxunit_in = kwargs.get('fluxunit_in', 'MJy/sr')
+        fluxunit_out = kwargs.get('fluxunit_out', 'erg/s/cm2/micron/sr')
+        self.fluxunit_in = fluxunit_in
+        self.fluxunit_out = fluxunit_out
 
         # reading wavelength from wavelength extention
         if waveext:
@@ -257,23 +271,39 @@ class CUBE:
             print(e)
             print('... Continuing anyway ...')
             pass
-        # The current default is um for the wavelength
-         if use_angstrom:
-             self.wave = self.wave * 1e4 # change wavelength to A
-		try:
+        if self.waveunit_in != self.waveunit_out:
+            wave_in = self.wave * u.Unit(self.waveunit_in)
+            self.wave = wave_in.to(u.Unit(self.waveunit_out)).value
+        try:
             self.wave
         except:
             print('wavelength array not loaded successfully!', file=logfile)
             breakpoint()
-    
-        if not user_fluxunit:
+
+        # default working flux unit is erg/s/cm^2/um/sr
+        # For now, /sr is implicit for all inputs
+        if fluxunit_in == 'MJy/sr':
             # IR units: https://coolwiki.ipac.caltech.edu/index.php/Units
-            # convert the flux unit from MJy/sr to erg/s/cm^2/um/sr
-            convert_flux = 1e6*1e-23*cspeed/((self.wave*1e-4)**2)
-            self.dat = self.dat * convert_flux
-            self.var = self.var / (convert_flux**2)
-            self.err = self.err * convert_flux
-            
+            # default input flux unit is MJy/sr
+            # 1 Jy = 10^-26 W/m^2/Hz
+            # first fac: MJy to Jy
+            # second fac: 10^-26 W/m^2/Hz / Jy * 10^-4 m^2/cm^-2 * 10^7 erg/W
+            # third fac: c/lambda**2 Hz/micron, with lambda^2 in m*micron
+            wave_out = self.wave * u.Unit(self.waveunit_out)
+            convert_flux = 1e6 * 1e-23 * c.value / wave_out.to('m').value / \
+                wave_out.to('micron').value
+
+        # case of input flux units: erg/s/cm^2/A (/sr)
+        elif fluxunit_in == 'erg/s/cm2/Angstrom/sr':
+            convert_flux = 1e4
+
+        if fluxunit_out == 'erg/s/cm2/Angstrom/sr':
+            convert_flux /= 1e4
+
+        self.dat = self.dat * convert_flux
+        self.var = self.var / (convert_flux**2)
+        self.err = self.err * convert_flux
+
         if vormap:
             ncols = np.max(vormap)
             nrows = 1

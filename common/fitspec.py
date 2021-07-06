@@ -590,7 +590,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         emlmod, fit_params = run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
                                             siginit_gas, initdat['maxncomp'], ncomp,
                                             siglim=siglim_gas[:])
-        
+
 
         # Actual fit
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,

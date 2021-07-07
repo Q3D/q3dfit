@@ -410,7 +410,7 @@ def makemaps (initproc):
         if 'ext' in initmaps['hstbl']: hstblext = initmaps['hstbl']['ext']
         else: hstblext = True
         hstbl = fits.open(initmaps['hstbl']['file'])
-        hstblhead = hstbl.header #TODO
+        hstblhead = hstbl.header
         hst_big_ifsfov = np.zeros((4,3), dtype = float)
         if 'platescale' in initmaps['hstbl']:
             hstpsbl = initmaps['hstbl']['platescale']

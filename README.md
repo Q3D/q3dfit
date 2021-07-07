@@ -1,6 +1,13 @@
 # q3dfit
 Python software for fitting integral field spectroscopic data
 
+# multicore
+
+`q3dfit` can be parallelized across multiple processor cores using the
+Message Passing Interface (MPI) standard. To enable this capability,
+[install](https://www.mpich.org/downloads/) `mpich` on your hardware
+and `pip install` the Python package `mpi4py.`
+
 # Validation and testing
 
 These assume that Python is properly pathed.
@@ -23,8 +30,10 @@ Data cube is from Gemini/GMOS observations of PG1411+442
 
 ## Spitzer data (emission-line subtracted), rest-frame MIR, single emission-line component, single spaxel, quasar
 
-A) Quasar-dominated example: Data "cube" is single spectrum of IRAS21219
+To run these tests, one presently also has to change the `initdat` variable assignment in `q3df_helperFunctions.py` (lines 201--202) to read from a function rather than a dictionary. *Need to implement Jupyter notebook for these tests to avoid this step.*
 
+--> This test no longer works because the fake emission line (`test-MIRLINE`) is in the wrong linelist.
+A) Quasar-dominated example: Data "cube" is single spectrum of IRAS21219
 1. Run `./test/test_f21219mir.py`.
 2. Verify output plot in `./test/test_questfit/`.
 

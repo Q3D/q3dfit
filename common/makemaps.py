@@ -2210,6 +2210,7 @@ def makemaps (initproc):
     ' Continuum color plots                                   '
     '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
     
+    '''
     if 'hstcol' in initmaps or 'hstcolsm' in initmaps:
         if 'ct' in initmaps:
             if dohst: ctsumrange_tmp = initmaps['ct']['sumrange_hstcomp']
@@ -2315,7 +2316,7 @@ def makemaps (initproc):
             imsize = str(int(initmaps['hst']['subim_big'] * kpc_per_as))
             plt.text(size_subim[0]*0.05,size_subim[1]*0.9, 
                      str(imsize+'\times'+imsize+' kpc'), color='white')
-            '''
+            ;
             posbox1x[0] = truepos[0]+(truepos[2]-truepos[0])* \
                         hst_big_ifsfov[3,0]/size_subim[0]
             posbox1y[0] = truepos[1]+(truepos[3]-truepos[1])* \
@@ -2324,7 +2325,7 @@ def makemaps (initproc):
                         hst_big_ifsfov[0,0]/size_subim[0]
             posbox2y[0] = truepos[1]+(truepos[3]-truepos[1])* \
                         hst_big_ifsfov[0,1]/size_subim[1]
-            '''
+            ;
 
             #HST continuum, IFS FOV
             size_subim = np.shape(chst_fov)
@@ -2343,12 +2344,12 @@ def makemaps (initproc):
                      yran_kpc[1]-(yran_kpc[1]-yran_kpc[0])*0.1,
                      'IFS FOV',color='white')
             #plotcompass,xarr_kpc,yarr_kpc,carr=carr,/nolab,hsize=150d,hthick=2d
-            '''
-            posbox1x[1] = truepos[0]
-            posbox1y[1] = truepos[3]
-            posbox2x[1] = truepos[0]
-            posbox2y[1] = truepos[1]
-            '''
+            
+            ;posbox1x[1] = truepos[0]
+            ;posbox1y[1] = truepos[3]
+            ;posbox2x[1] = truepos[0]
+            ;posbox2y[1] = truepos[1]
+            
 
             #smoothed HST continuum, IFS FOV
             if dohstcolsm:
@@ -2446,9 +2447,15 @@ def makemaps (initproc):
                           #hsize=150d,hthick=2d
                           
             #cgps_close
+            
+    '''
+    
     '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
     ' Continuum radial profiles                               '
     '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    #very not done
+    
+    '''
     #TODO
     if 'ct' in initmaps:
         #npy = 2
@@ -2577,7 +2584,7 @@ def makemaps (initproc):
                 str(round(qso_fitpar[2]*initdat['platescale']*kpc_per_as.value, 2))+' kpc') #TODO: 2
             axs[0, 1].text(np.max(map_rkpc_ifs)*0.5, -4.0*0.3, '\u03B3='+ \
                 str(qso_fitpar[4]))
-            '''
+            
 ;         endif else if tag_exist(initmaps,'fit_empsf') then begin
 ;            cgoplot,empsf1d_x,empsf1d_y,color='Red'
 ;         endif else if tag_exist(initmaps,'ctradprof_psffwhm') then begin
@@ -2599,7 +2606,7 @@ def makemaps (initproc):
 
 ;         mapscl = cgimgscl(rebin(qso_map,dx*samplefac,dy*samplefac,/sample),$
 ;                           minval=zran[0],max=zran[1],stretch=initmaps.ct.stretch)
-            '''
+            
             #mapscl = rebin(math.log10(qso_map), (dx*samplefac, dy*samplefac))
             #this has to be a lot more zoomed in
             axs[1, 1].imshow(mapscl, extent=(-150,200,-150,200), cmap = 'hot')
@@ -2626,7 +2633,7 @@ def makemaps (initproc):
             axs[0, 2].set_xlim(0, np.max(map_rkpc_ifs))
             #;if tag_exist(initdat,'decompose_qso_fit') then begin
             axs[0, 2].plot(psf1d_x,psf1d_y,color='Red')
-            '''
+            
 ;         endif else if tag_exist(initmaps,'fit_empsf') then begin
 ;            cgoplot,empsf1d_x,empsf1d_y,color='Red'
 ;         endif else if tag_exist(initmaps,'ctradprof_psffwhm') then begin
@@ -2648,7 +2655,7 @@ def makemaps (initproc):
          
 ;         mapscl = cgimgscl(rebin(host_map,dx*samplefac,dy*samplefac,/sample),$
 ;                           minval=zran[0]),max=zran[1],stretch=initmaps.ct.stretch)
-            '''
+            
             #mapscl = cgimgscl(rebin(math.log10(host_map),dx*samplefac,dy*samplefac,sample = True),
                         #minval=zran[0],max=zran[1],stretch=initmaps['ct']['stretch'])
             
@@ -2661,14 +2668,14 @@ def makemaps (initproc):
             
             if 'remove_scattered' in initdat: #Where is this in the figure
                 scatt_map = np.sum(contcube['poly_mod'], axis = 2) / contcube['npts']
-                '''   
+                   
 ;;           Use maximum flux for normalization unless it's much higher than 
 ;;           second highest flux
 ;            ifsort = reverse(sort(scatt_map))
 ;            if scatt_map[ifsort[0]]/scatt_map[ifsort[1]] gt 2 then $
 ;               scatt_map /= scatt_map[ifsort[1]] $
 ;            else scatt_map /= scatt_map[ifsort[0]]
-                '''   
+                   
                 scatt_map /= maxctmap
                 plt.plot(map_rkpc_ifs, math.log10(scatt_map))
                 plt.ylim(-4,0)
@@ -2676,11 +2683,11 @@ def makemaps (initproc):
     
                 plt.plot(psf1d_x,psf1d_y,color='Red')
                 
-                '''   
+                   
 ;            mapscl = cgimgscl(rebin(scatt_map,dx*samplefac,dy*samplefac,/sample),$
 ;                              minval=zran[0],max=zran[1],$
 ;                              stretch=initmaps.ct.stretch)
-                '''   
+                   
                 #mapscl = cgimgscl(rebin(math.log10(scatt_map),dx*samplefac,dy*samplefac, sample = True),
                         #minval=zran[0],max=zran[1],stretch=initmaps['ct']['stretch'])
                 
@@ -2693,6 +2700,6 @@ def makemaps (initproc):
         
         #cgps_close
         radfig.savefig('/Users/hadley/Desktop/research/mapdir/pg1411cont_rad.eps', facecolor = 'white')
-
+'''
 hello = 2
 makemaps('pg1411')

@@ -46,7 +46,7 @@ __credits__ = ['David S. N. Rupke', "Carlos Anicetti"]
 __created__ = '2020 May 26'
 __last_modified__ = '2020 Jun 29'
 
-
+'''
 #   This functon reads in the dictionary from the master initialization file.
 #   The multi-step process is because initproc is a string variable. The
 #   initialization file must be in the init subdirectory of the Q3DFIT
@@ -61,7 +61,7 @@ def __get_initdat(initproc):
     module = importlib.import_module("q3dfit.init." + initproc)
     fcninitproc = getattr(module, initproc)
     return fcninitproc()
-
+'''
 
 #   Get linelist
 def __get_linelist(initdat):
@@ -195,7 +195,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
     # add common subdirectory to Python PATH for ease of importing
     path.append("common/")
     starttime = time.time()
-    initdat = __get_initdat(initproc) #initproc #__get_initdat(initproc)
+    initdat = initproc #__get_initdat(initproc)
     linelist = __get_linelist(initdat)
 
     if 'logfile' in initdat:

@@ -7,8 +7,8 @@ Created on Fri Jun  4 22:09:04 2021
 import numpy as np
 from astropy.modeling import models, fitting
 
-def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index,ct_coeff, zstar, 
-            fitord=3, quiet=True, refit=False):
+def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index, zstar, 
+            fitord=3, quiet=False, refit=False):
    
     deg1=fitord
     deg2=fitord
@@ -17,8 +17,12 @@ def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index,ct_coeff, zst
     iflux=flux[index]
     #the fitter I used puts weights in 1/sigma so I took the square root to make the data correct
     w=weight[index]
-    iweight=np.sqrt[w]
-
+    iweight=np.sqrt(w)
+    
+   
+    ilam = ilam.reshape(ilam.size)
+    iflux = iflux.reshape(ilam.size)    
+    iweight = iweight.reshape(ilam.size)
 
     
 # parinfo is start params, it's unnecessary unless wanted 
@@ -33,25 +37,24 @@ def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index,ct_coeff, zst
         
     #making astropy fitter
     fitter = fitting.LevMarLSQFitter()
-    
     #making polynomial model
     polymod1= models.Polynomial1D(deg1)
     polymod2= models.Polynomial1D(deg2)
     
+
     #creating fluxfit
-    fluxfit=fitter(polymod1, ilam, iflux,z=None, weights=iweight)
-    fluxfitptmp=fluxfit.parameters
+    fluxfit = fitter(polymod1, ilam, iflux, weights=iweight)
+    fluxfitparam=fluxfit.parameters
     
     #flip for numpy.poly1d 
-    fluxfitparam=np.flip(fluxfitptmp)
+    ct_coeff=np.flip(fluxfitparam)
                          
-    continuum = np.poly1d(fluxfitparam, variable='lambda')
-    
-    #ct_coeff=0
-    #look in q3da for example on saving @Lily
-    #an out not an an in
+    ct_poly = np.poly1d(ct_coeff, variable='lambda')
+    continuum=ct_poly(lam)
    
-    icontinuum = continuum[index]
+    np.save('ct_coeff.npy', ct_coeff)
+   
+    icontinuum = ct_poly(index)
     
     if refit==True:
       for i in range (0, np.size(refit['ord']) - 1):
@@ -70,6 +73,6 @@ def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index,ct_coeff, zst
           tmp_parsparam=np.flip(tmp_parsptmp)
           
          #lam[tmp_ind] doesn't make sense as a variable???
-          continuum[tmp_ind] += np.poly1d(tmp_parsparam, variable='lambda')
-          
-    print(icontinuum)
+          ct_poly[tmp_ind] += np.poly1d(tmp_parsparam, variable='lambda')
+    return(continuum)      
+  

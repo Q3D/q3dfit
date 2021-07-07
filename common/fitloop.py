@@ -21,8 +21,6 @@ Take outputs from Q3DF and perform fitting loop.
      Output from READCUBE, containing data
    initdat: in, required, type=structure
      Output from initialization routine, containing fit parameters
-   linelist: in, required, type=hash
-     Output from LINELIST.
    oned: in, required, type=byte
      Whether data is in a cube or in one dimension (longslit)
    onefit: in, required, type=byte
@@ -71,6 +69,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
     # pdb.set_trace()
     i = colarr[ispax]  # colind, rowind]
     j = rowarr[ispax]  # colind, rowind]
+
     print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]',
           file=logfile)
 
@@ -82,6 +81,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
         flux = cube.dat[i, j, :]
         err = abs(cube.var[i, j, :])**0.5
         dq = cube.dq[i, j, :]
+
     errmax = max(err)
 
     if initdat.__contains__('vormap'):
@@ -109,12 +109,12 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                 (flux != np.nan).any())
     if somedata:
 
+        ncomp = dict()
         if 'noemlinfit' not in initdat:
 
             # Extract # of components specific to this spaxel and
             # write as dict
             # Each dict key (line) will have one value (# comp)
-            ncomp = dict()
             for line in initdat['lines']:
                 if oned:
                     ncomp[line] = initdat['ncomp'][line][i]
@@ -220,7 +220,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                 print('FITLOOP: First call to FITSPEC')
 
             structinit = fitspec(cube.wave, flux, err, dq, zstar, listlines,
-                                 listlinesz, ncomp, initdat, quiet=quiet,
+                               listlinesz, ncomp, initdat, quiet=quiet,
                                  siglim_gas=siglim_gas,
                                  siginit_gas=siginit_gas,
                                  tweakcntfit=tweakcntfit, col=i+1, row=j+1)
@@ -238,7 +238,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                     # set emission line mask pa rameters
                     linepars = sepfitpars(listlines, structinit['param'],
                                           structinit['perror'],
-                                          structinit['parinfo'])
+                                          initdat['maxncomp'])
                     listlinesz = linepars['wave']
                     # Multiply sigmas from first fit by MASKSIG_SECONDFIT_DEF
                     # to get half-widths for masking
@@ -287,8 +287,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                 siglim_gas = struct['siglim']
 
                 linepars = sepfitpars(listlines, struct['param'],
-                                      struct['perror'],
-                                      struct['parinfo'])
+                                      struct['perror'], initdat['maxncomp'])
                 ccModule = \
                     importlib.import_module('q3dfit.common.' +
                                             initdat['fcncheckcomp'])

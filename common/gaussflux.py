@@ -17,7 +17,7 @@
 #      Coefficient of exponential
 #    sigma: in, required, numpy array
 #      Standard deviation
-#    
+#
 # :Keywords:
 #    normerr: in, optional, numpy array
 #      Error in norm.
@@ -55,48 +55,36 @@
 #    along with this program.  If not, see
 #    http://www.gnu.org/licenses/.
 #
-#-
-
+#
 
 import numpy as np
-import math
+import pdb
 from q3dfit.common.gaussarea import gaussarea
 
-def gaussflux(norm, sigma, normerr=None,sigerr=None):
-    
-    ngauss = norm.shape
-    
-    a = np.zeros(ngauss)
-    aerr = np.zeros(ngauss)
-    igda = np.where(sigma > 0)
-    ctgda = np.count_nonzero(sigma > 0)
-    
-    if ctgda > 0:
-        a[igda] = 0.5 / sigma[igda]**2.
-        if sigerr:
-            aerr[igda] = sigerr[igda]/sigma[igda]**3.
-    
-    gint = gaussarea(a, aerr=aerr)
+
+def gaussflux(norm, sigma, normerr=None, sigerr=None):
+
+    a = 0.5 / sigma**2.
+    if sigerr:
+        aerr = sigerr/sigma**3.
+        gint = gaussarea(a, aerr=aerr)
+    else:
+        gint = gaussarea(a)
     flux = norm*gint['area']
-    
+
     if sigerr:
         ginterr = gint['area_err']
     else:
-        ginterr = np.zeros(ngauss)
-    if normerr == None:
-        normerr = np.zeros(ngauss)
-    
-    fluxerr = np.zeros(ngauss)
-    
-    igdn = np.where((norm > 0) & (gint['area'] > 0))
-    ctgdn = np.count_nonzero((norm > 0) & (gint['area'] > 0))
-    
-    if ctgdn > 0:
-        fluxerr[igdn] = flux[igdn]*np.sqrt((normerr[igdn]/norm[igdn])**2. + (ginterr[igdn]/gint['area'][igdn])**2.)
-        
+        ginterr = 0.
+    if normerr is None:
+        normerr = 0.
+
+    fluxerr = 0.
+
+    igdn = ((norm > 0) and (gint['area'] > 0))
+    if igdn:
+        fluxerr = flux*np.sqrt((normerr/norm)**2. + (ginterr/gint['area'])**2.)
+
     outstr = {'flux': flux, 'flux_err': fluxerr}
-    
+
     return outstr
-
-
-    

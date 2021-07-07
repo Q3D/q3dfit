@@ -66,29 +66,29 @@ def pg1411():
     # centcol = 9.002
     # centrow = 14.002
     platescale = 0.3
-    fitrange = [4620,7450]
+    fitrange = [4620, 7450]
 
 #   These are unique to the user
-    volume = '/Volumes/fingolfin/'
-    infile = volume+'ifs/gmos/cubes/'+gal+'/'+gal+outstr+'.fits'
-    mapdir = volume+'ifs/gmos/cubes/'+gal+'/'+outstr+'/'
-    outdir = volume+'specfits/gmos/'+gal+'/'+outstr+'/'
-    qsotemplate = volume+'ifs/gmos/cubes/'+gal+'/'+gal+'qsotemplate.npy'
-    stellartemplates = \
-        volume+'specfits/gmos/'+gal+'/host/'+gal+'hosttemplate.npy'
+    volume = '/Users/annamurphree/Docs/Rupke Research/q3d/pg1411/'
+    infile = volume+gal+outstr+'.fits'
+    outdir = volume+'outdir/'+outstr+'/'
+    qsotemplate = volume+gal+'qsotemplate.npy'
+    stellartemplates = volume+gal+'hosttemplate.npy'
+
+    mapdir = ''
     logfile = outdir+gal+'_fitlog.txt'
-    batchfile = '/Users/drupke/Dropbox/git/q3dfit/common/fitloop.pro'
-    batchdir = '/Users/drupke/src/idl/batch/'
+
 #
 # Required pars
 #
 
-    if not os.path.isfile(infile): print('Data cube not found.')
+    if not os.path.isfile(infile):
+        print('Data cube not found.')
 
 # Lines to fit.
-    lines = ['Halpha','Hbeta',
-             '[OI]6300','[OI]6364','[OIII]4959','[OIII]5007',
-             '[NII]6548','[NII]6583','[SII]6716','[SII]6731']
+    lines = ['Halpha', 'Hbeta',
+             '[OI]6300', '[OI]6364', '[OIII]4959', '[OIII]5007',
+             '[NII]6548', '[NII]6583', '[SII]6716', '[SII]6731']
 #    nlines = len(lines)
 
 # Max no. of components.
@@ -102,40 +102,32 @@ def pg1411():
     for i in lines:
         linetie[i] = 'Halpha'
         ncomp[i] = np.full((ncols,nrows),maxncomp)
-        ncomp[i][8,13] = 0
         zinit_gas[i] = np.full((ncols,nrows,maxncomp),0.0898)
         siginit_gas[i] = np.full(maxncomp,50)
-        zinit_gas[i][2,18,:]=0.091
-        zinit_gas[i][4,21:22,:]=0.091
-        zinit_gas[i][5,21,:]=0.091
-        zinit_gas[i][6:8,23:25,:]=0.091
-        zinit_gas[i][1:4,1:7,:]=0.0894
-        zinit_gas[i][6:16,0:7,:]=0.089
-        zinit_gas[i][11,8:9,:]=0.089
         zinit_stars=np.full((ncols,nrows),0.0898)
 
 #
 # Optional pars
 #
 
-# Tweaked regions are around HeII,Hb/[OIII],HeI5876/NaD,[OI],Halpha, and [SII]
-# Lower and upper wavelength for re-fit
-    tw_lo = [4600,5200,6300,6800,7000,7275]
-    tw_hi = [4800,5500,6500,7000,7275,7375]
-# Number of wavelength regions to re-fit
-    tw_n = len(tw_lo)
-# Fitting orders
-    deford = 1
-    tw_ord = np.full(tw_n,deford)
-# Parameters for continuum fit
-# In third dimension:
-#   first element is lower wavelength limit
-#   second element is upper
-#   third is fit order
-    tweakcntfit = np.full((ncols,nrows,3,tw_n),0)
-    tweakcntfit[:,:,0,:] = tw_lo
-    tweakcntfit[:,:,1,:] = tw_hi
-    tweakcntfit[:,:,2,:] = tw_ord
+# # Tweaked regions are around HeII,Hb/[OIII],HeI5876/NaD,[OI],Halpha, and [SII]
+# # Lower and upper wavelength for re-fit
+#     tw_lo = [4600,5200,6300,6800,7000,7275]
+#     tw_hi = [4800,5500,6500,7000,7275,7375]
+# # Number of wavelength regions to re-fit
+#     tw_n = len(tw_lo)
+# # Fitting orders
+#     deford = 1
+#     tw_ord = np.full(tw_n,deford)
+# # Parameters for continuum fit
+# # In third dimension:
+# #   first element is lower wavelength limit
+# #   second element is upper
+# #   third is fit order
+#     tweakcntfit = np.full((ncols,nrows,3,tw_n),0)
+#     tweakcntfit[:,:,0,:] = tw_lo
+#     tweakcntfit[:,:,1,:] = tw_hi
+#     tweakcntfit[:,:,2,:] = tw_ord
 
     # Parameters for emission line plotting
     linoth = np.full((2, 6), '', dtype=object)
@@ -191,6 +183,15 @@ def pg1411():
                             'siginit_stars': 50,
                             'uselog': 1,
                             'refit': 1},
+            # in plot_spec: x/ystyle = log or lin (plots it linearly), 
+            #               xunit = micron or Angstrom,
+            #               yunit = flambda, lambdaflambda (= nufnu), or fnu
+            #               mode = light or dark
+            'argscontplot': {'xstyle':'log',
+                             'ystyle':'log',
+                             'xunit': 'Angstrom',
+                             'yunit':'flambda',
+                             'mode':'dark'},
             'argslinelist': {'vacuum': False},
             'startempfile': stellartemplates,
             'argspltlin1': argspltlin1,
@@ -200,11 +201,9 @@ def pg1411():
             'fcncheckcomp': 'checkcomp',
             'fcncontfit': 'fitqsohost',
             'maskwidths_def': 500,
-            'tweakcntfit': tweakcntfit,
+            # 'tweakcntfit': tweakcntfit,
             'emlsigcut': 2,
             'logfile': logfile,
-            'batchfile': batchfile,
-            'batchdir': batchdir,
             'siglim_gas': siglim_gas,
             'siginit_gas': siginit_gas,
             'siginit_stars': 50,

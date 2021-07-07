@@ -1,0 +1,46 @@
+\ Created 2021 June 15 by Nadia Zakamska 
+\ Wavelengths are in vacuum! 
+\ Data Source 1: Storchi-Bergmann et al. 2009, MNRAS, 394, 1148 
+\ Data Source 2: Glikman et al. 2006, ApJ, 640, 579 (but looked up on NIST)
+|                    name|          lines|              linelab|
+|                    char|         double|                 char|
+|                        |         micron|                     |
+|                    null|           null|                 null|
+                      Pae        0.954860          Pa$\epsilon$ 
+             [SIII]0.9533        0.953320         [SIII] 0.9533 
+               [CI]0.9827        0.982680           [CI] 0.9827 
+               [CI]0.9853        0.985300           [CI] 0.9853 
+            [SVIII]0.9915        0.991540        [SVIII] 0.9915 
+               HeII1.0126        1.012640           HeII 1.0126 
+              [SII]1.0290        1.028950          [SII] 1.0290 
+              [SII]1.0323        1.032330          [SII] 1.0323 
+              [SII]1.0339        1.033920          [SII] 1.0339 
+              [SII]1.0373        1.037330          [SII] 1.0373 
+               [NI]1.0401        1.040060           [NI] 1.0401 
+               [NI]1.0410        1.041000           [NI] 1.0410 
+                HeI1.0671        1.067060            HeI 1.0671 
+                HeI1.0833        1.083320            HeI 1.0833 
+                 OI1.1290        1.129000             OI 1.1290 
+               HeII1.1630        1.162960           HeII 1.1630 
+              [PII]1.1886        1.188610          [PII] 1.1886 
+              [SIX]1.2524        1.252350          [SIX] 1.2524 
+             [FeII]1.2570        1.257020         [FeII] 1.2570 
+             [FeII]1.2707        1.270690         [FeII] 1.2707 
+             [FeII]1.2791        1.279120         [FeII] 1.2791 
+             [FeII]1.2946        1.294620         [FeII] 1.2946 
+             [FeII]1.2981        1.298120         [FeII] 1.2981 
+             [FeII]1.3281        1.328140         [FeII] 1.3281 
+             [FeII]1.5339        1.533890         [FeII] 1.5339 
+             [FeII]1.5999        1.599910         [FeII] 1.5999 
+                     Br12        1.641170                 Br 12 
+             [FeII]1.6440        1.644000         [FeII] 1.6440 
+             [FeII]1.6642        1.664230         [FeII] 1.6642 
+             [FeII]1.6773        1.677340         [FeII] 1.6773 
+                     Br11        1.681110                 Br 11 
+                     Br10        1.736690                 Br 10 
+             [FeII]1.7489        1.748900         [FeII] 1.7489 
+                HeI2.0587        2.058690            HeI 2.0587 
+           [CaVIII]2.3220        2.322040       [CaVIII] 2.3220 
+            [SiVII]2.4833        2.483340        [SiVII] 2.4833 
+                 OI0.8449        0.844868             OI 0.8449 
+             [SIII]0.9071        0.907110         [SIII] 0.9071 

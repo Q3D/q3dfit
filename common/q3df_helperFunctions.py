@@ -47,6 +47,9 @@ __created__ = '2020 May 26'
 __last_modified__ = '2020 Jun 29'
 
 
+import pdb
+
+
 #   This functon reads in the dictionary from the master initialization file.
 #   The multi-step process is because initproc is a string variable. The
 #   initialization file must be in the init subdirectory of the Q3DFIT
@@ -102,11 +105,21 @@ def __get_CUBE(initdat, oned, quiet, logfile=None):
         from sys import stdout
         logfile = stdout
     if initdat.__contains__('argsreadcube'):
-        cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+        if initdat.__contains__('waveext'):
+            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+                    oned=oned, quiet=quiet, varext=varext, vormap=vormap,
+                    logfile=logfile, waveext=initdat['waveext'], **initdat['argsreadcube'])
+        else:
+            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
                     oned=oned, quiet=quiet, varext=varext, vormap=vormap,
                     logfile=logfile, **initdat['argsreadcube'])
     else:
-        cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+        if initdat.__contains__('waveext'):
+            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+                    oned=oned, quiet=quiet, varext=varext, vormap=vormap,
+                    logfile=logfile, waveext=initdat['waveext'])
+        else:
+            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
                     oned=oned, quiet=quiet, varext=varext, vormap=vormap,
                     logfile=logfile)
     return cube, vormap
@@ -173,13 +186,6 @@ def execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, oned,
                     onefit, quiet, logfile=None):
     from q3dfit.common.fitloop import fitloop
     for ispax in range(0, nspax):
-        # if ispax == 0 and logloop is not None:
-        # from os import remove
-        # delete log file, if it exists
-        # try:
-        #     remove(initdat['logfile'])
-        # except FileNotFoundError:
-        #     pass
         fitloop(ispax, colarr, rowarr, cube, initdat, linelist,
                 oned, onefit, quiet, logfile=logfile)
 
@@ -192,7 +198,9 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
     # add common subdirectory to Python PATH for ease of importing
     path.append("common/")
     starttime = time.time()
-    initdat = __get_initdat(initproc)
+    initdat = initproc
+    # When initproc was a routine rather than an input dictionary
+    # initdat = __get_initdat(initproc)
     linelist = __get_linelist(initdat)
 
     if 'logfile' in initdat:
@@ -205,9 +213,12 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
         cols = __get_voronoi(cols, rows, vormap)
         rows = 1
     nspax, colarr, rowarr = __get_spaxels(cube, cols, rows)
+
     # execute FITLOOP
+
     execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, oned,
                     onefit, quiet, logfile=logfile)
+
     if logfile is None:
         from sys import stdout
         logtmp = stdout
@@ -226,7 +237,7 @@ def q3df_multiCore(rank, initproc, cols=None, rows=None, oned=False,
     import time
     from numpy import floor
     starttime = time.time()
-    initdat = __get_initdat(initproc)
+    initdat = __get_initdat(initproc) #initproc #__get_initdat(initproc)
     linelist = __get_linelist(initdat)
 
     if 'logfile' in initdat:

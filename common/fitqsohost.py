@@ -62,11 +62,16 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
                  initialization file.')
     try:
         qsotemplate = np.load(qsoxdr, allow_pickle=True).item()
+        try:
+            qsowave = qsotemplate['wave']
+            qsoflux_full = qsotemplate['flux']
+        except:
+            qsotemplate = np.load(qsoxdr, allow_pickle=True)
+            qsowave = qsotemplate['wave'][0]
+            qsoflux_full = qsotemplate['flux'][0]
     except:
         sys.exit('Cannot find quasar template (qsoxdr).')
 
-    qsowave = qsotemplate['wave']
-    qsoflux_full = qsotemplate['flux']
 
     iqsoflux = np.where((qsowave >= fitran[0]) & (qsowave <= fitran[1]))
     qsoflux = qsoflux_full[iqsoflux]
@@ -115,9 +120,10 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
 
     ct_coeff = result.params
 
+    if refit == None:
+        return continuum, ct_coeff, zstar
     # Fit residual with PPXF
     if refit:
-
         resid = flux - continuum
 
         # log rebin residual
@@ -162,3 +168,6 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
         continuum += cont_resid
 
         return continuum, ct_coeff, zstar
+
+
+

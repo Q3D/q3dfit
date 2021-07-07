@@ -46,7 +46,9 @@ from q3dfit.common import qsohostfcn
 from scipy.special import legendre
 from scipy import interpolate
 from timeit import default_timer as timer
-
+from importlib import import_module
+from q3dfit.common.fitspec import fitspec
+import pickle
 
 def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
          quiet=True):
@@ -54,9 +56,12 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
     bad = 1.0 * 10**99
 
 # reads initdat from initialization file ie pg1411 (initproc is a string)
-    module = importlib.import_module('q3dfit.init.' + initproc)
-    fcninitproc = getattr(module, initproc)
-    initdat = fcninitproc()
+    #module = importlib.import_module('q3dfit.init.' + initproc)
+    #fcninitproc = getattr(module, initproc)
+    initdat = initproc
+    if isinstance(initdat, str):
+        from q3dfit.common.q3df_helperFunctions import __get_initdat
+        initdat = __get_initdat(initproc)
     #if 'donad' in initdat: do later
 
     if 'noemlinfit' not in initdat:
@@ -93,7 +98,8 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
     if 'fcnpltcont' in initdat:
         fcnpltcont = initdat['fcnpltcont']
     else:
-        fcnpltcont = 'pltcont'
+        #fcnpltcont = 'pltcont'
+        fcnpltcont = 'plot_cont'
 
     # READ DATA
 
@@ -115,11 +121,22 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
     header = bytes(1)
 
     if 'argsreadcube' in initdat:
-        cube = CUBE(infile=initdat['infile'], quiet=quiet, oned=oned,
+        if initdat.__contains__('waveext'):
+            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+                    oned=oned, quiet=quiet, varext=varext,
+                    waveext=initdat['waveext'], **initdat['argsreadcube'])        
+        else:
+            cube = CUBE(infile=initdat['infile'], quiet=quiet, oned=oned,
                     header=header, datext=datext, varext=varext,
                     dqext=dqext, **initdat['argsreadcube'])
+
     else:
-        cube = CUBE(infile=initdat['infile'], quiet=quiet, oned=oned,
+        if initdat.__contains__('waveext'):
+            cube = CUBE(infile=initdat['infile'], quiet=quiet, oned=oned,
+                    header=header, datext=datext, varext=varext,
+                    waveext=initdat['waveext'], dqext=dqext)
+        else:
+            cube = CUBE(infile=initdat['infile'], quiet=quiet, oned=oned,
                     header=header, datext=datext, varext=varext,
                     dqext=dqext)
 
@@ -292,8 +309,9 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                 if struct['noemlinfit'] == b'0':
                     # get line fit params
                     linepars, tflux = \
-                        sepfitpars(listlines, struct['param'], struct['perror'],
-                                   struct['parinfo'], tflux=True,
+                        sepfitpars(listlines, struct['param'],
+                                   struct['perror'],
+                                   initdat['maxncomp'], tflux=True,
                                    doublets=emldoublets)
 #                lineweqs = cmpweq(struct, listlines, doublets = emldoublets)
 
@@ -569,8 +587,16 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                         qsotemplate = \
                             np.load(initdat['argscontfit']['qsoxdr'],
                                     allow_pickle='TRUE').item()
-                        qsowave = qsotemplate['wave']
-                        qsoflux_full = qsotemplate['flux']
+                        try:
+                            qsowave = qsotemplate['wave']
+                            qsoflux_full = qsotemplate['flux']
+                        except:
+                            qsotemplate = \
+                                np.load(initdat['argscontfit']['qsoxdr'],
+                                    allow_pickle='TRUE')
+                            qsowave = qsotemplate['wave'][0]
+                            qsoflux_full = qsotemplate['flux'][0]
+
                         # non zero could be uncessesary
     #                    iqsoflux = \
     #                        np.flatnonzero(np.where((
@@ -663,7 +689,8 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                     struct_qso = qsotempfile
                     qsomod = struct_qso['cont_fit'] * struct['ct_coeff'][len(struct['ct_coeff']) - 1]
                     hostmod = struct['cont_fit'] - qsomod
-                else:
+                elif initdat['fcncontfit'] == 'questfit':
+                #else:
                     contcube['all_mod'][i, j, struct['fitran_indx']] = struct['cont_fit']
                     contcube['stel_z'][i, j] = struct['zstar']
                     if 'ct_errors' in struct:
@@ -783,11 +810,11 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                             pltcontfcn(struct_host, outfile + '_cnt_host',
                                        compspec=compspec, compfit=compfit,
                                        title='Host', fitran=initdat['fitran'],
-                                       **initdat['argspltcont'])
+                                       **initdat['argspltcont'], initdat=initdat)
                         else:
                             pltcontfcn(struct_host, outfile + '_cnt_host',
                                        compspec=compspec,
-                                       title='Host', fitran=initdat['fitran'])
+                                       title='Host', fitran=initdat['fitran'], initdat=initdat)
                         if 'blrpar' in initdat['argscontfit']:
                             qsomod_blrnorm = np.median(qsomod) / \
                                 max(qsomod_blronly)
@@ -802,11 +829,11 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                             pltcontfcn(struct_qso, str(outfile) + '_cnt_qso',
                                        compspec=compspec, compfit=compfit,
                                        title='QSO', fitran=initdat['fitran'],
-                                       **initdat['argspltcont'])
+                                       **initdat['argspltcont'], initdat=initdat)
                         else:
                             pltcontfcn(struct_qso, outfile + '_cnt_qso',
                                        compspec=compspec, comptitles=compfit,
-                                       title='QSO', fitran=initdat['fitran'])
+                                       title='QSO', fitran=initdat['fitran'], initdat=initdat)
                 # Plot continuum
                 # Make sure fit doesn't indicate no continuum; avoids
                 # plot range error in continuum fitting routine, as well as a blank
@@ -821,12 +848,12 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                                        compspec=np.array([qsomod, hostmod]),
                                        title='Total', comptitles=['QSO', 'host'],
                                        fitran=initdat.fitran,
-                                       **initdat['argspltcont'])
+                                       **initdat['argspltcont'], initdat=initdat)
                         else:
                             pltcontfcn(struct, outfile + '_cnt',
                                        compspec=np.array([qsomod, hostmod]),
                                        title='Total', comptitles=['QSO', 'host'],
-                                       fitran=initdat['fitran'])
+                                       fitran=initdat['fitran'], initdat=initdat)
                     elif 'decompose_ppxf_fit' in initdat:
                         if 'argspltcont' in initdat:
                             pltcontfcn(struct, outfile + '_cnt',
@@ -836,7 +863,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                                                 'ord. ' + str(add_poly_degree) +
                                                 'Leg.poly'],
                                        fitran=initdat['fitran'],
-                                       **initdat['argspltcont'])
+                                       **initdat['argspltcont'], initdat=initdat)
                         else:
                             pltcontfcn(struct, outfile + '_cnt',
                                        compspec=np.array([cont_fit_stel, cont_fit_poly]),
@@ -844,15 +871,21 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                                        comptitles=['stel. temp.', 'ord. ' +
                                                 str(add_poly_degree) +
                                                 ' Leg. poly'],
-                                       fitran=initdat['fitran'])
+                                       fitran=initdat['fitran'], initdat=initdat)
                     else:
-                        if 'argspltcont' in initdat:
-                            pltcontfcn(struct, outfile + '_cnt',
-                                       fitran=initdat['fitran'],
-                                       **initdat['argspltcont'])
-                        else:
-                            pltcontfcn(struct, outfile + '_cnt',
-                                       fitran=initdat['fitran'])
+                        with open('fitspec.txt', 'rb') as handle:
+                            data = pickle.load(handle)
+                            gdlambda = data['wave']
+                            ct_indx = data['ct_indx']
+                            gdflux = data['spec']
+                            continuum = data['cont_fit']
+                            ct_coeff = data['ct_coeff']
+                        pltcontfcn(struct, outfile + '_cnt',
+                                   fitran=initdat['fitran'], initdat=initdat,
+                                   MIRgdlambda=gdlambda[ct_indx], 
+                                   MIRgdflux=gdflux[ct_indx], 
+                                   MIRcontinuum=continuum[ct_indx], 
+                                   ct_coeff=ct_coeff,IR=1,title='Total')
 
     # Save emission line and continuum dictionaries
     np.savez('{[outdir]}{[label]}'.format(initdat, initdat)+'.lin.npz',

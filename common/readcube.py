@@ -1,10 +1,13 @@
+from astropy.constants import c
 from astropy.io import fits
+from astropy import units as u
 from scipy import interpolate
 from sys import stdout
 
 import copy
 import numpy as np
 import os
+import pdb
 import warnings
 
 
@@ -66,6 +69,12 @@ cube = CUBE(fp='/path/to/data/', infile='datafits')
     zerodq: in, optional, type=byte
       Zero out the DQ array.
     vormap: in, optional, 2D array for the voronoi binning map
+    waveunit: in, optional
+      Default is micron; other option is Angstrom
+    fluxunit: in, optional
+      the flux unit input by the user to be multiplide to the flux
+      (The fluxunit is assumed to be JWST default and then converted to
+       erg/s/cm^s/um/sr)
 ; :Author:
 ;    David S. N. Rupke::
 ;      Rhodes College
@@ -119,7 +128,6 @@ class CUBE:
         warnings.filterwarnings("ignore")
         fp = kwargs.get('fp','')
         self.fp = fp
-        # self.cspeed = 299792.458
         infile=kwargs.get('infile','')
         self.infile = infile
         logfile = kwargs.get('logfile', stdout)
@@ -132,9 +140,10 @@ class CUBE:
         hdu = fits.open(fp+infile, ignore_missing_end=True)
         #hdu.info()
         # fits extensions to be read
-        datext = kwargs.get('datext',1)
-        varext = kwargs.get('varext',2)
-        dqext =  kwargs.get('dqext',3)
+        datext = kwargs.get('datext',1) # data
+        varext = kwargs.get('varext',2) # inverse variance
+        dqext =  kwargs.get('dqext',3)  # DQ
+        wmapext = kwargs.get('wmapext',4) # WMAP
         error = kwargs.get('error',False)
         invvar = kwargs.get('invvar',False)
         linearize = kwargs.get('linearize',False)
@@ -145,6 +154,7 @@ class CUBE:
         self.datext = datext
         self.varext = varext
         self.dqext = dqext
+        self.wmapext = wmapext
         self.hdu = hdu
         self.phu = hdu[0]
         try:
@@ -164,8 +174,29 @@ class CUBE:
             self.dq = (hdu[dqext].data).T
         except:
             print('CUBE: Quality flag extension does not exist.', file=logfile)
+        try:
+            self.wmap = (hdu[wmapext].data).T
+        except:
+            print('CUBE: WMAP extension does not exist.', file=logfile)
+        # The current default input and working wavelengths are um
+        waveunit_tmp = kwargs.get('waveunit_in','micron')
+        waveunit_out = kwargs.get('waveunit_out','micron')
+        try:
+            self.waveunit_in = hdu[datext].header['CUNIT3']
+        except:
+            self.waveunit_in = waveunit_tmp
+            # print('CUBE: wavelength unit does not exist in the header of sci hdu.', file=logfile)
+        self.waveunit_out = waveunit_out
+        # put all dq to good (0)
         if zerodq == True:
             self.dq = np.zeros(np.shape(self.data))
+
+        fluxunit_in = kwargs.get('fluxunit_in', 'MJy/sr')
+        fluxunit_out = kwargs.get('fluxunit_out', 'erg/s/cm2/micron/sr')
+        self.fluxunit_in = fluxunit_in
+        self.fluxunit_out = fluxunit_out
+
+        # reading wavelength from wavelength extention
         if waveext:
             self.wave = hdu[waveext].data
             self.crval = 0
@@ -227,13 +258,52 @@ class CUBE:
                 self.wav0 = header[CRVAL] - (header[CRPIX] - 1) * header[CD]
                 self.wave = self.wav0 + np.arange(nw)*header[CD]
                 self.cdelt = header[CD]
-        self.crval = header[CRVAL]
-        self.crpix = header[CRPIX]
-        if CUNIT in header:
-            self.cunit = header[CUNIT]
-        BUNIT = 'BUNIT'
-        if BUNIT in header:
-            self.bunit = header[BUNIT]
+        # updated with try and except by cbertemes
+        try:
+            self.crval = header[CRVAL]
+            self.crpix = header[CRPIX]
+            if CUNIT in header:
+                self.cunit = header[CUNIT]
+            BUNIT = 'BUNIT'
+            if BUNIT in header:
+                self.bunit = header[BUNIT]
+        except Exception as e:
+            print(e)
+            print('... Continuing anyway ...')
+            pass
+        if self.waveunit_in != self.waveunit_out:
+            wave_in = self.wave * u.Unit(self.waveunit_in)
+            self.wave = wave_in.to(u.Unit(self.waveunit_out)).value
+        try:
+            self.wave
+        except:
+            print('wavelength array not loaded successfully!', file=logfile)
+            breakpoint()
+
+        # default working flux unit is erg/s/cm^2/um/sr
+        # For now, /sr is implicit for all inputs
+        if fluxunit_in == 'MJy/sr':
+            # IR units: https://coolwiki.ipac.caltech.edu/index.php/Units
+            # default input flux unit is MJy/sr
+            # 1 Jy = 10^-26 W/m^2/Hz
+            # first fac: MJy to Jy
+            # second fac: 10^-26 W/m^2/Hz / Jy * 10^-4 m^2/cm^-2 * 10^7 erg/W
+            # third fac: c/lambda**2 Hz/micron, with lambda^2 in m*micron
+            wave_out = self.wave * u.Unit(self.waveunit_out)
+            convert_flux = 1e6 * 1e-23 * c.value / wave_out.to('m').value / \
+                wave_out.to('micron').value
+
+        # case of input flux units: erg/s/cm^2/A (/sr)
+        elif fluxunit_in == 'erg/s/cm2/Angstrom/sr':
+            convert_flux = 1e4
+
+        if fluxunit_out == 'erg/s/cm2/Angstrom/sr':
+            convert_flux /= 1e4
+
+        self.dat = self.dat * convert_flux
+        self.var = self.var / (convert_flux**2)
+        self.err = self.err * convert_flux
+
         if vormap:
             ncols = np.max(vormap)
             nrows = 1
@@ -254,6 +324,7 @@ class CUBE:
             var = vorvar
             dq = vordq
 
+        # linearize in the wavelength direction
         if linearize:
             waveold = copy.copy(self.wave)
             datold = copy.copy(self.dat)

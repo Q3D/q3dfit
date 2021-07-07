@@ -1,0 +1,266 @@
+\ Created 2021 May 30 by Nadia Zakamska 
+\ Wavelengths are in vacuum! 
+\ Data Sources: line lists by David S.N. Rupke created both in vacuum 
+\ and in air and recomputed on the common vacuum grid using Morton 1991. 
+\ Morton is only accurate above 2000A, so the six lines with air 
+\ wavelengths under 2000A are explicitly fixed based on NIST database. 
+\ A handful of previousy missing Latex labels were added by hand to the 
+\ original two tables before combining. 
+|                    name|          lines|              linelab|
+|                    char|         double|                 char|
+|                        |       Angstrom|                     |
+|                    null|           null|                 null|
+                 SiII1304      1304.37000             SiII 1304 
+                  NI1200a      1200.22302               NI 1200 
+                 NiII1370      1370.14001             NiII 1370 
+                      Paa     18756.00000            Pa$\alpha$ 
+                      Pag     10941.16992            Pa$\gamma$ 
+                      Ly8       923.14801                   Ly8 
+                  NI1200b      1200.70996               NI 1200 
+                   Lybeta      1025.72803             Ly$\beta$ 
+                 SiII1020      1020.70001             SiII 1020 
+                 SiII1526      1526.71997             SiII 1526 
+                SiIII1206      1206.51001            SiIII 1206 
+                      Bre     18181.00000          Br$\epsilon$ 
+                   NI1199      1199.55005               NI 1199 
+                  CIs1560      1560.68298              CI* 1560 
+                  Lydelta       949.74200            Ly$\delta$ 
+                 NIII1747      1747.84802            NIII] 1747 
+                  PIII917       917.12000              PIII 917 
+                   HeI206     20587.00000        HeI 2.06$\mu$m 
+                 H2_10_S5     18358.00000   H$\down2$(1-0) S(5) 
+                  NIII989       989.78998              NIII 989 
+                 CII]2329      2328.84009             CII] 2329 
+                  MgI2852      2852.96509              MgI 2852 
+               [NeIV]2425      2425.13892           [NeIV] 2425 
+                [SiVI]196     19646.00000     [SiVI] 1.96$\mu$m 
+                 NiII1454      1454.84204             NiII 1454 
+                CIII]1908      1908.73401            CIII] 1908 
+                     Ly11       918.12500                  Ly11 
+                   HeI108     10833.00000        HeI 1.08$\mu$m 
+              [ArIII]7138      7137.77002          [ArIII] 7138 
+                   SVI944       944.52502               SVI 944 
+                   OI1025      1025.76196               OI 1025 
+              [FeIV]2568a      2568.16992          [FeIV] 2568a 
+                   NI953a       953.41498                NI 953 
+                 H2_10_S3     19575.00000   H$\down2$(1-0) S(3) 
+                [SII]103c     10329.24023    [SII] 1.0329$\mu$m 
+                   NI953c       953.96997                NI 953 
+                [OII]2471      2471.08789            [OII] 2471 
+                [SII]103b     10323.32031    [SII] 1.0323$\mu$m 
+                 FeII1096      1096.87097             FeII 1096 
+                   OI1355      1355.59802               OI 1355 
+                [FeV]2708      2708.19995            [FeV] 2708 
+                  HeI108b     10833.21680     HeI 1.08332$\mu$m 
+                  SII1253      1253.80505              SII 1253 
+              [SiIII]1883      1882.69995          [SiIII] 1883 
+                  NII1083      1083.98999              NII 1083 
+                 [SII]103     10329.00000      [SII] 1.03$\mu$m 
+                 FeII1125      1125.44202             FeII 1125 
+                   CI1328      1328.83398               CI 1328 
+                 SiII1260      1260.42004             SiII 1260 
+                      Ly6       930.75098                   Ly6 
+                    OI976       976.44800                OI 976 
+               [ArIV]2853      2853.66992           [ArIV] 2853 
+               [CIII]1906      1906.68298           [CIII] 1906 
+               [FeVI]2145      2145.75000           [FeVI] 2145 
+                    NI964       964.62598                NI 964 
+                  OVI1037      1037.61304              OVI 1037 
+                   HeI187     18691.00000        HeI 1.87$\mu$m 
+                FeIII1122      1122.53003            FeIII 1122 
+               [ArIV]2868      2868.20996           [ArIV] 2868 
+                 FeII1121      1121.96704             FeII 1121 
+                   NV1242      1242.80396               NV 1242 
+                    OI929       929.51703                OI 929 
+                    OI971       971.73798                OI 971 
+                 SiIV1402      1402.77002             SiIV 1402 
+                    OI936       936.62903                OI 936 
+                  CIV1550      1550.77405              CIV 1550 
+                  OVI1031      1031.91199              OVI 1031 
+                [MgV]2782      2782.69995            [MgV] 2782 
+               [FeIV]2836      2836.57007           [FeIV] 2836 
+                 SiII1190      1190.42004             SiII 1190 
+                      Pab     12821.57812             Pa$\beta$ 
+                      Brd     19451.00000            Br$\delta$ 
+                 HeII2733      2734.10010             HeII 2733 
+                      Ly9       920.94702                   Ly9 
+                    NI965       965.04102                NI 965 
+                 SIII1012      1012.50403             SIII 1012 
+                      Brg     21661.00000            Br$\gamma$ 
+              [ArIII]7753      7753.18994          [ArIII] 7753 
+                  SII1250      1250.57800              SII 1250 
+                 SiII1193      1193.28003             SiII 1193 
+                    OI988       988.77301                OI 988 
+                [SII]103d     10373.33008    [SII] 1.0373$\mu$m 
+                NIII1751b      1751.65698            NIII] 1751 
+                  PII1152      1152.81799              PII 1152 
+              [FeXII]2405      2405.80005          [FeXII] 2405 
+                  Lygamma       972.51703            Ly$\gamma$ 
+               [FeIV]2830      2830.18994           [FeIV] 2830 
+              [MgVII]2629      2629.10010          [MgVII] 2629 
+                  NI1134c      1134.97998               NI 1134 
+                  HeI108a     10832.05762     HeI 1.08320$\mu$m 
+                   CI1280      1280.13501               CI 1280 
+                   CI1157      1157.91003               CI 1157 
+                  SII1259      1259.51794              SII 1259 
+               [SIII]9071      9071.09961           [SIII] 9071 
+               [FeXI]2649      2649.50000           [FeXI] 2649 
+               SiIII]1892      1892.03003           SiIII] 1892 
+                  CIII977       977.03003              CIII 977 
+                   NV1238      1238.82104               NV 1238 
+                   PV1117      1117.97742               PV 1117 
+                   PV1128      1128.00781               PV 1128 
+               [FeVI]2163      2163.68994           [FeVI] 2163 
+                  SIV1062      1062.65601              SIV 1062 
+               [MgVI]1805      1805.95996           [MgVI] 1805 
+                   CI1560      1560.31006               CI 1560 
+                 FeII1063      1063.17004             FeII 1063 
+                 H2_10_S2     20338.00000   H$\down2$(1-0) S(2) 
+                [MgV]2928      2928.00000            [MgV] 2928 
+               [SIII]9533      9533.20020           [SIII] 9533 
+                    OI924       924.95001                OI 924 
+              [MgVII]2509      2509.19995          [MgVII] 2509 
+                     Ly10       919.34198                  Ly10 
+                   OI1302      1302.16797               OI 1302 
+                NiII1467a      1467.25903             NiII 1467 
+                 FeII1145      1144.92603             FeII 1145 
+                 HeII1640      1640.40002             HeII 1640 
+                  Lyalpha      1215.67004            Ly$\alpha$ 
+                    NI963       963.98999                NI 963 
+                  CII1334      1334.53198              CII 1334 
+                 H2_10_S1     21218.00000   H$\down2$(1-0) S(1) 
+                 SiIV1393      1393.76001             SiIV 1393 
+                 FeII1081      1081.87195             FeII 1081 
+                NiII1467b      1467.75598             NiII 1467 
+                   PIV950       950.65503               PIV 950 
+                   NII915       915.61200               NII 915 
+                 FeII1260      1260.52502             FeII 1260 
+                 CIIs1335      1335.70801             CII* 1335 
+                   NI953b       953.65503                NI 953 
+                      Pad     10052.59961             Pa$\delta 
+                  NI1134b      1134.41504               NI 1134 
+                   PII963       963.80103               PII 963 
+                 SIII1190      1190.20605             SIII 1190 
+                [OII]2470      2470.96606            [OII] 2470 
+                  CIV1548      1548.20203              CIV 1548 
+              [FeIV]2568b      2568.37988          [FeIV] 2568b 
+                Lyepsilon       937.81403          Ly$\epsilon$ 
+                      Ly7       926.24902                   Ly7 
+                  NI1134a      1134.16504               NI 1134 
+                   CI1139      1239.79199               CI 1139 
+                 NiII1317      1317.21997             NiII 1317 
+                   CI1277      1277.24500               CI 1277 
+               [CaVI]2242      2242.12988            [CaVI]2242 
+                    OI948       948.64600                OI 948 
+                   OI1039      1039.23401               OI 1039 
+                 MgII2795      2796.35205             MgII 2795 
+                 MgII2802      2803.53003             MgII 2802 
+               [NeIV]2422      2422.56104           [NeIV] 2422 
+                 H2_10_S4     18920.00000   H$\down2$(1-0) S(4) 
+                [SII]103a     10289.54980    [SII] 1.0289$\mu$m 
+                   SVI933       933.37598               SVI 933 
+                  HeI108c     10833.30664     HeI 1.08333$\mu$m 
+                  CII1036      1036.33704              CII 1036 
+                 FeII1143      1143.21997             FeII 1143 
+                  SiII989       989.87000              SiII 989 
+                 CII]2326      2326.11011             CII] 2326 
+               [CaVI]2214      2214.51001            [CaVI]2214 
+                    OI950       950.88501                OI 950 
+                NIII1751a      1751.21802            NIII] 1751 
+                  PII1301      1301.87000              PII 1301 
+                AlIII1854      1854.71640            AlIII 1854 
+                   Halpha      6564.61289             H$\alpha$ 
+                 [NI]5200      5201.70810             [NI] 5200 
+                [SII]4076      4077.50099            [SII] 4076 
+      [OII]3726+[OII]3729      3728.48359      [OII] 3726, 3729 
+                 MnII2593      2594.49964             MnII 2593 
+                SiII*1817      1817.45000            SiII* 1817 
+                  HeI7065      7067.13808              HeI 7065 
+                 FeII2233      2234.44723             FeII 2233 
+                 HeII2733      2734.10909             HeII 2733 
+                [CaV]5309      5310.58711            [CaV] 5309 
+                SiII*2344      2345.63828            SiII* 2344 
+                     NaD1      5897.55394              NaI 5896 
+                       H9      3836.48512                    H9 
+                   OH8344      8346.89537               OH 8344 
+                 Hepsilon      3971.19821           H$\epsilon$ 
+                FeII*2395      2396.35471            FeII* 2395 
+                 SiII2335      2335.83610             SiII 2335 
+      [SII]6716+[SII]6731      6725.48614      [SII] 6716, 6731 
+                 HeII3203      3204.02568             HeII 3203 
+                 FeII2249      2249.87683             FeII 2249 
+                [NII]5755      5756.18594            [NII] 5755 
+                FeII*2631      2632.10750            FeII* 2631 
+                  MgI2852      2852.96508              MgI 2852 
+                  HeI5876      5877.28951              HeI 5876 
+                 FeII2373      2374.46001             FeII 2373 
+                       H8      3890.16608                    H8 
+                 FeII2366      2367.59059             FeII 2366 
+                [NII]6583      6585.26845            [NII] 6583 
+              [NeIII]3967      3968.59253          [NeIII] 3967 
+                 SiII1808      1808.00000             SiII 1808 
+                SiII*2350      2351.60961            SiII* 2350 
+                  OH6356a      6357.92437              OH 6356a 
+               [NeIV]2425      2425.13921           [NeIV] 2425 
+              [NeIII]3869      3869.85680          [NeIII] 3869 
+                  OH6356b      6358.19837              OH 6356b 
+              [FeVII]5159      5160.32708          [FeVII] 5159 
+                [NII]6548      6549.85893            [NII] 6548 
+               [OIII]4959      4960.29390           [OIII] 4959 
+                [SII]4068      4069.74896            [SII] 4068 
+                 FeII2585      2586.64938             FeII 2585 
+                [OII]3726      3727.09173            [OII] 3726 
+                 [OI]5577      5578.88870             [OI] 5577 
+                 [OI]6364      6365.53942             [OI] 6364 
+                FeII*2380      2381.48762            FeII* 2380 
+               [SIII]6312      6313.80553           [SIII] 6312 
+                  OH6287b      6289.20084              OH 6287b 
+                FeII*2611      2612.65330            FeII* 2611 
+                SiII*1816      1816.92000            SiII* 1816 
+               [OIII]4363      4364.43530           [OIII] 4363 
+                [NeV]3426      3426.85238            [NeV] 3426 
+                FeII*2625      2626.45008            FeII* 2625 
+                 MnII2576      2576.87647             MnII 2576 
+                 Mg1b5167      5168.76062              MgI 5167 
+                  OH6287a      6289.14614              OH 6287a 
+                  OH6306b      6308.72513              OH 6306b 
+                 FeII2599      2600.17213             FeII 2599 
+                [NeV]3345      3346.79193            [NeV] 3345 
+                  MgI2025      2026.47672              MgI 2025 
+                FeII*2364      2365.55053            FeII* 2364 
+                 SiII2329      2329.94479            SiII* 2329 
+                  OH6306a      6308.61328              OH 6306a 
+                   Hgamma      4341.69031             H$\gamma$ 
+               [ArIV]4740      4741.44586           [ArIV] 4740 
+                 FeII2343      2344.21276             FeII 2343 
+                 Mg1b5173      5174.12533              MgI 5173 
+                 HeII4686      4688.01171             HeII 4686 
+                 Mg1b5184      5185.04815              MgI 5184 
+                [OII]3729      3729.87545            [OII] 3729 
+                  HeI6678      6679.99391              HeI 6678 
+              [FeVII]5721      5722.28703          [FeVII] 5721 
+        [NI]5198+[NI]5200      5200.52779       [NI] 5198, 5200 
+                  OH6329b      6331.68344              OH 6329b 
+                   OH8399      8401.46811               OH 8399 
+                 MgII2795      2796.35222             MgII 2795 
+                   Hdelta      4102.88763             H$\delta$ 
+                  OH6329a      6331.49735              OH 6329a 
+              [FeVII]5276      5277.84838          [FeVII] 5276 
+               [OIII]5007      5008.23664           [OIII] 5007 
+                 MgII2802      2803.52997             MgII 2802 
+                 FeII2382      2382.76393             FeII 2382 
+                    Hbeta      4862.70800              H$\beta$ 
+                   OH8430      8432.48650               OH 8430 
+                 MnII2605      2606.46247             MnII 2605 
+                [SII]6716      6718.29421            [SII] 6716 
+                     NaD2      5891.58234              NaI 5890 
+               [NeIV]2422      2422.56062           [NeIV] 2422 
+                AlIII1862      1862.78950            AlIII 1862 
+              [FeVII]6087      6088.68514          [FeVII] 6087 
+                 AlII1670      1670.78670             AlII 1670 
+                 [NI]5198      5199.34747             [NI] 5198 
+                [SII]6731      6732.67808            [SII] 6731 
+                [FeX]6375      6376.27230            [FeX] 6375 
+                 [OI]6300      6302.04238             [OI] 6300 
+                SiII*2335      2336.04615            SiII* 2335 
+                 FeII2260      2260.78057             FeII 2260 

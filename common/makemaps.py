@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 This procedure makes maps of various quantities. 
-Contains one helper routine: IFSF_PA
 
-Retuns Postscript plots.
+Retuns jpg plots.
 Params:
     initproc: in, required, type=string
     Name of procedure to initialize the fit.
@@ -15,27 +14,48 @@ import numpy as np
 import importlib
 import os.path
 import math
-import cv2
+import sys
+import pdb
+import bisect
+import matplotlib.pyplot as plt
+sys.path.append("/Users/hadley/Desktop/research") 
 
 from q3dfit.common.linelist import linelist
-from q3dfit.common.readcube import readcube
+from q3dfit.common.readcube import CUBE
 from q3dfit.common.rebin import rebin
-from q3dfit.common.hstsubim import hstsubim
 from q3dfit.common.cmpcvdf import cmpcvdf
 from q3dfit.common.cmpcompvals import cmpcompvals
 from q3dfit.common.lineratios import lineratios
 
-
-
-from astropy.cosmology import luminosity_distance
+from astropy.cosmology import FlatLambdaCDM
+from astropy.modeling import models, fitting
 from astropy.io import fits
 
-#for congrid
 import scipy.interpolate
 import scipy.ndimage
+import scipy.stats as stats
 
-def posangle (xaxis, yaxis): 
-    return None
+def hstsubim(image, subimsize, ifsdims, ifsps, ifspa, ifsrefcoords, \
+                    hstrefcoords, scllim, hstps = False, ifsbounds = False, \
+                    fov = False, sclargs = False, noscl = False, badmask = False, \
+                    buffac = False): return None
+
+def moffat (x, a):
+    #from: https://github.com/drupke/drtools/blob/master/drt_moffat.pro
+    '''
+    Author: David S. N. Rupke
+      Rhodes College
+      Department of Physics
+      2000 N. Parkway
+      Memphis, TN 38104
+      drupke@gmail.com
+    '''
+    u = (x.value - a[1])/a[2]
+    mof = a[0]/(u**2.0 + 1.0)**(a[3])
+    if len(a) > 5: mof = mof + a[4]
+    if len(a) == 6: mof = mof + a[5]*x.value
+
+    return mof
 
 def congrid(a, newdims, method='linear', centre=False, minusone=False):
     #from https://scipy-cookbook.readthedocs.io/items/Rebinning.html
@@ -139,14 +159,9 @@ def congrid(a, newdims, method='linear', centre=False, minusone=False):
               "Currently only \'neighbour\', \'nearest\',\'linear\',", \
               "and \'spline\' are supported.")
         return None
- 
-def mpfit2dpeak(): #need to find a replacement. returns arrays for fit and params
-    return None   
- 
-def ifsf_pa(): #need to find a replacement
-    return None   
- 
+    
 def makemaps (initproc):
+    
     fwhm2sig = 2.0 * np.sqrt(2.0 * np.log(2.0))
     plotquantum = 2.5                       #in inches
     bad = 1e99
@@ -198,7 +213,8 @@ def makemaps (initproc):
     '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
     #Get initialization structures
-    initmaps = None
+    initmaps = np.load('/Users/hadley/Desktop/research/initmaps.npy', allow_pickle = True)
+    initmaps = initmaps.item(0)
     
     module = importlib.import_module('q3dfit.init.' + initproc)
     fcninitproc = getattr(module, initproc)
@@ -210,7 +226,7 @@ def makemaps (initproc):
         module = importlib.import_module('q3dfit.init.' + initproc)
         fcninitproc = getattr(module, initproc)
         initdat = fcninitproc(initproc, initnad = initnad)
-
+    
     #Get galaxy-specific parameters from initialization file
     center_axes = -1
     center_nuclei = -1
@@ -223,43 +239,41 @@ def makemaps (initproc):
     if 'noemlinfit' not in initdat:
         linelabels = 1.0
         if 'argslinelist' in initdat:
-            #TODO: check if params match up
-            listlines = linelist(initdat['lines'], linelab = linelabels, \
-                                  _extra = initdat['argslinelist'])
+            listlines = linelist(inlines = initdat['lines'], linelab = True)
         else:
-            listlines = linelist(initdat['lines'], linelab = linelabels)
+            listlines = linelist(inlines = initdat['lines'], linelab = True)
 
     #Linelist with doublets to combine
     emldoublets = np.array([['[SII]6716','[SII]6731'],
-                    ['[OII]3726','[OII]3729'],
-                    ['[NI]5198','[NI]5200'],
-                    ['[NeIII]3869','[NeIII]3967'],
-                    ['[NeV]3345','[NeV]3426'],
-                    ['MgII2796','MgII2803']])
+                            ['[OII]3726','[OII]3729'],
+                            ['[NI]5198','[NI]5200'],
+                            ['[NeIII]3869','[NeIII]3967'],
+                            ['[NeV]3345','[NeV]3426'],
+                            ['MgII2796','MgII2803']])
      
-    if emldoublets.ndim == 1: ndoublets = 1 
-    else: numdoublets = emldoublets.size
+    if emldoublets.ndim == 1: numdoublets = 1 
+    else: numdoublets = emldoublets[0].size
     lines_with_doublets = initdat['lines']
      
+    
     for i in range(numdoublets - 1):
-        if (emldoublets[0,i] in listlines) and (emldoublets[1,i] in listlines):
+        
+        if (emldoublets[0,i] in listlines['name']) and (emldoublets[1,i] in listlines['name']):
            dkey = emldoublets[0,i] + '+' + emldoublets[1,i]
            lines_with_doublets = np.array([lines_with_doublets, dkey])
         
     if 'argslinelist' in initdat:
         linelist_with_doublets = \
-            listlines(lines_with_doublets, linelab = linelabels, \
-                         _extra = initdat['argslinelist'])
+            linelist(inlines = lines_with_doublets, linelab = True)
     else:
         linelist_with_doublets = \
-            listlines(lines_with_doublets, linelab = linelabels)
+            linelist(inlines = lines_with_doublets, linelab = True)
 
     if 'donad' in initdat:
         if 'argslinelist' in initdat:
-            nadlinelist = linelist(['NaD1','NaD2','HeI5876'], \
-                                     extra = initdat['argslinelist'])
+            nadlinelist = linelist(inlines = ['NaD1','NaD2','HeI5876'])
         else:
-            nadlinelist = linelist(['NaD1','NaD2','HeI5876'])
+            nadlinelist = linelist(inlines = ['NaD1','NaD2','HeI5876'])
 
     '''
     Get range file
@@ -267,10 +281,9 @@ def makemaps (initproc):
     plot types, in order; used for correlating with input ranges (array 
                                                                   rangequant)
     '''
-  
+
     hasrangefile = 0
     if 'rangefile' in initmaps:
-      #TODO
       if os.path.isfile(initmaps['rangefile']): 
           #readcol,initmaps.rangefile,rangeline,rangequant,rangelo,rangehi,$
                  #rangencbdiv,format='(A,A,D,D,I)',/silent
@@ -282,12 +295,12 @@ def makemaps (initproc):
 
     #Restore line maps
     if 'noemlinfit' not in initdat:
-        file = initdat['outdir'] + initdat['label'] + '.lin.xdr'
-        struct1 = (np.load(file, allow_pickle='TRUE')).item()
+        file = initdat['outdir'] + initdat['label'] + '.lin.npz'
+        struct1 = (np.load(file, allow_pickle='TRUE')).files #this is that thing with the emission line stuff
    
     #Restore continuum parameters
     if 'decompose_ppxf_fit' in initdat or 'decompose_qso_fit' in initdat:
-        file = initdat['outdir'] + initdat['label'] + '.cont.xdr'
+        file = initdat['outdir'] + initdat['label'] + '.cont.npy'
         contcube = (np.load(file, allow_pickle='TRUE')).item()
     
 
@@ -300,10 +313,8 @@ def makemaps (initproc):
         
         if 'badnademp' in initmaps:
             tagstobad = np.array(['WEQ','IWEQ','EMFLUX','EMUL','VEL'])
-            #assuming nadcube is a dictionary
-            tagnames = nadcube.keys
+            tagnames = nadcube.keys()
             
-            #TODO: check what badnademp would be (used 0 for now)
             ibad = np.where(initmaps['badnademp'] == 0)
             ctbad = len(ibad)
             
@@ -327,13 +338,12 @@ def makemaps (initproc):
     #Luminosity and angular size distances
     if 'distance' in initdat:
         ldist = initdat['distance']
-        asdist = ldist / (1.0 + initdat['zsys_gas']) ^ 2.0
+        asdist = ldist / (1.0 + initdat['zsys_gas']) ** 2.0
     else:
         #Planck 2018 parameters: https://ui.adsabs.harvard.edu/#abs/arXiv:1807.06209
-        #TODO: fcn to calculate luminosity distance
-        ldist = luminosity_distance(initdat['zsys_gas'])
-        #ldist = lumdist(initdat.zsys_gas,H0=67.4d,Omega_m=0.315d,Lambda0=0.685d,/silent)
-        asdist = ldist / (1.0 + initdat['zsys_gas']) ^ 2.0
+        cosmo = FlatLambdaCDM(H0=67.4, Om0=0.315) #Lambda0=0.685
+        ldist = cosmo.luminosity_distance(initdat['zsys_gas'])
+        asdist = ldist / (1.0 + initdat['zsys_gas']) ** 2.0
         
     kpc_per_as = asdist * 1000.0 / 206265.0
     kpc_per_pix = initdat['platescale'] * kpc_per_as
@@ -354,23 +364,24 @@ def makemaps (initproc):
     else: dqext = initdat['dqext']
    
     header = 1
-    datacube = readcube(initdat['infile'], quiet = True, oned = True, \
+    datacube = CUBE(infile = initdat['infile'], quiet = True, oned = True, \
                         header = header, datext = datext, varext = varext, \
                         dqext = dqext)
     if 'fluxfactor' in initmaps:
-        datacube['dat'] *= initmaps['fluxfactor']
-        datacube['var'] *= (initmaps['fluxfactor']) ^ 2.0
+        datacube.dat *= initmaps['fluxfactor']
+        datacube.var *= (initmaps['fluxfactor']) ^ 2.0
    
-    dimension_sizes = datacube['dat'].shape
-    dx = dimension_sizes[0]
-    dy = dimension_sizes[1]
-    dz = dimension_sizes[2]
+    
+
+    dx = datacube.nrows
+    dy = datacube.ncols
+    dz = datacube.nw
    
     #defined so that center of spaxel at bottom left has coordinates [1,1] 
     if center_axes[0] == -1: center_axes = [float(dx) / 2.0, float(dy) / 2.0] + 0.5
     if center_nuclei[0] == -1: center_nuclei = center_axes
     if 'vornorm' in initmaps:
-        datacube['dat'] /= rebin(initmaps['vornorm'], (dx, dy, dz))
+        datacube.dat /= rebin(initmaps['vornorm'], (dx, dy, dz))
    
 
     #Image window
@@ -388,16 +399,16 @@ def makemaps (initproc):
     else: aspectrat = 1.0
 
     #HST data
-    dohst = 0
-    dohstbl = 0
-    dohstrd = 0
-    dohstsm = 0
-    dohstcol = 0
-    dohstcolsm = 0
+    dohst = False
+    dohstbl = False
+    dohstrd = False
+    dohstsm = False
+    dohstcol = False
+    dohstcolsm = False
     if 'hst' in initmaps and 'hstbl' in initmaps:
-        dohstbl = 1
+        dohstbl = True
         if 'ext' in initmaps['hstbl']: hstblext = initmaps['hstbl']['ext']
-        else: hstblext = 1
+        else: hstblext = True
         hstbl = fits.open(initmaps['hstbl']['file'])
         hstblhead = hstbl.header #TODO
         hst_big_ifsfov = np.zeros((4,3), dtype = float)
@@ -407,7 +418,7 @@ def makemaps (initproc):
         if 'refcoords' in initmaps['hstbl']:
             hstrefcoords = initmaps['hstbl']['refcoords']
         else: hstrefcoords = initmaps['hst']['refcoords']
-        if initmaps['hstbl']['buffac'] in initmaps['hstbl']: #TODO: had a comma?
+        if initmaps['hstbl']['buffac'] in initmaps['hstbl']:
             hstbl_buffac = initmaps['hstbl']['buffac']
         else: hstbl_buffac = 2.0
         
@@ -449,7 +460,7 @@ def makemaps (initproc):
                 
                 map_x_tmp = rebin(np.arange(size_tmp[0]), (size_tmp[0], size_tmp[1]))
                 map_y_tmp = rebin(np.transpose(np.arange(size_tmp[1])), \
-                              size_tmp[0], size_tmp[1])
+                              (size_tmp[0], size_tmp[1]))
                 map_rkpc_tmp = np.sqrt((map_x_tmp - (hstrefcoords[0] + \
                                initmaps['hstbl']['nucoffset'][0] - 1)) ^ 2.0 + \
                                (map_y_tmp - (hstrefcoords[1] + \
@@ -459,22 +470,20 @@ def makemaps (initproc):
                 ipsf_bkgd = np.where((map_rkpc_tmp > 0.15) and (map_rkpc_tmp < 0.25))
                 hstbl_tmp = hstbl
                 hstbl_tmp[ipsf] = np.median(hstbl[ipsf_bkgd])
-                #TODO: replacement for filter_image
                 #hstblsm = filter_image(hstbl_tmp,fwhm=initmaps.hst.smoothfwhm,/all)
-                hstblsm = cv2.blur(hstbl_tmp)
+                hstblsm = hstbl_tmp
             else:
                 hstbltmp = hstbl
                 ibadhst = np.where(hstbl == 0.0)
                 ctbadhst = len(ibadhst)
-                #TODO: what does this mean?
-                #if ctbadhst > 0: hstbltmp[ibadhst] = !values.d_nan
+                if ctbadhst > 0: hstbltmp[ibadhst] = math.nan
                 fwhm = initmaps['hst']['smoothfwhm']
                 boxwidth = round((fwhm ^ 2.0) / 2.0 + 1.0)
                 if not boxwidth: boxwidth + 1
                 #hstblsm = filter_image(hstbl,fwhm=initmaps.hst.smoothfwhm,/all)
-                hstblsm = cv2.blur(hstbl)
+                hstblsm = hstbl
                 #hstblsm = filter_image(hstbltmp,smooth=boxwidth,/iter,/all)
-                hstblsm = cv2.blur(hstbltmp)
+                hstblsm = hstbltmp
                 ibadhst = np.where(np.isfinite(hstblsm))
                 ctbadhst = len(ibadhst)
                 if ctbadhst > 0: hstblsm[ibadhst] = bad
@@ -496,7 +505,6 @@ def makemaps (initproc):
                                        hstrefcoords,[0,0], noscl = True, \
                                        fov = True, hstps = hstpsbl, buffac = hstbl_buffac)
                 
-                #TODO: check
                 bhst_fov_sm_ns_rb = congrid(bhst_fov_sm_ns, dx, dy, center = True)
                 if 'vormap' in initdat:
                     tmp_rb = bhst_fov_sm_ns_rb
@@ -577,19 +585,18 @@ def makemaps (initproc):
                 hstrd_tmp = hstrd
                 hstrd_tmp[ipsf] = np.median(hstrd[ipsf_bkgd])
                 #hstrdsm = filter_image(hstrd_tmp,fwhm=initmaps.hst.smoothfwhm,/all)
-                hstrdsm = cv2.blur(hstrd_tmp)
+                hstrdsm = hstrd_tmp
             else:
                 hstrdtmp = hstrd
                 ibadhst = np.where(hstrd == 0)
                 ctbadhst = len(ibadhst)
-                #TODO
-                #if ctbadhst > 0: hstrdtmp[ibadhst] = !values.d_nan
+                if ctbadhst > 0: hstrdtmp[ibadhst] = math.nan
                 fwhm = initmaps['hst']['smoothfwhm']
                 boxwidth = round((fwhm ^ 2.0) / 2.0 + 1.0)
                 if not boxwidth: boxwidth + 1
                 #hstrdsm = filter_image(hstrd,fwhm=initmaps.hst.smoothfwhm,/all)
                 #hstrdsm = filter_image(hstrdtmp,smooth=boxwidth,/iter,/all)
-                hstrdsm = cv2.blur(hstrdtmp)
+                hstrdsm = hstrdtmp
                 ibadhst = np.where(np.finite(hstrdsm))
                 ctbadhst = len(ibadhst)
                 if ctbadhst > 0: hstrdsm[ibadhst] = bad
@@ -623,7 +630,7 @@ def makemaps (initproc):
             if 'bgsub' in initmaps['hstrdsm']:
                 rhst_fov_sm_ns_rb -= initmaps['hstrdsm']['bgsub']
       
-    if dohstbl or dohstrd: dohst = 0 #TODO
+    if dohstbl or dohstrd: dohst = True
     if dohst and 'hstcol' in initmaps:
         dohstcol = 1
         if initmaps['hstbl']['platescale'] != initmaps['hstrd']['platescale']:
@@ -645,7 +652,7 @@ def makemaps (initproc):
         if 'photplam' in initmaps['hstbl']:
             pivotbl=initmaps['hstbl']['photplam']
         else:
-            pivotbl = hstblhead['PHOTPLAM'] #TODO: check
+            pivotbl = hstblhead['PHOTPLAM']
             
         if 'photplam' in initmaps['hstrd']: pivotrd=initmaps['hstrd']['photplam']
         else:
@@ -665,7 +672,7 @@ def makemaps (initproc):
             if initmaps['hstbl']['refcoords'][0] != initmaps['hstrd']['refcoords'][0] or \
                 initmaps['hstbl']['refcoords'][1] != initmaps['hstrd']['refcoords'][1]:
                     idiff = initmaps['hstrd']['refcoords'] - initmaps['hstbl']['refcoords'] 
-                    hstbl = np.roll(hstbl, round(idiff[0]), axis = 1) #TODO: shift horiz.
+                    hstbl = np.roll(hstbl, round(idiff[0]), axis = 1) #shift horiz.
                     hstbl = np.roll(hstbl, round(idiff[1]), axis = 0) #shift vert.
                     #hstbl = shift(hstbl,fix(idiff[0]),fix(idiff[1]))
                     
@@ -703,7 +710,7 @@ def makemaps (initproc):
             sdevreg = sdevreg.reshape(4,1)
             #TODO
             #sdevreg = reform(sdevreg,4,1)
-            #nsdevreg = 1
+            nsdevreg = 1
       
         sdev = np.zeros((nsdevreg), dtype = float)
         for i in range (0, nsdevreg - 1):
@@ -737,8 +744,6 @@ def makemaps (initproc):
         
         #Extract and scale
         if 'subim_sm' in initmaps['hst']:
-            #TODO
-            
             chst_sm = hstsubim(hstcol,[initmaps['hst']['subim_sm'],
                                initmaps['hst']['subim_sm']],
                                [dx,dy], initdat['platescale'],
@@ -816,7 +821,7 @@ def makemaps (initproc):
             sdevreg[:, 3] = [6 * pxhst, 7 * pxhst, 6 * pyhst, 7 * pyhst]
       
         nsdevreg = sdevreg.size
-        if sdevreg.ndim == 1 : #TODO
+        if sdevreg.ndim == 1 : #maybe
             flux = np.array(sdevreg)[4, 1].flatten()
             nsdevreg = 1
       
@@ -833,7 +838,8 @@ def makemaps (initproc):
             sdev[i] = np.std(np.where(hsttmp != 0 and hsttmp < uplim))
         sdevrd = np.median(sdev)
         
-
+        
+        
         #Find bad pixels
         if 'colsigthr' in initmaps['hst']: colsigthr = initmaps['hst']['colsigthr']
         else: colsigthr = 3.0
@@ -895,19 +901,22 @@ def makemaps (initproc):
     '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
     ' Fit QSO PSF                                             '  
     '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
     #Radii in kpc
     #GMOS FOV
-    map_x = rebin(np.arange(1, dx), dx, dy)
-    map_y = rebin(np.transpose(np.arange(1, dy)), dx, dy)
-    map_r = np.sqrt((map_x - center_axes[0])^2.0 + (map_y - center_axes[1])^2.0)
-    map_rkpc_ifs = map_r * kpc_per_pix
+    
+    #map_x = rebin(np.arange(1, dx), (dx, dy))
+    map_x = np.full((dy, dx), np.arange(1, dx + 1))
+    #map_y = rebin(np.transpose(np.arange(1, dy)), (dx, dy))
+    map_y = np.full((dy, dx), np.transpose([np.arange(1, dy + 1)]))
+    map_r = np.sqrt((map_x - center_axes[0])**2.0 + (map_y - center_axes[1])**2.0)
+    map_rkpc_ifs = (map_r * kpc_per_pix).value
 
     #PA E of N, in degrees; spaxel with [0,0] has PA = bad
+    '''
     map_pa = np.zeros((dx,dy), dtype = float)
     map_xaxis = map_x - center_axes[0]
     map_yaxis = map_y - center_axes[1]
-    map_pa = ifsf_pa(map_xaxis, map_yaxis) #TODO
+    map_pa = ifsf_pa(map_xaxis, map_yaxis)
     map_pa += initdat['positionangle']
     iphase = np.where(map_pa > 360.0)
     ctphase = len(iphase)
@@ -915,16 +924,20 @@ def makemaps (initproc):
     inuc = np.where(map_r == 0.0)
     ctnuc = len(inuc)
     if ctnuc > 0: map_pa[inuc] = bad
-
+    '''
+    
     if 'decompose_qso_fit' in initdat:
         inan = np.where(np.isfinite(contcube['qso_mod']))
         ctnan = len(inan)
-        if ctnan > 0: contcube['qso_mod'][inan] = 0.0 #TODO: array = 0?
-        qso_map = sum(contcube.qso_mod, 3) / contcube['npts']
-        maxqso_map = max(qso_map)
+        if ctnan > 0: contcube['qso_mod'][inan] = 0.0
+        
+
+        qso_map = np.sum(contcube['qso_mod'], axis = 2) / contcube['npts']
+        maxqso_map = np.max(qso_map)
+        
         #qso_err = stddev(contcube.qso,dim=3,/double)
         #qso_err = sqrt(total(datacubeube.var,3))
-        qso_err = np.sqrt(np.median(datacube['var'], dim=3)) #TODO
+        qso_err = np.sqrt(np.median(datacube.var, axis = 2))
         ibd = np.where(~np.isfinite(qso_err))
         ctbd = len(ibd)
         if ctbd > 0:
@@ -952,43 +965,47 @@ def makemaps (initproc):
         '''
       
         #2D Moffat fit to continuum flux vs. radius
-        #parinit = REPLICATE({value:0d, fixed:0b, limited:[0B,0B], tied:'', limits:[0d,0d]},8)
-        parinit = np.full(8, {'value': 0.0, 'fixed': 0.0, 
-                   'limited':[bytes(0),bytes(0)], 
-                   'tied':'', 'limits':[0.0, 0.0]})
-        est = np.array([0.0, 1.0, 1.0, 1.0, center_nuclei[0] - 1.0, center_nuclei[1] - 1.0, 0.0, 3.0])
-        parinit['value'] = est
-        parinit[7]['limited'] = [bytes(1),bytes(1)]
-        parinit[7]['limits'] = [0.0, 5.0]
-        qso_fit = mpfit2dpeak(qso_map, qso_fitpar, circular = True, 
-                              moffat = True, est = est,
-                              error = qso_err, parinfo = parinit)
-        map_rnuc = np.sqrt((map_x - qso_fitpar[4] + 1) ^ 2.0 + \
-                              (map_y - qso_fitpar[5] + 1) ^ 2.0)
+        
+        #model parameters:
+        amp, x0, y0, gamma, alpha = 0.0, center_nuclei[0] - 1.0, center_nuclei[1], 1.0, 3.0
+        yp, xp = qso_map.shape
+        y, x, = np.mgrid[:yp, :xp]
+        
+        #model for data
+        moffat_init = models.Moffat2D(amp, x0, y0, gamma, alpha)
+        #initialize a fitter
+        fit = fitting.LevMarLSQFitter()
+        #fit data with fitter
+        qso_fit = fit(moffat_init, x, y, qso_map)
+        
+        qso_fitpar = qso_fit.parameters
+        
+        map_rnuc = np.sqrt((map_x - qso_fitpar[1] + 1) ** 2.0 + \
+                              (map_y - qso_fitpar[2] + 1) ** 2.0)
         map_rnuckpc_ifs = map_rnuc * kpc_per_pix
-        psf1d_x = np.arange(101.) / 100.0 * max(map_rnuckpc_ifs)
-        psf1d_y = np.log10(moffat(psf1d_x, [qso_fitpar[1], 0.0,
-                              qso_fitpar[2] * kpc_per_pix, qso_fitpar[7]]))
+        psf1d_x = np.arange(101.) / 100.0 * np.max(map_rnuckpc_ifs)
+        psf1d_y = np.log10(moffat(psf1d_x, [qso_fitpar[0], 0.0,
+                              qso_fitpar[2] * kpc_per_pix.value, qso_fitpar[4]])) #TODO: 2
 
     '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
     ' Compute radii and centers                               '  
     '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
     #coordinates in kpc
-    xran_kpc = float([0 - (center_axes[0] - 0.5), dx - (center_axes[0] - 0.5)]) \
+    xran_kpc = np.asarray([0 - (center_axes[0] - 0.5), dx - (center_axes[0] - 0.5)], float) \
               * kpc_per_pix
-    yran_kpc = float([0 - (center_axes[1] - 0.5), dy - (center_axes[1] - 0.5)]) \
+    yran_kpc = np.asarray([0 - (center_axes[1] - 0.5), dy - (center_axes[1] - 0.5)], float) \
               * kpc_per_pix
-    center_nuclei_kpc_x = (center_nuclei[0, :] - center_axes[0]) \
+    center_nuclei_kpc_x = ([c - center_axes[0] for c in center_nuclei[0:]] ) \
                          * kpc_per_pix
-    center_nuclei_kpc_y = (center_nuclei[1, :] - center_axes[1]) \
+    center_nuclei_kpc_y = ([c - center_axes[1] for c in center_nuclei[1:]] ) \
                          * kpc_per_pix
     #in image window
-    xwinran_kpc = float([0 - (center_axes[0] - 0.5 - (plotwin[0] - 1)), \
-                         dxwin - (center_axes[0] - 0.5 - (plotwin[0]-1))]) \
+    xwinran_kpc = np.asarray([0 - (center_axes[0] - 0.5 - (plotwin[0] - 1)), \
+                         dxwin - (center_axes[0] - 0.5 - (plotwin[0]-1))], float) \
                         * kpc_per_pix
-    ywinran_kpc = float([0 - (center_axes[1] - 0.5 - (plotwin[1] - 1)), \
-                         dywin - (center_axes[1] - 0.5 - (plotwin[1] - 1))]) \
+    ywinran_kpc = np.asarray([0 - (center_axes[1] - 0.5 - (plotwin[1] - 1)), \
+                         dywin - (center_axes[1] - 0.5 - (plotwin[1] - 1))], float) \
                         * kpc_per_pix
 #   center_nuclei_kpc_xwin = (center_nuclei[0,*]-center_axes[0]-(plotwin[0]-1)) $
 #                            * kpc_per_pix
@@ -1001,13 +1018,13 @@ def makemaps (initproc):
     if (dohstrd or dohstbl):
         if dohstbl: size_subim = bhst_fov.shape
         else: size_subim = rhst_fov_sc.shape
-        map_x_hst = rebin(np.arange(size_subim[0]) + 1, size_subim[0], size_subim[1])
-        map_y_hst = rebin(np.transpose(np.arange(size_subim[1]) + 1),
-                        size_subim[0], size_subim[1])
+        map_x_hst = rebin(np.arange(size_subim[0]) + 1, (size_subim[0], size_subim[0]))
+        map_y_hst = rebin(np.transpose(np.arange(size_subim[0]) + 1),
+                        (size_subim[0], size_subim[0]))
 #       Locations of [0,0] point on axes and nuclei, in HST pixels (single-offset
 #       indices).
-        center_axes_hst = (center_axes - 0.5) * float(size_subim[1] / dx) + 0.5
-        center_nuclei_hst = (center_nuclei - 0.5) * float(size_subim[1] / dx) + 0.5
+        center_axes_hst = (center_axes - 0.5) * float(size_subim[0] / dx) + 0.5
+        center_nuclei_hst = (center_nuclei - 0.5) * float(size_subim[0] / dx) + 0.5
 #       Radius of each HST pixel from axis [0,0] point, in HST pixels
         map_r_hst = np.sqrt((map_x_hst - center_axes_hst[0]) ^ 2.0 + \
                        (map_y_hst - center_axes_hst[1]) ^ 2.0)
@@ -1048,7 +1065,8 @@ def makemaps (initproc):
             else: map_rkpc_rhst = map_rkpc_hst 
         else: map_rkpc_hst = 0.0
 
-
+#TODO: emission lines
+    '''
     '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
     ' Process emission lines                                  '
     '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -1066,7 +1084,8 @@ def makemaps (initproc):
     elecdenmap_errlo = dict()
     elecdenmap_errhi = dict()
     if 'noemlinfit' not in initdat:
-        '''
+    '''
+    '''
 ;;     Sort emission line components if requested
 ;      if tag_exist(initmaps,'fcnsortcomp') AND $
 ;         tag_exist(initmaps,'sortlines') AND $
@@ -1083,7 +1102,7 @@ def makemaps (initproc):
 ;      endif
         '''
 
-        '''
+    '''
 ;;     Set reference line for rotation curve, for defining outflows, by resorting
 ;;     OUTLINES so that reference line comes first.
 ;      if ~ tag_exist(initmaps,'diskline') then diskline='Halpha' $
@@ -1093,7 +1112,7 @@ def makemaps (initproc):
 ;      else message,$
 ;         'Disk line not found; using first line in OUTLINES hash.',/cont
         '''
-        '''                            
+    '''                            
 ;      ofpars_line=0b
 ;      sigthresh=0b
 ;      ofthresh=0b ; threshold for defining outflow
@@ -1118,6 +1137,7 @@ def makemaps (initproc):
 ;      if tag_exist(initmaps,'compof') then $
 ;         ofpars_tags = tag_names(ofpars[outlines[0]])
         '''
+    '''
 #     Compute CVDF velocities and fluxes
         if 'cvdf' in initmaps:
             if 'flux_maps' in initmaps['cvdf']:
@@ -1126,7 +1146,19 @@ def makemaps (initproc):
             if 'sigcut' in initmaps['cvdf']:
                 sigcut=initmaps['cvdf']['sigcut']
             else: sigcut = 0.0
-        #TODO
+            
+            
+        #Loading in emission line dictionaries from q3da (line 852)  
+        emldicts = np.load('{[outdir]}{[label]}'.format(initdat, initdat)+'.lin.npz')  
+        emlwav = emldicts['emlwav']
+        emlwaverr = emldicts['emlwaverr']
+        emlsig = emldicts['emlsig'] 
+        emlsigerr = emldicts['emlsigerr']
+        emlflx = emldicts['emlflx'] 
+        emlflxerr = emldicts['emlflxerr']
+        emlweq = emldicts['emlweq']
+        
+        
         emlcompvel = cmpcompvals(emlwav,emlsig,emlflx,initdat['zsys_gas'], \
                                     emlwaverr = True, emlsigerr = True)
         emlvel = emlcompvel
@@ -1145,11 +1177,11 @@ def makemaps (initproc):
                 ebvmed = dict()
                 for key in initmaps['ebv']['calc']:
                     if 'argslineratios' in initmaps:
-                        '''
-                        ebvtmp = lineratios(emlflx[key], emlflxerr[key], listlines, \
+                        
+                        ;ebvtmp = lineratios(emlflx[key], emlflxerr[key], listlines, \
                                             ebvonly = True, errlo=errtmp, \
                                             extra = initmaps['argslineratios'])
-                        '''
+                        
                         ebvtmp = lineratios(emlflx[key], emlflxerr[key], listlines, \
                                             ebvonly = True)
                         errtmp = ebvtmp[1]
@@ -1177,7 +1209,7 @@ def makemaps (initproc):
                     emlflxerrcor_pp['ftot'] = dict()
                     emlflxerrcor_med['ftot'] = dict()
                     for i in range (1, initdat['maxncomp']):
-                        stric = str(icomp)
+                        stric = 'icomp'
                         emlflxcor_pp['fc' + stric] = hash()
                         emlflxcor_med['fc' + stric] = hash()
                         emlflxerrcor_pp['fc' + stric] = hash()
@@ -1199,17 +1231,17 @@ def makemaps (initproc):
                                 ctbadebv = len(ibadebv)
                                 if ctbadebv > 0: ebvuse[ibadebv] = ebvmed[ebvkey]
                                 emlflxcor_pp['fc'+stric,line,igdflx] = \
-                                    dustcor_ccm(linelist[line],flx[igdflx], \
+                                    dustcor_ccm(listlines[line],flx[igdflx], \
                                             ebvuse[igdflx])
                                 emlflxcor_med['fc'+stric,line,igdflx] = \
-                                    dustcor_ccm(linelist[line],flx[igdflx], \
+                                    dustcor_ccm(listlines[line],flx[igdflx], \
                                             ebvmed[ebvkey])
                                 #Should really propagate E(B-V) error as well ...
                                 emlflxerrcor_pp['fc'+stric,line,igdflx] = \
-                                    dustcor_ccm(linelist[line],flxerr[igdflx], \
+                                    dustcor_ccm(listlines[line],flxerr[igdflx], \
                                             ebvuse[igdflx])
                                 emlflxerrcor_med['fc'+stric,line,igdflx] = \
-                                    dustcor_ccm(linelist[line],flxerr[igdflx], \
+                                    dustcor_ccm(lislines[line],flxerr[igdflx], \
                                             ebvmed[ebvkey])
 
 
@@ -1453,20 +1485,20 @@ def makemaps (initproc):
                         llnadabslnnai[i,j] = bytes(1)
                         errnadabslnnai[i,j,1] = 0.0
                
-                '''
+                
 ;           Sort absorption line wavelengths. In output arrays,
 ;           first element of third dimension holds data for spaxels with only
 ;           1 component. Next elements hold velocities for spaxels with more than
 ;           1 comp, in order of increasing blueshift. Formula for computing error
 ;           in velocity results from computing derivative in Wolfram Alpha w.r.t.
 ;           lambda and rearranging on paper.
-                '''
+                
                 if ctgd == 1:
-                    '''
+                    
 ;              Set low sigma error equal to best-fit minus 5 km/s 
 ;              (unlikely that it's actually lower than this!) 
 ;              if low is greater than best-fit value
-                    '''
+                    
                     
                     if tmpsigabs < tmpsigabserr[0]: tmpsigabserr[0] = tmpsigabs-5.0
                     errnadabslnnai[i,j,0] = \
@@ -1517,22 +1549,22 @@ def makemaps (initproc):
                     nnaicf = (tmpcftau[sortgd]*tmpsigabs[sortgd])[::-1] / \
                         (1.497-15/np.sqrt(2.0)*nadlinelist['NaD1']*0.3180)
                     #nadabscnh[i,j,1:ctgd] = nnai/(1-ionfrac)/10^(naabund - nadep)
-                    nadabscnhcf[i,j,1:ctgd] = nnaicf/(1-ionfrac)/10^(naabund - nadep) #TODO
-                    '''
+                    nadabscnhcf[i,j,1:ctgd] = nnaicf/(1-ionfrac)/10^(naabund - nadep)
+                    
 ;               nnaierrlo = $
 ;                  nnai*sqrt(reverse((tmptauerrlo[sortgd]/tmptau[sortgd])^2d + $
 ;                                    (tmpsigabserr[sortgd]/tmpsigabs[sortgd])^2d))
 ;               nnaierrhi = $
 ;                  nnai*sqrt(reverse((tmptauerrhi[sortgd]/tmptau[sortgd])^2d + $
 ;                                    (tmpsigabserr[sortgd]/tmpsigabs[sortgd])^2d))
-                    '''
+                    
                     nnaicferr = \
                         rebin(nnaicf,1,1,ctgd,2) * \
                         np.sqrt(((tmpcftauerr[0,0,sortgd,:]/ \
                         rebin(tmpcftau[sortgd],1,1,ctgd,2))^2.0 + \
                         (tmpsigabserr[0,0,sortgd,:]/ \
                         rebin(tmpsigabs[sortgd],1,1,ctgd,2))^2.0,3)[::-1])
-                    '''
+                    
 ;               nnaicferrhi = $
 ;                  nnaicf*sqrt(reverse((tmpcftauerrhi[sortgd]/tmpcftau[sortgd])^2d + $
 ;                                    (tmpsigabserr[sortgd]/tmpsigabs[sortgd])^2d))
@@ -1542,7 +1574,7 @@ def makemaps (initproc):
 ;                                            (1-ionfrac)/10^(naabund - nadep)
 ;               errnadabscnhcf[i,j,1:ctgd,*] = nnaicferr / $
 ;                  (1-ionfrac)/10^(naabund - nadep)
-                    '''
+                    
                     errnadabscnhcf[i,j,1:ctgd,:] = \
                         rebin(nadabscnhcf[i,j,1:ctgd],1,1,ctgd,2)* \
                         np.sqrt((nnaicferr/rebin(nnaicf,1,1,ctgd,2))^2.0 + \
@@ -1560,11 +1592,11 @@ def makemaps (initproc):
                     errnadabssig[i,j,1:ctgd,:] = (tmpsigabserr[0,0,sortgd,:],3)[::-1]
                     nadabsv98[i,j,1:ctgd] = nadabsvel[i,j,1:ctgd]- \
                                        2.0*nadabssig[i,j,1:ctgd]
-                    '''
+                    
 ;               errnadabsv98[i,j,1:ctgd] = $
 ;                  sqrt(errnadabsvel[i,j,1:ctgd]^2d + $
 ;                  4d*errnadabssig[i,j,1:ctgd]^2d)
-                    '''
+                    
                     nadabscftau[i,j,1:ctgd] = (tmpcftau[sortgd])[::-1]
                     errnadabscftau[i,j,1:ctgd,:] = (tmpcftauerr[0,0,sortgd,:],3)[::-1]
                     nadabstau[i,j,1:ctgd] = (tmptau[sortgd])[::-1]
@@ -1572,19 +1604,19 @@ def makemaps (initproc):
                     errnadabstau[i,j,1:ctgd,1] = (tmptauerrhi[sortgd])[::-1]
                     nadabscf[i,j,1:ctgd] = (tmpcf[sortgd])[::-1]
             
-                '''
+                
 ;           Sort emission line wavelengths. In output velocity array,
 ;           first element of third dimension holds data for spaxels with only
 ;           1 component. Next elements hold velocities for spaxels with more than
 ;           1 comp, in order of increasing redshift.
-                '''
+                
                 igd = np.where(nadfit.waveem[i,j,:] != bad and 
                         nadfit.waveem[i,j,:] != 0)
                 ctgd = len(igd)
                 if ctgd > 0:
                     nademncomp[i,j] = ctgd
                     tmpwaveem = nadfit.waveem[i,j,igd]
-                    tmpwaveemerr = np.mean(nadfit.waveemerr[i,j,:,:]) #TODO: dim=4
+                    tmpwaveemerr = np.mean(nadfit.waveemerr[i,j,:,:], 4)
                     tmpwaveemerr = tmpwaveemerr[igd]
                     tmpsigem = nadfit.sigmaem[i,j,igd]
                     tmpsigemerr = np.mean(nadfit.sigmaemerr[i,j,:,:])#dim=4
@@ -1616,11 +1648,11 @@ def makemaps (initproc):
                     nademsig[i,j,1:ctgd] = tmpsigem[sortgd]
                     errnademsig[i,j,1:ctgd] = tmpsigemerr[sortgd]
                     nademv98[i,j,1:ctgd] = nademvel[i,j,1:ctgd]+2.0*nademsig[i,j,1:ctgd]
-                    '''
+                    
 ;               errnademv98[i,j,1:ctgd] = $
 ;                  sqrt(errnademvel[i,j,1:ctgd]^2d + $
 ;                  4d*errnademsig[i,j,1:ctgd]^2d)                 
-                    '''    
+                        
 
         #Parse actual numbers of NaD components
         ionecomp = np.where(nadabsncomp == 1)
@@ -1651,7 +1683,7 @@ def makemaps (initproc):
 
         #Absorption lines: Cumulative velocity distribution functions
         nadabscvdf = \
-            cmpcvdf_abs(nadfit.waveabs, #TODO
+            cmpcvdf_abs(nadfit.waveabs,
                           np.mean(nadfit.waveabserr), #TODO: dim=4
                           nadfit.sigmaabs,
                           np.mean(nadfit.sigmaabserr), #dim=4
@@ -1692,14 +1724,14 @@ def makemaps (initproc):
     laboff_norm = 0.0
     carr = 'White'
     
-    '''
+    
 ;  Coordinates in kpc for arrow coordinates:
 ;  Element 1: starting point
 ;  2: end of N arrow
 ;  3: end of E arrow
 ;  4: N label
 ;  5: E label
-    '''
+    
     
     xarr_kpc = np.zeros(5, float)
     yarr_kpc = np.zeros(5, float)
@@ -1735,3 +1767,932 @@ def makemaps (initproc):
                  halflength*cosangle_tmp]
             diskaxes_endpoints[:, :, i] = [[xends],[yends]]
  
+    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Fit PSF to Emission Line Map
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;   if tag_exist(initmaps,'fit_empsf') then begin
+;      linmap_tmp = $
+;         emlflx[string(initmaps.fit_empsf.vel,format='(I0)'),$
+;                initmaps.fit_empsf.line]
+;      vel = initmaps.fit_empsf.vel
+;      ivel = value_locate(linmap_tmp.vel,vel)
+;      empsf_map = linmap_tmp.flux[*,*,ivel]
+;      maxempsf_map = max(empsf_map,imax)
+;      empsf_map /= maxempsf_map
+;
+;      ;     Use error in total flux for error in line
+;      empsf_err = tlinmaps[initmaps.fit_empsf.line,*,*,0,1]
+;      empsf_err /= empsf_err[imax]
+;
+;      ;     2D Moffat fit to continuum flux vs. radius
+;      parinfo = REPLICATE({fixed:0b},8)
+;      parinfo[0].fixed = 1b
+;      est=[0d,1d,1d,1d,center_nuclei[0]-1d,center_nuclei[1]-1d,0d,2.5d]
+;      empsf_fit = $
+;         mpfit2dpeak(empsf_map,empsf_fitpar,/moffat,/circular,est=est,$
+;         parinfo=parinfo,error=empsf_err)
+;
+;      map_rempsf = sqrt((map_x - empsf_fitpar[4]+1)^2d + $
+;         (map_y - empsf_fitpar[5]+1)^2d)
+;      map_rempsfkpc_ifs = map_rempsf * kpc_per_pix
+;      empsf1d_x = dindgen(101)/100d*max(map_rempsfkpc_ifs)
+;      empsf1d_y = alog10(moffat(empsf1d_x,[empsf_fitpar[1],0d,$
+;         empsf_fitpar[2]*kpc_per_pix,$
+;         empsf_fitpar[7]]))
+;
+;   endif
+    '''
+    
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' Continuum plots                                         '
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    if 'ct' in initmaps:
+        if dohst: ctsumrange_tmp = initmaps['ct']['sumrange_hstcomp']
+        else: ctsumrange_tmp = initmaps['ct']['sumrange']
+        
+        capifs = str(ctsumrange_tmp[0]) + '-' + str(ctsumrange_tmp[1])
+        if 'sumrange_lab' in initmaps['ct']:
+            if initmaps['ct']['sumrange_lab'] == 'microns':
+                capifs = str(ctsumrange_tmp[0]/1e4 + '-' + ctsumrange_tmp[1]/1e4)
+      
+        if 'charscale' in initmaps['ct']: charscale = initmaps['ct']['charscale']
+        else: charscale = 1.0
+   
+    if dohst:
+        if 'source' in initmaps['hst']: capsource = initmaps['hst']['source']
+        else: capsource = 'HST'
+        if dohstrd and dohstbl:
+            caphst = str(initmaps['hstbl']['label']+'+'+initmaps['hstrd']['label']) #not sure abt special characters
+        elif dohstrd:
+            caphst = str(initmaps['hstrd']['label'])
+        else:
+            caphst = str(initmaps['hstbl']['label'])
+   
+    #arrays for positions for zoom box
+    #posbox1x = np.zeros(2, float)
+    #posbox1y = np.zeros(2, float)
+    #posbox2x = np.zeros(2, float)
+    #posbox2y = np.zeros(2, float)
+   
+    #Figure out correct image size in inches
+    ysize_in = 2.2
+    aspectrat_fov = float(dx)/float(dy)
+    npanels_ifsfov = 0
+    if 'ct' in initmaps: npanels_ifsfov = 1.0
+    if dohst: npanels_ifsfov += 1.0
+    if dohstsm: npanels_ifsfov += 1.0
+    if npanels_ifsfov == 0:
+        print('MAKEMAPS: Error -- no continuum images to plot.')
+        exit #maybe
+   
+    imgheight_in = 1.6
+    xmargin_in = 0.4
+    ymargin_in = (ysize_in - imgheight_in)/2.0
+    ifsimg_width_in = imgheight_in*aspectrat_fov*npanels_ifsfov
+    #Sizes and positions of image windows in real and normalized coordinates
+    if dohst:
+        xsize_in = imgheight_in + xmargin_in + ifsimg_width_in
+        xfrac_margin = xmargin_in / xsize_in
+        xfrac_hstbig = imgheight_in / xsize_in
+        xfrac_ifsfov_width = imgheight_in*aspectrat_fov / xsize_in
+        yfracb = ymargin_in/ysize_in
+        yfract = 1.0 - ymargin_in/ysize_in
+        pos_hstbig = [0.0,yfracb,xfrac_hstbig,yfract]
+        pos_ifsfov = np.zeros((4, int(npanels_ifsfov)), float)
+        pos_ifsfov[:,0] = [xfrac_hstbig+xfrac_margin,yfracb,
+                         xfrac_hstbig+xfrac_margin+xfrac_ifsfov_width,yfract]
+        for i in range (1, int(npanels_ifsfov) - 1):
+            pos_ifsfov[:,i] = pos_ifsfov[:,i-1] + [xfrac_ifsfov_width,0.0,
+                                                   xfrac_ifsfov_width,0.0]
+        #Instrument labels
+        lineoff = 0.1 * xfrac_hstbig
+        xhstline = [pos_hstbig[0]+lineoff,
+                    pos_ifsfov[2,npanels_ifsfov-2]-lineoff]
+        yhstline = [yfracb*0.75,yfracb*0.75]
+        xhstline_tpos = (xhstline[1]+xhstline[0])/2.0
+        yhstline_tpos = yfracb*0.15
+        xifsline = [pos_ifsfov[0,npanels_ifsfov-1]+lineoff,
+                    pos_ifsfov[2,npanels_ifsfov-1]-lineoff]
+        yifsline = [yfracb*0.75,yfracb*0.75]
+        xifsline_tpos = (xifsline[1]+xifsline[0])/2.0
+        yifsline_tpos = yfracb*0.15
+    else:
+        ysize_in = 2.2 + ymargin_in
+        xsize_in = xmargin_in + ifsimg_width_in
+        yfracb = ymargin_in/ysize_in
+        yfract = 1.0 - ymargin_in*2.0/ysize_in
+        xfrac_margin = xmargin_in/xsize_in
+        yfrac_margin = ymargin_in/ysize_in
+        pos_ifsfov = [xfrac_margin,yfracb,1.0,yfract]
+        #Instrument labels
+        lineoff = 0.1*ifsimg_width_in/xsize_in
+        xifsline = [pos_ifsfov[0]+lineoff,
+                    pos_ifsfov[2]-lineoff]
+        yifsline = [yfracb*0.75,yfracb*0.75]
+        xifsline_tpos = (xifsline[1]+xifsline[0])/2.0
+        yifsline_tpos = yfracb*0.15
+
+    #start of plotting
+    #cgps_open(initdat['mapdir']+initdat['label']+'cont.eps')
+    
+    plt.style.use('seaborn-white')
+    if npanels_ifsfov == 1: #if only one plot
+        contfig = plt.figure(figsize=(10, 10))
+    else:
+        contfig = plt.figure(figsize=(npanels_ifsfov * 4, npanels_ifsfov)) 
+    #plt.axis("off")
+    if dohst:
+        
+        plt.text(xhstline_tpos, yhstline_tpos, str(capsource + ': ' + caphst), c = 'red') #ie HST:ACS/F625W
+        plt.text(0, .6, initdat['name']) #ie PG1411 + 442   
+        #HST continuum, large scale
+        if dohstbl: size_subim = np.shape(bhst_big)
+        else: size_subim = np.shape(rhst_big)
+        if dohstrd and dohstbl:
+            mapscl = np.zeros((3,size_subim[0],size_subim[1]), bytes)
+            mapscl[0,:,:] = rhst_big
+            mapscl[2,:,:] = bhst_big
+            mapscl[1,:,:] = bytes((float(rhst_big)+float(bhst_big))/2.0)
+            if size_subim[0] < resampthresh or size_subim[1] < resampthresh:
+                mapscl = rebin(mapscl, (3,size_subim[0]*samplefac,size_subim[1]*samplefac))
+        else:
+            mapscl = np.zeros((size_subim[0],size_subim[1]), bytes)
+            if dohstrd: mapscl = rhst_big
+            if dohstbl: mapscl = bhst_big
+            if size_subim[0] < resampthresh or size_subim[1] < resampthresh:
+                mapscl = rebin(mapscl, (size_subim[0]*samplefac,
+                               size_subim[1]*samplefac))
+  
+        
+        #Assumes IFS FOV coordinates are 0-offset, with [0,0] at a pixel center
+        
+        #plots the whole thing
+        ax1 = contfig.add_subplot(1, 4, 1)
+        ax1.grid(False)
+        ax1.set_title(str(capsource + ': ' + caphst))
+        ax1.set_xlim(-0.5, size_subim[0]-0.5)
+        ax1.set_ylim(-0.5, size_subim[1]-0.5)
+        ax1.imshow(mapscl, cmap = 'hot')
+        
+        ax1.plot([hst_big_ifsfov[:,0],hst_big_ifsfov[0,0]], 
+                 [hst_big_ifsfov[:,1],hst_big_ifsfov[0,1]], c = 'red') #possibly the box arms
+
+        imsize = str(int(initmaps['hst']['subim_big'] * kpc_per_as))
+        ax1.text(size_subim[0]*0.05, size_subim[1]*0.9, str(imsize+' X '+imsize+' kpc'), color = 'w')    #ie 37x37 kpc 
+            
+        #;cgtext,size_subim[0]*0.05,size_subim[1]*0.05,caphst,color='white'
+        '''
+        posbox1x[0] = truepos[0]+(truepos[2]-truepos[0])* \
+                hst_big_ifsfov[3,0]/size_subim[0]
+        posbox1y[0] = truepos[1]+(truepos[3]-truepos[1])* \
+                hst_big_ifsfov[3,1]/size_subim[1]
+        posbox2x[0] = truepos[0]+(truepos[2]-truepos[0])* \
+                hst_big_ifsfov[0,0]/size_subim[0]
+        posbox2y[0] = truepos[1]+(truepos[3]-truepos[1])* \
+                hst_big_ifsfov[0,1]/size_subim[1]
+        '''
+
+        #HST continuum, IFS FOV (the zoom in)
+        if dohstbl: size_subim = np.shape(bhst_fov)
+        else: size_subim = np.shape(rhst_fov_sc)
+        if dohstbl and dohstrd:
+            mapscl = np.zeros((3,size_subim[0],size_subim[1]), bytes)
+            mapscl[0,:,:] = rhst_fov_sc
+            mapscl[2,:,:] = bhst_fov
+            mapscl[1,:,:] = bytes((float(rhst_fov_sc)+float(bhst_fov))/2.0)
+            ctmap = (rhst_fov_ns+bhst_fov_ns)/2.0
+            if size_subim[0] < resampthresh or size_subim[1] < resampthresh:
+                mapscl = rebin(mapscl, (3,size_subim[0]*samplefac,size_subim[1]*samplefac))
+        else:
+            mapscl = np.zeros((size_subim[0],size_subim[1]), bytes)
+            if dohstrd:
+                mapscl = rhst_fov_sc
+                ctmap = rhst_fov_ns
+            elif dohstbl:
+                mapscl = bhst_fov
+                ctmap = bhst_fov_ns
+            if size_subim[0] < resampthresh or size_subim[1] < resampthresh:
+                mapscl = rebin(mapscl, (size_subim[0]*samplefac,size_subim[1]*samplefac))
+                
+        ax2 = contfig.add_subplot(1, 4, 2)
+        ax2.grid(False)
+        ax2.imshow(mapscl, cmap = 'hot')
+        
+        if 'fithstpeak' in initmaps['hst'] and 'fithstpeakwin_kpc' in initmaps['hst']:
+            nucfit_dwin_kpc = initmaps['hst']['fithstpeakwin_kpc']
+            nucfit_halfdwin_hstpix = round(nucfit_dwin_kpc/kpc_per_hstpix/2.0)
+            #subsets of images for peak fitting, centered around (first) nucleus
+            xhst_sub = round(center_nuclei_hst[0,0]) + \
+                [-nucfit_halfdwin_hstpix,nucfit_halfdwin_hstpix]
+            yhst_sub = round(center_nuclei_hst[1,0]) + \
+                [-nucfit_halfdwin_hstpix,nucfit_halfdwin_hstpix]
+            ctmap_center = ctmap[xhst_sub[0]:xhst_sub[1], \
+                          yhst_sub[0]:yhst_sub[1]]
+            #Circular moffat fit
+            
+            #model for data
+            moffat_init = models.Moffat2D()
+            #fit data with fitter
+            yfit = fit(moffat_init, ctmap_center)
+
+            a = [yfit.amplitude, yfit.x_0, yfit.y_0, yfit.gamma, yfit.alpha]
+            
+            #Fitted peak coordinate in HST pixels; single-offset coordinates,
+            #[1,1] at a pixel center
+            peakfit_hstpix = [a[1]+xhst_sub[0]+1,a[2]+yhst_sub[0]+1]
+            peakfit_hst_distance_from_nucleus_hstpix = peakfit_hstpix - \
+                                                center_nuclei_hst[:,0]
+            peakfit_hst_distance_from_nucleus_kpc = \
+            peakfit_hst_distance_from_nucleus_hstpix * kpc_per_hstpix
+            size_hstpix = np.shape(ctmap)
+            
+            ax2.set_xlim(0.5,size_hstpix[0]+0.5)
+            ax2.set_ylim(0.5,size_hstpix[1]+0.5)
+            ax2.plot(peakfit_hstpix[0],peakfit_hstpix[1], 'b+', mew = 2, ms = 20) # the + zoomed in image
+            
+        else: 
+            ax2.plot([0])
+  
+        #plotaxesnuc(xran_kpc,yran_kpc,center_nuclei_kpc_x, \
+                   #center_nuclei_kpc_y,toplab = True)
+        ax2.text(xran_kpc[0]+(xran_kpc[1]-xran_kpc[0])*0.05,
+                 yran_kpc[1]-(yran_kpc[1]-yran_kpc[0])*0.1,
+                 'IFS FOV', color='white')
+        #ifsf_plotcompass,xarr_kpc,yarr_kpc,carr=carr,/nolab,hsize=150d,hthick=2d
+        '''
+        posbox1x[1] = truepos[0]
+        posbox1y[1] = truepos[3]
+        posbox2x[1] = truepos[0]
+        posbox2y[1] = truepos[1]
+        '''
+
+        #smoothed HST continuum, IFS FOV
+        if dohstsm:
+            '''
+            #3-color image
+;         mapscl = bytarr(3,size_subim[0],size_subim[1])
+;         if dohstrd then mapscl[0,*,*] = rhst_fov_sm
+;         if dohstbl then mapscl[2,*,*] = bhst_fov_sm
+;         if dohstrd AND dohstbl then $
+;            mapscl[1,*,*] = byte((double(rhst_fov_sm)+double(bhst_fov_sm))/2d)
+            '''
+            #Flux image
+            if dohstbl and dohstrd:
+                ctmap = (float(rhst_fov_sm_ns_rb)+float(bhst_fov_sm_ns_rb))/2.0
+                if 'beta' in initmaps['hstblsm']:
+                    beta = initmaps['hstblsm']['beta']
+                elif 'beta' in initmaps['hstrdsm']:
+                    beta = initmaps['hstrdsm']['beta']
+                else: beta = 1.0
+                if 'stretch' in initmaps['hstblsm']:
+                    stretch = initmaps['hstblsm']
+                elif 'stretch' in initmaps['hstrdsm']:
+                    stretch = initmaps['hstrdsm']['stretch']
+                else: stretch = 1
+                if 'scllim' in initmaps['hstblsm']:
+                    scllim = initmaps['hstblsm']['scllim']
+                elif 'scllim' in initmaps['hstrdsm']:
+                    scllim = initmaps['hstrdsm']['scllim']
+                else: scllim = [np.min(ctmap), np.max(ctmap)]               
+            elif dohstbl:
+                ctmap = bhst_fov_sm_ns_rb
+                if 'beta' in initmaps['hstblsm']:
+                    beta = initmaps['hstblsm']['beta']
+                else: beta = 1.0
+                if 'stretch' in initmaps['hstblsm']:
+                    stretch = initmaps['hstblsm']['stretch']
+                else: stretch = 1
+                if 'scllim' in initmaps['hstblsm']:
+                    scllim = initmaps['hstblsm']['scllim']
+                else: scllim = [np.min(ctmap), np.max(ctmap)]
+            else:
+                ctmap = rhst_fov_sm_ns_rb
+                if 'beta' in initmaps['hstrdsm']:
+                    beta = initmaps['hstrdsm']['beta']
+                else: beta = 1.0
+                if 'stretch' in initmaps['hstrdsm']:
+                    stretch = initmaps['hstrdsm']['stretch']
+                else: stretch = 1
+                if 'scllim' in initmaps['hstrdsm']:
+                    scllim = initmaps['hstrdsm']['scllim']
+                else: scllim = [np.min(ctmap), np.max(ctmap)]
+     
+            ctmap /= max(ctmap)
+            zran = scllim
+            dzran = zran[1]-zran[0]
+            #;if tag_exist(initmaps.ct,'beta') then beta=initmaps.ct.beta else beta=1d
+            #mapscl = cgimgscl(ctmap,minval=zran[0],max=zran[1],$
+                       #stretch=stretch,beta=beta)
+            if size_subim[0] < resampthresh or size_subim[1] < resampthresh:
+                mapscl = rebin(mapscl, (dx*samplefac,dy*samplefac))
+            
+            ax4 = contfig.add_subplot(1, 4, 4)
+            ax4.grid(False)
+            ax4.imshow(mapscl, cmap = 'hot')
+            
+            if 'fitifspeak' in initmaps['ct'] and 'fitifspeakwin_kpc' in initmaps['ct']:
+                nucfit_dwin_kpc = initmaps['ct']['fitifspeakwin_kpc']
+                nucfit_halfdwin_pix = round(nucfit_dwin_kpc/kpc_per_pix/2.0)
+                #subsets of images for peak fitting, centered around (first) nucleus
+                x_sub = round(center_nuclei[0,0]) + \
+                    [-nucfit_halfdwin_pix,nucfit_halfdwin_pix]
+                y_sub = round(center_nuclei[1,0]) + \
+                    [-nucfit_halfdwin_pix,nucfit_halfdwin_pix]
+                ctmap_center = ctmap[x_sub[0]:x_sub[1], y_sub[0]:y_sub[1]]
+                #Circular moffat fit
+                
+                moffat_init = models.Moffat2D()
+                yfit = fit(moffat_init, ctmap_center)
+
+                a = [yfit.amplitude, yfit.x_0, yfit.y_0, yfit.gamma, yfit.alpha]
+                
+                #Fitted peak coordinate in IFS pixels; single-offset coordinates,
+                #[1,1] at a pixel center
+                peakfit_pix = [a[1]+x_sub[0]+1,a[2]+y_sub[0]+1]
+                peakfit_hstconv_distance_from_nucleus_pix = peakfit_pix - \
+                                                    center_nuclei[:,0]
+                peakfit_hstconv_distance_from_nucleus_kpc = \
+                peakfit_hstconv_distance_from_nucleus_pix * kpc_per_pix
+                
+                
+                ax4.set_xlim(0.5, dx+0.5)
+                ax4.set_ylim(0.5, dy+0.5)
+                
+                ax4.plot(peakfit_pix[0], peakfit_pix[1], 'ro')
+            else:
+                ax4.plot([0])
+                
+            #plotaxesnuc(xran_kpc,yran_kpc, center_nuclei_kpc_x,
+                        #center_nuclei_kpc_y, nolab = True)
+            ax4.text(xran_kpc[0]+(xran_kpc[1]-xran_kpc[0])*0.05,
+            yran_kpc[1]-(yran_kpc[1]-yran_kpc[0])*0.1,
+            'IFS FOV, conv.', color='white')
+            
+        #ax4.plot(posbox1x, posbox1y, color='Red')
+        #ax4.plot(posbox2x, posbox2y, color='Red')
+
+    #third subplot in pg1411cont.jpg
+    if 'ct' in initmaps:
+        
+        ictlo = bisect.bisect(datacube.wave, ctsumrange_tmp[0])
+        icthi = bisect.bisect(datacube.wave, ctsumrange_tmp[1])
+        zran = initmaps['ct']['scllim']
+        dzran = zran[1]-zran[0]
+        
+        if 'domedian' in initmaps['ct']:
+            ctmap = np.median(datacube.dat[:,:,ictlo:icthi],axis=3) * \
+                              float(icthi-ictlo+1)
+        else: ctmap = np.sum(datacube.dat[:,:,ictlo:icthi], 2) #this has to be right
+        ctmap /= np.max(ctmap)
+        if 'beta' in initmaps['ct']: beta = initmaps['ct']['beta'] 
+        else: beta = 1.0
+        
+        mapscl = rebin(ctmap, (dy*samplefac, dx*samplefac))
+        #np.save('mapscl', mapscl) 
+        
+        if npanels_ifsfov == 1: ax3 = contfig.add_subplot(111)
+        else: ax3 = contfig.add_subplot(1, 4, 3)
+        
+        #axes stuff
+        ax3.axes.xaxis.set_ticks([])
+        ax3.axes.yaxis.set_ticks([])
+        ax3.set_xlabel('IFS', color='Blue', fontsize = 25)
+        
+        ax3.imshow(mapscl.T, cmap = 'hot', aspect = "equal", origin = "lower")
+        
+        
+        if 'fitifspeak' in initmaps['ct'] and 'fitifspeakwin_kpc' in initmaps['ct']:
+            nucfit_dwin_kpc = initmaps['ct']['fitifspeakwin_kpc']
+            nucfit_halfdwin_pix = round(nucfit_dwin_kpc/kpc_per_pix.value/2.0)
+            x_sub = round(center_nuclei[0]) +  \
+                np.array([-nucfit_halfdwin_pix, nucfit_halfdwin_pix])
+            y_sub = round(center_nuclei[1]) + \
+                np.array([-nucfit_halfdwin_pix, nucfit_halfdwin_pix])
+            ctmap_center = ctmap[x_sub[0]:x_sub[1], y_sub[0]:y_sub[1]]
+  
+            
+  #Circular moffat fit
+            yp, xp = mapscl.shape
+            y, x, = np.mgrid[:yp, :xp]
+            
+            moffat_init = models.Moffat2D(x_0 = mapscl.argmax(axis = 1)[0], y_0 = mapscl.argmax(axis = 0)[0])
+            yfit = fit(moffat_init, x, y, mapscl)
+            a = yfit.parameters
+            
+            peakfit_pix = [x_sub[0]+1, y_sub[0]+1]
+            peakfit_pix_ifs = peakfit_pix #save for radcont
+            peakfit_ifs_distance_from_nucleus_pix = np.array(peakfit_pix) - \
+                                             np.array(center_nuclei[:][0])
+            peakfit_ifs_distance_from_nucleus_kpc = \
+               peakfit_ifs_distance_from_nucleus_pix * kpc_per_pix
+            
+            ax3.plot(yfit.y_0, yfit.x_0, 'b+', mew = 3, ms = 20)
+    
+    if npanels_ifsfov == 1: #make more general?
+        plt.title(initdat['name'], fontsize = 30)
+    if npanels_ifsfov > 1:
+        nolab_tmp = True
+        toplab_tmp = False
+    else:
+        nolab_tmp = False
+        toplab_tmp = True
+  
+    ax3.text(mapscl.shape[0]/2, mapscl.shape[1]/20, capifs, color='white', fontsize = 20, ha = 'center')
+
+    #contfig.savefig(initdat['mapdir']+initdat['label']+ 'cont.jpg')
+    contfig.savefig('/Users/hadley/Desktop/research/mapdir/pg1411cont.png', facecolor = 'white')
+    
+    
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' Continuum color plots                                   '
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    
+    if 'hstcol' in initmaps or 'hstcolsm' in initmaps:
+        if 'ct' in initmaps:
+            if dohst: ctsumrange_tmp = initmaps['ct']['sumrange_hstcomp']
+            else: ctsumrange_tmp = initmaps['ct']['sumrange']
+            capifs = str(ctsumrange_tmp[0] + '-' + ctsumrange_tmp[1])
+            if 'sumrange_lab' in initmaps['ct']:
+                if initmaps['ct']['sumrange_lab'] == 'microns':
+                    capifs = str(ctsumrange_tmp[0]/1e4 + '-' + ctsumrange_tmp[1]/1e4)
+      
+            if 'charscale' in initmaps['ct']: charscale = initmaps['ct']['charscale']
+            else: charscale = 1.0
+   
+        caphst = str(initmaps['hstbl']['label'] + '-' + initmaps['hstrd']['label'])
+        #arrays for positions for zoom box
+        posbox1x = np.zeros(2, float)
+        posbox1y = np.zeros(2, float)
+        posbox2x = np.zeros(2, float)
+        posbox2y = np.zeros(2, float)
+   
+        #Figure out correct image size in inches
+        ysize_in = 2.2
+        aspectrat_fov = float(dx)/float(dy)
+        npanels_ifsfov = 0
+        if 'ct' in initmaps: npanels_ifsfov = 1.0
+        npanels_ifsfov += 1.0
+        if dohstcolsm: npanels_ifsfov += 1.0
+        if npanels_ifsfov == 0:
+            print('MAKEMAPS: Error -- no continuum images to plot.')
+            exit
+        imgheight_in = 1.6
+        xmargin_in = 0.4
+        ymargin_in = (ysize_in - imgheight_in)/2.0
+        ifsimg_width_in = imgheight_in*aspectrat_fov*npanels_ifsfov
+        #Sizes and positions of image windows in real and normalized coordinates
+        if dohst:
+            xsize_in = imgheight_in + xmargin_in + ifsimg_width_in
+            xfrac_margin = xmargin_in / xsize_in
+            xfrac_hstbig = imgheight_in / xsize_in
+            xfrac_ifsfov_width = imgheight_in*aspectrat_fov / xsize_in
+            yfracb = ymargin_in/ysize_in
+            yfract = 1.0 - ymargin_in/ysize_in
+            pos_hstbig = [0.0,yfracb,xfrac_hstbig,yfract]
+            pos_ifsfov = np.zeros((4, int(npanels_ifsfov)), float)
+            pos_ifsfov[:,0] = [xfrac_hstbig+xfrac_margin,yfracb,
+                         xfrac_hstbig+xfrac_margin+xfrac_ifsfov_width,yfract]
+            for i in range (1, int(npanels_ifsfov) - 1):
+                pos_ifsfov[:,i] = pos_ifsfov[:,i-1] + [xfrac_ifsfov_width,0.0, \
+                                                xfrac_ifsfov_width,0.0]
+            #Instrument labels
+            lineoff = 0.1*xfrac_hstbig
+            xhstline = [pos_hstbig[0]+lineoff,
+                        pos_ifsfov[2,npanels_ifsfov-2]-lineoff]
+            yhstline = [yfracb*0.75,yfracb*0.75]
+            xhstline_tpos = (xhstline[1]+xhstline[0])/2.0
+            yhstline_tpos = yfracb*0.15
+            xifsline = [pos_ifsfov[0,npanels_ifsfov-1]+lineoff,
+                        pos_ifsfov[2,npanels_ifsfov-1]-lineoff]
+            yifsline = [yfracb*0.75,yfracb*0.75]
+            xifsline_tpos = (xifsline[1]+xifsline[0])/2.0
+            yifsline_tpos = yfracb*0.15
+        else:
+            ysize_in = 2.2 + ymargin_in
+            xsize_in = xmargin_in + ifsimg_width_in
+            yfracb = ymargin_in/ysize_in
+            yfract = 1.0 - ymargin_in*2.0/ysize_in
+            xfrac_margin = xmargin_in/xsize_in
+            yfrac_margin = ymargin_in/ysize_in
+            pos_ifsfov = [xfrac_margin,yfracb,1.0,yfract]
+            #Instrument labels
+            lineoff = 0.1*ifsimg_width_in/xsize_in
+            xifsline = [pos_ifsfov[0]+lineoff,
+                        pos_ifsfov[2]-lineoff]
+            yifsline = [yfracb*0.75,yfracb*0.75]
+            xifsline_tpos = (xifsline[1]+xifsline[0])/2.0
+            yifsline_tpos = yfracb*0.15
+
+        #cgps_open,initdat.mapdir+initdat.label+'color.eps',$
+             #charsize=1d*charscale,$
+             #/encap,/inches,xs=xsize_in,ys=ysize_in,/qui,/nomatch
+
+        colorfig = plt.figure()
+
+        if dohst:
+            plt.text(xhstline_tpos,yhstline_tpos, str(capsource+': '+caphst),
+                    color='Red')
+      
+            #HST continuum, large scale
+            size_subim = np.shape(chst_big)
+            mapscl = chst_big
+            if size_subim[0] < resampthresh or size_subim[1] < resampthresh:
+                mapscl = rebin(mapscl, (size_subim[0]*samplefac,size_subim[1]*samplefac))
+            
+            ax1 = colorfig.add_subplot(1, 4, 1)
+            ax1.imshow(mapscl, cmap ='hot')
+            #  Assumes IFS FOV coordinates are 0-offset, with [0,0] at a pixel center
+            ax1.set_xlim(-0.5,size_subim[0]-0.5)
+            ax1.set_ylim(-0.5,size_subim[1]-0.5)
+            ax1.set_title(initdat['name'])
+                
+            ax1.plt([hst_big_ifsfov[:,0],hst_big_ifsfov[0,0]],
+                    [hst_big_ifsfov[:,1],hst_big_ifsfov[0,1]], color='Red')
+
+            imsize = str(int(initmaps['hst']['subim_big'] * kpc_per_as))
+            plt.text(size_subim[0]*0.05,size_subim[1]*0.9, 
+                     str(imsize+'\times'+imsize+' kpc'), color='white')
+            '''
+            posbox1x[0] = truepos[0]+(truepos[2]-truepos[0])* \
+                        hst_big_ifsfov[3,0]/size_subim[0]
+            posbox1y[0] = truepos[1]+(truepos[3]-truepos[1])* \
+                        hst_big_ifsfov[3,1]/size_subim[1]
+            posbox2x[0] = truepos[0]+(truepos[2]-truepos[0])* \
+                        hst_big_ifsfov[0,0]/size_subim[0]
+            posbox2y[0] = truepos[1]+(truepos[3]-truepos[1])* \
+                        hst_big_ifsfov[0,1]/size_subim[1]
+            '''
+
+            #HST continuum, IFS FOV
+            size_subim = np.shape(chst_fov)
+            mapscl = chst_fov
+            if size_subim[0] < resampthresh or size_subim[1] < resampthresh:
+                mapscl = rebin(mapscl, (size_subim[0]*samplefac,size_subim[1]*samplefac))
+            #cgloadct,65
+            #cgimage,mapscl,/keep,pos=pos_ifsfov[*,0],opos=truepos,$
+                 #/noerase,missing_value=bad,missing_index=255,$
+                 #missing_color='white'
+            ax2 = colorfig.add_subplot(1, 4, 2)
+            ax2.imshow(mapscl)
+            #plotaxesnuc(xran_kpc,yran_kpc,center_nuclei_kpc_x,
+                       #center_nuclei_kpc_y,toplab = True)
+            plt.text(xran_kpc[0]+(xran_kpc[1]-xran_kpc[0])*0.05,
+                     yran_kpc[1]-(yran_kpc[1]-yran_kpc[0])*0.1,
+                     'IFS FOV',color='white')
+            #plotcompass,xarr_kpc,yarr_kpc,carr=carr,/nolab,hsize=150d,hthick=2d
+            '''
+            posbox1x[1] = truepos[0]
+            posbox1y[1] = truepos[3]
+            posbox2x[1] = truepos[0]
+            posbox2y[1] = truepos[1]
+            '''
+
+            #smoothed HST continuum, IFS FOV
+            if dohstcolsm:
+                colmap = cshst_fov_rb
+                size_subim = np.shape(colmap)
+                zran = initmaps['hstcolsm']['scllim']
+                dzran = zran[1]-zran[0]
+                #mapscl = cgimgscl(colmap,minval=zran[0],max=zran[1],\
+                                  #stretch=initmaps.ct.stretch)
+                if size_subim[0] < resampthresh or size_subim[1] < resampthresh:
+                    mapscl = rebin(mapscl, (size_subim[0]*samplefac,size_subim[1]*samplefac))
+                
+                ax3 = colorfig.add_suplot(1, 4, 3)
+                ax3.imshow(mapscl, extent=(-150,200,-150,200))
+                #plotaxesnuc(xran_kpc,yran_kpc,
+                          #center_nuclei_kpc_x,center_nuclei_kpc_y,nolab = True)
+                plt.text(xran_kpc[0]+(xran_kpc[1]-xran_kpc[0])*0.05,
+                yran_kpc[1]-(yran_kpc[1]-yran_kpc[0])*0.1,
+                'IFS FOV, conv.', color='white')
+      
+
+            #plt.plot(posbox1x,posbox1y,color='Red')
+            #plt.plot(posbox2x,posbox2y,color='Red')
+
+        if 'ct' in initmaps:
+            plt.text(xifsline_tpos,yifsline_tpos, 'IFS', color='Blue')
+
+            ictlo = list(datacube.wave).index(ctsumrange_tmp[0])
+            icthi = list(datacube.wave).index(ctsumrange_tmp[1])
+            zran = initmaps['ct']['scllim']
+            dzran = zran[1]-zran[0]
+            if 'domedian' in initmaps['ct']:
+                ctmap = np.median(datacube.dat[:,:,ictlo:icthi]) * \
+                                  float(icthi-ictlo+1, 2)
+            else:
+                ctmap = np.sum(datacube.dat[:,:,ictlo:icthi], 2)
+            ctmap /= max(ctmap)
+            if 'beta' in initmaps['ct']: beta = initmaps['ct']['beta']
+            else: beta=1.0
+            #mapscl = cgimgscl(rebin(ctmap,dx*samplefac,dy*samplefac,/sample),$
+                        #minval=zran[0],max=zran[1],$
+                        #stretch=initmaps.ct.stretch,beta=beta)                        
+            #cgloadct,65
+            #cgimage,mapscl,/keep,pos=pos_ifsfov[*,fix(npanels_ifsfov) - 1],$
+                  #opos=truepos,/noerase,missing_value=bad,missing_index=255,$
+                  #missing_color='white'
+            ax4 = colorfig.add_subplot(1, 4, 4)
+            ax4.imshow(mapscl, cmap = 'hot')
+            if 'fitifspeak' in initmaps['ct'] and 'fitifspeakwin_kpc' in initmaps['ct']:
+                nucfit_dwin_kpc = initmaps['ct']['fitifspeakwin_kpc']
+                nucfit_halfdwin_pix = round(nucfit_dwin_kpc/kpc_per_pix/2.0)
+                #subsets of images for peak fitting, centered around (first) nucleus
+                x_sub = round(center_nuclei[0,0]) + \
+                        [-nucfit_halfdwin_pix,nucfit_halfdwin_pix]
+                y_sub = round(center_nuclei[1,0]) + \
+                        [-nucfit_halfdwin_pix,nucfit_halfdwin_pix]
+                ctmap_center = ctmap[x_sub[0]:x_sub[1], y_sub[0]:y_sub[1]]
+                #Circular moffat fit
+                moffat_init = models.Moffat2D()
+                yfit = fit(moffat_init, ctmap_center)
+                a = [yfit.amplitude, yfit.x_0, yfit.y_0, yfit.gamma, yfit.alpha]
+
+                #Fitted peak coordinate in IFS pixels; single-offset coordinates,
+                #[1,1] at a pixel center
+                peakfit_pix = [a[1]+x_sub[0]+1,a[2]+y_sub[0]+1]
+                peakfit_pix_ifs = peakfit_pix #save for later
+                peakfit_ifs_distance_from_nucleus_pix = peakfit_pix - \
+                                                 center_nuclei[:,0]
+                peakfit_ifs_distance_from_nucleus_kpc = \
+                    peakfit_ifs_distance_from_nucleus_pix * kpc_per_pix
+                ax4.plot([0])
+                #ax4.set_xlim(0.5,dx+0.5)
+                #ax4.set_ylim(0.5,dy+0.5)
+                ax4.plot(peakfit_pix[0],peakfit_pix[1], 'ro')
+            else:
+                ax4.plot([0])
+                #title=title_tmp
+      
+            if npanels_ifsfov == 1: plt.text(0.5, 1.0 - yfrac_margin, initdat['name'])
+            if npanels_ifsfov > 1:
+                nolab_tmp = True
+                toplab_tmp = False
+            else:
+                nolab_tmp=False
+                toplab_tmp=True
+      
+            #plotaxesnuc(xran_kpc,yran_kpc,
+                       #center_nuclei_kpc_x,center_nuclei_kpc_y,
+                       #nolab=nolab_tmp,toplab=toplab_tmp)
+            plt.text(xran_kpc[0]+(xran_kpc[1]-xran_kpc[0])*0.05,
+                     yran_kpc[1]-(yran_kpc[1]-yran_kpc[0])*0.1, 
+                     capifs,color='white')
+            if npanels_ifsfov == 1: print("do later")
+                #plotcompass,xarr_kpc,yarr_kpc,carr=carr,/nolab,$
+                          #hsize=150d,hthick=2d
+                          
+            #cgps_close
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' Continuum radial profiles                               '
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    #TODO
+    if 'ct' in initmaps:
+        #npy = 2
+        npx = 1
+        if 'decompose_qso_fit' in initdat: npx = 3
+        if 'remove_scattered' in initdat: npx = 4
+
+        #Figure out correct image size in inches
+        panel_in = 2.0
+        margin_in = 0.5
+        halfmargin_in = margin_in/2.0
+        xsize_in = panel_in * npx + margin_in
+        aspectrat_fov=float(dx)/float(dy)
+        ysize_in = margin_in*2.0 + panel_in * (1.0 + 1.0/aspectrat_fov)
+        #Sizes and positions of image windows in real and normalized coordinates
+        pan_xfrac = panel_in/xsize_in
+        pan_yfrac = panel_in/ysize_in
+        ifs_yfrac = panel_in/aspectrat_fov/ysize_in
+        mar_xfrac = margin_in/xsize_in
+        #mar_yfrac = margin_in/ysize_in
+        #hmar_xfrac = halfmargin_in/xsize_in
+        hmar_yfrac = halfmargin_in/ysize_in
+        pos_top = np.zeros((4,npx), float)
+        pos_bot = np.zeros((4,npx), float)
+        for i in range(0, npx-1):
+            pos_top[:,i] = [mar_xfrac+float(i)*pan_xfrac,
+                            1.0 - (hmar_yfrac+pan_yfrac),
+                            mar_xfrac+float(i+1)*pan_xfrac,
+                            1.0 - hmar_yfrac]
+            pos_bot[:,i] = [mar_xfrac+float(i)*pan_xfrac,
+                            hmar_yfrac,
+                            mar_xfrac+float(i+1)*pan_xfrac,
+                            hmar_yfrac+ifs_yfrac]
+        
+        zran = initmaps['ct']['scllim_rad']
+        #dzran = zran[1]-zran[0]
+        
+        #see pg1411cont_rad.jpg
+        radfig = plt.figure(figsize=(12, 5))
+        radfig.subplots_adjust(wspace=.5, hspace=.25)
+        axs = radfig.subplots(2, 3)
+      
+        #Total (continuum-only) model flux. Plot fits if decompose tags set, otherwise
+        #plot total cube flux within specified range.
+        if 'decompose_qso_fit' in initdat:
+            #Divide model flux by total # pixels for cases where total number of 
+            #pixels varies by spaxel (due to contracted spectra at edges, e.g.)
+            ctmap = np.sum(contcube['qso_mod']+contcube['host_mod'], 2) / contcube['npts'] #TODO
+            ctsumrange_tmp = initdat['fitran']
+        elif 'decompose_ppxf_fit' in initdat:
+            tmpstel = contcube['stel_mod_tot']
+            ibdtmp = np.where(tmpstel == bad)
+            ctbdtmp = len(ibdtmp)
+            if ctbdtmp > 0: tmpstel[ibdtmp] = 0.0
+            tmppoly = contcube['poly_mod_tot']
+            ibdtmp = np.where(tmppoly == bad)
+            ctbdtmp = len(ibdtmp)
+            if ctbdtmp > 0: tmppoly[ibdtmp] = 0.0
+            ctmap = tmpstel+tmppoly
+            ctsumrange_tmp = initdat['fitran']
+        else:
+            ictlo = list(datacube.wave).index(initmaps['ct']['sumrange'][0])
+            icthi = list(datacube.wave).index(initmaps['ct']['sumrange'][1])
+            ctmap = (datacube.dat[:,:,ictlo:icthi]).sum(2)
+            ctsumrange_tmp = initmaps['ct']['sumrange']
+        capran = str(ctsumrange_tmp[0]) + '-' + str(ctsumrange_tmp[1])
+        if 'sumrange_lab' in initmaps['ct']:
+            if initmaps['ct']['sumrange_lab'] == 'microns':
+                capran = str(ctsumrange_tmp[0]/1e4) + '-' + str(ctsumrange_tmp[1]/1e4)
+      
+        maxctmap = np.max(ctmap)
+        
+        #pdb.set_trace()
+        ctmap /= maxctmap
+        axs[0,0].plot(map_rkpc_ifs, np.log10(ctmap))
+        axs[0,0].plot([1, 5, 10], [0, -1, -2], 'r-')
+        axs[0,0].set_ylim(-4,0)
+        axs[0,0].set_xlim(0, np.max(map_rkpc_ifs))
+        axs[0,0].set_title(initdat['name'])
+        axs[0,0].set_xlabel('Radius (kpc)')
+        axs[0,0].set_ylabel('log I/I(max)')
+        if 'decompose_qso_fit' in initdat:
+            axs[0,0].plot(psf1d_x, psf1d_y, 'r-')
+        #elif 'fit_empsf' in initmaps:
+            #axs[0,0].plot(empsf1d_x, empsf1d_y, 'r-')
+        elif 'ctradprof_psffwhm' in initmaps:
+            x = np.arange(101.)/100.0 * np.max(map_rkpc_ifs)
+            fwhm=initmaps['ctradprof_psffwhm'] * kpc_per_as
+            #Gaussian
+            y = stats.norm.pdf(x, 1.0, 0.0, fwhm/2.35) #i think this only takes 3 args
+            y = [math.log(z,10) for z in y]
+            axs[0,0].plot(x, y, 'bo')
+            #Moffat, index = 1.5
+            y = math.log10(moffat(x,[1.0,0.0,fwhm/2.0/np.sqrt(2^(1/1.5)-1),1.5]))
+            axs[0, 0].plot(x,y,'r-')
+            #Moffat, index = 2.5
+            y = math.log10(moffat(x,[1.0,0.0,fwhm/2.0/np.sqrt(2^(1/2.5)-1),2.5]))
+            axs[0, 0].plot(x,y, color='Red')
+            #Moffat, index = 5
+            y = math.log10(moffat(x,[1.0,0.0,fwhm/2.0/np.sqrt(2^(1/5)-1),5]))
+            axs[0,0].plot(x,y,color='Blue')
+           
+        #mapscl = rebin(np.log10(ctmap),(dx*samplefac, dy*samplefac))
+      
+        axs[1, 0].imshow(mapscl, extent=(-150,200,-150,200), cmap = 'hot') #arbitrary numbers
+        #axs[1, 0].set_xlim(0.5, dx + 0.5)
+        #axs[1, 0].set_ylim(0.5, dy + 0.5)
+        if 'fitifspeak' in initmaps['ct'] and 'fitifspeakwin_kpc' in initmaps['ct']:
+            axs[1, 0].plot(peakfit_pix_ifs[0],peakfit_pix_ifs[1],color='Red')         
+        axs[1, 0].text(-120, 170,'Host Cont.+Quasar', color='white')
+        axs[1, 0].text(-120,-dy*0.95,capran,color='white')
+        #plotaxesnuc,xran_kpc,yran_kpc,center_nuclei_kpc_x,center_nuclei_kpc_y
+
+        if 'decompose_qso_fit' in initdat:
+            qso_map = np.sum(contcube['qso_mod'], axis = 2) / contcube['npts']
+            #qso_map /= max(qso_map)
+            qso_map /= maxctmap
+            axs[0, 1].plot(map_rkpc_ifs, np.log10(qso_map), 'bo')
+            axs[0, 1].set_ylim(-4,0)
+            axs[0, 1].set_xlim(0, np.max(map_rkpc_ifs))
+            #if tag_exist(initdat,'decompose_qso_fit') then begin
+            axs[0, 1].plot(psf1d_x,psf1d_y,color='Red')
+            axs[0, 1].text(np.max(map_rkpc_ifs)*0.5, -4.0*0.1, 'FWHM=' +  
+                str(round(qso_fitpar[2]*initdat['platescale'], 2)) + ' asec') #TODO: 2
+            axs[0, 1].text(np.max(map_rkpc_ifs)*0.5,-4.0*0.2,'FWHM='+
+                str(round(qso_fitpar[2]*initdat['platescale']*kpc_per_as.value, 2))+' kpc') #TODO: 2
+            axs[0, 1].text(np.max(map_rkpc_ifs)*0.5, -4.0*0.3, '\u03B3='+ \
+                str(qso_fitpar[4]))
+            '''
+;         endif else if tag_exist(initmaps,'fit_empsf') then begin
+;            cgoplot,empsf1d_x,empsf1d_y,color='Red'
+;         endif else if tag_exist(initmaps,'ctradprof_psffwhm') then begin
+;            x = dindgen(101)/100d*max(map_rkpc_ifs)
+;            fwhm=initmaps.ctradprof_psffwhm * kpc_per_as
+;;           Gaussian
+;            y = alog10(gaussian(x,[1d,0d,fwhm/2.35]))
+;            cgoplot,x,y,color='Black'
+;;           Moffat, index = 1.5
+;            y = alog10(moffat(x,[1d,0d,fwhm/2d/sqrt(2^(1/1.5d)-1),1.5d]))
+;            cgoplot,x,y,color='Red',/linesty
+;;           Moffat, index = 2.5
+;            y = alog10(moffat(x,[1d,0d,fwhm/2d/sqrt(2^(1/2.5d)-1),2.5d]))
+;            cgoplot,x,y,color='Red'
+;;           Moffat, index = 5
+;            y = alog10(moffat(x,[1d,0d,fwhm/2d/sqrt(2^(1/5d)-1),5d]))
+;            cgoplot,x,y,color='Blue'
+;         endif
+
+;         mapscl = cgimgscl(rebin(qso_map,dx*samplefac,dy*samplefac,/sample),$
+;                           minval=zran[0],max=zran[1],stretch=initmaps.ct.stretch)
+            '''
+            #mapscl = rebin(math.log10(qso_map), (dx*samplefac, dy*samplefac))
+            #this has to be a lot more zoomed in
+            axs[1, 1].imshow(mapscl, extent=(-150,200,-150,200), cmap = 'hot')
+            #axs[1, 1].set_xlim(0.5, dx+0.5)
+            #axs[1, 1].set_xlim(0.5, 200)
+            
+            if 'fitifspeak' in initmaps['ct'] and 'fitifspeakwin_kpc' in initmaps['ct']:
+                peakfit_pix = [qso_fitpar[1]+1,qso_fitpar[2]+1]
+                
+                peakfit_ifs_qso_distance_from_nucleus_pix = np.array(peakfit_pix) - \
+                                                        np.array(center_nuclei[0:])
+                peakfit_ifs_qso_distance_from_nucleus_kpc = \
+                    peakfit_ifs_qso_distance_from_nucleus_pix * kpc_per_pix
+                axs[1, 1].plot(peakfit_pix[0],peakfit_pix[1],color='Red')        
+            axs[1, 1].text(dx*0.05, dy*0.95, 'Quasar PSF', color='white')
+            #plotaxesnuc(xran_kpc,yran_kpc,
+                          #center_nuclei_kpc_x,center_nuclei_kpc_y,nolab = True)
+            
+            host_map = np.sum(contcube['host_mod'], axis = 2) / contcube['npts']
+            #host_map /= max(host_map)
+            host_map /= maxctmap
+            axs[0, 2].plot(map_rkpc_ifs, np.log10(host_map))
+            axs[0, 2].set_ylim(-4, 0)
+            axs[0, 2].set_xlim(0, np.max(map_rkpc_ifs))
+            #;if tag_exist(initdat,'decompose_qso_fit') then begin
+            axs[0, 2].plot(psf1d_x,psf1d_y,color='Red')
+            '''
+;         endif else if tag_exist(initmaps,'fit_empsf') then begin
+;            cgoplot,empsf1d_x,empsf1d_y,color='Red'
+;         endif else if tag_exist(initmaps,'ctradprof_psffwhm') then begin
+;            x = dindgen(101)/100d*max(map_rkpc_ifs)
+;            fwhm=initmaps.ctradprof_psffwhm * kpc_per_as
+;;           Gaussian
+;            y = alog10(gaussian(x,[1d,0d,fwhm/2.35]))
+;            cgoplot,x,y,color='Black'
+;;           Moffat, index = 1.5
+;            y = alog10(moffat(x,[1d,0d,fwhm/2d/sqrt(2^(1/1.5d)-1),1.5d]))
+;            cgoplot,x,y,color='Red',/linesty
+;;           Moffat, index = 2.5
+;            y = alog10(moffat(x,[1d,0d,fwhm/2d/sqrt(2^(1/2.5d)-1),2.5d]))
+;            cgoplot,x,y,color='Red'
+;;           Moffat, index = 5
+;            y = alog10(moffat(x,[1d,0d,fwhm/2d/sqrt(2^(1/5d)-1),5d]))
+;            cgoplot,x,y,color='Blue'
+;         endif
+         
+;         mapscl = cgimgscl(rebin(host_map,dx*samplefac,dy*samplefac,/sample),$
+;                           minval=zran[0]),max=zran[1],stretch=initmaps.ct.stretch)
+            '''
+            #mapscl = cgimgscl(rebin(math.log10(host_map),dx*samplefac,dy*samplefac,sample = True),
+                        #minval=zran[0],max=zran[1],stretch=initmaps['ct']['stretch'])
+            
+            axs[1, 2].imshow(mapscl, extent=(-150,200,-150,200), cmap = 'hot')
+            #axs[1, 2].set_xlim(0.5,dx+0.5)
+            #axs[1, 2].set_xlim(0.5,dy+0.5)
+            axs[1, 2].text(dx*0.05,dy*0.95,'Host Cont.',color='white')
+            #plotaxesnuc(xran_kpc,yran_kpc,
+                          #center_nuclei_kpc_x,center_nuclei_kpc_y,nolab = True)
+            
+            if 'remove_scattered' in initdat: #Where is this in the figure
+                scatt_map = np.sum(contcube['poly_mod'], axis = 2) / contcube['npts']
+                '''   
+;;           Use maximum flux for normalization unless it's much higher than 
+;;           second highest flux
+;            ifsort = reverse(sort(scatt_map))
+;            if scatt_map[ifsort[0]]/scatt_map[ifsort[1]] gt 2 then $
+;               scatt_map /= scatt_map[ifsort[1]] $
+;            else scatt_map /= scatt_map[ifsort[0]]
+                '''   
+                scatt_map /= maxctmap
+                plt.plot(map_rkpc_ifs, math.log10(scatt_map))
+                plt.ylim(-4,0)
+                plt.xlim(0, np.max(map_rkpc_ifs))
+    
+                plt.plot(psf1d_x,psf1d_y,color='Red')
+                
+                '''   
+;            mapscl = cgimgscl(rebin(scatt_map,dx*samplefac,dy*samplefac,/sample),$
+;                              minval=zran[0],max=zran[1],$
+;                              stretch=initmaps.ct.stretch)
+                '''   
+                #mapscl = cgimgscl(rebin(math.log10(scatt_map),dx*samplefac,dy*samplefac, sample = True),
+                        #minval=zran[0],max=zran[1],stretch=initmaps['ct']['stretch'])
+                
+                plt.imshow(mapscl, extent=(-150,200,-150,200), cmap = 'hot')
+                plt.xlim(0.5,dx+0.5)
+                plt.ylim(0.5,dy+0.5)
+                plt.text(dx*0.05,dy*0.95,'Scattered Light',color='white')
+                #plotaxesnuc(xran_kpc,yran_kpc, \
+                             #center_nuclei_kpc_x,center_nuclei_kpc_y,nolab = True)
+        
+        #cgps_close
+        radfig.savefig('/Users/hadley/Desktop/research/mapdir/pg1411cont_rad.eps', facecolor = 'white')
+
+hello = 2
+makemaps('pg1411')

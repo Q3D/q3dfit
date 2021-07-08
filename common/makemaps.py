@@ -293,6 +293,7 @@ def makemaps (initproc):
       
     #TODO: file and struct names below (4)
 
+    #pdb.set_trace()
     #Restore line maps
     if 'noemlinfit' not in initdat:
         file = initdat['outdir'] + initdat['label'] + '.lin.npz'

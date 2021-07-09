@@ -59,11 +59,12 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
     #module = importlib.import_module('q3dfit.init.' + initproc)
     #fcninitproc = getattr(module, initproc)
     initdat = initproc
+    '''
     if isinstance(initdat, str):
         from q3dfit.common.q3df_helperFunctions import __get_initdat
         initdat = __get_initdat(initproc)
     #if 'donad' in initdat: do later
-
+    '''
     if 'noemlinfit' not in initdat:
         # get linelist
         if 'argslinelist' in initdat:

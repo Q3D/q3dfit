@@ -168,8 +168,8 @@ def pg1411_and_Spitzer():
                             'template_dictionary':{}},
             'argscontplot': {'xstyle':'log',
                              'ystyle':'log',
-                             'xunit': 'Angstrom',
-                             'yunit':'flambda',
+                             'waveunit': 'Angstrom',
+                             'fluxunit':'flambda',
                              'mode':'dark'},
             'argslinelist': {'vacuum': False},
             'startempfile': stellartemplates,
@@ -204,4 +204,6 @@ def pg1411_and_Spitzer():
             'plotMIR': True,
         }
 
-    return(init)
+    return init
+
+

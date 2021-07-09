@@ -183,14 +183,12 @@ def pg1411():
                             'siginit_stars': 50,
                             'uselog': 1,
                             'refit': 1},
-            # in plot_spec: x/ystyle = log or lin (plots it linearly), 
-            #               xunit = micron or Angstrom,
-            #               yunit = flambda, lambdaflambda (= nufnu), or fnu
-            #               mode = light or dark
             'argscontplot': {'xstyle':'log',
                              'ystyle':'log',
-                             'xunit': 'Angstrom',
-                             'yunit':'flambda',
+                             'waveunit_in': 'Angstrom',
+                             'waveunit_out': 'Angstrom',
+                             'fluxunit_in':'flambda',
+                             'fluxunit_out':'flambda',
                              'mode':'dark'},
             'argslinelist': {'vacuum': False},
             'startempfile': stellartemplates,

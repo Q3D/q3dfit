@@ -293,7 +293,6 @@ def makemaps (initproc):
       
     #TODO: file and struct names below (4)
 
-    #pdb.set_trace()
     #Restore line maps
     if 'noemlinfit' not in initdat:
         file = initdat['outdir'] + initdat['label'] + '.lin.npz'
@@ -2702,5 +2701,5 @@ def makemaps (initproc):
         #cgps_close
         radfig.savefig('/Users/hadley/Desktop/research/mapdir/pg1411cont_rad.eps', facecolor = 'white')
 '''
-hello = 2
-makemaps('pg1411')
+#hello = 2
+#makemaps('pg1411')

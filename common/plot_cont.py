@@ -11,14 +11,15 @@ Called by Q3DA.
 Init file optional parameters ('argscontplot'):
     xstyle = log or lin (linear),
     ystyle = log or lin (linear), 
-    xunit = micron or ang (angstrom),
-    yunit = flambda, lambdaflambda (= nufnu), or fnu
+    waveunit_in = micron or Angstrom,
+    waveunit_out = micron or Angstrom,
+    fluxunit_in = flambda, lambdaflambda (= nufnu), or fnu,
+    fluxunit_out = flambda, lambdaflambda (= nufnu), or fnu,
     mode = light or dark
 The first options are the defaults.
 
 """
 import matplotlib.pyplot as plt
-#from matplotlib.lines import Line2D
 import numpy as np
 import math
 
@@ -30,16 +31,22 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
     if 'argscontplot' in initdat:
         xstyle = initdat['argscontplot']['xstyle']
         ystyle = initdat['argscontplot']['ystyle']
-        xunit = initdat['argscontplot']['xunit']
-        yunit = initdat['argscontplot']['yunit']
+        waveunit_in = initdat['argscontplot']['waveunit_in']
+        waveunit_out = initdat['argscontplot']['waveunit_out']
+        fluxunit_in = initdat['argscontplot']['fluxunit_in']
+        fluxunit_out = initdat['argscontplot']['fluxunit_out']
         mode = initdat['argscontplot']['mode']
     else:
         xstyle = 'log'
         ystyle = 'log'
-        xunit = 'micron'
-        yunit = 'flambda'
+        # JWST defaults:
+        waveunit_in = 'micron'
+        waveunit_out = 'micron'
+        fluxunit_in = 'flambda'
+        fluxunit_out = 'flambda'
         mode = 'light'
     
+    # dark mode just for fun:
     if mode == 'dark':
         pltstyle = 'dark_background'
         dcolor = 'w'
@@ -56,7 +63,7 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
             else:
                 ncomp = 1
             compcolors = ['c', 'plum', 'm']
-            complabels = ['QSO', 'Host', 'Wind']
+            complabels = ['QSO', 'Host', 'Wind'] 
         else:
             ncomp = 0
     
@@ -69,16 +76,20 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
         else:
             xran = instr['fitran']
         
-        # speed of light in angstroms/s
-        c = 2.998e+18
-        if xunit == 'micron':
+        if waveunit_in == 'Angstrom' and waveunit_out == 'micron':
             # convert angstrom to microns
             xran = list(np.divide(xran, 10**4))
             wave = list(np.divide(wave, 10**4))
             # speed of light in microns/s
             c = 2.998e+14
+        elif waveunit_in == 'micron' and waveunit_out == 'Angstrom': 
+            # convert microns to angstroms
+            xran = list(np.multiply(xran, 10**4))
+            wave = list(np.multiply(wave, 10**4))
+            # speed of light in angstroms/s
+            c = 2.998e+18
         
-        if yunit == 'lambdaflambda':
+        if fluxunit_in == 'flambda' and fluxunit_out == 'lambdaflambda':
             # multiply the flux by wavelength
             specstars = list(np.multiply(specstars, wave))
             modstars = list(np.multiply(modstars, wave))
@@ -86,8 +97,8 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
                 for i in range(0, ncomp):
                     compspec[i] = list(np.multiply(compspec[i], wave))
             ytit = '$\lambda$F$_\lambda$'
-        elif yunit == 'fnu':
-            # multiply the flux by wavelength
+        elif fluxunit_in == 'flambda' and fluxunit_out == 'fnu':
+            # multiply the flux by wavelength^2/c
             specstars = list(np.multiply(specstars, np.divide(np.multiply(wave,wave),c)))
             modstars = list(np.multiply(modstars, np.divide(np.multiply(wave,wave),c)))
             if ncomp > 0:
@@ -140,9 +151,9 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
             ax2.plot(wave, np.divide(specstars,modstars), color=dcolor)
             ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
             ax2.set_ylabel('Data/Model', fontsize=15)
-            if xunit == 'micron':
+            if waveunit_out == 'micron':
                 ax2.set_xlabel('Wavelength ($\mu$m)', fontsize=15)
-            else:
+            elif waveunit_out == 'Angstrom':
                 ax2.set_xlabel('Wavelength ($\AA$)', fontsize=15)
             gs.update(wspace=0.0, hspace=0.05)
             plt.gcf().subplots_adjust(bottom=0.1)
@@ -152,7 +163,6 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
             
             plt.savefig(outfile + '.jpg')
             
-        #else:
         elif xstyle == 'lin' or ystyle == 'lin':
             dxran = xran[1] - xran[0]
             xran1 = [xran[0], xran[0] + np.around(dxran/3.0,3)]
@@ -189,9 +199,9 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
             ++ntop
             --nbottom
             
-            if xunit == 'micron':
+            if waveunit_out == 'micron':
                 xtit = 'Observed Wavelength ($\mu$m)'
-            else:
+            elif waveunit_out == 'Angstrom':
                 xtit = 'Observed Wavelength ($\AA$)'
             
             plt.style.use(pltstyle)
@@ -210,7 +220,6 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
                     fig.add_subplot(3, 1, count)
         
                     # finding max value between ydat and ymod at indices from i1
-                    #for i in idict[cts[ct]]:
                     for i in idict[count]:
                         bigboy = max(ydat[i], ymod[i])
                         if bigboy > maximum:
@@ -255,24 +264,20 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
                     plt.minorticks_on()
                     plt.tick_params(which='major', length=10, pad=5)
                     plt.tick_params(which='minor', length=5)
-                    if xunit == 'micron':
+                    if waveunit_out == 'micron':
                         xticks = np.arange(np.around(xrans[count][0],1)-0.025, np.around(xrans[count][1],1), 0.025)[:-1]
-                        #print(xran1[0], xran1[1], xticks)
                         plt.xticks(xticks, fontsize=10)
-                        #plt.xticks(np.arange(xran1[0], xran1[1], .02), fontsize=10)
-                    else:
+                    elif waveunit_out == 'Angstrom':
                         xticks = np.arange(math.floor(xrans[count][0]/100.0)*100, (math.floor(xrans[count][1]/100)*100)+100, 100)
-                        #print(xran1[0], xran1[1], xticks)
                         plt.xticks(xticks, fontsize=10)
-                        #plt.xticks(np.arange(xran1[0], xran1[1], 200), fontsize=10)
-                    if yunit != 'fnu':
+                    if min(ydat) > 1e-10:
                         # this will fail if fluxes are very low (<~1e-10)
                         plt.yticks(np.arange(yran[0], yran[1],
                                              np.around((yran[1] - yran[0])/5.,
-                                                       decimals=2)), fontsize=10)
+                                                   decimals=2)), fontsize=10)
                     else: 
                         plt.yticks()
-            
+                        
                     # actually plotting
                     plt.plot(wave, ydat, dcolor, linewidth=1)
             
@@ -283,7 +288,6 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
                     plt.plot(wave, ymod, 'r', linewidth=4, label=title)
                     if count == 1:
                         plt.legend(loc='upper right')
-                    #print('plot', count)
                     count+=1
             
             # more formatting
@@ -303,16 +307,18 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
         if xstyle == 'log' or ystyle == 'log':
             if 'plotMIR' in initdat.keys(): 
               if initdat['plotMIR']:
-                #fig.add_subplot(3, 1, 1)
                 fig = plt.figure(figsize=(50, 30))
                 gs = fig.add_gridspec(4,1)
                 ax1 = fig.add_subplot(gs[:3, :])
                 
-                if xunit == 'ang':
-                    # convert angstrom to microns
+                if waveunit_in =='micron' and waveunit_out == 'Angstrom':
+                    # convert microns to angstroms
                     MIRgdlambda = list(np.multiply(MIRgdlambda, 10**4))
+                elif waveunit_in =='Angstrom' and waveunit_out == 'micron':
+                    # convert angstroms to microns
+                    MIRgdlambda = list(np.divide(MIRgdlambda, 10**4))
                 
-                if yunit == 'lambdaflambda':
+                if fluxunit_in == 'flambda' and fluxunit_out == 'lambdaflambda':
                     # multiply the flux by wavelength
                     MIRgdflux = list(np.multiply(MIRgdflux, MIRgdlambda))
                     MIRcontinuum = list(np.multiply(MIRcontinuum, MIRgdlambda))
@@ -320,8 +326,8 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
                         for i in range(0, len(comp_best_fit.keys())):
                             comp_best_fit[list(comp_best_fit.keys())[i]] = np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]], MIRgdlambda)
                     ytit = '$\lambda$F$_\lambda$'
-                elif yunit == 'fnu':
-                    # multiply the flux by wavelength
+                elif fluxunit_in == 'flambda' and fluxunit_out == 'fnu':
+                    # multiply the flux by wavelength^2/c
                     MIRgdflux = list(np.multiply(MIRgdflux, MIRgdlambda))
                     MIRcontinuum = list(np.multiply(MIRgdflux, MIRgdlambda))
                     ytit = 'F$_\u03BD$'
@@ -357,7 +363,6 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
                 ax1.legend(loc='upper right',bbox_to_anchor=(1.15, 1),prop={'size': 10})
                 if xstyle == 'log':
                     ax1.set_xscale('log')
-                #ax1.set_xticklabels([])
                 if ystyle == 'log':
                     ax1.set_yscale('log')
                 ax1.set_ylim(1e-4)
@@ -367,9 +372,9 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
                 ax2.plot(MIRgdlambda,np.divide(MIRgdflux,MIRcontinuum),color=dcolor)
                 ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
                 ax2.set_ylabel('Data/Model', fontsize=12)
-                if xunit == 'Angstrom':
+                if waveunit_out == 'Angstrom':
                     ax2.set_xlabel('Wavelength ($\AA$)', fontsize=12)
-                else:
+                elif waveunit_out == 'micron':
                     ax2.set_xlabel('Wavelength ($\mu$m)', fontsize=12)
                 gs.update(wspace=0.0, hspace=0.05)
                 plt.suptitle('Total', fontsize=30)
@@ -381,16 +386,16 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
             else:
                 xran = instr['fitran']
             
-            if xunit == 'Angstrom':
+            if waveunit_in == 'microns' and waveunit_out == 'Angstrom':
                 # convert wave list from microns to angstroms
                 MIRgdlambda = list(np.multiply(MIRgdlambda, 10**4))
                 xtit = 'Observed Wavelength ($\AA$)'
-            elif xunit == 'micron':
-                # convert xrange from angstroms to microns
-                xran = list(np.divide(xran, 10**4))
+            elif waveunit_in == 'Angstrom' and waveunit_out == 'micron':
+                # convert wave list from angstroms to microns
+                MIRgdlambda = list(np.divide(MIRgdlambda, 10**4))
                 xtit = 'Observed Wavelength ($\mu$m)'
             
-            if yunit == 'lambdaflambda':
+            if fluxunit_in == 'flambda' and fluxunit_out == 'lambdaflambda':
                 # multiply the flux by wavelength
                 MIRgdflux = list(np.multiply(MIRgdflux, MIRgdlambda))
                 MIRcontinuum = list(np.multiply(MIRcontinuum, MIRgdlambda))
@@ -398,7 +403,7 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
                     for i in range(0, len(comp_best_fit.keys())):
                         comp_best_fit[list(comp_best_fit.keys())[i]] = list(np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]], MIRgdlambda))
                 ytit = '$\lambda$F$_\lambda$'
-            elif yunit == 'fnu':
+            elif fluxunit_in == 'flambda' and fluxunit_out == 'fnu':
                 # multiply the flux by wavelength
                 MIRgdflux = list(np.multiply(MIRgdflux, MIRgdlambda))
                 MIRcontinuum = list(np.multiply(MIRgdflux, MIRgdlambda))
@@ -462,7 +467,6 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
                     box = ax.get_position()
                     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
                     # finding max value between ydat and ymod at indices from i1
-                    #for i in idict[cts[ct]]:
                     for i in idict[count]:
                         bigboy = max(ydat[i], ymod[i])
                         if bigboy > maximum:
@@ -507,17 +511,13 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
                     plt.minorticks_on()
                     plt.tick_params(which='major', length=10, pad=5)
                     plt.tick_params(which='minor', length=5)
-                    if xunit == 'micron':
+                    if waveunit_out == 'micron':
                         xticks = np.arange(np.around(xrans[count][0]), np.around(xrans[count][1]), 1)
-                        #print(xran1[0], xran1[1], xticks)
                         plt.xticks(xticks, fontsize=10)
-                        #plt.xticks(np.arange(xran3[0], xran3[1], .02), fontsize=10)
-                    else:
+                    elif waveunit_out == 'Angstrom':
                         xticks = np.arange(math.floor(xrans[count][0]/1000.0)*1000, (math.floor(xrans[count][1]/1000.0)*1000)+1000, 10000)
-                        #print(xran1[0], xran1[1], xticks)
                         plt.xticks(xticks, fontsize=10)
-                        #plt.xticks(np.arange(xran3[0], xran3[1], 200), fontsize=10)\
-                    if yunit != 'fnu':
+                    if fluxunit_out != 'fnu':
                         # this will fail if fluxes are very low (<~1e-10)
                         plt.yticks(np.arange(yran[0], yran[1],
                                              np.around((yran[1] - yran[0])/5.,
@@ -541,7 +541,6 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
                     if count == 1:
                         ax.legend(loc='upper right',bbox_to_anchor=(1.22, 1),prop={'size': 10})
                     
-                    #print('plot', count)
                     count+=1
             
         # more formatting

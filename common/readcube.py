@@ -282,6 +282,7 @@ class CUBE:
 
         # default working flux unit is erg/s/cm^2/um/sr
         # For now, /sr is implicit for all inputs
+        convert_flux = 1.
         if fluxunit_in == 'MJy/sr':
             # IR units: https://coolwiki.ipac.caltech.edu/index.php/Units
             # default input flux unit is MJy/sr

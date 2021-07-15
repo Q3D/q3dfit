@@ -209,6 +209,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
     else:
         logfile = None
 
+    print('initdat in q3df_oneCore: ', initdat)
     cube, vormap = __get_CUBE(initdat, oned, quiet, logfile=logfile)
     if cols and rows and vormap:
         cols = __get_voronoi(cols, rows, vormap)
@@ -238,7 +239,7 @@ def q3df_multiCore(rank, initproc, cols=None, rows=None, oned=False,
     import time
     from numpy import floor
     starttime = time.time()
-    initdat = initproc #initproc #__get_initdat(initproc)
+    initdat = initproc  #__get_initdat(initproc)
     linelist = __get_linelist(initdat)
 
     if 'logfile' in initdat:

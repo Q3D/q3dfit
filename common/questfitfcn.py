@@ -1,8 +1,9 @@
 import numpy as np
 import lmfit
 from lmfit.models import ExpressionModel
+from astropy import units as u
 
-def blackbody(wave,a,T):
+def blackbody(wave,a,T, fitFlambda=True):
 
     '''Function defined for fitting a blackbody model
     
@@ -22,14 +23,17 @@ def blackbody(wave,a,T):
     
     h=6.6261e-27
 
-    c=3.e10
+    c=3.e10  # cm/s
 
     k=1.3807e-16
 
     hck = h*c/k
-    wave = wave*1e-4
+    wave = wave *1e-4   # cm
     BB_model = wave**-5*(np.exp(h*c/(k*wave*T))-1)**-1
 
+    if not fitFlambda:
+        c_scale = c * u.Unit('m').to('micron') /(wave)**2 *1e-23 
+        BB_model /= c_scale
 
     return a*BB_model/BB_model.max()
 
@@ -51,7 +55,7 @@ def set_up_fit_blackbody_model(p,p_fixfree,name):
 
 
     model_name = name
-    blackbody_model = lmfit.Model(blackbody,independent_vars=['wave'],prefix=model_name)
+    blackbody_model = lmfit.Model(blackbody,independent_vars=['wave', 'fitFlambda'],prefix=model_name)
     blackbody_model_parameters = blackbody_model.make_params()
     print(p_fixfree[0])
     blackbody_model_parameters[model_name+'a'].set(value=p[0],min=0.,vary=p_fixfree[0])
@@ -59,7 +63,7 @@ def set_up_fit_blackbody_model(p,p_fixfree,name):
 
     return blackbody_model,blackbody_model_parameters
 
-def powerlaw(wave,a,b):
+def powerlaw(wave,a,b, fitFlambda):
 
     '''Function defined for fitting a powerlaw model
     
@@ -81,6 +85,9 @@ def powerlaw(wave,a,b):
 
     powerlaw_model = wave**b
 
+    # if not fitFlambda:
+    #     c_scale = c * u.Unit('m').to('micron') /(wave)**2 *1e-23 
+    #     powerlaw_model /= c_scale
 
     return a*powerlaw_model/(powerlaw_model).max()
 
@@ -102,7 +109,7 @@ def set_up_fit_powerlaw_model(p,p_fixfree,name):
 
 
     model_name = name
-    powerlaw_model = lmfit.Model(powerlaw,independent_vars=['wave'],prefix=model_name)
+    powerlaw_model = lmfit.Model(powerlaw,independent_vars=['wave', 'fitFlambda'],prefix=model_name)
     powerlaw_model_parameters = powerlaw_model.make_params()
     powerlaw_model_parameters[model_name+'a'].set(value=p[0],min=0.,vary=p_fixfree[0])
     powerlaw_model_parameters[model_name+'b'].set(value=p[1],vary=p_fixfree[1])
@@ -221,7 +228,7 @@ def set_up_fit_extinction(p,p_fixfree,model_name,extinction_model,mixed_or_scree
         model_extinction_parameters[model_name+'_Av'].set(value=p[0],min=0.,vary=p_fixfree[0])
     return model_extinction,model_extinction_parameters
 
-def set_up_fit_model_scale(p,p_fixfree,model_name,model):
+def set_up_fit_model_scale(p,p_fixfree,model_name,model, fitFlambda=True):
     '''Function defined to set up fitting model_scale within lmfit
         
         Parameters

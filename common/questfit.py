@@ -2,6 +2,7 @@ import numpy as np
 import lmfit
 import copy
 from scipy import constants
+from astropy import units as u
 from q3dfit.common import interptemp
 from q3dfit.common import questfitfcn
 from q3dfit.common import questfit_readcf
@@ -21,10 +22,10 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
     Parameters
     -----
     wlambda: array
-        wavelength
+        wavelength array in micron
 
     flux: array
-        Flux values to be fit
+        Flux values to be fit. Assumed units are Jy; will be transformed to erg/s/cm2/Angstrom/sr below.
 
     weight: array
         Weights of each individual pixel to be fit
@@ -73,7 +74,6 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
         config_file = questfit_readcf.readcf(config_file)
         loc_models = q3dfit.__path__[0]+'/data/questfit_templates/'
         n_temp = 0
-        
         for i in config_file.keys(): #populating the models dictionary and setting up lmfit models
 
             if 'blackbody' in i: #starting with the blackbodies
@@ -107,7 +107,6 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
                 else:
                     model += model_temp
                     param += param_temp
-
 
             if 'powerlaw' in i: #powerlaw model
                 model_parameters = config_file[i]
@@ -202,13 +201,14 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
             
             temp_wave=temp_model['WAVE']
             temp_value=temp_model['FLUX']
-            
-            
+                        
             #temp_value_rebin = interptemp.interptemp(wave_temp,temp_wave,temp_value)
             #temp_value_rebin = interp_temp_quest.interp_lis(wave, temp_wave, temp_value)
             temp_value_rebin = interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
             models_dictionary[i] = temp_value_rebin#/temp_value_rebin.max()
 
+
+        c_scale =  constants.c * u.Unit('m').to('micron') /(wlambda)**2 *1e-23  *1e10      # [1e-10 erg/s/cm^2/um/sr]]
 
         for i in template_dictionary.keys(): #loop over template dictionary, load them in and resample.
 
@@ -218,24 +218,24 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
             
             temp_wave=temp_model['WAVE']
             temp_value=temp_model['FLUX']
-            
+
             
             #temp_value_rebin = interptemp.interptemp(wave_temp,temp_wave,temp_value)
             temp_value_rebin = interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
-            models_dictionary[i] = temp_value_rebin/temp_value_rebin.max()
+            models_dictionary[i] = temp_value_rebin*c_scale
+            models_dictionary[i] = models_dictionary[i]/models_dictionary[i].max()
+
 
         models_dictionary['wave'] = wlambda/(1+z)
+        models_dictionary['fitFlambda'] = bool(convert2Flambda)
         
-        if convert2Flambda:
-            flux *= constants.c/(wlambda*1e-9)**2 *1e-23
-            for el in models_dictionary.keys():
-                if not (global_ext_model in el) and not (global_ice_model in el) and not ('ext' in el) and not ('ice' in el):
-                    models_dictionary[el]*= constants.c/(wlambda*1e-9)**2 *1e-23
+        flux *= c_scale
 
         flux_cut = flux[index]
         models_dictionary_cut = copy.deepcopy(models_dictionary)
         for el in models_dictionary.keys():
-            models_dictionary_cut[el] = models_dictionary_cut[el][index]
+            if not ('fitFlambda' in el):
+                models_dictionary_cut[el] = models_dictionary_cut[el][index]
 
 
         result = model.fit(flux_cut,param,**models_dictionary_cut,max_nfev=int(1e5),method='least_squares',nan_policy='omit')#method='least_squares'nan_policy='omit'
@@ -244,12 +244,12 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
         comp_best_fit = result.eval_components(**models_dictionary)
 
         if convert2Flambda:
-            flux /= (constants.c/(wlambda*1e-9)**2 *1e-23)
-            best_fit /= (constants.c/(wlambda*1e-9)**2 *1e-23)
+            flux /= c_scale
+            best_fit /= c_scale
             for el in comp_best_fit.keys():
                 if not (global_ext_model in el) and not (global_ice_model in el) and not ('ext' in el) and not ('ice' in el):
                     try:
-                        comp_best_fit[el] /= (constants.c/(wlambda*1e-9)**2 *1e-23)
+                        comp_best_fit[el] /= c_scale
                     except Exception as e:
                         print(e)
                         import pdb; pdb.set_trace()

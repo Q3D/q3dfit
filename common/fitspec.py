@@ -394,7 +394,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
             if initdat['fcncontfit']=='questfit':
               istemp=None
-              gdlambda = gdlambda*1e-4  # micron
 
             if istemp:
                 templatelambdaz_tmp = templatelambdaz
@@ -432,6 +431,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             add_poly_weights = 0.
             ct_rchisq = 0.
             ppxf_sigma_err = 0.
+
 
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         # # Option 2: PPXF

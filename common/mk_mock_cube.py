@@ -23,6 +23,7 @@ file_in = path_in+'22128896.csv'
 #file_in = path_in+'15084288.csv'
 data2 = pd.read_csv(file_in)
 data = data2.rename(columns={"wavelength": "WAVE", "flux_jy": "FLUX", "flux_jy_err": "EFLUX"}).to_records()
+F_unit = 'Jy'
 np.save(file_in.replace('.csv', '.npy'), data)
 
 

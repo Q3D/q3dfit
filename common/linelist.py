@@ -108,6 +108,7 @@ def linelist(inlines=None,linelab=True,waveunit='micron',vacuum=True):
     lines_TSB=Table.read('../data/linelists/linelist_TSB.tbl',format='ipac')
     '''
     volume = '/Users/annamurphree/Docs/Rupke Research/q3dfit/q3dfit'
+    volume = '../'
     lines_DSNR=Table.read(volume+'/data/linelists/linelist_DSNR.tbl',format='ipac')
     lines_H2=Table.read(volume+'/data/linelists/linelist_H2.tbl',format='ipac')
     lines_fine_str=Table.read(volume+'/data/linelists/linelist_fine_str.tbl',format='ipac')

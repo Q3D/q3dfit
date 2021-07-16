@@ -44,7 +44,10 @@ def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index, zstar,
     #creating fluxfit
     fluxfit = fitter(polymod1, ilam, iflux, weights=iweight)
     fluxfitparam=fluxfit.parameters
-    
+#this currently will give a broadcast issue in astropy (I have reached out about the issue). The way to fix this is in data.py in line 1231 and 1232. 
+#A parenthesis needs to be added in line 1231 to be (np.ravel(weights)*...
+#and add  .T).T] to line 1232
+
     #flip for numpy.poly1d 
     ct_coeff=np.flip(fluxfitparam)
                          

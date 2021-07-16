@@ -10,9 +10,6 @@ from astropy.modeling import models, fitting
 def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index, zstar, 
             fitord=3, quiet=False, refit=False):
    
-    deg1=fitord
-    deg2=fitord
-    
     ilam=lam[index]
     iflux=flux[index]
     #the fitter I used puts weights in 1/sigma so I took the square root to make the data correct
@@ -23,17 +20,19 @@ def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index, zstar,
     ilam = ilam.reshape(ilam.size)
     iflux = iflux.reshape(ilam.size)    
     iweight = iweight.reshape(ilam.size)
-
     
+    
+    if fitord==0:
+        deg1=len(ilam)-1
+        deg2=fitord
+    else:
+        deg1=fitord
+        deg2=fitord
 # parinfo is start params, it's unnecessary unless wanted 
     
   #  parinfo = np.full(fitord+1, {'value': 0.0}) 
     #array where every every element is the dictionary: {'value': 0.0}
 
-
-    #degree of polynomial fit defaults to len(x-variable)-1
-    if deg1==0:
-        deg1=len(ilam)-1
         
     #making astropy fitter
     fitter = fitting.LevMarLSQFitter()
@@ -52,7 +51,7 @@ def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index, zstar,
     ct_poly = np.poly1d(ct_coeff, variable='lambda')
     continuum=ct_poly(lam)
    
-    np.save('ct_coeff.npy', ct_coeff)
+   # np.save('ct_coeff.npy', ct_coeff)
    
     icontinuum = ct_poly(index)
     
@@ -74,5 +73,5 @@ def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index, zstar,
           
          #lam[tmp_ind] doesn't make sense as a variable???
           ct_poly[tmp_ind] += np.poly1d(tmp_parsparam, variable='lambda')
-    return(continuum)      
+    return(continuum, ct_coeff, zstar)     
   

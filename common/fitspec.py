@@ -410,8 +410,18 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     argscontfit_use['index_log'] = ct_indx_log
                 if 'usecolrow' in initdat['argscontfit'] and col and row:
                     argscontfit_use['colrow'] = [col, row]
-
-                continuum, ct_coeff, zstar = \
+                if initdat['fcncontfit'] == 'fitpoly':
+                    continuum = fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar, fitord=3,
+                               quiet=quiet)[0]
+                    ct_coeff=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar, fitord=3,
+                               quiet=quiet)[1]
+                    zstar=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar, fitord=3,
+                               quiet=quiet)[2]
+                else:
+                  continuum, ct_coeff, zstar = \
                     fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
@@ -422,7 +432,18 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     ppxf_sigma = ct_coeff['ppxf_sigma']
 
             else:
-                continuum = \
+                 if initdat['fcncontfit'] == 'fitpoly':
+                    continuum = fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar, fitord=3,
+                               quiet=quiet)[0]
+                    ct_coeff=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar, fitord=3,
+                               quiet=quiet)[1]
+                    zstar=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar, fitord=3,
+                               quiet=quiet)[2]
+                else:
+                  continuum = \
                     fcncontfit(gdlambda, gdflux, gderr, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, ct_coeff, zstar,
                                quiet=quiet)

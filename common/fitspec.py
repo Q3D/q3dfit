@@ -421,10 +421,15 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                                templateflux_tmp, ct_indx, zstar, fitord=3,
                                quiet=quiet)[2]
                 else:
-                  continuum, ct_coeff, zstar = \
-                    fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
+                  continuum = fcncontfit(gdlambda, gdflux, gderr, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
-                               quiet=quiet, **argscontfit_use)
+                               quiet=quiet, **argscontfit_use)[0]
+                    ct_coeff=fcncontfit(gdlambda, gdflux, gderr, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar,
+                               quiet=quiet,  **argscontfit_use)[1]
+                    zstar=fcncontfit(gdlambda, gdflux, gderr, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar,
+                               quiet=quiet,  **argscontfit_use)[2]
 
                 ppxf_sigma = 0.
                 if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
@@ -446,7 +451,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                   continuum = \
                     fcncontfit(gdlambda, gdflux, gderr, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, ct_coeff, zstar,
-                               quiet=quiet)
+                               quiet=quiet)[0]
                 ppxf_sigma = 0.
 
             add_poly_weights = 0.

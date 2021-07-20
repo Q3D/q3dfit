@@ -77,8 +77,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     qsoflux = qsoflux_full[iqsoflux]
 
     # Normalizing qsoflux template
-    qsoflux = qsoflux/np.median(qsoflux)
-
+#qsoflux = qsoflux/np.median(qsoflux)
     index = np.array(index)
     index = index.astype(dtype='int')
 
@@ -106,7 +105,8 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
 
     # comps = result.eval_components(wave=wave, qso_model=qsoflux, x=wave)
     continuum = result.eval(wave=wave, qso_model=qsoflux, x=wave)
-
+    import lmfit
+    lmfit.report_fit(result.params)
 #    Test plot
 #    import matplotlib.pyplot as plt
 #    for i in comps.keys():
@@ -168,6 +168,16 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
         continuum += cont_resid
 
         return continuum, ct_coeff, zstar
+
+
+        if refit == 'questfit':
+            resid = flux - continuum
+            argscontfit_use = kwargs['argscontfit']['args_questfit']
+            cont_resid, ct_coeff, zstar = questfit(wave, resid, weight, 0,
+                                                   0, index, zstar,
+                                                   quiet=quiet, **argscontfit_use)
+            continuum += cont_resid
+            return continuum, ct_coeff, zstar
 
 
 

@@ -54,7 +54,7 @@
 """
 import os.path
 import numpy as np
-
+from q3dfit.common import questfit_readcf
 
 def miritest():
 
@@ -69,21 +69,32 @@ def miritest():
     fitrange = [11.53050463,13.47485667]
 
 #   These are unique to the user
-    volume = '/Users/Endeavour/Projects/Q3D_dev/MIRI_ETC_sim/'
+    #volume = '/Users/Endeavour/Projects/Q3D_dev/MIRI_ETC_sim/'
+    volume = '../../../MIRISIM/MIRI-ETC-SIM/'
     infile = volume+'miri_etc_cube.fits'
+    #infile = volume+'cube_reconstructed.fits'
     mapdir = volume+'maps/'
     outdir = volume+'outputs/'
-    qsotemplate = volume+'miri_qsotemplate.npy'
-    stellartemplates = \
-        volume+'pg1411hosttemplate.npy'
+    qsotemplate = volume+'miri_qsotemplate_B.npy'
+    #stellartemplates = \
+    #    '/Users/caroline/Documents/ARI-Heidelberg/Q3D/Q3DFIT/q3dfit/Test_GMOS_DATA/pg1411/'+'pg1411hosttemplate.npy'
     logfile = outdir+gal+'_fitlog.txt'
-    batchfile = '/jwst0nb/lwz/q3dfit/common/fitloop.pro'
+    batchfile = '../common/fitloop.pro'
     batchdir = '/Users/drupke/src/idl/batch/'
 #
 # Required pars
 #
 
     if not os.path.isfile(infile): print('Data cube not found.')
+
+
+    ### more MIR settings
+    global_ice_model = 'ice_hc'
+    global_ext_model = 'CHIAR06'
+    #cffilename = '../test/test_questfit/IRAS21219m1757_dlw_qst.cf'
+    cffilename = '../test/test_questfit/miritest.cf'
+    config_file = questfit_readcf.readcf(cffilename)
+
 
 # Lines to fit.
     lines = ['[NeII]12.81']
@@ -172,9 +183,16 @@ def miritest():
 #                                         '[SII]6716', '[SII]6731']},
             'argscontfit': {'qsoxdr': qsotemplate,
                             'siginit_stars': 50,
-                            'uselog': 1},
+                            'uselog': 1,
+                            'refit':'questfit',
+                            'args_questfit': {'config_file': cffilename,
+                                'global_ice_model': global_ice_model,
+                                'global_ext_model': global_ext_model,
+                                'models_dictionary': {},
+                                'template_dictionary': {}} 
+                            },
             'argslinelist': {'vacuum': False},
-#            'startempfile': stellartemplates,
+            #'startempfile': stellartemplates,
             'argspltlin1': argspltlin1,
             # 'donad': 1,
             'decompose_qso_fit': 1,
@@ -197,6 +215,10 @@ def miritest():
             # 'cvdf_vstep': 10d,
             # 'host': {'dat_fits': volume+'ifs/gmos/cubes/'+gal+'/'+\
             #         gal+outstr+'_host_dat_2.fits'} \
-        }
+            'plotMIR': True,
+            'argsreadcube': {'fluxunit_in': 'Jy',
+                            'waveunit_in': 'angstrom',
+                            'waveunit_out': 'micron'}        
+            }
 
     return(init)

@@ -55,6 +55,7 @@ import pdb
 #   initialization file must be in the init subdirectory of the Q3DFIT
 #   distribution for this to work. There may be a better way with an
 #   arbitrary path.
+'''
 def __get_initdat(initproc):
     # add folder "init" to python PATH variable, to avoid importing beyond
     # top-level package
@@ -64,7 +65,6 @@ def __get_initdat(initproc):
     module = importlib.import_module("q3dfit.init." + initproc)
     fcninitproc = getattr(module, initproc)
     return fcninitproc()
-'''
 
 #   Get linelist
 def __get_linelist(initdat):
@@ -201,7 +201,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
 
     initdat = initproc 
     # When initproc was a routine rather than an input dictionary
-    # initdat = __get_initdat(initproc)
+    #initdat = __get_initdat(initproc)
     linelist = __get_linelist(initdat)
 
     if 'logfile' in initdat:

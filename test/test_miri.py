@@ -3,6 +3,7 @@ import sys
 import numpy as np
 from matplotlib import pyplot as plt
 from q3dfit.common import readcube
+
 # Make quasar template
 # from q3dfit.common.makeqsotemplate import makeqsotemplate
 # volume = '/Volumes/fingolfin/ifs/gmos/cubes/pg1411/'
@@ -18,13 +19,25 @@ from q3dfit.common import readcube
 #plt.imshow(np.log10(cube.dat[:,:,2871]))
 #plt.imshow(np.log10(cube.wmap[:,:,2871]))
 
+
+template_exists = True
+if not template_exists:
+	# Make quasar template
+	from q3dfit.common.makeqsotemplate import makeqsotemplate
+	volume = '../../../MIRISIM/MIRI-ETC-SIM/'
+	outpy = volume + 'miri_qsotemplate_B.npy'
+	infits = volume + 'miri_etc_cube.fits'
+	makeqsotemplate(infits, outpy, dataext=1, varext=2, dqext=3, waveext=None)
+
+# breakpoint()
+
+
 from q3dfit.common.q3df import q3df
 q3df('miritest', cols=6, rows=13, quiet=False)
 from q3dfit.common.q3da import q3da
 q3da('miritest', cols=6, rows=13, quiet=False)
 
 
-#breakpoint()
 
 
 # Test creation of Gonzalez-Delgado templates

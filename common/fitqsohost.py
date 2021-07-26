@@ -123,7 +123,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     if refit == None:
         return continuum, ct_coeff, zstar
     # Fit residual with PPXF
-    if refit:
+    if refit==True:
         resid = flux - continuum
 
         # log rebin residual
@@ -170,11 +170,13 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
         return continuum, ct_coeff, zstar
 
 
-        if refit == 'questfit':
+    if refit == 'questfit':
+            from q3dfit.common.questfit import questfit
             resid = flux - continuum
-            argscontfit_use = kwargs['argscontfit']['args_questfit']
-            cont_resid, ct_coeff, zstar = questfit(wave, resid, weight, 0,
-                                                   0, index, zstar,
+            #argscontfit_use = kwargs['argscontfit']['args_questfit']
+            argscontfit_use = kwargs['args_questfit']
+            cont_resid, ct_coeff, zstar = questfit(wave, resid, weight, b'0',
+                                                   b'0', index, zstar,
                                                    quiet=quiet, **argscontfit_use)
             continuum += cont_resid
             return continuum, ct_coeff, zstar

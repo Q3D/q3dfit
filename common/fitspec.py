@@ -392,7 +392,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             module = import_module('q3dfit.common.' + initdat['fcncontfit'])
             fcncontfit = getattr(module, initdat['fcncontfit'])
 
-            if initdat['fcncontfit']=='questfit':
+            if initdat['fcncontfit']=='questfit' or istemp==b'0':
               istemp=None
 
             if istemp:
@@ -411,6 +411,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 if 'usecolrow' in initdat['argscontfit'] and col and row:
                     argscontfit_use['colrow'] = [col, row]
 
+                breakpoint()
                 continuum, ct_coeff, zstar = \
                     fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,

@@ -25,7 +25,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
         wavelength array in micron
 
     flux: array
-        Flux values to be fit. Assumed units are Jy; will be transformed to erg/s/cm2/Angstrom/sr below.
+        Flux values to be fit. Assumed units are Jy; will be transformed to 1e-10 erg/s/cm2/mu/sr below.
 
     weight: array
         Weights of each individual pixel to be fit

@@ -392,7 +392,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             module = import_module('q3dfit.common.' + initdat['fcncontfit'])
             fcncontfit = getattr(module, initdat['fcncontfit'])
 
-            if initdat['fcncontfit']=='questfit':
+            if initdat['fcncontfit']=='questfit' or istemp==b'0':
               istemp=None
 
             if istemp:
@@ -410,6 +410,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     argscontfit_use['index_log'] = ct_indx_log
                 if 'usecolrow' in initdat['argscontfit'] and col and row:
                     argscontfit_use['colrow'] = [col, row]
+
                 if initdat['fcncontfit'] == 'fitpoly':
                     continuum = fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar, fitord=3,
@@ -425,14 +426,14 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
-
+                  
                 ppxf_sigma = 0.
                 if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
                     'refit' in initdat['argscontfit']:
                     ppxf_sigma = ct_coeff['ppxf_sigma']
 
             else:
-                 if initdat['fcncontfit'] == 'fitpoly':
+                if initdat['fcncontfit'] == 'fitpoly':
                     continuum = fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar, fitord=3,
                                quiet=quiet)[0]

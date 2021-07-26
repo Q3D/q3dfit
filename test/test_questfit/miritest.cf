@@ -1,0 +1,8 @@
+source		                  miritest.npy   11.55  13.45 dummy         0.0  0.0   X    0.0  0.0   _   _   _
+template                     smith_nftemp3.npy     0.1    1.  CHIAR06       0.0  0.0   S    0.0  0.0 ice_hc 0.0  0.
+template                     smith_nftemp4.npy     0.1    1.  CHIAR06       0.0  0.0   S    0.0  0.0 ice_hc 0.0  0.
+template          dens1e4:sifrom:run010002.npy     0.1    1.  DRAINE03      0.0  0.0   S    0.0  0.0 _   _   _
+blackbody                             warm         0.1    1.  CHIAR06       0.0  0.0   S  250.0  1.0 ice_hc 0.0  1.
+extinction                        draine03.npy     0.0    0.  DRAINE03      0.0  0.0   X    0.0  0.0 _   _   _
+extinction                   chiar06_i0857.npy     0.0    0.  CHIAR06       0.0  0.0   X    0.0  0.0 _   _   _
+absorption               ice+hc_abs.npy            0.0    0.    ice_hc      0.0    0.0    X    0.0  0.0 _     _   _

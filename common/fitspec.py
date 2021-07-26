@@ -411,22 +411,43 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 if 'usecolrow' in initdat['argscontfit'] and col and row:
                     argscontfit_use['colrow'] = [col, row]
 
-                breakpoint()
-                continuum, ct_coeff, zstar = \
+                if initdat['fcncontfit'] == 'fitpoly':
+                    continuum = fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar, fitord=3,
+                               quiet=quiet)[0]
+                    ct_coeff=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar, fitord=3,
+                               quiet=quiet)[1]
+                    zstar=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar, fitord=3,
+                               quiet=quiet)[2]
+                else:
+                  continuum, ct_coeff, zstar = \
                     fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
-
+                  
                 ppxf_sigma = 0.
                 if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
                     'refit' in initdat['argscontfit']:
                     ppxf_sigma = ct_coeff['ppxf_sigma']
 
             else:
-                continuum = \
+                if initdat['fcncontfit'] == 'fitpoly':
+                    continuum = fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar, fitord=3,
+                               quiet=quiet)[0]
+                    ct_coeff=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar, fitord=3,
+                               quiet=quiet)[1]
+                    zstar=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
+                               templateflux_tmp, ct_indx, zstar, fitord=3,
+                               quiet=quiet)[2]
+                else:
+                  continuum = \
                     fcncontfit(gdlambda, gdflux, gderr, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, ct_coeff, zstar,
-                               quiet=quiet)
+                               quiet=quiet)[0]
                 ppxf_sigma = 0.
 
             add_poly_weights = 0.

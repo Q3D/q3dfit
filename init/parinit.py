@@ -73,7 +73,12 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             # is in list, but stronger line is not
             if lmline in dblt_pairs.keys():
                 tied = '{0}_{1}_flx / 3.'.format(dblt_pairs[line],comp)
-                tied = tied.replace('[', 'lb').replace(']', 'rb').replace('.', 'pt')
+                tied = tied.replace('[', 'lb').replace(']', 'rb')#.replace('.', 'pt')
+                tied = tied.replace(" ", "")
+            if lratfix != None and line in lratfix.keys():
+                tied = '{0}_{1}_flx*{2}'.format(lratfix[line][0],comp,lratfix[line][1])
+                tied = tied.replace('[', 'lb').replace(']', 'rb')
+                tied = tied.replace(" ", "")
             else:
                 tied = ''
         elif gpar == 'cwv':

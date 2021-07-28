@@ -63,8 +63,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
     if fitran:
         flux = flux[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
         wlambda = wlambda[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
-    if global_ext_model != 'None':     global_extinction = True
-
+    if global_ext_model != 'None': global_extinction = True
 
     if singletemplatelambda!=b'0':
         print('Trying to pass a single separate template to questfit, which is not implemented ... Halting.')
@@ -180,17 +179,15 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
 
                 n_temp+=1
         if global_extinction == True: #Check to see if we are using global extinction, where the total model flux is extincted by the same ice and dust model.
-
             model_global_ext,param_global_ext = questfitfcn.set_up_fit_extinction([0],[1],'global_ext',global_ext_model,'S')
             model = model*model_global_ext
             param += param_global_ext
-            models_dictionary[extinction_model] = config_file[global_ext_model]
-
+            models_dictionary[global_ext_model] = config_file[global_ext_model]
             model_global_ice,param_global_ice = questfitfcn.set_up_absorption([0],[1],'global_ice',global_ice_model)
 
             model = model*model_global_ice
             param += param_global_ice
-            models_dictionary[ice_model] = config_file[global_ice_model]
+            models_dictionary[global_ice_model] = config_file[global_ice_model]
 
 
         for i in models_dictionary.keys(): #loop over models dictionary, load them in and resample.

@@ -28,7 +28,7 @@ def plot_quest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat, templ_ma
           ax1.plot(MIRgdlambda, linespec, color='r', linestyle='-', alpha=0.7, linewidth=1.5)
 
         if 'argscontfit' in initdat:
-            if 'global_ext_model' in initdat['argscontfit']:
+            if 'global_ext_model' in initdat['argscontfit'] or 'global_ext_model' in initdat['argscontfit']['args_questfit']:
                for i in np.arange(0,len(comp_best_fit.keys())-2,1):
                   if len(comp_best_fit[list(comp_best_fit.keys())[i]].shape) > 1:
                     comp_best_fit[list(comp_best_fit.keys())[i]] = comp_best_fit[list(comp_best_fit.keys())[i]] [:,0,0]

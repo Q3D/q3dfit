@@ -198,8 +198,11 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
     # add common subdirectory to Python PATH for ease of importing
     path.append("common/")
     starttime = time.time()
-
-    initdat = initproc 
+    
+    if type(initproc) == str:
+        initdat = __get_initdat(initproc)
+    else:
+        initdat = initproc 
     # When initproc was a routine rather than an input dictionary
     #initdat = __get_initdat(initproc)
     linelist = __get_linelist(initdat)

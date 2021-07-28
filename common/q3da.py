@@ -58,13 +58,15 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
 # reads initdat from initialization file ie pg1411 (initproc is a string)
     #module = importlib.import_module('q3dfit.init.' + initproc)
     #fcninitproc = getattr(module, initproc)
-    initdat = initproc
-    '''
-    if isinstance(initdat, str):
+    
+
+    if isinstance(initproc, str):
         from q3dfit.common.q3df_helperFunctions import __get_initdat
         initdat = __get_initdat(initproc)
+    else:
+        initdat = initproc
     #if 'donad' in initdat: do later
-    '''
+
     if 'noemlinfit' not in initdat:
         # get linelist
         if 'argslinelist' in initdat:
@@ -612,7 +614,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                         #parameter structure created in IFSF_FITQSOHOST and compute polynomial
                         #and stellar components
                         #TODO who is ct coeff help
-                        if 'refit' in initdat['argscontfit']:
+                        if 'refit' in initdat['argscontfit'] and 'args_questfit' not in initdat['argscontfit'] :
                             par_qsohost = struct['ct_coeff']['qso_host']
                             par_stel = struct['ct_coeff']['stel']
                             #line 622

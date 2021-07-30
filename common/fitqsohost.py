@@ -77,7 +77,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     qsoflux = qsoflux_full[iqsoflux]
 
     # Normalizing qsoflux template
-    qsoflux = qsoflux/np.median(qsoflux)
+    qsoflux = qsoflux#/np.median(qsoflux)#*np.mean(flux)
     index = np.array(index)
     index = index.astype(dtype='int')
 

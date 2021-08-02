@@ -216,6 +216,7 @@ def miritest():
             # 'host': {'dat_fits': volume+'ifs/gmos/cubes/'+gal+'/'+\
             #         gal+outstr+'_host_dat_2.fits'} \
             'plotMIR': True,
+            'qsoonly':1,
             'argsreadcube': {'fluxunit_in': 'Jy',
                             'waveunit_in': 'angstrom',
                             'waveunit_out': 'micron'}        

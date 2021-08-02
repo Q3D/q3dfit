@@ -108,15 +108,15 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     import lmfit
     lmfit.report_fit(result.params)
 #    Test plot
-#    import matplotlib.pyplot as plt
-#    for i in comps.keys():
-#        plt.plot(wave, comps[i], label=i)
-#    plt.plot(wave, continuum, label='best-fit')
-#    plt.plot(wave,flux,label='flux')
-#    plt.plot(wave,flux-continuum,label='resid')
-#    plt.plot(wave,test_qsofcn,label='test')
-#    plt.legend(loc='best')
-#    plt.show()
+    import matplotlib.pyplot as plt
+    # for i in comps.keys():
+    #     plt.plot(wave, comps[i], label=i)
+    plt.plot(wave, continuum, label='best-fit')
+    plt.plot(wave,flux,label='flux')
+    plt.plot(wave,flux-continuum,label='resid')
+    # plt.plot(wave,test_qsofcn,label='test')
+    plt.legend(loc='best')
+    plt.show()
 
     ct_coeff = result.params
 
@@ -171,6 +171,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
 
 
     if refit == 'questfit':
+            breakpoint()
             from q3dfit.common.questfit import questfit
             resid = flux - continuum
             argscontfit_use = kwargs['args_questfit']
@@ -178,7 +179,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
                                                    b'0', index, zstar,
                                                    quiet=quiet, **argscontfit_use)
             
-
+            breakpoint()
             continuum += cont_resid
     
             return continuum, ct_coeff, zstar

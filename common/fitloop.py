@@ -103,10 +103,18 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, onefit,
                                                             initdat, i+1, j+1)
 
 #   Apply DQ plane
-    indx_bad = np.nonzero(dq > 0)
-    if indx_bad[0].size > 0:
-        flux[indx_bad] = 0.
-        err[indx_bad] = errmax*100.
+    if dq.ndim>0:
+        indx_bad = np.nonzero(dq > 0)
+    else:
+        indx_bad= (dq!=0)
+        if indx_bad==True:
+            indx_bad=0
+        else:
+            indx_bad=dq
+   #the oned keyword was having trouble because np.nonzero doesn't work for zero arrays. I think this fixes the issue
+  
+    flux[indx_bad] = 0.
+    err[indx_bad] = errmax*100.
 
 #   Check that the flux is not filled with 0s, infs, or nans
     somedata = ((flux != 0.).any() and

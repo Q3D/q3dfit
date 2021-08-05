@@ -614,7 +614,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                         #parameter structure created in IFSF_FITQSOHOST and compute polynomial
                         #and stellar components
                         #TODO who is ct coeff help
-                        if 'refit' in initdat['argscontfit'] and 'args_questfit' not in initdat['argscontfit'] :
+                        if 'refit' in initdat['argscontfit'] and 'args_questfit' not in initdat['argscontfit']:
                             par_qsohost = struct['ct_coeff']['qso_host']
                             par_stel = struct['ct_coeff']['stel']
                             #line 622
@@ -649,6 +649,14 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                                 contcube['stel_z_err'][i, j, :] \
                                     = [struct['zstar_err'], struct['zstar_err']]
                             #again why aren't those two if statements combined
+                        elif 'refit' in initdat['argscontfit'] and initdat['argscontfit']['refit']=='questfit': # Refitting with questfit in the MIR
+                            par_qsohost = struct['ct_coeff']['qso_host']
+                            dumy_log, wave_rebin,_ = log_rebin([struct['wave'][0],
+                                struct['wave'][len(struct['wave'])-1]],
+                                struct['spec'])
+                            xnorm = cap_range(-1.0, 1.0, len(wave_rebin)) #1D?
+                            polymod_refit = np.zeros(len(struct['wave']), dtype=float)  # Double-check
+
                         else:
                             par_qsohost = struct['ct_coeff']
                             polymod_refit = 0.0

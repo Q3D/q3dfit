@@ -77,7 +77,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     qsoflux = qsoflux_full[iqsoflux]
 
     # Normalizing qsoflux template
-    qsoflux = qsoflux#/np.median(qsoflux)#*np.mean(flux)
+    qsoflux = qsoflux/np.median(qsoflux)#*np.mean(flux)
     index = np.array(index)
     index = index.astype(dtype='int')
 
@@ -171,7 +171,6 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
 
 
     if refit == 'questfit':
-            breakpoint()
             from q3dfit.common.questfit import questfit
             resid = flux - continuum
             argscontfit_use = kwargs['args_questfit']
@@ -179,8 +178,16 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
                                                    b'0', index, zstar,
                                                    quiet=quiet, **argscontfit_use)
             
-            breakpoint()
+            from q3dfit.common.plot_quest import plot_quest
+            from matplotlib import pyplot as plt
+            initdatdict = argscontfit_use.copy()
+            initdatdict['label'] = 'miritest'
+            initdatdict['plotMIR'] = True
+            plot_quest(wave, resid, cont_resid, ct_coeff, initdatdict)
+            plt.show()
+
             continuum += cont_resid
+            ct_coeff['qso_host'] = result.params
     
             return continuum, ct_coeff, zstar
 

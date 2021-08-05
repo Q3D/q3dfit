@@ -107,7 +107,7 @@ def plot_cont(instr, outfile, MIRgdlambda=None, MIRgdflux=None,
             ytit = 'F$_\u03BD$'
         else: 
             ytit = 'F$_\lambda$'
-            
+
         # plot on a log scale:
         if xstyle == 'log' or ystyle == 'log':
             plt.style.use(pltstyle)

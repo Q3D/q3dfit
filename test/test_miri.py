@@ -29,13 +29,12 @@ if not template_exists:
 	infits = volume + 'miri_etc_cube.fits'
 	makeqsotemplate(infits, outpy, dataext=1, varext=2, dqext=3, waveext=None)
 
-# breakpoint()
 
 
 from q3dfit.common.q3df import q3df
-q3df('miritest', cols=6, rows=13, quiet=False)
+q3df('miritest', cols=7, rows=14, quiet=False)
 from q3dfit.common.q3da import q3da
-q3da('miritest', cols=6, rows=13, quiet=False)
+q3da('miritest', cols=7, rows=14, quiet=False)
 
 
 

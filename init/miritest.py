@@ -112,7 +112,7 @@ def miritest():
         linetie[i] = '[NeII]12.81'
         ncomp[i] = np.full((ncols,nrows),maxncomp)
         zinit_gas[i] = np.full((ncols,nrows,maxncomp),0.)
-        siginit_gas[i] = np.full(maxncomp, 1000.) #0.1) #1000.)
+        siginit_gas[i] = np.full(maxncomp, 500.) #0.1) #1000.)
         zinit_stars=np.full((ncols,nrows),0.0)
 
 #
@@ -191,6 +191,14 @@ def miritest():
                                 'models_dictionary': {},
                                 'template_dictionary': {}} 
                             },
+            'argscontplot': {'xstyle':'log',
+                             'ystyle':'log',
+                             'waveunit_in': 'Angstrom',
+                             'waveunit_out': 'Angstrom',
+                             'fluxunit_in':'flambda',
+                             'fluxunit_out':'flambda',
+                             'mode':'dark'},
+
             'argslinelist': {'vacuum': False},
             #'startempfile': stellartemplates,
             'argspltlin1': argspltlin1,

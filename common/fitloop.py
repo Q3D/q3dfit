@@ -96,7 +96,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
     else:
         outlab = '{[outdir]}{[label]}_{:04d}_{:04d}'.format(initdat,
                                                             initdat, i+1, j+1)
-
+        
 #   Apply DQ plane
     indx_bad = np.nonzero(dq > 0)
     if indx_bad[0].size > 0:

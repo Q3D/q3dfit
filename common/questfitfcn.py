@@ -216,6 +216,7 @@ def set_up_fit_extinction(p,p_fixfree,model_name,extinction_model,mixed_or_scree
     
     if mixed_or_screen == 'S':
         exp = "power(10,(-0.4*%s_Av*log10(%s)))" % (model_name,extinction_model)
+        #exp = "power(10,(-0.4*%s_Av*(%s)))" % (model_name,extinction_model)
 
     model_extinction = ExpressionModel(exp,independent_vars=[extinction_model],name = model_name)
     

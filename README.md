@@ -2,14 +2,12 @@
 Python software for fitting integral field spectroscopic data
 
 # multicore
-
 `q3dfit` can be parallelized across multiple processor cores using the
 Message Passing Interface (MPI) standard. To enable this capability,
 [install](https://www.mpich.org/downloads/) `mpich` on your hardware
 and `pip install` the Python package `mpi4py.`
 
 # Validation and testing
-
 These assume that Python is properly pathed.
 
 ## ground-based data, rest-frame optical, single emission-line component, single spaxel, quasar
@@ -20,17 +18,15 @@ Data cube is from Gemini/GMOS observations of PG1411+442
    - `./testing/pg1411/pg1411rb3.fits`
    - `./testing/pg1411/pg1411qsotemplate.npy`
    - `./testing/pg1411/pg1411hosttemplate.npy`
-2. Edit the input/output files in the Jupyter notebook `run_q3dfit.ipynb`.
+2. Edit the input/output files in the Jupyter notebook `./jnb/run_q3dfit.ipynb`.
    - `infile` needs to point to `pg1411rb3.fits`
    - `qsotemplate` needs to point to `pg1411qsotemplate.npy`
    - `stellartemplates` needs to point to `pg1411hosttemplate.npy`
-3. Run q3df/q3da from the notebook.
+3. Run `q3df`/`q3da` from the notebook OR run `./test/test_pg1411c14r11.py` from a Python prompt.
 4. Compare the output plots to those in the Q3D Box folder (subdirectory `./testing/pg1411/c14r11_output/`).
 
 
 ## Spitzer data (emission-line subtracted), rest-frame MIR, single emission-line component, single spaxel, quasar
-
-To run these tests, one presently also has to change the `initdat` variable assignment in `q3df_helperFunctions.py` (lines 201--202) to read from a function rather than a dictionary. *Need to implement Jupyter notebook for these tests to avoid this step.*
 
 --> This test no longer works because the fake emission line (`test-MIRLINE`) is in the wrong linelist.
 A) Quasar-dominated example: Data "cube" is single spectrum of IRAS21219
@@ -39,9 +35,9 @@ A) Quasar-dominated example: Data "cube" is single spectrum of IRAS21219
 
 B) Spectrum with strong MIR lines:  Data "cube" is single spectrum called 22128896 (shared by Erini / Nadia)
 
-1. Run `./test/test_f22128896mir.py`.
-2. Verify output plot in `./test/test_questfit/`.
-   (2 versions are plotted: a jpg is created in q3da.py, and a png in q3df.py via plot_quest() - the latter to be removed later)
+1. Edit the output path in the Jupyter notebook `./jnb/run_q3dfit_MIRlines.ipynb`.
+2. Run `q3df`/`q3da` from the notebook OR run `./test/test_f22128896mir.py` from a Python prompt.
+3. Compare outputs to files in `./test/test_questfit/`. Presently, two versions of the plots are made: a jpg file is created by `q3da`, and a png is created by `q3df` via `plot_quest`.
 
 
 ## NIRSPEC simulation data in the hei box

@@ -58,7 +58,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
 # reads initdat from initialization file ie pg1411 (initproc is a string)
     #module = importlib.import_module('q3dfit.init.' + initproc)
     #fcninitproc = getattr(module, initproc)
-    
+
 
     if isinstance(initproc, str):
         from q3dfit.common.q3df_helperFunctions import __get_initdat
@@ -127,7 +127,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
         if initdat.__contains__('waveext'):
             cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
                     oned=oned, quiet=quiet, varext=varext,
-                    waveext=initdat['waveext'], **initdat['argsreadcube'])        
+                    waveext=initdat['waveext'], **initdat['argsreadcube'])
         else:
             cube = CUBE(infile=initdat['infile'], quiet=quiet, oned=oned,
                     header=header, datext=datext, varext=varext,
@@ -884,19 +884,10 @@ def q3da(initproc, cols=None, rows=None, noplots=False, oned=False,
                                                 ' Leg. poly'],
                                        fitran=initdat['fitran'], initdat=initdat)
                     else:
-                        with open('fitspec.txt', 'rb') as handle:
-                            data = pickle.load(handle)
-                            gdlambda = data['wave']
-                            ct_indx = data['ct_indx']
-                            gdflux = data['spec']
-                            continuum = data['cont_fit']
-                            ct_coeff = data['ct_coeff']
                         pltcontfcn(struct, outfile + '_cnt',
                                    fitran=initdat['fitran'], initdat=initdat,
-                                   MIRgdlambda=gdlambda[ct_indx], 
-                                   MIRgdflux=gdflux[ct_indx], 
-                                   MIRcontinuum=continuum[ct_indx], 
-                                   ct_coeff=ct_coeff,IR=1,title='Total')
+                                   ct_coeff=struct['ct_coeff'], IR=True,
+                                   title='Total')
 
     # Save emission line and continuum dictionaries
     np.savez('{[outdir]}{[label]}'.format(initdat, initdat)+'.lin.npz',

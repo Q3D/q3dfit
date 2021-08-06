@@ -426,7 +426,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
                                templateflux_tmp, ct_indx, zstar,
                                quiet=quiet, **argscontfit_use)
-                  
+
                 ppxf_sigma = 0.
                 if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
                     'refit' in initdat['argscontfit']:
@@ -753,9 +753,5 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               'perror_resid': perror_resid,  # error from fit residual
               # 'covar': covar,
               'siglim': siglim_gas}
-
-    f = open('fitspec.txt', 'wb')
-    pickle.dump(outstr, f)
-    f.close()
 
     return outstr

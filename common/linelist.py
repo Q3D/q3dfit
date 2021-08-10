@@ -2,16 +2,17 @@ def linelist(inlines=None,linelab=True,waveunit='micron',vacuum=True):
     """
     Generates an astropy Table of lines from the master files provided in
     /data/linelists
-    
+
     Returns:
-    
+
        An astropy Table of lines with keywords 'name','linelab','lines'
        Example: 'Lyalpha', 'Ly \$\alpha\$', 1215.67
-    
+
     Parameters:
+
        No required parameters; by default the entire tables are read from the
        linelist_air.tbl and linelist_vac.tbl, recomputed into vacuum and returned
-    
+
     Optional parameters:
        inlines: a list of strings to match against the 'name' part of the
            master list (default is all)

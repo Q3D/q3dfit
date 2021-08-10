@@ -140,6 +140,7 @@ from q3dfit.common.plot_quest import plot_quest
 from q3dfit.common.plot_cont import plot_cont
 from astropy.constants import c
 
+
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             initdat, maskwidths=None, peakinit=None, quiet=True,
             siginit_gas=None, siglim_gas=None, tweakcntfit=None,
@@ -370,10 +371,10 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                                                maskwidths_def, dtype='float'),
                                        names=listlines['name'])
 
-            ct_indx = masklin(gdlambda/(1+zstar), listlines, maskwidths,
+            ct_indx = masklin(gdlambda, listlinesz, maskwidths,
                               nomaskran=nomaskran)
             # Mask emission lines in log space
-            ct_indx_log = masklin(np.exp(gdlambda_log)/(1+zstar), listlines,
+            ct_indx_log = masklin(np.exp(gdlambda_log), listlinesz,
                                   maskwidths, nomaskran=nomaskran)
         else:
             ct_indx = np.arange(len(gdlambda))
@@ -485,15 +486,16 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             continuum = cinterp(np.log(gdlambda))
 
             # Adjust stellar redshift based on fit
-            # From PPXF docs:
-            # - These errors are meaningless unless Chi^2/DOF~1 (see parameter SOL below).
-            # However if one *assume* that the fit is good, a corrected estimate of the
-            # errors is: errorCorr = error*sqrt(chi^2/DOF) = error*sqrt(sol[6]).
+            # From ppxf docs:
+            # IMPORTANT: The precise relation between the output pPXF velocity
+            # and redshift is Vel = c*np.log(1 + z).
+            # See Section 2.3 of Cappellari (2017) for a detailed explanation.
             zstar += np.exp(sol[0]/c.to('km/s').value)-1.
             ppxf_sigma = sol[1]
-            # ct_rchisq = sol[6]
-            # solerr = []
-            # solerr *= np.sqrt(sol[6])
+
+            # From PPXF docs:
+            # These errors are meaningless unless Chi^2/DOF~1.
+            # However if one *assumes* that the fit is good ...
             ct_rchisq = pp.chi2
             solerr *= np.sqrt(pp.chi2)
             zstar_err = \
@@ -615,6 +617,12 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # testsize = len(parinit)
         # if testsize == 0:
             # raise Exception('Bad initial parameter guesses.')
+
+        # Actual fit
+        # plt, ax = plt.subplots()
+        # ax.plot(gdlambda, gdflux_nocnt)
+        # plt.show()
+        # pdb.set_trace()
 
         # Actual fit
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,

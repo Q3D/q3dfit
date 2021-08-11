@@ -627,7 +627,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # Actual fit
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
                            method='least_squares', weights=gdweight_nocnt,
-                           max_nfev=1000, nan_policy='omit')
+                           nan_policy='omit')
         specfit = lmout.best_fit
         if not quiet:
             print(lmout.fit_report(show_correl=False))

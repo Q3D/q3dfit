@@ -118,6 +118,7 @@ def sepfitpars(linelist, param, perror, maxncomp, waveran = None, tflux = False,
     else:
 
         basearr = np.full(linelist['name'].T.data.shape, np.nan)
+        basearr_1comp = basearr
         if maxncomp > 1:
             basearr = np.tile(basearr, (maxncomp, 1))
         flux = Table(basearr, names=linelist['name'])
@@ -134,8 +135,8 @@ def sepfitpars(linelist, param, perror, maxncomp, waveran = None, tflux = False,
         waveerr = Table(basearr, names=linelist['name'])
 
         if tflux is not False:
-            tf = Table(basearr, names=linelist['name'])
-            tfe = Table(basearr, names=linelist['name'])
+            tf = Table(basearr_1comp, names=linelist['name'])
+            tfe = Table(basearr_1comp, names=linelist['name'])
 
         #in2ha = np.where(parinfo_new['parname'] == '[NII]/Halpha line ratio')
         #ctn2ha = np.count_nonzero(parinfo_new['parname'] == '[NII]/Halpha line ratio')

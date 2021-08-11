@@ -53,13 +53,9 @@ spectrum of Makani
 1. Download necessary files from the [Q3D Box folder](https://rhodes.box.com/s/q4zsp63ps01olkkh846k1nzbfw744gns):
    - `./testing/makani/makanisdss.fits`
    - `./testing/makani/makani_stelmod.npy`
-2. Edit `./init/makanisdss.py`.
+2. Edit the input/output files in the Jupyter notebook `./jnb/run_q3dfit_makani.ipynb`.
    - The variable `infile` needs to point to `makanisdss.fits`
    - The variable `stellartemplates` needs to point to `makani_stelmod.npy`
    - `outdir` is the location of the output files, including plots
    - `logfile` is an ASCII output file
-3. Run `./test/test_makanisdss.py`.
-
-To-do: Load in single SDSS spectrum
-       Fit stellar continuum with PPXF
-       Fit multiple emission-line components
+3. Run `q3df`/`q3da` from the notebook OR run `./test/test_makanisdss.py` from a Python prompt.

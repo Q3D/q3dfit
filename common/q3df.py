@@ -46,11 +46,11 @@ __last_modified__ = '2021 Feb 22'
 
 # invoke the correct q3df helper function depending on whether this is to a
 # single or multi-threaded process
-def q3df(initproc, cols=None, rows=None, oned=False, onefit=False, ncores=1,
+def q3df(initproc, cols=None, rows=None, onefit=False, ncores=1,
          quiet=True):
     if ncores == 1:
         from q3dfit.common.q3df_helperFunctions import q3df_oneCore
-        q3df_oneCore(initproc, cols, rows, oned, onefit, quiet)
+        q3df_oneCore(initproc, cols, rows, onefit, quiet)
     elif ncores > 1:
         from inspect import getfile
         from q3dfit.common import q3df_helperFunctions
@@ -65,4 +65,4 @@ def q3df(initproc, cols=None, rows=None, oned=False, onefit=False, ncores=1,
         # start a new MPI process since MPI cannot be started from within a
         # Python script
         call(["mpiexec", "-n", str(ncores), "python", filename,
-              initproc, cols, rows, str(oned), str(onefit), str(quiet)])
+              initproc, cols, rows, str(onefit), str(quiet)])

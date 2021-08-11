@@ -21,8 +21,6 @@ Take outputs from Q3DF and perform fitting loop.
      Output from READCUBE, containing data
    initdat: in, required, type=structure
      Output from initialization routine, containing fit parameters
-   oned: in, required, type=byte
-     Whether data is in a cube or in one dimension (longslit)
    onefit: in, required, type=byte
      If set, ignore second fit
    quiet: in, required, type=byte
@@ -54,7 +52,7 @@ import numpy as np
 import pdb
 
 
-def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
+def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, onefit,
             quiet=True, logfile=None):
 
     if logfile is None:
@@ -70,21 +68,21 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
     i = colarr[ispax]  # colind, rowind]
     j = rowarr[ispax]  # colind, rowind]
 
-    print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]',
-          file=logfile)
-
-    if oned:
-        if cube.dat.ndim == 1:
-            flux = cube.dat
-            err = abs(cube.var)**0.5
-            dq = cube.dq
-        else:
-            flux = cube.dat[:, i]
-            err = abs(cube.var[:, i])**0.5
-            dq = cube.dq[:, i]
+    if cube.dat.ndim == 1:
+        print('[spec]=[1] out of [1]', file=logfile)
+        flux = cube.dat
+        err = cube.err
+        dq = cube.dq
+    elif cube.dat.ndim == 2:
+        print(f'[spec]=[{i+1}] out of [{cube.ncols}]', file=logfile)
+        flux = cube.dat[:, i]
+        err = cube.err[:, i]
+        dq = cube.dq[:, i]
     else:
+        print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]',
+              file=logfile)
         flux = cube.dat[i, j, :]
-        err = abs(cube.var[i, j, :])**0.5
+        err = cube.var[i, j, :]
         dq = cube.dq[i, j, :]
 
     errmax = max(err)
@@ -96,12 +94,14 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
         j = tmpj
         print(f'Reference coordinate: [col, row]=[{i+1}, {j+1}]', file=logfile)
 
-    if oned:
+    if cube.dat.ndim == 1:
+        outlab = '{[outdir]}{[label]}'.format(initdat, initdat)
+    elif cube.dat.ndim == 2:
         outlab = '{[outdir]}{[label]}_{:04d}'.format(initdat, initdat, i+1)
     else:
         outlab = '{[outdir]}{[label]}_{:04d}_{:04d}'.format(initdat,
                                                             initdat, i+1, j+1)
-        
+
 #   Apply DQ plane
     indx_bad = np.nonzero(dq > 0)
     if indx_bad[0].size > 0:

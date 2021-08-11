@@ -6,7 +6,6 @@ Created on Tue Jun  9 12:35:25 2020
 """
 
 import numpy as np
-from astropy.table import Table
 from astropy.constants import c
 
 

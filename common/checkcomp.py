@@ -114,7 +114,7 @@ def checkcomp(linepars, linetie, ncomp, siglim,
                         if ignoreline == line:
                             doignore = True
                 if not doignore:
-                    pdb.set_trace()
+                    # pdb.set_trace()
                     igd = \
                         ((linepars['flux'][line][:ncomp[line]] >
                           sigcut*linepars['fluxerr'][line]

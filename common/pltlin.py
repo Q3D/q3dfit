@@ -82,34 +82,62 @@ import pdb
 
 def pltlin(instr, pltpar, outfile):
 
-    param = instr['param']
     ncomp = instr['maxncomp']
     colors = ['Magenta', 'Green', 'Orange', 'Teal']
 
     wave = instr['wave']
     spectot = instr['spec']
     specstars = instr['cont_dat']
-#    speclines = instr['emlin_dat']
     modstars = instr['cont_fit']
     modlines = instr['emlin_fit']
     modtot = modstars + modlines
-#    ct_indx= instr['ct_indx']
 
-    zbase = instr['zstar']
+    # To-do: Get masking code from pltcont
 
-# Get masking code from pltcont
+    # lines
+    linelist = instr['linelist']['lines']
+    linelabel = instr['linelist']['name']
+    linetext = instr['linelist']['linelab']
+    # Sort in wavelength order
+    isortlam = np.argsort(linelist)
+    linelist = linelist[isortlam]
+    linelabel = linelabel[isortlam]
+    linetext = linetext[isortlam]
 
-    nlin = len(pltpar['label'])
-    linlab = pltpar['label']
-    linwav = pltpar['wave']
-    off = pltpar['off']
+    #
+    # Plotting parameters
+    #
     nx = pltpar['nx']
     ny = pltpar['ny']
-    if 'linoth' in pltpar:
-        linoth = pltpar['linoth']
+    # Look for line list, then determine center wavelengths
+    if 'line' in pltpar:
+        sub_linlab = pltpar['line']
+        nlin = len(sub_linlab)
+        linwav = np.empty(nlin, dtype='float32')
+        for i in range(0, nlin):
+            # Get wavelength from zeroth component
+            if sub_linlab[i] != '':
+                lmline = sub_linlab[i].replace('[', 'lb').replace(']', 'rb')
+                linwav[i] = instr['param'][f'{lmline}_0_cwv']
+            else:
+                linwav[i] = 0.
+            # Another option to get wavelengths: linelist value times z_star
+            # linwav[i] = instr['linelist'][i]*(1 + instr['zstar'])
+    # Get center wavelengths directly
+    elif 'center_obs' in pltpar:
+        linwav = np.array(pltpar['center_obs'])
+        nlin = len(linwav)
+    elif 'center_rest' in pltpar:
+        linwav = np.array(pltpar['center_rest']) * instr['zstar']
+        nlin = len(linwav)
+    # Size of plot in wavelength, in observed frame
+    if 'size' in pltpar:
+        size = np.array(pltpar['size'])
     else:
-        linoth = np.arange(1, nlin)
-    str(linoth)
+        size = np.full(nlin, 300.)  # default size currently 300 A ... fix for
+        # other units!
+    off = np.array([-1.*size/2., size/2.])
+    off = off.transpose()
 
     plt.style.use('dark_background')
     fig = plt.figure(figsize=(16, 13))
@@ -125,9 +153,8 @@ def pltlin(instr, pltpar, outfile):
 
         # create xran and ind
         linwavtmp = linwav[i]
-        offtmp = np.array(off)[i, :]
-        xran = (linwavtmp + offtmp)
-        xran = xran*(1 + zbase)
+        offtmp = off[i, :]
+        xran = linwavtmp + offtmp
         ind = np.array([0])
         for h in range(0, len(wave)):
             if wave[h] > xran[0] and wave[h] < xran[1]:
@@ -138,8 +165,6 @@ def pltlin(instr, pltpar, outfile):
             # create subplots
             ax0 = plt.Subplot(fig, inner[0])
             ax1 = plt.Subplot(fig, inner[1])
-            ax0.annotate(linlab[i], (0.05, 0.9), xycoords='axes fraction',
-                         va='center', fontsize=15)
             fig.add_subplot(ax0)
             fig.add_subplot(ax1)
             # create x-ticks
@@ -219,20 +244,21 @@ def pltlin(instr, pltpar, outfile):
             xtit = 'Observed Wavelength ($\AA$)'
             ytit = ''
             ax0.plot(wave, ymod, color='Red', linewidth=2)
+            # Plot all lines visible in plot range
             for j in range(0, ncomp):
-                flux = cmplin(instr, linlab[i], j, velsig=True)
-                ax0.plot(wave, yran[0] + flux, color=colors[j],
-                         linewidth=1, linestyle='dashed')
-                if linoth[0, i] != '':
-                    for k in range(0, (len(linoth[:, i]))):
-                        if linoth[k, i] != '':
-                            flux = cmplin(instr, linoth[k, i], j, velsig=True)
-                            ax0.plot(wave, yran[0] + flux,
-                                     color=colors[j-1],
-                                     linewidth=1, linestyle='dashed')
-            xloc = xran[0]+(xran[1]-xran[0])*(float(0.05))
-            yloc = yran[0]+(yran[1]-yran[0])*(float(0.85))
-            plt.text(xloc, yloc, linlab[i], fontsize=2)
+                ylaboff = 0.07
+                for k, line in enumerate(linelabel):
+                    lmline = line.replace('[', 'lb').replace(']', 'rb')
+                    if instr['param'][f'{lmline}_{j}_cwv'] >= xran[0] and \
+                        instr['param'][f'{lmline}_{j}_cwv'] <= xran[1]:
+                        flux = cmplin(instr, line, j, velsig=True)
+                        ax0.plot(wave, yran[0] + flux, color=colors[j],
+                                 linewidth=2, linestyle='dashed')
+                        ax0.annotate(linetext[k], (0.05, 1. - ylaboff),
+                                     xycoords='axes fraction',
+                                     va='center', fontsize=15)
+                        ylaboff += 0.07
+
         # if nmasked > 0:
         #   for r in range(0,nmasked):
         #        ax0.plot([masklam[r,0], masklam[r,1]], [yran[0], yran[0]],linewidth=8, color='Cyan')

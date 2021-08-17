@@ -73,6 +73,7 @@
 # Translated into python by Lily Whitesell, June 2020
 
 from q3dfit.common.cmplin import cmplin
+from q3dfit.exceptions import InitializationError
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -109,12 +110,12 @@ def pltlin(instr, pltpar, outfile):
     #
     nx = pltpar['nx']
     ny = pltpar['ny']
-    # Look for line list, then determine center wavelengths
+    # Look for line list, then determine center of plot window from fitted
+    # wavelength
     if 'line' in pltpar:
         sub_linlab = pltpar['line']
-        nlin = len(sub_linlab)
-        linwav = np.empty(nlin, dtype='float32')
-        for i in range(0, nlin):
+        linwav = np.empty(len(sub_linlab), dtype='float32')
+        for i in range(0, len(sub_linlab)):
             # Get wavelength from zeroth component
             if sub_linlab[i] != '':
                 lmline = sub_linlab[i].replace('[', 'lb').replace(']', 'rb')
@@ -123,13 +124,18 @@ def pltlin(instr, pltpar, outfile):
                 linwav[i] = 0.
             # Another option to get wavelengths: linelist value times z_star
             # linwav[i] = instr['linelist'][i]*(1 + instr['zstar'])
-    # Get center wavelengths directly
+    # If linelist not present, get cwavelength enter of plot window from list
+    # first option: wavelength center specified in observed (plotted) frame
     elif 'center_obs' in pltpar:
         linwav = np.array(pltpar['center_obs'])
-        nlin = len(linwav)
+    # second option: wavelength center specified in rest frame, then converted
+    # to observed (plotted) frame
     elif 'center_rest' in pltpar:
         linwav = np.array(pltpar['center_rest']) * instr['zstar']
-        nlin = len(linwav)
+    else:
+        raise InitializationError('LINE, CENTER_OBS, or CENTER_REST ' +
+                                  'list not given in ARGSPLTLIN dictionary')
+    nlin = len(linwav)
     # Size of plot in wavelength, in observed frame
     if 'size' in pltpar:
         size = np.array(pltpar['size'])

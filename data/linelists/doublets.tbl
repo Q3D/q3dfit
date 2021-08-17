@@ -1,0 +1,28 @@
+\ Created 2021 August 16 by David Rupke
+\ Lines ordered by increasing average wavelength
+\ Ratio value and/or lower/upper limits are of the first line
+\ divided by the second
+\ [OII]:
+\ Limits from Pradhan et al. 2006, MNRAS, 366, L6
+\ [NI]:
+\ See Ferland+12 for collisional case, Bautista99 for other cases.
+\ From previous experience (IFSFIT):
+\   Upper limit was originally 3, but found that it would peg at that
+\   and then the error for [NI]5200 would be artificially large, and
+\   it would be removed from the fit.
+\   Can fix to 1.5 (low density collisional limit, applicable to n <~ 10^3
+\   cm^-3; Ferland+12 Appendix A.3) to solve artificially large errors in
+\   [NI]5200.
+|            line1|            line2| fixed_ratio|    ratio|    lower|    upper|
+|             char|             char|        long|   double|   double|   double|
+|                 |                 |            |         |         |         |
+|             null|             null|        null|     null|     null|     null|
+          MgII2796          MgII2803            0      null        1.        2.
+         [NeV]3426         [NeV]3345            1        3.        3.        3.
+       [NeIII]3869       [NeIII]3967            1        3.        3.        3.
+         [OII]3729         [OII]3726            0      null      0.35       1.5
+        [OIII]5007        [OIII]4959            1        3.        3.        3.
+          [NI]5200          [NI]5198	        0      null       0.6        4.
+          [OI]6300          [OI]6364            1        3.        3.        3.
+         [NII]6583         [NII]6548            1        3.        3.        3.
+         [SII]6716         [SII]6731            0      null      0.44      1.43

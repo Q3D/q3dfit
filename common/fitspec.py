@@ -111,7 +111,9 @@
        2020jun22, YI, replaced emission line MPFIT with LMFIT (testing separately)
        2020jun22, YI, added scipy modules to extract XDR data (replace the IDL restore function)
        2020jun23, YI, importing Nadia's airtovac() and the pPPXF log_rebin() functions
-       2020jun24, YI, importing the copy module and creating duplicate flux and err variables. I keep getting "ValueError: assignment destination is read-only"
+       2020jun24, YI, importing the copy module and creating duplicate flux
+                      and err variables. I keep getting "ValueError:
+                      assignment destination is read-only"
        2020jun26, YI, fixed bugs. tested the manygauss() emission line fit call. skipped the continuum fits
        2020jun28, YI, tested the gmos.py line initialization calls for parameter set-up. minor changes
        2020jul01, DSNR, bug fixes

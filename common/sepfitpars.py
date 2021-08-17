@@ -355,31 +355,33 @@ def sepfitpars(linelist, param, perror, maxncomp, waveran = None, tflux = False,
                     tfe[line] = 0.
 
         # Special doublet cases: combine fluxes from each line
-        if not (doublets is None):
-            ndoublets = doublets.shape[0]
+        if doublets is not None:
 
-            for i in np.arange(0, ndoublets):
-                if (np.count_nonzero(linelist['name'] == doublets[i,0]) == 1) \
-                    and (np.count_nonzero(linelist['name'] == doublets[i,1]) == 1):
-# new line label
-                    dkey = doublets[i,0]+'+'+doublets[i,1]
-# add fluxes
-                    tf[dkey] = tf[doublets[i,0]]+tf[doublets[i,1]]
-                    flux[dkey] = flux[doublets[i,0]]+flux[doublets[i,1]]
-                    fluxpk[dkey] = fluxpk[doublets[i,0]]+fluxpk[doublets[i,1]]
-                    fluxpk_obs[dkey] = fluxpk_obs[doublets[i,0]]+fluxpk_obs[doublets[i,1]]
-# add flux errors in quadrature
-                    tfe[dkey] = np.sqrt(tfe[doublets[i,0]]**2. + tfe[doublets[i,1]]**2.)
-                    fluxerr[dkey] = np.sqrt(fluxerr[doublets[i,0]]**2. + fluxerr[doublets[i,1]]**2.)
-                    fluxpkerr[dkey] = np.sqrt(fluxpkerr[doublets[i,0]]**2. + fluxpkerr[doublets[i,1]]**2.)
-                    fluxpkerr_obs[dkey] = np.sqrt(fluxpkerr_obs[doublets[i,0]]**2. + fluxpkerr_obs[doublets[i,1]]**2.)
-# average waves and sigmas and errors
-                    wave[dkey] = (wave[doublets[i,0]]+wave[doublets[i,1]])/2.
-                    waveerr[dkey] = (waveerr[doublets[i,0]]+waveerr[doublets[i,1]])/2.
-                    sigma[dkey] = (sigma[doublets[i,0]]+sigma[doublets[i,1]])/2.
-                    sigmaerr[dkey] = (sigmaerr[doublets[i,0]]+sigmaerr[doublets[i,1]])/2.
-                    sigma_obs[dkey] = (sigma_obs[doublets[i,0]]+sigma_obs[doublets[i,1]])/2.
-                    sigmaerr_obs[dkey] = (sigmaerr_obs[doublets[i,0]]+sigmaerr_obs[doublets[i,1]])/2.
+            for (name1, name2) in zip(doublets['line1'], doublets['line2']):
+                if name1 in linelist['name'] and name2 in linelist['name']:
+                    # new line label
+                    dkey = name1+'+'+name2
+                    # add fluxes
+                    tf[dkey] = tf[name1]+tf[name2]
+                    flux[dkey] = flux[name1]+flux[name2]
+                    fluxpk[dkey] = fluxpk[name1]+fluxpk[name2]
+                    fluxpk_obs[dkey] = fluxpk_obs[name1]+fluxpk_obs[name2]
+                    # add flux errors in quadrature
+                    tfe[dkey] = np.sqrt(tfe[name1]**2. + tfe[name2]**2.)
+                    fluxerr[dkey] = np.sqrt(fluxerr[name1]**2. +
+                                            fluxerr[name2]**2.)
+                    fluxpkerr[dkey] = np.sqrt(fluxpkerr[name1]**2. +
+                                              fluxpkerr[name2]**2.)
+                    fluxpkerr_obs[dkey] = np.sqrt(fluxpkerr_obs[name1]**2. +
+                                                  fluxpkerr_obs[name2]**2.)
+                    # average waves and sigmas and errors
+                    wave[dkey] = (wave[name1]+wave[name2])/2.
+                    waveerr[dkey] = (waveerr[name1]+waveerr[name2])/2.
+                    sigma[dkey] = (sigma[name1]+sigma[name2])/2.
+                    sigmaerr[dkey] = (sigmaerr[name1]+sigmaerr[name2])/2.
+                    sigma_obs[dkey] = (sigma_obs[name1]+sigma_obs[name2])/2.
+                    sigmaerr_obs[dkey] = (sigmaerr_obs[name1] +
+                                          sigmaerr_obs[name2])/2.
 
         outstr = {'flux': flux, 'fluxerr': fluxerr,
                   'fluxpk': fluxpk, 'fluxpkerr': fluxpkerr,

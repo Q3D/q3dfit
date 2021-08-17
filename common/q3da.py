@@ -28,40 +28,33 @@ Created: 7/9/2020
 @author: hadley
 
 """
-import copy
+import copy as copy
 import importlib
 import numpy as np
-import pdb
 import os
+import pdb
 
+from astropy.table import Table
 from ppxf.ppxf_util import log_rebin
 from q3dfit.common.linelist import linelist
 from q3dfit.common.readcube import CUBE
 from q3dfit.common.sepfitpars import sepfitpars
-from q3dfit.common.cmpweq import cmpweq
+# from q3dfit.common.cmpweq import cmpweq
 from q3dfit.common import qsohostfcn
 from scipy.special import legendre
 from scipy import interpolate
-from timeit import default_timer as timer
-from importlib import import_module
-from q3dfit.common.fitspec import fitspec
-import pickle
+# from timeit import default_timer as timer
+
 
 def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
 
     bad = 1.0 * 10**99
-
-# reads initdat from initialization file ie pg1411 (initproc is a string)
-    #module = importlib.import_module('q3dfit.init.' + initproc)
-    #fcninitproc = getattr(module, initproc)
-
 
     if isinstance(initproc, str):
         from q3dfit.common.q3df_helperFunctions import __get_initdat
         initdat = __get_initdat(initproc)
     else:
         initdat = initproc
-    #if 'donad' in initdat: do later
 
     if 'noemlinfit' not in initdat:
         # get linelist
@@ -70,29 +63,20 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
         else:
             listlines = linelist(initdat['lines'])
 
-        # linelist with doublets to combine
-        # needs to have shape Ndoublets x 2, even if Ndoublets=1
-        emldoublets = np.array([['[SII]6716', '[SII]6731'],
-                                ['[OII]3726', '[OII]3729'],
-                                ['[NI]5198', '[NI]5200'],
-                                ['[NeIII]3869', '[NeIII]3967'],
-                                ['[NeV]3345', '[NeV]3426'],
-                                ['MgII2796', 'MgII2803']])
-        ndoublets = emldoublets.shape[0]
+        # table with doublets to combine
+        doublets = Table.read('../data/linelists/doublets.tbl', format='ipac')
+        # make a copy of singlet list
+        lines_with_doublets = copy.deepcopy(initdat['lines'])
+        # append doublet names to singlet list
+        for (name1, name2) in zip(doublets['line1'], doublets['line2']):
+            if name1 in listlines['name'] and name2 in listlines['name']:
+                lines_with_doublets.append(name1+'+'+name2)
 
-        lines_with_doublets = initdat['lines']
-
-        for i in range(0, ndoublets):
-            if (emldoublets[i][0] in listlines['name']) and \
-                    (emldoublets[i][1] in listlines['name']):
-                dkey = emldoublets[i][0]+'+'+emldoublets[i][1]
-                lines_with_doublets.append(dkey)
-
-        if 'argslinelist' in initdat:
-            listlines_with_doublets = linelist(lines_with_doublets,
-                                               **initdat['argslinelist'])
-        else:
-            listlines_with_doublets = linelist(lines_with_doublets)
+        # if 'argslinelist' in initdat:
+        #     listlines_with_doublets = linelist(lines_with_doublets,
+        #                                        **initdat['argslinelist'])
+        # else:
+        #     listlines_with_doublets = linelist(lines_with_doublets)
 
     if 'fcnpltcont' in initdat:
         fcnpltcont = initdat['fcnpltcont']
@@ -314,7 +298,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                         sepfitpars(listlines, struct['param'],
                                    struct['perror'],
                                    initdat['maxncomp'], tflux=True,
-                                   doublets=emldoublets)
+                                   doublets=doublets)
 #                lineweqs = cmpweq(struct, listlines, doublets = emldoublets)
 
                 # plot emission line data, print data to a file

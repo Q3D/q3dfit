@@ -8,6 +8,7 @@ Initialize parameters for fitting.
 @author: drupke
 """
 
+from astropy.table import Table
 from lmfit import Model
 import numpy as np
 import pdb
@@ -17,11 +18,12 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             lratfix=None, siglim=None, sigfix=None, blrcomp=None,
             blrlines=None, specres=None):
 
-    dblt_pairs = {'[NII]6548': '[NII]6583',
-                  '[NeIII]3967': '[NeIII]3869',
-                  '[NeV]2422': '[NeV]3426',
-                  '[OI]6364': '[OI]6300',
-                  '[OIII]4959': '[OIII]5007'}
+    # Get fixed-ratio doublet pairs for tying intensities
+    doublets = Table.read('../data/linelists/doublets.tbl', format='ipac')
+    dblt_pairs = dict()
+    for idx, name in enumerate(doublets['line1']):
+        if doublets['fixed_ratio'][idx] == 1:
+            dblt_pairs[doublets['line2'][idx]] = doublets['line1'][idx]
 
     if not specres:
         specres = 0.

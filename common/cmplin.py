@@ -12,8 +12,8 @@ from astropy.constants import c
 
 def cmplin(instr, line, comp, velsig=False):
 
-    line = line.replace('[', 'lb').replace(']', 'rb')
-    mName = '{0}_{1}_'.format(line, comp)
+    lmline = line.replace('[', 'lb').replace(']', 'rb')
+    mName = '{0}_{1}_'.format(lmline, comp)
     gausspar = np.zeros(3)
     gausspar[0] = instr['param'][mName+'flx']
     gausspar[1] = instr['param'][mName+'cwv']

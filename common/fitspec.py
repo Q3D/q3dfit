@@ -24,7 +24,7 @@
      zstar: in, required, type=structure
        Initial guess for stellar redshift
      listlines: in, required, type=hash(lines)
-       Emission line rest frame wavelengths.
+       Emission line rest frame wavelengths
      listlinesz: in, required, type=hash(lines\,ncomp)
        Emission line observed frame wavelengths.
      ncomp: in, required, type=hash(lines)
@@ -341,8 +341,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
     # Log rebin galaxy spectrum for use with PPXF, this time with
     # errors corrected before rebinning
-    gdflux_log,gdlambda_log,velscale = log_rebin(fitran,gdflux)
-    gderrsq_log,_,_ = log_rebin(fitran,np.power(gderr,2.))
+    gdflux_log, gdlambda_log,velscale = log_rebin(fitran,gdflux)
+    gderrsq_log, _, _ = log_rebin(fitran, np.power(gderr, 2.))
 
     gderr_log = np.sqrt(gderrsq_log)
 
@@ -372,7 +372,12 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                                                 listlines['name'].size],
                                                maskwidths_def, dtype='float'),
                                        names=listlines['name'])
-
+            # This loop overwrites nans in the case that ncomp gets lowered
+            # by checkcomp; these nans cause masklin to choke
+            for line in listlines['name']:
+                for comp in range(ncomp[line], initdat['maxncomp']):
+                    maskwidths[line][comp] = 0.
+                    listlinesz[line][comp] = 0.
             ct_indx = masklin(gdlambda, listlinesz, maskwidths,
                               nomaskran=nomaskran)
             # Mask emission lines in log space
@@ -393,8 +398,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             module = import_module('q3dfit.common.' + initdat['fcncontfit'])
             fcncontfit = getattr(module, initdat['fcncontfit'])
 
-            if initdat['fcncontfit']=='questfit' or istemp==b'0':
-              istemp=None
+            if initdat['fcncontfit'] == 'questfit' or istemp == b'0':
+                istemp = None
 
             if istemp:
                 templatelambdaz_tmp = templatelambdaz
@@ -405,50 +410,23 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
             if 'argscontfit' in initdat:
                 argscontfit_use = initdat['argscontfit']
-                if initdat['fcncontfit'] == 'fitqsohost':
-                    argscontfit_use['fitran'] = fitran
-                if 'uselog' in initdat['argscontfit']:
-                    argscontfit_use['index_log'] = ct_indx_log
-                if 'usecolrow' in initdat['argscontfit'] and col and row:
-                    argscontfit_use['colrow'] = [col, row]
-
-                if initdat['fcncontfit'] == 'fitpoly':
-                    continuum = fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, zstar, fitord=3,
-                               quiet=quiet)[0]
-                    ct_coeff=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, zstar, fitord=3,
-                               quiet=quiet)[1]
-                    zstar=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, zstar, fitord=3,
-                               quiet=quiet)[2]
-                else:
-                  continuum, ct_coeff, zstar = \
-                    fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, zstar,
-                               quiet=quiet, **argscontfit_use)
-
-                ppxf_sigma = 0.
-                if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
-                    'refit' in initdat['argscontfit']:
-                    ppxf_sigma = ct_coeff['ppxf_sigma']
-
             else:
-                if initdat['fcncontfit'] == 'fitpoly':
-                    continuum = fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, zstar, fitord=3,
-                               quiet=quiet)[0]
-                    ct_coeff=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, zstar, fitord=3,
-                               quiet=quiet)[1]
-                    zstar=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, zstar, fitord=3,
-                               quiet=quiet)[2]
-                else:
-                  continuum = \
-                    fcncontfit(gdlambda, gdflux, gderr, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, ct_coeff, zstar,
-                               quiet=quiet)
+                argscontfit_use = dict()
+            if initdat['fcncontfit'] == 'fitqsohost':
+                argscontfit_use['fitran'] = fitran
+            if 'uselog' in argscontfit_use.keys():
+                argscontfit_use['index_log'] = ct_indx_log
+
+            continuum, ct_coeff, zstar = \
+                fcncontfit(gdlambda, gdflux, gdweight,
+                           templatelambdaz_tmp,
+                           templateflux_tmp, ct_indx, zstar,
+                           quiet=quiet, **argscontfit_use)
+
+            if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
+                'refit' in initdat['argscontfit']:
+                ppxf_sigma = ct_coeff['ppxf_sigma']
+            else:
                 ppxf_sigma = 0.
 
             add_poly_weights = 0.
@@ -627,9 +605,12 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # pdb.set_trace()
 
         # Actual fit
+        # x_scale = 'jac' is option to minimizer 'least_squares';
+        # greatly speeds up multi-gaussian fit in at least one test case
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
                            method='least_squares', weights=gdweight_nocnt,
-                           nan_policy='omit')
+                           nan_policy='omit', fit_kws={'x_scale':'jac'})
         specfit = lmout.best_fit
         if not quiet:
             print(lmout.fit_report(show_correl=False))

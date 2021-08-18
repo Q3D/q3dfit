@@ -204,12 +204,11 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, onefit,
 
             if not quiet:
                 print('FITLOOP: First call to FITSPEC')
-
             structinit = fitspec(cube.wave, flux, err, dq, zstar, listlines,
-                               listlinesz, ncomp, initdat, quiet=quiet,
+                                 listlinesz, ncomp, initdat, quiet=quiet,
                                  siglim_gas=siglim_gas,
                                  siginit_gas=siginit_gas,
-                                 tweakcntfit=tweakcntfit, col=i+1, row=j+1)
+                                 tweakcntfit=tweakcntfit)
 
             # if not quiet:
             #    print('FIT STATUS: '+structinit['fitstatus'])
@@ -221,7 +220,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, onefit,
 
                 if 'noemlinfit' not in initdat and ct_comp_emlist > 0:
 
-                    # set emission line mask pa rameters
+                    # set emission line mask parameters
                     linepars = sepfitpars(listlines, structinit['param'],
                                           structinit['perror'],
                                           initdat['maxncomp'])
@@ -253,7 +252,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, onefit,
                                  peakinit=peakinit_tmp,
                                  siginit_gas=siginit_gas_tmp,
                                  siglim_gas=siglim_gas,
-                                 tweakcntfit=tweakcntfit, col=i+1, row=j+1)
+                                 tweakcntfit=tweakcntfit)
 
                 # if not quiet:
                 #    print('FIT STATUS: '+structinit['fitstatus'])

@@ -79,7 +79,7 @@
 #    along with this program.  If not, see
 #    http://www.gnu.org/licenses/.
 #
-#-
+#
 import numpy as np
 import pdb
 from astropy.table import Table
@@ -87,8 +87,8 @@ from scipy import constants
 from q3dfit.common.gaussflux import gaussflux
 
 
-def sepfitpars(linelist, param, perror, maxncomp, waveran = None, tflux = False,
-               doublets = None):
+def sepfitpars(linelist, param, perror, maxncomp, waveran=None,
+               tflux=False, doublets=None):
 
     # DW: param, perror and parinfo are lists of dictionaries which are not easy to handle
     # I therefore re-structure them into a single dictionary each
@@ -160,23 +160,27 @@ def sepfitpars(linelist, param, perror, maxncomp, waveran = None, tflux = False,
             for i in range(0, maxncomp):
 
                 # indices
-                lmline = line.replace('[', 'lb').replace(']', 'rb').replace('.', 'pt')
+                lmline = line.replace('[', 'lb').replace(']', 'rb').\
+                    replace('.', 'pt')
                 ifluxpk = '{0}_{1}_flx'.format(lmline, i)
                 isigma = '{0}_{1}_sig'.format(lmline, i)
                 iwave = '{0}_{1}_cwv'.format(lmline, i)
                 ispecres ='{0}_{1}_srsigslam'.format(lmline, i)
 
-                wave[line][i] = param[iwave]
-                sigma[line][i] = param[isigma]
-                fluxpk[line][i] = param[ifluxpk]
-                sigma_obs[line][i] = param[isigma]
-                fluxpk_obs[line][i] = param[ifluxpk]
+                # make sure the line was fit -- necessary if, e.g., #
+                # components reset to 0 by checkcomp
+                if iwave in param.keys():
+                    wave[line][i] = param[iwave]
+                    sigma[line][i] = param[isigma]
+                    fluxpk[line][i] = param[ifluxpk]
+                    sigma_obs[line][i] = param[isigma]
+                    fluxpk_obs[line][i] = param[ifluxpk]
 
-                waveerr[line][i] = perror[iwave]
-                sigmaerr[line][i] = perror[isigma]
-                sigmaerr_obs[line][i] = perror[isigma]
-                fluxpkerr[line][i] = perror[ifluxpk]
-                fluxpkerr_obs[line][i] = perror[ifluxpk]
+                    waveerr[line][i] = perror[iwave]
+                    sigmaerr[line][i] = perror[isigma]
+                    sigmaerr_obs[line][i] = perror[isigma]
+                    fluxpkerr[line][i] = perror[ifluxpk]
+                    fluxpkerr_obs[line][i] = perror[ifluxpk]
 
             # Because of the way these lines are tied to others (with a division!) they
             # can yield NaNs in components that aren't fit. Correct this.
@@ -289,59 +293,60 @@ def sepfitpars(linelist, param, perror, maxncomp, waveran = None, tflux = False,
             #         fluxpkerr_obs['[OII]3729'][ipegged] = fluxpkerr_obs['[OII]3726'][ipegged]
             #     fluxpkerr[line] = fluxpkerr_obs[line]
 
-                # Add back in spectral resolution
-                sigmatmp = sigma[line][i]/(constants.c/1.e3)*wave[line][i]
+                    # Add back in spectral resolution
 
-                # Make sure we're not adding something to 0 --
-                # i.e. the component wasn't fit.
-                # Can't use sigma = 0 as criterion since the line could be
-                # fitted but unresolved.
-                if fluxpk[line][i] > 0:
-                    sigmatmp = np.sqrt(sigmatmp**2. + param[ispecres]**2.)
-                    # in km/s
-                    sigma_obs[line][i] = \
-                        sigmatmp/wave[line][i]*(constants.c/1.e3)
-                    # error propagation for adding in quadrature
-                    sigmaerr_obs[line][i] *= \
-                        sigma[line][i]/(constants.c/1.e3)*wave[line][i] /\
-                        sigmatmp
-                    # Correct peak flux and error for deconvolution
-                    fluxpk[line][i] *= sigma_obs[line][i]/sigma[line][i]
-                    fluxpkerr[line][i] *= sigma_obs[line][i]/sigma[line][i]
+                    # Make sure we're not adding something to 0 --
+                    # i.e. the component wasn't fit.
+                    # Can't use sigma = 0 as criterion since the line could be
+                    # fitted but unresolved.
+                    if fluxpk[line][i] > 0:
+                        sigmatmp = \
+                            sigma[line][i]/(constants.c/1.e3)*wave[line][i]
+                        sigmatmp = np.sqrt(sigmatmp**2. + param[ispecres]**2.)
+                        # in km/s
+                        sigma_obs[line][i] = \
+                            sigmatmp/wave[line][i]*(constants.c/1.e3)
+                        # error propagation for adding in quadrature
+                        sigmaerr_obs[line][i] *= \
+                            sigma[line][i]/(constants.c/1.e3)*wave[line][i] /\
+                            sigmatmp
+                        # Correct peak flux and error for deconvolution
+                        fluxpk[line][i] *= sigma_obs[line][i]/sigma[line][i]
+                        fluxpkerr[line][i] *= sigma_obs[line][i]/sigma[line][i]
 
-                # Compute total Gaussian flux
-                # sigma and error need to be in wavelength space
-                gflux = gaussflux(fluxpk_obs[line][i],sigmatmp,
-                                  normerr=fluxpkerr_obs[line][i],
-                                  sigerr=sigmaerr_obs[line][i]/
-                                  (constants.c/1.e3)*wave[line][i])
-                flux[line][i] = gflux['flux']
-                fluxerr[line][i] = gflux['flux_err']
+                    # Compute total Gaussian flux
+                    # sigma and error need to be in wavelength space
+                    gflux = gaussflux(fluxpk_obs[line][i],sigmatmp,
+                                      normerr=fluxpkerr_obs[line][i],
+                                      sigerr=sigmaerr_obs[line][i]/
+                                      (constants.c/1.e3)*wave[line][i])
+                    flux[line][i] = gflux['flux']
+                    fluxerr[line][i] = gflux['flux_err']
 
-                # Set fluxes to 0 outside of wavelength range,
-                # or if NaNs or infinite errors
+                    # Set fluxes to 0 outside of wavelength range,
+                    # or if NaNs or infinite errors
 
-                inoflux_wr = False
-                if waveran:
-                    inoflux_wr = \
-                        ((waveran[0] > wave[line][i] *
-                         (1. - 3.*sigma[line][i] /
-                          (constants.c/1.e3))) or
-                         (waveran[1] < wave[line][i] *
-                          (1. + 3.*sigma[line][i] /
-                           (constants.c/1.e3))))
+                    inoflux_wr = False
+                    if waveran:
+                        inoflux_wr = \
+                            ((waveran[0] > wave[line][i] *
+                              (1. - 3.*sigma[line][i] /
+                               (constants.c/1.e3))) or
+                             (waveran[1] < wave[line][i] *
+                              (1. + 3.*sigma[line][i] /
+                               (constants.c/1.e3))))
 
-                inoflux = \
-                    ((np.isfinite(fluxerr[line][i]) is False) or
-                     (np.isfinite(fluxpkerr[line][i]) is False))
+                    inoflux = \
+                        ((np.isfinite(fluxerr[line][i]) is False) or
+                         (np.isfinite(fluxpkerr[line][i]) is False))
 
-                if inoflux_wr or inoflux:
-                    flux[line][i] = 0.
-                    fluxerr[line][i] = 0.
-                    fluxpk[line][i] = 0.
-                    fluxpkerr[line][i] = 0.
-                    fluxpk_obs[line][i] = 0.
-                    fluxpkerr_obs[line][i] = 0.
+                    if inoflux_wr or inoflux:
+                        flux[line][i] = 0.
+                        fluxerr[line][i] = 0.
+                        fluxpk[line][i] = 0.
+                        fluxpkerr[line][i] = 0.
+                        fluxpk_obs[line][i] = 0.
+                        fluxpkerr_obs[line][i] = 0.
 
             # Compute total fluxes summed over components
             igd = np.where(flux[line] > 0.)

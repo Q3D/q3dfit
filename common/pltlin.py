@@ -119,11 +119,15 @@ def pltlin(instr, pltpar, outfile):
             # Get wavelength from zeroth component
             if sub_linlab[i] != '':
                 lmline = sub_linlab[i].replace('[', 'lb').replace(']', 'rb')
-                linwav[i] = instr['param'][f'{lmline}_0_cwv']
+                # if ncomp > 0
+                if f'{lmline}_0_cwv' in instr['param'].keys():
+                    linwav[i] = instr['param'][f'{lmline}_0_cwv']
+                # otherwise
+                else:
+                    linwav[i] = instr['linelist']['lines'][i] * \
+                        (1. + instr['zstar'])
             else:
                 linwav[i] = 0.
-            # Another option to get wavelengths: linelist value times z_star
-            # linwav[i] = instr['linelist'][i]*(1 + instr['zstar'])
     # If linelist not present, get cwavelength enter of plot window from list
     # first option: wavelength center specified in observed (plotted) frame
     elif 'center_obs' in pltpar:
@@ -255,11 +259,17 @@ def pltlin(instr, pltpar, outfile):
                 ylaboff = 0.07
                 for k, line in enumerate(linelabel):
                     lmline = line.replace('[', 'lb').replace(']', 'rb')
-                    if instr['param'][f'{lmline}_{j}_cwv'] >= xran[0] and \
-                        instr['param'][f'{lmline}_{j}_cwv'] <= xran[1]:
-                        flux = cmplin(instr, line, j, velsig=True)
-                        ax0.plot(wave, yran[0] + flux, color=colors[j],
-                                 linewidth=2, linestyle='dashed')
+                    if f'{lmline}_{j}_cwv' in instr['param'].keys():
+                        refwav = instr['param'][f'{lmline}_{j}_cwv']
+                    else:
+                        irefwav = np.where(instr['linelist']['name'] == line)
+                        refwav = instr['linelist']['lines'][irefwav] * \
+                            (1. + instr['zstar'])
+                    if refwav >= xran[0] and refwav <= xran[1]:
+                        if f'{lmline}_{j}_cwv' in instr['param'].keys():
+                            flux = cmplin(instr, line, j, velsig=True)
+                            ax0.plot(wave, yran[0] + flux, color=colors[j],
+                                     linewidth=2, linestyle='dashed')
                         ax0.annotate(linetext[k], (0.05, 1. - ylaboff),
                                      xycoords='axes fraction',
                                      va='center', fontsize=15)

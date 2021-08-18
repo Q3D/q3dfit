@@ -80,7 +80,7 @@ import pdb
 
 
 def checkcomp(linepars, linetie, ncomp, siglim,
-              sigcut=None, ignore=None):
+              sigcut=None, ignore=[]):
 
     if sigcut is None:
         sigcut = 3.
@@ -101,38 +101,24 @@ def checkcomp(linepars, linetie, ncomp, siglim,
     for key, val in linetie.items():
         newlinetie[val].append(key)
 
-    # Loop through anchors
+    # Loop through anch
     for key, tiedlist in newlinetie.items():
         if ncomp[key] > 0:
             goodcomp = np.zeros(ncomp[key], dtype=int)
             # Loop through lines tied to each anchor,
             # looking for good components
             for line in tiedlist:
-                doignore = False
-                if ignore is not None:
-                    for ignoreline in ignore:
-                        if ignoreline == line:
-                            doignore = True
-                if not doignore:
-                    # pdb.set_trace()
-                    igd = \
-                        ((linepars['flux'][line][:ncomp[line]] >
-                          sigcut*linepars['fluxerr'][line]
-                          [:ncomp[line]]).any()
-                         or (linepars['fluxerr'][line]
-                              [:ncomp[line]] > 0.).any()
-                         or (linepars['sigma'][line][:ncomp[line]] >
-                              siglim[0]).any()
-                         or (linepars['sigma'][line][:ncomp[line]] <
-                              siglim[1]).any())
-                if np.size(igd) > 0:
-                    goodcomp[igd] += 1
-            # Find number of good components
-            tmpncomp = 0
-            for i in range(ncomp[key]):
-                if goodcomp[i] > 0:
-                    tmpncomp += 1
-            if tmpncomp != ncomp[key]:
+                if line not in ignore:
+                   igd = \
+                        (linepars['flux'][line][:ncomp[line]] >
+                         sigcut*linepars['fluxerr'][line][:ncomp[line]]) \
+                        & (linepars['fluxerr'][line][:ncomp[line]] > 0.) \
+                        & (linepars['sigma'][line][:ncomp[line]] > siglim[0]) \
+                        & (linepars['sigma'][line][:ncomp[line]] < siglim[1])
+                if igd.any():
+                    goodcomp[np.where(igd == True)] = 1
+            tmpncomp = goodcomp.sum()
+            if tmpncomp < ncomp[key]:
                 newncomp[key] = tmpncomp
                 #  Loop through lines tied to each anchor and
                 # set proper number of components

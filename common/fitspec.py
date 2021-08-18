@@ -571,7 +571,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     # Use first component as a proxy for all components
                     if listlinesz[line][0] >= min(gdlambda) and \
                         listlinesz[line][0] <= max(gdlambda):
-                        peakinit[line] = fline(listlinesz[line])
+                        peakinit[line] = fline(listlinesz[line][0:ncomp[line]])
                         # If initial guess is negative, set to 0 to prevent
                         # fitter from choking (since we limit peak to be >= 0)
                         peakinit[line] = \

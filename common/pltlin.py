@@ -124,7 +124,8 @@ def pltlin(instr, pltpar, outfile):
                     linwav[i] = instr['param'][f'{lmline}_0_cwv']
                 # otherwise
                 else:
-                    linwav[i] = instr['linelist']['lines'][i] * \
+                    idx = np.where(instr['linelist']['name'] == sub_linlab[i])
+                    linwav[i] = instr['linelist']['lines'][idx] * \
                         (1. + instr['zstar'])
             else:
                 linwav[i] = 0.

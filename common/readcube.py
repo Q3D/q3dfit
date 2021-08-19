@@ -158,20 +158,22 @@ class CUBE:
         self.hdu = hdu
         self.phu = hdu[0]
         try:
-            self.dat = (hdu[datext].data).T
+            self.dat = np.array((hdu[datext].data).T)
         except:
             print('CUBE: Data extension does not exist.', file=logfile)
         try:
-            self.var = (hdu[varext].data).T
-            self.err = copy.copy(self.var) ** 0.5
+            self.var = np.array((hdu[varext].data).T)
             badvar = np.where(self.var < 0)
             if np.size(badvar) > 0:
-                print('CUBE: Negative values encountered in variance array.',
+                print('CUBE: Negative values encountered in variance array.' +
+                      'Taking absolute value.',
                       file=logfile)
+            self.var = np.abs(self.var)
+            self.err = np.array(copy.copy(self.var) ** 0.5)
         except:
             print('CUBE: Variance extension does not exist.', file=logfile)
         try:
-            self.dq = (hdu[dqext].data).T
+            self.dq = np.array((hdu[dqext].data).T)
         except:
             print('CUBE: Quality flag extension does not exist.', file=logfile)
         try:

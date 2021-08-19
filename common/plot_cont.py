@@ -20,9 +20,10 @@ Init file optional parameters ('argscontplot'):
 The first options are the defaults.
 
 """
+import math
 import matplotlib.pyplot as plt
 import numpy as np
-import math
+import pdb
 
 
 def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
@@ -58,7 +59,6 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
     wave = instr['wave']
     specstars = instr['cont_dat']
     modstars = instr['cont_fit']
-
 
     # for optical spectra fit by fitqsohost or ppxf:
     if not IR:
@@ -101,10 +101,12 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
             ytit = '$\lambda$F$_\lambda$'
         elif fluxunit_in == 'flambda' and fluxunit_out == 'fnu':
             # multiply the flux by wavelength^2/c
-            specstars = list(np.multiply(specstars,
-                                         np.divide(np.multiply(wave, wave) ,c)))
-            modstars = list(np.multiply(modstars,
-                                        np.divide(np.multiply(wave, wave), c)))
+            specstars = \
+                list(np.multiply(specstars,
+                                 np.divide(np.multiply(wave, wave), c)))
+            modstars = \
+                list(np.multiply(modstars,
+                                 np.divide(np.multiply(wave, wave), c)))
             if ncomp > 0:
                 for i in range(0, ncomp):
                     compspec[i] = \
@@ -228,16 +230,11 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                 if ct > 0:
                     fig.add_subplot(3, 1, count)
 
-                    # finding max value between ydat and ymod at indices from i1
-                    for i in idict[count]:
-                        bigboy = max(ydat[i], ymod[i])
-                        if bigboy > maximum:
-                            maximum = bigboy
-                    # finding min
-                    for i in idict[count]:
-                        smallboy = min(ydat[i], ymod[i])
-                        if smallboy < minimum:
-                            minimum = smallboy
+                    # finding min/max values at indices from idict
+                    dat_et_mod = np.concatenate((ydat[idict[count]],
+                                                 ymod[idict[count]]))
+                    maximum = np.max(dat_et_mod)
+                    minimum = np.min(dat_et_mod)
                     # set min and max in yran
                     if yranminmax is not None:
                         yran = [minimum, maximum]
@@ -258,7 +255,8 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
 
                     ymodisort = ymodi[iysort]
                     if ysort[ny - ntop] < ysort[ny - 1] * maxthresh:
-                        yran[1] = max(ysort[0:ny - ntop] + ymodisort[0:ny - ntop])
+                        yran[1] = max(ysort[0:ny - ntop] +
+                                      ymodisort[0:ny - ntop])
 
                     # plotting
                     plt.xlim(xrans[count][0], xrans[count][1])

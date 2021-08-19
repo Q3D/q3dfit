@@ -1,5 +1,5 @@
 import numpy as np
-import pdb
+# import pdb
 import ppxf.ppxf_util as util
 import sys
 
@@ -31,7 +31,8 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
         Weights of each individual pixel to be fit
 
     template_wave: array
-        Wavelength array of the stellar template used as model for stellar continuum
+        Wavelength array of the stellar template used as model for
+        stellar continuum
 
     template_flux: array
         Flux of the stellar template used ass model for stellar continuum
@@ -72,7 +73,6 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     except:
         sys.exit('Cannot find quasar template (qsoxdr).')
 
-
     iqsoflux = np.where((qsowave >= fitran[0]) & (qsowave <= fitran[1]))
     qsoflux = qsoflux_full[iqsoflux]
 
@@ -81,7 +81,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     index = np.array(index)
     index = index.astype(dtype='int')
 
-    #err = 1/weight**0.5
+    # err = 1/weight**0.5
     iwave = wave[index]
     iflux = flux[index]
     iweight = weight[index]
@@ -120,7 +120,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
 
     ct_coeff = result.params
 
-    if refit == None:
+    if refit is None:
         return continuum, ct_coeff, zstar
     # Fit residual with PPXF
     if refit==True:
@@ -154,7 +154,11 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
                     'poly': pp.polyweights,
                     'ppxf_sigma': pp.sol[1]}
 
-        zstar += pp.sol[0]/c.to('km/s').value
+        # From ppxf docs:
+        # IMPORTANT: The precise relation between the output pPXF velocity
+        # and redshift is Vel = c*np.log(1 + z).
+        # See Section 2.3 of Cappellari (2017) for a detailed explanation.
+        zstar += np.exp(pp.sol[0]/c.to('km/s').value)-1.
 
         # host can't be negative
         ineg = np.where(continuum < 0)

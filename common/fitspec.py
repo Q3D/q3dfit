@@ -24,7 +24,7 @@
      zstar: in, required, type=structure
        Initial guess for stellar redshift
      listlines: in, required, type=hash(lines)
-       Emission line rest frame wavelengths.
+       Emission line rest frame wavelengths
      listlinesz: in, required, type=hash(lines\,ncomp)
        Emission line observed frame wavelengths.
      ncomp: in, required, type=hash(lines)
@@ -111,7 +111,9 @@
        2020jun22, YI, replaced emission line MPFIT with LMFIT (testing separately)
        2020jun22, YI, added scipy modules to extract XDR data (replace the IDL restore function)
        2020jun23, YI, importing Nadia's airtovac() and the pPPXF log_rebin() functions
-       2020jun24, YI, importing the copy module and creating duplicate flux and err variables. I keep getting "ValueError: assignment destination is read-only"
+       2020jun24, YI, importing the copy module and creating duplicate flux
+                      and err variables. I keep getting "ValueError:
+                      assignment destination is read-only"
        2020jun26, YI, fixed bugs. tested the manygauss() emission line fit call. skipped the continuum fits
        2020jun28, YI, tested the gmos.py line initialization calls for parameter set-up. minor changes
        2020jul01, DSNR, bug fixes
@@ -126,7 +128,6 @@ import copy
 import numpy as np
 import pdb
 import time
-import pickle
 from astropy.table import Table
 from importlib import import_module
 from lmfit import Model
@@ -134,11 +135,12 @@ from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
 from q3dfit.common.airtovac import airtovac
 from q3dfit.common.masklin import masklin
-from q3dfit.common import interptemp
+from q3dfit.common.interptemp import interptemp
 from scipy.interpolate import interp1d
 from q3dfit.common.questfit import questfit
 from q3dfit.common.plot_quest import plot_quest
 from q3dfit.common.plot_cont import plot_cont
+from astropy.constants import c
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
@@ -155,7 +157,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     # flux.setflags(write=True)
     # err.setflags(write=True)
 
-    c = 299792.458         # speed of light, km/s
     siginit_gas_def = 100.  # default sigma for initial guess
                             # for emission line widths
 
@@ -340,8 +341,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
     # Log rebin galaxy spectrum for use with PPXF, this time with
     # errors corrected before rebinning
-    gdflux_log,gdlambda_log,velscale = log_rebin(fitran,gdflux)
-    gderrsq_log,_,_ = log_rebin(fitran,np.power(gderr,2.))
+    gdflux_log, gdlambda_log,velscale = log_rebin(fitran,gdflux)
+    gderrsq_log, _, _ = log_rebin(fitran, np.power(gderr, 2.))
 
     gderr_log = np.sqrt(gderrsq_log)
 
@@ -371,11 +372,16 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                                                 listlines['name'].size],
                                                maskwidths_def, dtype='float'),
                                        names=listlines['name'])
-
-            ct_indx = masklin(gdlambda/(1+zstar), listlines, maskwidths,
+            # This loop overwrites nans in the case that ncomp gets lowered
+            # by checkcomp; these nans cause masklin to choke
+            for line in listlines['name']:
+                for comp in range(ncomp[line], initdat['maxncomp']):
+                    maskwidths[line][comp] = 0.
+                    listlinesz[line][comp] = 0.
+            ct_indx = masklin(gdlambda, listlinesz, maskwidths,
                               nomaskran=nomaskran)
             # Mask emission lines in log space
-            ct_indx_log = masklin(np.exp(gdlambda_log)/(1+zstar), listlines,
+            ct_indx_log = masklin(np.exp(gdlambda_log), listlinesz,
                                   maskwidths, nomaskran=nomaskran)
         else:
             ct_indx = np.arange(len(gdlambda))
@@ -392,8 +398,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             module = import_module('q3dfit.common.' + initdat['fcncontfit'])
             fcncontfit = getattr(module, initdat['fcncontfit'])
 
-            if initdat['fcncontfit']=='questfit' or istemp==b'0':
-              istemp=None
+            if initdat['fcncontfit'] == 'questfit' or istemp == b'0':
+                istemp = None
 
             if istemp:
                 templatelambdaz_tmp = templatelambdaz
@@ -404,56 +410,28 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
             if 'argscontfit' in initdat:
                 argscontfit_use = initdat['argscontfit']
-                if initdat['fcncontfit'] == 'fitqsohost':
-                    argscontfit_use['fitran'] = fitran
-                if 'uselog' in initdat['argscontfit']:
-                    argscontfit_use['index_log'] = ct_indx_log
-                if 'usecolrow' in initdat['argscontfit'] and col and row:
-                    argscontfit_use['colrow'] = [col, row]
-
-                if initdat['fcncontfit'] == 'fitpoly':
-                    continuum = fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, zstar, fitord=3,
-                               quiet=quiet)[0]
-                    ct_coeff=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, zstar, fitord=3,
-                               quiet=quiet)[1]
-                    zstar=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, zstar, fitord=3,
-                               quiet=quiet)[2]
-                else:
-                  continuum, ct_coeff, zstar = \
-                    fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, zstar,
-                               quiet=quiet, **argscontfit_use)
-
-                ppxf_sigma = 0.
-                if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
-                    'refit' in initdat['argscontfit']:
-                    ppxf_sigma = ct_coeff['ppxf_sigma']
-
             else:
-                if initdat['fcncontfit'] == 'fitpoly':
-                    continuum = fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, zstar, fitord=3,
-                               quiet=quiet)[0]
-                    ct_coeff=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, zstar, fitord=3,
-                               quiet=quiet)[1]
-                    zstar=fcncontfit(gdlambda, gdflux, gdweight, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, zstar, fitord=3,
-                               quiet=quiet)[2]
-                else:
-                  continuum = \
-                    fcncontfit(gdlambda, gdflux, gderr, templatelambdaz_tmp,
-                               templateflux_tmp, ct_indx, ct_coeff, zstar,
-                               quiet=quiet)[0]
+                argscontfit_use = dict()
+            if initdat['fcncontfit'] == 'fitqsohost':
+                argscontfit_use['fitran'] = fitran
+            if 'uselog' in argscontfit_use.keys():
+                argscontfit_use['index_log'] = ct_indx_log
+
+            continuum, ct_coeff, zstar = \
+                fcncontfit(gdlambda, gdflux, gdweight,
+                           templatelambdaz_tmp,
+                           templateflux_tmp, ct_indx, zstar,
+                           quiet=quiet, **argscontfit_use)
+
+            if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
+                'refit' in initdat['argscontfit']:
+                ppxf_sigma = ct_coeff['ppxf_sigma']
+            else:
                 ppxf_sigma = 0.
 
             add_poly_weights = 0.
             ct_rchisq = 0.
             ppxf_sigma_err = 0.
-
 
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         # # Option 2: PPXF
@@ -461,7 +439,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         elif (istemp == b'1' and 'siginit_stars' in initdat):
 
             # Interpolate template to same grid as data
-            temp_log = interptemp.interptemp(gdlambda_log, np.log(templatelambdaz.T[0]),
+            temp_log = interptemp(gdlambda_log, np.log(templatelambdaz),
                                   template['flux'])
 
             # Check polynomial degree
@@ -471,17 +449,16 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     add_poly_degree = initdat['argscontfit']['add_poly_degree']
 
             # run ppxf
-            pp = \
-                ppxf(temp_log, gdflux_log, gderr_log, velscale,
-                     [0, initdat['siginit_stars']], goodpixels=ct_indx_log,
-                     degree=add_poly_degree, quiet=quiet, reddening=ebv_star)
+            pp = ppxf(temp_log, gdflux_log, gderr_log, velscale[0],
+                      [0, initdat['siginit_stars']], goodpixels=ct_indx_log,
+                      degree=add_poly_degree, quiet=quiet, reddening=ebv_star)
             poly_mod = pp.apoly
             continuum_log = pp.bestfit
             add_poly_weights = pp.polyweights
             ct_coeff = pp.weights
             ebv_star = pp.reddening
             sol = pp.sol
-            error = pp.error
+            solerr = pp.error
 
             # Resample the best fit into linear space
             cinterp = interp1d(gdlambda_log, continuum_log,
@@ -489,20 +466,23 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             continuum = cinterp(np.log(gdlambda))
 
             # Adjust stellar redshift based on fit
-            zstar += sol[0]/c
+            # From ppxf docs:
+            # IMPORTANT: The precise relation between the output pPXF velocity
+            # and redshift is Vel = c*np.log(1 + z).
+            # See Section 2.3 of Cappellari (2017) for a detailed explanation.
+            zstar += np.exp(sol[0]/c.to('km/s').value)-1.
             ppxf_sigma = sol[1]
 
             # From PPXF docs:
-            # - These errors are meaningless unless Chi^2/DOF~1 (see parameter SOL below).
-            # However if one *assume* that the fit is good, a corrected estimate of the
-            # errors is: errorCorr = error*sqrt(chi^2/DOF) = error*sqrt(sol[6]).
-            # ct_rchisq = sol[6]
-            # solerr = []
-            # solerr *= np.sqrt(sol[6])
-            # zstar_err = np.sqrt(np.power(zstar_err,2.) + np.power((solerr[0]/c),2.))
-            # ppxf_sigma_err=solerr[1]
-            ppxf_sigma_err = 0. # for now; correct this later
-            ct_rchisq = 0.
+            # These errors are meaningless unless Chi^2/DOF~1.
+            # However if one *assumes* that the fit is good ...
+            ct_rchisq = pp.chi2
+            solerr *= np.sqrt(pp.chi2)
+            zstar_err = \
+                np.sqrt(np.power(zstar_err, 2.) +
+                        np.power((np.exp(solerr[0]/c.to('km/s').value))-1.,
+                                 2.))
+            ppxf_sigma_err = solerr[1]
 
         else:
             add_poly_weights = 0.
@@ -575,6 +555,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     #
     # Fit emission lines
     #
+
     fit_params = []
     if noemlinfit != b'1':
 
@@ -590,14 +571,13 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     # Use first component as a proxy for all components
                     if listlinesz[line][0] >= min(gdlambda) and \
                         listlinesz[line][0] <= max(gdlambda):
-                        peakinit[line] = fline(listlinesz[line])
+                        peakinit[line] = fline(listlinesz[line][0:ncomp[line]])
                         # If initial guess is negative, set to 0 to prevent
                         # fitter from choking (since we limit peak to be >= 0)
                         peakinit[line] = \
                             np.where(peakinit[line] < 0., 0., peakinit[line])
                     else:
                         peakinit[line] = np.zeros(initdat['maxncomp'])
-
 
         # Initial guesses for emission line widths
         if siginit_gas is None:
@@ -609,27 +589,37 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # Fill out parameter structure with initial guesses and constraints
         impModule = import_module('q3dfit.init.' + fcninitpar)
         run_fcninitpar = getattr(impModule, fcninitpar)
-        emlmod, fit_params = run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
-                                            siginit_gas, initdat['maxncomp'], ncomp,
-                                            siglim=siglim_gas[:])
+        emlmod, fit_params = \
+            run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
+                           siginit_gas, initdat['maxncomp'], ncomp,
+                           siglim=siglim_gas)
 
+        # testsize = len(parinit)
+        # if testsize == 0:
+            # raise Exception('Bad initial parameter guesses.')
 
         # Actual fit
+        # plt, ax = plt.subplots()
+        # ax.plot(gdlambda, gdflux_nocnt)
+        # plt.show()
+        # pdb.set_trace()
+
+        # Actual fit
+        # x_scale = 'jac' is option to minimizer 'least_squares';
+        # greatly speeds up multi-gaussian fit in at least one test case
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
                            method='least_squares', weights=gdweight_nocnt,
-                           max_nfev=1000, nan_policy='omit')
+                           nan_policy='omit', fit_kws={'x_scale':'jac'})
         specfit = lmout.best_fit
         if not quiet:
             print(lmout.fit_report(show_correl=False))
 
         param = lmout.best_values
-
         if 'plotMIR' in initdat.keys():    # Test plot here - need to transfer this to q3dfa later
           print('Plotting')
           from matplotlib import pyplot as plt
           plot_quest(gdlambda, gdflux, continuum+specfit, ct_coeff, initdat, lines=[12.8], linespec=specfit)
-
-
         covar = lmout.covar
         dof = lmout.nfree
         rchisq = lmout.redchi
@@ -754,4 +744,5 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               # 'covar': covar,
               'siglim': siglim_gas}
 
+    # finish:
     return outstr

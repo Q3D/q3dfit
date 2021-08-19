@@ -21,8 +21,6 @@ Take outputs from Q3DF and perform fitting loop.
      Output from READCUBE, containing data
    initdat: in, required, type=structure
      Output from initialization routine, containing fit parameters
-   oned: in, required, type=byte
-     Whether data is in a cube or in one dimension (longslit)
    onefit: in, required, type=byte
      If set, ignore second fit
    quiet: in, required, type=byte
@@ -54,7 +52,7 @@ import numpy as np
 import pdb
 
 
-def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
+def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, onefit,
             quiet=True, logfile=None):
 
     if logfile is None:
@@ -70,16 +68,21 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
     i = colarr[ispax]  # colind, rowind]
     j = rowarr[ispax]  # colind, rowind]
 
-    print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]',
-          file=logfile)
-
-    if oned:
+    if cube.dat.ndim == 1:
+        print('[spec]=[1] out of [1]', file=logfile)
+        flux = cube.dat
+        err = cube.err
+        dq = cube.dq
+    elif cube.dat.ndim == 2:
+        print(f'[spec]=[{i+1}] out of [{cube.ncols}]', file=logfile)
         flux = cube.dat[:, i]
-        err = abs(cube.var[:, i])**0.5
+        err = cube.err[:, i]
         dq = cube.dq[:, i]
     else:
+        print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]',
+              file=logfile)
         flux = cube.dat[i, j, :]
-        err = abs(cube.var[i, j, :])**0.5
+        err = cube.var[i, j, :]
         dq = cube.dq[i, j, :]
 
     errmax = max(err)
@@ -91,12 +94,14 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
         j = tmpj
         print(f'Reference coordinate: [col, row]=[{i+1}, {j+1}]', file=logfile)
 
-    if oned:
+    if cube.dat.ndim == 1:
+        outlab = '{[outdir]}{[label]}'.format(initdat, initdat)
+    elif cube.dat.ndim == 2:
         outlab = '{[outdir]}{[label]}_{:04d}'.format(initdat, initdat, i+1)
     else:
         outlab = '{[outdir]}{[label]}_{:04d}_{:04d}'.format(initdat,
                                                             initdat, i+1, j+1)
-        
+
 #   Apply DQ plane
     indx_bad = np.nonzero(dq > 0)
     if indx_bad[0].size > 0:
@@ -116,10 +121,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
             # write as dict
             # Each dict key (line) will have one value (# comp)
             for line in initdat['lines']:
-                if oned:
-                    ncomp[line] = initdat['ncomp'][line][i]
-                else:
-                    ncomp[line] = initdat['ncomp'][line][i, j]
+                ncomp[line] = initdat['ncomp'][line][i, j]
 
         # First fit
 
@@ -139,10 +141,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                 if initdat['siglim_gas'].ndim == 1:
                     siglim_gas = initdat['siglim_gas']
                 else:
-                    if oned:
-                        siglim_gas = initdat['siglim_gas'][i, ]
-                    else:
-                        siglim_gas = initdat['siglim_gas'][i, j, ]
+                    siglim_gas = initdat['siglim_gas'][i, j, ]
             else:
                 siglim_gas = False
 
@@ -152,20 +151,13 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                     siginit_gas = initdat['siginit_gas']
                 else:
                     siginit_gas = dict()
-                    if oned:
-                        for k in initdat['lines']:
-                            siginit_gas[k] = initdat['siginit_gas'][k][i, ]
-                    else:
-                        for k in initdat['lines']:
-                            siginit_gas[k] = initdat['siginit_gas'][k][i, j, ]
+                    for k in initdat['lines']:
+                        siginit_gas[k] = initdat['siginit_gas'][k][i, j, ]
             else:
                 siginit_gas = False
 
 #           initialize stellar redshift initial guess
-            if oned:
-                zstar = initdat['zinit_stars'][i]
-            else:
-                zstar = initdat['zinit_stars'][i, j]
+            zstar = initdat['zinit_stars'][i, j]
 
 #           regions to ignore in fitting. Set to max(err)
             if initdat.__contains__('cutrange'):
@@ -205,25 +197,18 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
             listlinesz = dict()
             if not initdat.__contains__('noemlinfit') and ct_comp_emlist > 0:
                 for line in initdat['lines']:
-                    if oned:
-                        listlinesz[line] = \
-                            np.array(listlines['lines']
-                                     [(listlines['name'] == line)]) * \
-                            (1. + initdat['zinit_gas'][line][i, ])
-                    else:
-                        listlinesz[line] = \
-                            np.array(listlines['lines']
-                                     [(listlines['name'] == line)]) * \
-                            (1. + initdat['zinit_gas'][line][i, j, ])
+                    listlinesz[line] = \
+                        np.array(listlines['lines']
+                                 [(listlines['name'] == line)]) * \
+                        (1. + initdat['zinit_gas'][line][i, j, ])
 
             if not quiet:
                 print('FITLOOP: First call to FITSPEC')
-
             structinit = fitspec(cube.wave, flux, err, dq, zstar, listlines,
-                               listlinesz, ncomp, initdat, quiet=quiet,
+                                 listlinesz, ncomp, initdat, quiet=quiet,
                                  siglim_gas=siglim_gas,
                                  siginit_gas=siginit_gas,
-                                 tweakcntfit=tweakcntfit, col=i+1, row=j+1)
+                                 tweakcntfit=tweakcntfit)
 
             # if not quiet:
             #    print('FIT STATUS: '+structinit['fitstatus'])
@@ -235,7 +220,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
 
                 if 'noemlinfit' not in initdat and ct_comp_emlist > 0:
 
-                    # set emission line mask pa rameters
+                    # set emission line mask parameters
                     linepars = sepfitpars(listlines, structinit['param'],
                                           structinit['perror'],
                                           initdat['maxncomp'])
@@ -267,7 +252,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, oned, onefit,
                                  peakinit=peakinit_tmp,
                                  siginit_gas=siginit_gas_tmp,
                                  siglim_gas=siglim_gas,
-                                 tweakcntfit=tweakcntfit, col=i+1, row=j+1)
+                                 tweakcntfit=tweakcntfit)
 
                 # if not quiet:
                 #    print('FIT STATUS: '+structinit['fitstatus'])

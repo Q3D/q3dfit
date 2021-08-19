@@ -8,6 +8,7 @@ Initialize parameters for fitting.
 @author: drupke
 """
 
+from astropy.table import Table
 from lmfit import Model
 import numpy as np
 import pdb
@@ -17,11 +18,12 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             lratfix=None, siglim=None, sigfix=None, blrcomp=None,
             blrlines=None, specres=None):
 
-    dblt_pairs = {'[NII]6548': '[NII]6583',
-                  '[NeIII]3967': '[NeIII]3689',
-                  '[NeV]2422': '[NeV]3426',
-                  '[OI]6364': '[OI]6300',
-                  '[OIII]4959': '[OIII]4959'}
+    # Get fixed-ratio doublet pairs for tying intensities
+    doublets = Table.read('../data/linelists/doublets.tbl', format='ipac')
+    dblt_pairs = dict()
+    for idx, name in enumerate(doublets['line1']):
+        if doublets['fixed_ratio'][idx] == 1:
+            dblt_pairs[doublets['line2'][idx]] = doublets['line1'][idx]
 
     if not specres:
         specres = 0.
@@ -44,8 +46,9 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
         # cycle through velocity components
         for i in range(0, ncomp[line]):
             # LMFIT parameters can only consist of letters,  numbers, or _
-            line = line.replace('[', 'lb').replace(']', 'rb').replace('.', 'pt')
-            mName = '{0}_{1}_'.format(line,i)
+            line = line.replace('[', 'lb').replace(']', 'rb').\
+                replace('.', 'pt')
+            mName = '{0}_{1}_'.format(line, i)
             imodel = Model(manygauss, prefix=mName)
             if isinstance(totmod, Model):
                 totmod += imodel
@@ -60,7 +63,7 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
         # split parameter name string into line, component #, and parameter
         psplit = parname.split('_')
         lmline = psplit[0]  # string for line label
-        line = lmline.replace('lb', '[').replace('rb', ']').replace('pt','.')
+        line = lmline.replace('lb', '[').replace('rb', ']').replace('pt', '.')
         comp = int(psplit[1])  # string for line component
         gpar = psplit[2]  # parameter name in manygauss
         # Process input values
@@ -71,12 +74,13 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             limits = np.array([0., 0.], dtype='float64')
             # Check if it's a doublet; this will break if weaker line
             # is in list, but stronger line is not
-            if lmline in dblt_pairs.keys():
-                tied = '{0}_{1}_flx / 3.'.format(dblt_pairs[line],comp)
-                tied = tied.replace('[', 'lb').replace(']', 'rb')#.replace('.', 'pt')
+            if line in dblt_pairs.keys():
+                tied = '{0}_{1}_flx / 3.'.format(dblt_pairs[line], comp)
+                tied = tied.replace('[', 'lb').replace(']', 'rb')
                 tied = tied.replace(" ", "")
-            if lratfix != None and line in lratfix.keys():
-                tied = '{0}_{1}_flx*{2}'.format(lratfix[line][0],comp,lratfix[line][1])
+            elif lratfix is not None and line in lratfix.keys():
+                tied = '{0}_{1}_flx*{2}'.format(lratfix[line][0], comp,
+                                                lratfix[line][1])
                 tied = tied.replace('[', 'lb').replace(']', 'rb')
                 tied = tied.replace(" ", "")
             else:
@@ -91,8 +95,8 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
                 linetie_tmp = linetie[line].replace('[', 'lb').\
                     replace(']', 'rb').replace('.', 'pt')
                 tied = '{0:0.6e} / {1:0.6e} * {2}_{3}_cwv'.\
-                    format(lines_arr[line],lines_arr[linetie[line]],
-                           linetie_tmp,comp)
+                    format(lines_arr[line], lines_arr[linetie[line]],
+                           linetie_tmp, comp)
             else:
                 tied = ''
         elif gpar == 'sig':
@@ -102,7 +106,7 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             if linetie[line] != line:
                 linetie_tmp = linetie[line].replace('[', 'lb').\
                     replace(']', 'rb').replace('.', 'pt')
-                tied = '{0}_{1}_sig'.format(linetie_tmp,comp)
+                tied = '{0}_{1}_sig'.format(linetie_tmp, comp)
             else:
                 tied = ''
         else:

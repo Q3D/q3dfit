@@ -128,19 +128,17 @@ import copy
 import numpy as np
 import pdb
 import time
+from astropy.constants import c
 from astropy.table import Table
 from importlib import import_module
-from lmfit import Model
 from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
 from q3dfit.common.airtovac import airtovac
 from q3dfit.common.masklin import masklin
 from q3dfit.common.interptemp import interptemp
-from scipy.interpolate import interp1d
 from q3dfit.common.questfit import questfit
 from q3dfit.common.plot_quest import plot_quest
-from q3dfit.common.plot_cont import plot_cont
-from astropy.constants import c
+from scipy.interpolate import interp1d
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
@@ -589,10 +587,14 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # Fill out parameter structure with initial guesses and constraints
         impModule = import_module('q3dfit.init.' + fcninitpar)
         run_fcninitpar = getattr(impModule, fcninitpar)
+        if 'argsinitpar' in initdat:
+            argsinitpar = initdat['argsinitpar']
+        else:
+            argsinitpar = dict()
         emlmod, fit_params = \
             run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
                            siginit_gas, initdat['maxncomp'], ncomp,
-                           siglim=siglim_gas)
+                           **argsinitpar)
 
         # testsize = len(parinit)
         # if testsize == 0:

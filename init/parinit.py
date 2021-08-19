@@ -8,14 +8,15 @@ Initialize parameters for fitting.
 @author: drupke
 """
 
-from astropy.table import Table
+from astropy.table import QTable, Table
 from lmfit import Model
+from q3dfit.exceptions import InitializationError
 import numpy as np
 import pdb
 
 
 def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
-            lratfix=None, siglim=None, sigfix=None, blrcomp=None,
+            lineratio=None, siglim=None, sigfix=None, blrcomp=None,
             blrlines=None, specres=None):
 
     # Get fixed-ratio doublet pairs for tying intensities
@@ -78,11 +79,6 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
                 tied = '{0}_{1}_flx / 3.'.format(dblt_pairs[line], comp)
                 tied = tied.replace('[', 'lb').replace(']', 'rb')
                 tied = tied.replace(" ", "")
-            elif lratfix is not None and line in lratfix.keys():
-                tied = '{0}_{1}_flx*{2}'.format(lratfix[line][0], comp,
-                                                lratfix[line][1])
-                tied = tied.replace('[', 'lb').replace(']', 'rb')
-                tied = tied.replace(" ", "")
             else:
                 tied = ''
         elif gpar == 'cwv':
@@ -120,6 +116,75 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             set_params(fit_params, parname, VALUE=value,
                        VARY=vary, LIMITED=limited, TIED=tied,
                        LIMITS=limits)
+
+    # logic for bounding or fixing line ratios
+    if lineratio is not None:
+        if not isinstance(lineratio, QTable) and \
+            not isinstance(lineratio, Table):
+            raise InitializationError('The lineratio key must be' +
+                                      ' an astropy Table or QTable')
+        elif 'line1' not in lineratio.colnames or \
+            'line2' not in lineratio.colnames or \
+            'comp' not in lineratio.colnames:
+            raise InitializationError('The lineratio table must contain' +
+                                      ' the line1, line2, and comp columns')
+        else:
+            for ilinrat in range(0, len(lineratio)):
+                line1 = lineratio['line1'][ilinrat]
+                line2 = lineratio['line2'][ilinrat]
+                comp = lineratio['comp'][ilinrat]
+                lmline1 = line1.replace('[', 'lb').replace(']', 'rb').\
+                    replace('.', 'pt')
+                lmline2 = line2.replace('[', 'lb').replace(']', 'rb').\
+                    replace('.', 'pt')
+                if f'{lmline1}_{comp}_flx' in fit_params.keys() and \
+                    f'{lmline2}_{comp}_flx' in fit_params.keys():
+                    # set initial value
+                    if 'value' in lineratio.colnames:
+                        initval = lineratio['value'][ilinrat]
+                    else:
+                        initval = fit_params[f'{lmline1}_{comp}_flx'] / \
+                            fit_params[f'{lmline2}_{comp}_flx']
+                    lmrat = f'{lmline1}_div_{lmline2}_{comp}'
+                    fit_params.add(lmrat, value=initval)
+                    # tie second line to first line divided by the ratio
+                    fit_params[f'{lmline2}_{comp}_flx'].expr = \
+                        f'{lmline1}_{comp}_flx'+'/'+lmrat
+                    # fixed or free
+                    if 'fixed' in lineratio.colnames:
+                        if lineratio['fixed'][ilinrat]:
+                            fit_params[lmrat].vary = False
+                    # apply lower limit?
+                    if 'lower' in lineratio.colnames:
+                        lower = lineratio['lower'][ilinrat]
+                        fit_params[lmrat].min = lower
+                    # logic to apply doublet lower limits if in doublets table
+                    elif line1 in doublets['line1']:
+                        iline1 = np.where(doublets['line1'] == line1)
+                        if doublets['line2'][iline1] == line2:
+                            lower = doublets['lower'][iline1][0]
+                        fit_params[lmrat].min = lower
+                    # doublet can be specified in init file in either order
+                    # relative to doublets table ...
+                    elif line1 in doublets['line2']:
+                        iline1 = np.where(doublets['line2'] == line1)
+                        if doublets['line1'][iline1] == line2:
+                            lower = 1. / doublets['lower'][iline1][0]
+                        fit_params[lmrat].min = lower
+                    # apply upper limit?
+                    if 'upper' in lineratio.colnames:
+                        upper = lineratio['upper'][ilinrat]
+                        fit_params[lmrat].max = upper
+                    elif line1 in doublets['line1']:
+                        iline1 = np.where(doublets['line1'] == line1)
+                        if doublets['line2'][iline1] == line2:
+                            upper = doublets['upper'][iline1][0]
+                        fit_params[lmrat].max = upper
+                    elif line1 in doublets['line2']:
+                        iline1 = np.where(doublets['line2'] == line1)
+                        if doublets['line1'][iline1] == line2:
+                            upper = 1. / doublets['upper'][iline1][0]
+                        fit_params[lmrat].max = upper
 
     return totmod, fit_params
 

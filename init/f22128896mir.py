@@ -15,7 +15,7 @@ def f22128896mir():
     # bad=1e99
     ncols = 17
     nrows = 26
-    fitrange = np.array([5.422479152679443, 29.980998992919922])*10000  # angstrom
+    fitrange = np.array([5.422479152679443, 29.980998992919922]) # micron    #*10000  # angstrom
 
     # These are unique to the user
     #infile = '../test/test_questfit/IRAS21219m1757_dlw_qst_mock_cube.fits'
@@ -107,8 +107,7 @@ def f22128896mir():
             'fitran': fitrange,
             'fluxunits': 1,
             'infile': infile,
-            'label':
-                config_file['source'][0].replace('.ideos','').replace('.npy', ''),
+            'label': config_file['source'][0].replace('.ideos','').replace('.npy', ''),
             'lines': lines,
             'linetie': linetie,
             'maxncomp': maxncomp,
@@ -141,6 +140,9 @@ def f22128896mir():
             'varext': 2,
             'dqext': 3,
             'zerodq': True,
+            'argsreadcube': {'fluxunit_in': 'Jy',
+                            'waveunit_in': 'angstrom',
+                            'waveunit_out': 'micron'}, 
             'plotMIR': True,
         }
 

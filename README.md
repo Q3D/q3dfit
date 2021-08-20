@@ -35,7 +35,7 @@ A) Quasar-dominated example: Data "cube" is single spectrum of IRAS21219
 
 B) Spectrum with strong MIR lines:  Data "cube" is single spectrum called 22128896 (shared by Erini / Nadia)
 
-1. Edit the output path in the Jupyter notebook `./jnb/run_q3dfit_MIRlines.ipynb`.
+1. Edit the output path in the Jupyter notebook `./jnb/run_q3dfit_MIRlines_Spitzer.ipynb`.
 2. Run `q3df`/`q3da` from the notebook OR run `./test/test_f22128896mir.py` from a Python prompt.
 3. Compare outputs to files in `./test/test_questfit/`. Presently, two versions of the plots are made: a jpg file is created by `q3da`, and a png is created by `q3df` via `plot_quest`.
 
@@ -59,3 +59,15 @@ spectrum of Makani
    - `outdir` is the location of the output files, including plots
    - `logfile` is an ASCII output file
 3. Run `q3df`/`q3da` from the notebook OR run `./test/test_makanisdss.py` from a Python prompt.
+
+
+## Mock ETC cube, rest-frame MIR, 1 PAH feature with [NeII]12.81 line + QSO background source (CB: need to double-check this with Andrey)
+
+1. Download necessary file from the [Q3D Box folder](https://rhodes.box.com/s/q4zsp63ps01olkkh846k1nzbfw744gns):
+   - `./simulations/MIRI-ETC-SIM/miri_etc_cube.fits`
+2. Edit the input/output files in the Jupyter notebook `./jnb/run_q3dfit_MIRlines_mockETCcube.ipynb`.
+   - The variable `infile` needs to point to 'miri_etc_cube.fits'
+   - `outdir` is the location of the output files, including plots
+   - `logfile` is an ASCII output file
+   (- The config file 'cffilename' and QSO template 'qsotemplate' should be fine to leave as is, as these are relative paths. The jupyter notebook will generate the QSO template if it doesn't exist.) 
+3. Run `q3df` from the notebook OR run `./test/test_miri.py` from a Python prompt.

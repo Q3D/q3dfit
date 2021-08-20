@@ -61,8 +61,8 @@ def miritest():
     # bad=1e99
     gal = 'miritest'
     outstr = ''
-    ncols = 37
-    nrows = 43
+    ncols = 16
+    nrows = 25
     # centcol = 9.002
     # centrow = 14.002
     platescale = 0.3
@@ -73,14 +73,14 @@ def miritest():
     volume = '../../../MIRISIM/MIRI-ETC-SIM/'
     infile = volume+'miri_etc_cube.fits'
     #infile = volume+'cube_reconstructed.fits'
-    mapdir = volume+'maps/'
+    #mapdir = volume+'maps/'
     outdir = volume+'outputs/'
-    qsotemplate = volume+'miri_qsotemplate_B.npy'
+    #qsotemplate = volume+'miri_qsotemplate_B.npy'
     #stellartemplates = \
     #    '/Users/caroline/Documents/ARI-Heidelberg/Q3D/Q3DFIT/q3dfit/Test_GMOS_DATA/pg1411/'+'pg1411hosttemplate.npy'
     logfile = outdir+gal+'_fitlog.txt'
-    batchfile = '../common/fitloop.pro'
-    batchdir = '/Users/drupke/src/idl/batch/'
+    #batchfile = '../common/fitloop.pro'
+    #batchdir = '/Users/drupke/src/idl/batch/'
 #
 # Required pars
 #
@@ -150,7 +150,7 @@ def miritest():
 
     # Velocity dispersion limits and fixed values
     siglim_gas = np.ndarray(2)
-    siglim_gas[:] = [5, 5000]
+    siglim_gas[:] = [5, 1000]
     # lratfix = {'[NI]5200/5198': [1.5]}
 
     #
@@ -169,7 +169,7 @@ def miritest():
             'maxncomp': maxncomp,
             'name': 'PG1411+442',
             'ncomp': ncomp,
-            'mapdir': mapdir,
+            #'mapdir': mapdir,
             'outdir': outdir,
 
             'platescale': platescale,
@@ -220,8 +220,8 @@ def miritest():
 #            'tweakcntfit': tweakcntfit,
             'emlsigcut': 2,
             'logfile': logfile,
-            'batchfile': batchfile,
-            'batchdir': batchdir,
+            #'batchfile': batchfile,
+            #'batchdir': batchdir,
             'siglim_gas': siglim_gas,
             'siginit_gas': siginit_gas,
             'siginit_stars': 50,

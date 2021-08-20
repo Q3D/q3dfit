@@ -143,7 +143,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, onefit,
                 else:
                     siglim_gas = initdat['siglim_gas'][i, j, ]
             else:
-                siglim_gas = False
+                siglim_gas = None
 
 #           initialize gas sigma initial guess array
             if initdat.__contains__('siginit_gas'):

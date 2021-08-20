@@ -179,10 +179,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         nomaskran=initdat['nomaskran']
     else:
         nomaskran=''
-    if siglim_gas.all():
-        siglim_gas = siglim_gas
-    else:
-        siglim_gas = b'0'
     if 'startempfile' in initdat:
         istemp = b'1'
     else:
@@ -591,7 +587,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             argsinitpar = initdat['argsinitpar']
         else:
             argsinitpar = dict()
-        emlmod, fit_params = \
+        if 'siglim_gas' is not None:
+            argsinitpar['siglim'] = siglim_gas
+        emlmod, fit_params, siglim_gas = \
             run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
                            siginit_gas, initdat['maxncomp'], ncomp,
                            **argsinitpar)

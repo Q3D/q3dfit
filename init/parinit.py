@@ -28,9 +28,8 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
 
     if not specres:
         specres = 0.
-    # A reasonable lower limit of 5d for physicality ...
-    # Assume line is resolved.
-    if not siglim.all():
+    # A reasonable lower limit of 5d for physicality
+    if siglim is None:
         siglim = [5., 2000.]
 
     # converts the astropy.Table structure of linelist into a Python
@@ -186,7 +185,9 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
                             upper = 1. / doublets['upper'][iline1][0]
                         fit_params[lmrat].max = upper
 
-    return totmod, fit_params
+    # pass siglim_gas back because the default is set here, and it's needed
+    # downstream
+    return totmod, fit_params, siglim
 
 
 def set_params(fit_params, NAME, VALUE=None, VARY=True, LIMITED=None,

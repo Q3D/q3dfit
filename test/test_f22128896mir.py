@@ -14,4 +14,4 @@ if not initproc_npy_exists:
 initproc = np.load(ippath+'initproc.npy', allow_pickle=True)
 
 q3df(initproc[()], cols=1, rows=1, quiet=False)
-#q3da(initproc[()], cols=1, rows=1, quiet=False)
+q3da(initproc[()], cols=1, rows=1, quiet=False)

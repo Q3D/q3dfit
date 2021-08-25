@@ -76,21 +76,19 @@ def f22128896mir():
 
     # Parameters for emission line plotting
     linoth = np.full((1, 1), '', dtype=object)
-    # linoth[0, 0] = 'test-MIRLINE'
+    linoth[0, 0] = '[[NeII]12.81'
     # argspltlin1 = {'nx': 1,
     #                'ny': 1,
-    #                'label': ['test-MIRLINE'],
-    #                'wave': [168000.0],
-    #                'off': [[-500, 500]],
+    #                'label': ['[Ne II]12.81'],
+    #                'wave': [128130.0],
+    #                'off': [[-120,90]],
     #                'linoth': linoth}
-    linoth[0, 0] = '[[NeII]12.81'
-    argspltlin1 = {'nx': 1,
-                   'ny': 1,
-                   'label': ['[Ne II] 12.8'],
-                   'wave': [128130.0],
-                   'off': [[-120,90]],
-                   'linoth': linoth}
 
+    argspltlin1 = {'nx': 1,
+               'ny': 1,
+               'line': ['[NeII]12.81'],
+               'size': [30.], #[200.],
+               'IR': True}
 
 
     # Velocity dispersion limits and fixed values
@@ -125,8 +123,8 @@ def f22128896mir():
                             'models_dictionary': {},
                             'template_dictionary': {}},
             'argslinelist': {'vacuum': False},
-            #'argspltlin1': argspltlin1,
-            'fcncheckcomp': 'checkcomp',
+            'argspltlin1': argspltlin1,
+            #'fcncheckcomp': 'checkcomp',
             'fcncontfit': 'questfit',
             'maskwidths_def': 500,
             'emlsigcut': 2,

@@ -73,6 +73,7 @@
 # Translated into python by Lily Whitesell, June 2020
 
 from q3dfit.common.cmplin import cmplin
+from q3dfit.common.lmlabel import lmlabel
 from q3dfit.exceptions import InitializationError
 
 import matplotlib.pyplot as plt
@@ -118,10 +119,10 @@ def pltlin(instr, pltpar, outfile):
         for i in range(0, len(sub_linlab)):
             # Get wavelength from zeroth component
             if sub_linlab[i] != '':
-                lmline = sub_linlab[i].replace('[', 'lb').replace(']', 'rb')
+                lmline = lmlabel(sub_linlab[i])
                 # if ncomp > 0
-                if f'{lmline}_0_cwv' in instr['param'].keys():
-                    linwav[i] = instr['param'][f'{lmline}_0_cwv']
+                if f'{lmline.lmlabel}_0_cwv' in instr['param'].keys():
+                    linwav[i] = instr['param'][f'{lmline.lmlabel}_0_cwv']
                 # otherwise
                 else:
                     idx = np.where(instr['linelist']['name'] == sub_linlab[i])
@@ -259,15 +260,16 @@ def pltlin(instr, pltpar, outfile):
             for j in range(0, ncomp):
                 ylaboff = 0.07
                 for k, line in enumerate(linelabel):
-                    lmline = line.replace('[', 'lb').replace(']', 'rb')
-                    if f'{lmline}_{j}_cwv' in instr['param'].keys():
-                        refwav = instr['param'][f'{lmline}_{j}_cwv']
+                    lmline = lmlabel(line)
+                    if f'{lmline.lmlabel}_{j}_cwv' in instr['param'].keys():
+                        refwav = instr['param'][f'{lmline.lmlabel}_{j}_cwv']
                     else:
                         irefwav = np.where(instr['linelist']['name'] == line)
                         refwav = instr['linelist']['lines'][irefwav] * \
                             (1. + instr['zstar'])
                     if refwav >= xran[0] and refwav <= xran[1]:
-                        if f'{lmline}_{j}_cwv' in instr['param'].keys():
+                        if f'{lmline.lmlabel}_{j}_cwv' in \
+                            instr['param'].keys():
                             flux = cmplin(instr, line, j, velsig=True)
                             ax0.plot(wave, yran[0] + flux, color=colors[j],
                                      linewidth=2, linestyle='dashed')

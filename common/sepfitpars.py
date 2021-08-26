@@ -85,6 +85,7 @@ import pdb
 from astropy.table import Table
 from scipy import constants
 from q3dfit.common.gaussflux import gaussflux
+from q3dfit.common.lmlabel import lmlabel
 
 
 def sepfitpars(linelist, param, perror, maxncomp, waveran=None,
@@ -160,12 +161,11 @@ def sepfitpars(linelist, param, perror, maxncomp, waveran=None,
             for i in range(0, maxncomp):
 
                 # indices
-                lmline = line.replace('[', 'lb').replace(']', 'rb').\
-                    replace('.', 'pt')
-                ifluxpk = '{0}_{1}_flx'.format(lmline, i)
-                isigma = '{0}_{1}_sig'.format(lmline, i)
-                iwave = '{0}_{1}_cwv'.format(lmline, i)
-                ispecres ='{0}_{1}_srsigslam'.format(lmline, i)
+                lmline = lmlabel(line)
+                ifluxpk = f'{lmline.lmlabel}_{i}_flx'
+                isigma = f'{lmline.lmlabel}_{i}_sig'
+                iwave = f'{lmline.lmlabel}_{i}_cwv'
+                ispecres = f'{lmline.lmlabel}_{i}_srsigslam'
 
                 # make sure the line was fit -- necessary if, e.g., #
                 # components reset to 0 by checkcomp
@@ -316,10 +316,10 @@ def sepfitpars(linelist, param, perror, maxncomp, waveran=None,
 
                     # Compute total Gaussian flux
                     # sigma and error need to be in wavelength space
-                    gflux = gaussflux(fluxpk_obs[line][i],sigmatmp,
+                    gflux = gaussflux(fluxpk_obs[line][i], sigmatmp,
                                       normerr=fluxpkerr_obs[line][i],
-                                      sigerr=sigmaerr_obs[line][i]/
-                                      (constants.c/1.e3)*wave[line][i])
+                                      sigerr=sigmaerr_obs[line][i] /
+                                      (constants.c / 1.e3) * wave[line][i])
                     flux[line][i] = gflux['flux']
                     fluxerr[line][i] = gflux['flux_err']
 

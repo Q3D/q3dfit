@@ -8,12 +8,13 @@ Created on Tue Jun  9 12:35:25 2020
 import numpy as np
 import pdb
 from astropy.constants import c
+from q3dfit.common.lmlabel import lmlabel
 
 
 def cmplin(instr, line, comp, velsig=False):
 
-    lmline = line.replace('[', 'lb').replace(']', 'rb')
-    mName = '{0}_{1}_'.format(lmline, comp)
+    lmline = lmlabel(line)
+    mName = '{0}_{1}_'.format(lmline.lmlabel, comp)
     gausspar = np.zeros(3)
     gausspar[0] = instr['param'][mName+'flx']
     gausspar[1] = instr['param'][mName+'cwv']

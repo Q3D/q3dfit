@@ -82,7 +82,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, onefit,
         print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]',
               file=logfile)
         flux = cube.dat[i, j, :]
-        err = cube.var[i, j, :]
+        err = cube.err[i, j, :]
         dq = cube.dq[i, j, :]
 
     errmax = max(err)

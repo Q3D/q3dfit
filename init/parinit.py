@@ -173,8 +173,8 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
                     elif line1 in doublets['line2']:
                         iline1 = np.where(doublets['line2'] == line1)
                         if doublets['line1'][iline1] == line2:
-                            lower = 1. / doublets['lower'][iline1][0]
-                        fit_params[lmrat].min = lower
+                            upper = 1. / doublets['lower'][iline1][0]
+                        fit_params[lmrat].max = upper
                     # apply upper limit?
                     if 'upper' in lineratio.colnames:
                         upper = lineratio['upper'][ilinrat]
@@ -187,8 +187,8 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
                     elif line1 in doublets['line2']:
                         iline1 = np.where(doublets['line2'] == line1)
                         if doublets['line1'][iline1] == line2:
-                            upper = 1. / doublets['upper'][iline1][0]
-                        fit_params[lmrat].max = upper
+                            lower = 1. / doublets['upper'][iline1][0]
+                        fit_params[lmrat].min = lower
 
     # pass siglim_gas back because the default is set here, and it's needed
     # downstream

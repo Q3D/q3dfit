@@ -232,7 +232,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     # Set up error in zstar
     zstar_err = 0.
 
-
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Pick out regions to fit
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -599,18 +598,30 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             # raise Exception('Bad initial parameter guesses.')
 
         # Actual fit
+        # from matplotlib import pyplot as plt
         # plt, ax = plt.subplots()
-        # ax.plot(gdlambda, gdflux_nocnt)
+        # ax.plot(gdlambda, 1./np.sqrt(gdweight_nocnt))
+        # ax.plot(gdlambda, gdflux__nocnt)
         # plt.show()
         # pdb.set_trace()
 
         # Actual fit
+        if quiet:
+            lmverbose = 0  # verbosity for scipy.optimize.least_squares
+        else:
+            lmverbose = 2
+        fit_kws = {'verbose': lmverbose}
         # x_scale = 'jac' is option to minimizer 'least_squares';
         # greatly speeds up multi-gaussian fit in at least one test case
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
+        # can add here using 'argslinefit' dict in init file
+        if 'argslinefit' in initdat:
+            for key, val in initdat['argslinefit'].items():
+                fit_kws[key] = val
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
                            method='least_squares', weights=gdweight_nocnt,
-                           nan_policy='omit', fit_kws={'x_scale':'jac'})
+                           nan_policy='omit', fit_kws=fit_kws)
+
         specfit = lmout.best_fit
         if not quiet:
             print(lmout.fit_report(show_correl=False))

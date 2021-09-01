@@ -1,2 +1,2 @@
 [col,row]=[1,1] out of [1,1]
-Q3DF: Total time for calculation: 2.51 s.
+Q3DF: Total time for calculation: 1.84 s.

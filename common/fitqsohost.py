@@ -12,10 +12,10 @@ from scipy import interpolate
 
 def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
                zstar, quiet=True, blrpar=None, qsoxdr=None,
-               qsoonly=None, index_log=None, refit=None,
+               qsoonly=False, index_log=None, refit=None,
                add_poly_degree=None, siginit_stars=None,
                polyspec_refit=None, fitran=None, fittol=None,
-               qsoord=None, hostonly=None, hostord=None, blronly=None,
+               qsoord=None, hostonly=False, hostord=None, blronly=False,
                blrterms=None, **kwargs):
     '''Function defined to fit the continuum
 
@@ -181,7 +181,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
             cont_resid, ct_coeff, zstar = questfit(wave, resid, weight, b'0',
                                                    b'0', index, zstar,
                                                    quiet=quiet, **argscontfit_use)
-            
+
             from q3dfit.common.plot_quest import plot_quest
             from matplotlib import pyplot as plt
             initdatdict = argscontfit_use.copy()
@@ -192,7 +192,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
 
             continuum += cont_resid
             ct_coeff['qso_host'] = result.params
-    
+
             return continuum, ct_coeff, zstar
 
 

@@ -1,0 +1,30 @@
+Below are the description of each column in the .cf file for QUESTFIT
+
+#column 0: source/template/blackbody/powerlaw are the options.
+#column 1: filename (if necessary; path hardcoded. For blackbody and power law model specify a custom name, for example "warm" to describe a 250 K blackbody.)
+#column 2: lower wavelength limit or normalization factor
+#column 3: upper wavelength limit or fix/free parameter (0 or 1) for normalization
+#column 4: name of ext. curve or ice feature
+#column 5: initial guess for Av
+#column 6: fix/free parameter (0/1) for Av
+#column 7: S,M = screen or mixed extinction
+#column 8: initial guess for BB temperature or powerlaw index
+#column 9: fix/free parameter (0/1) for BB temperature or powerlaw index
+#column 10: ice name model
+#column 11: initial guess for ice absorption tau
+#column 12: fix/free parameter (0/1) for tau
+
+Below is an example of the structure for the configuration file. Each row in the configuration file is a model to be fit to the data.
+
+source		                  miritest.npy   11.55  13.45 dummy         0.0  0.0   X    0.0  0.0   _   _   _
+#below are the templates we are fitting along with a single blackbody and a powerlaw. The templates and the blackbody will be extincted by CHIAR06 and DRAIN03 models and ice absorption.
+template                     smith_nftemp3.npy     0.1    1.  CHIAR06       0.0  0.0   S    0.0  0.0 ice_hc 0.0  0.
+template                     smith_nftemp4.npy     0.1    1.  CHIAR06       0.0  0.0   S    0.0  0.0 ice_hc 0.0  0.
+template          dens1e4:sifrom:run010002.npy     0.1    1.  DRAINE03      0.0  0.0   S    0.0  0.0 _   _   _
+blackbody                             warm         0.1    1.  CHIAR06       0.0  0.0   S  250.0  1.0 ice_hc 0.0  1.
+powerlaw			      steep        0.1    1.  DRAINE03      0.0  0.0   S     -1  1.0 -   -  -
+#The last rows of the configuration file deal with extinction and ice models that are used for the templates. 
+extinction                        draine03.npy     0.0    0.  DRAINE03      0.0  0.0   X    0.0  0.0 _   _   _
+extinction                   chiar06_i0857.npy     0.0    0.  CHIAR06       0.0  0.0   X    0.0  0.0 _   _   _
+absorption               ice+hc_abs.npy            0.0    0.    ice_hc      0.0    0.0    X    0.0  0.0 _     _   _
+

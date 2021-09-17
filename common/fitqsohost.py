@@ -1,5 +1,5 @@
 import numpy as np
-import pdb
+# import pdb
 import ppxf.ppxf_util as util
 import sys
 
@@ -12,10 +12,10 @@ from scipy import interpolate
 
 def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
                zstar, quiet=True, blrpar=None, qsoxdr=None,
-               qsoonly=None, index_log=None, refit=None,
+               qsoonly=False, index_log=None, refit=None,
                add_poly_degree=None, siginit_stars=None,
                polyspec_refit=None, fitran=None, fittol=None,
-               qsoord=None, hostonly=None, hostord=None, blronly=None,
+               qsoord=None, hostonly=False, hostord=None, blronly=False,
                blrterms=None, **kwargs):
     '''Function defined to fit the continuum
 
@@ -31,7 +31,8 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
         Weights of each individual pixel to be fit
 
     template_wave: array
-        Wavelength array of the stellar template used as model for stellar continuum
+        Wavelength array of the stellar template used as model for
+        stellar continuum
 
     template_flux: array
         Flux of the stellar template used ass model for stellar continuum
@@ -72,16 +73,15 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     except:
         sys.exit('Cannot find quasar template (qsoxdr).')
 
-
     iqsoflux = np.where((qsowave >= fitran[0]) & (qsowave <= fitran[1]))
     qsoflux = qsoflux_full[iqsoflux]
 
     # Normalizing qsoflux template
-    qsoflux = qsoflux#/np.median(qsoflux)#*np.mean(flux)
+    qsoflux = qsoflux/np.median(qsoflux)#*np.mean(flux)
     index = np.array(index)
     index = index.astype(dtype='int')
 
-    #err = 1/weight**0.5
+    # err = 1/weight**0.5
     iwave = wave[index]
     iflux = flux[index]
     iweight = weight[index]
@@ -108,19 +108,19 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     import lmfit
     lmfit.report_fit(result.params)
 #    Test plot
-#    import matplotlib.pyplot as plt
-#    for i in comps.keys():
-#        plt.plot(wave, comps[i], label=i)
-#    plt.plot(wave, continuum, label='best-fit')
-#    plt.plot(wave,flux,label='flux')
-#    plt.plot(wave,flux-continuum,label='resid')
-#    plt.plot(wave,test_qsofcn,label='test')
-#    plt.legend(loc='best')
-#    plt.show()
+    import matplotlib.pyplot as plt
+    # for i in comps.keys():
+    #     plt.plot(wave, comps[i], label=i)
+    plt.plot(wave, continuum, label='best-fit')
+    plt.plot(wave,flux,label='flux')
+    plt.plot(wave,flux-continuum,label='resid')
+    # plt.plot(wave,test_qsofcn,label='test')
+    plt.legend(loc='best')
+    plt.show()
 
     ct_coeff = result.params
 
-    if refit == None:
+    if refit is None:
         return continuum, ct_coeff, zstar
     # Fit residual with PPXF
     if refit==True:
@@ -154,7 +154,11 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
                     'poly': pp.polyweights,
                     'ppxf_sigma': pp.sol[1]}
 
-        zstar += pp.sol[0]/c.to('km/s').value
+        # From ppxf docs:
+        # IMPORTANT: The precise relation between the output pPXF velocity
+        # and redshift is Vel = c*np.log(1 + z).
+        # See Section 2.3 of Cappellari (2017) for a detailed explanation.
+        zstar += np.exp(pp.sol[0]/c.to('km/s').value)-1.
 
         # host can't be negative
         ineg = np.where(continuum < 0)
@@ -177,10 +181,18 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
             cont_resid, ct_coeff, zstar = questfit(wave, resid, weight, b'0',
                                                    b'0', index, zstar,
                                                    quiet=quiet, **argscontfit_use)
-            
+
+            from q3dfit.common.plot_quest import plot_quest
+            from matplotlib import pyplot as plt
+            initdatdict = argscontfit_use.copy()
+            initdatdict['label'] = 'miritest'
+            initdatdict['plotMIR'] = True
+            plot_quest(wave, resid, cont_resid, ct_coeff, initdatdict)
+            plt.show()
 
             continuum += cont_resid
-    
+            ct_coeff['qso_host'] = result.params
+
             return continuum, ct_coeff, zstar
 
 

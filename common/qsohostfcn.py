@@ -247,11 +247,11 @@ def set_up_fit_continuum_additive_polynomial_model(p):
 
 
 def qsohostfcn(wave, params_fit=None, quiet=True, blrpar=None, qsoxdr=None,
-               qsoonly=None, index_log=None, refit=None,
+               qsoonly=False, index_log=None, refit=None,
                add_poly_degree=None, siginit_stars=None,
                polyspec_refit=None, fitran=None, fittol=None,
-               qsoord=None, hostonly=None, hostord=None,
-               blronly=None, qsoflux=None, blrterms=None, **kwargs):
+               qsoord=None, hostonly=False, hostord=None,
+               blronly=False, qsoflux=None, blrterms=None, **kwargs):
 
     if blrterms is None:
         blrterms = 0
@@ -261,7 +261,7 @@ def qsohostfcn(wave, params_fit=None, quiet=True, blrpar=None, qsoxdr=None,
         qsoord = 0
 
     # Additive polynomial:
-    if qsoonly is None and blronly is None:
+    if not qsoonly and not blronly:
         continuum_model = \
             set_up_fit_continuum_additive_polynomial_model(np.zeros(8))
         ymod = continuum_model[0]
@@ -274,7 +274,7 @@ def qsohostfcn(wave, params_fit=None, quiet=True, blrpar=None, qsoxdr=None,
             params += continuum_legendre[1]
 
     # QSO continuum
-    if hostonly is None and blronly is None:
+    if not hostonly and not blronly:
         qso_scale_model = set_up_fit_qso_exponential_scale_model(np.zeros(8))
 
         if 'ymod' not in vars():
@@ -290,7 +290,7 @@ def qsohostfcn(wave, params_fit=None, quiet=True, blrpar=None, qsoxdr=None,
             params += qso_scale_legendre[1]
 
     # BLR model
-    if hostonly is None and blrpar:
+    if not hostonly and blrpar is not None:
 
         counter = 0
         for i in np.arange(0, len(blrpar)/3.):

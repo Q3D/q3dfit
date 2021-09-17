@@ -5,21 +5,16 @@
 # infits = volume + 'pg1411rb1.fits'
 # makeqsotemplate(infits, outpy, dataext=None, dqext=None, waveext=None)
 
-import sys
-sys.path.append('/Users/annamurphree/Docs/Rupke Research/q3dfit')
-
 import numpy as np
 from q3dfit.common.q3df import q3df
 from q3dfit.common.q3da import q3da
 
-# Anna:
-#initproc = np.load('/Users/annamurphree/Docs/Rupke Research/q3d/pg1411/initproc.npy',allow_pickle=True)
 # Dave:
-#initproc = np.load('/Users/drupke/specfits/gmos/pg1411/rb3/initproc.npy',
-                   #allow_pickle=True)
-#Hadley:
-initproc = np.load('/Users/hadley/Desktop/research/q3dfit/jnb/initproc.npy', 
-                   allow_pickle = "True")
+initproc = np.load('/Users/drupke/specfits/gmos/pg1411/rb3/initproc.npy',
+                   allow_pickle=True)
+# Hadley:
+# initproc = np.load('/Users/hadley/Desktop/research/q3dfit/jnb/initproc.npy',
+#                    allow_pickle = "True")
 
 q3df(initproc[()], cols=14, rows=11, quiet=False)
 q3da(initproc[()], cols=14, rows=11, quiet=False)

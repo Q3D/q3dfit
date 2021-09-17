@@ -15,7 +15,7 @@ def f22128896mir():
     # bad=1e99
     ncols = 17
     nrows = 26
-    fitrange = np.array([5.422479152679443, 29.980998992919922])*10000  # angstrom
+    fitrange = np.array([5.422479152679443, 29.980998992919922]) # micron    #*10000  # angstrom
 
     # These are unique to the user
     #infile = '../test/test_questfit/IRAS21219m1757_dlw_qst_mock_cube.fits'
@@ -76,21 +76,19 @@ def f22128896mir():
 
     # Parameters for emission line plotting
     linoth = np.full((1, 1), '', dtype=object)
-    # linoth[0, 0] = 'test-MIRLINE'
+    linoth[0, 0] = '[[NeII]12.81'
     # argspltlin1 = {'nx': 1,
     #                'ny': 1,
-    #                'label': ['test-MIRLINE'],
-    #                'wave': [168000.0],
-    #                'off': [[-500, 500]],
+    #                'label': ['[Ne II]12.81'],
+    #                'wave': [128130.0],
+    #                'off': [[-120,90]],
     #                'linoth': linoth}
-    linoth[0, 0] = '[[NeII]12.81'
-    argspltlin1 = {'nx': 1,
-                   'ny': 1,
-                   'label': ['[Ne II] 12.8'],
-                   'wave': [128130.0],
-                   'off': [[-120,90]],
-                   'linoth': linoth}
 
+    argspltlin1 = {'nx': 1,
+               'ny': 1,
+               'line': ['[NeII]12.81'],
+               'size': [30.], #[200.],
+               'IR': True}
 
 
     # Velocity dispersion limits and fixed values
@@ -107,8 +105,7 @@ def f22128896mir():
             'fitran': fitrange,
             'fluxunits': 1,
             'infile': infile,
-            'label':
-                config_file['source'][0].replace('.ideos','').replace('.npy', ''),
+            'label': config_file['source'][0].replace('.ideos','').replace('.npy', ''),
             'lines': lines,
             'linetie': linetie,
             'maxncomp': maxncomp,
@@ -126,8 +123,8 @@ def f22128896mir():
                             'models_dictionary': {},
                             'template_dictionary': {}},
             'argslinelist': {'vacuum': False},
-            #'argspltlin1': argspltlin1,
-            'fcncheckcomp': 'checkcomp',
+            'argspltlin1': argspltlin1,
+            #'fcncheckcomp': 'checkcomp',
             'fcncontfit': 'questfit',
             'maskwidths_def': 500,
             'emlsigcut': 2,
@@ -141,6 +138,9 @@ def f22128896mir():
             'varext': 2,
             'dqext': 3,
             'zerodq': True,
+            'argsreadcube': {'fluxunit_in': 'Jy',
+                            'waveunit_in': 'angstrom',
+                            'waveunit_out': 'micron'}, 
             'plotMIR': True,
         }
 

@@ -22,9 +22,6 @@ cols: in, optional, type=intarr, default=all
      rows: in, optional, type=intarr, default=all
        Rows to fit, in 1-offset format. Either a scalar or a
        two-element vector listing the first and last rows to fit.
-     oned: in, optional, type=byte
-       Data is assumed to be in a 2d array  choose this switch to
-       input data as a 1d array.
      onefit: in, optional, type=byte
        Option to skip second fit  primarily for testing.
      verbose: in, optional, type=byte
@@ -79,7 +76,7 @@ def __get_linelist(initdat):
 
 
 # initialize CUBE object
-def __get_CUBE(initdat, oned, quiet, logfile=None):
+def __get_CUBE(initdat, quiet, logfile=None):
     from q3dfit.common.readcube import CUBE
 
 #   Read data
@@ -107,20 +104,20 @@ def __get_CUBE(initdat, oned, quiet, logfile=None):
     if initdat.__contains__('argsreadcube'):
         if initdat.__contains__('waveext'):
             cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
-                    oned=oned, quiet=quiet, varext=varext, vormap=vormap,
+                    quiet=quiet, varext=varext, vormap=vormap,
                     logfile=logfile, waveext=initdat['waveext'], **initdat['argsreadcube'])
         else:
             cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
-                    oned=oned, quiet=quiet, varext=varext, vormap=vormap,
+                    quiet=quiet, varext=varext, vormap=vormap,
                     logfile=logfile, **initdat['argsreadcube'])
     else:
         if initdat.__contains__('waveext'):
             cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
-                    oned=oned, quiet=quiet, varext=varext, vormap=vormap,
+                    quiet=quiet, varext=varext, vormap=vormap,
                     logfile=logfile, waveext=initdat['waveext'])
         else:
             cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
-                    oned=oned, quiet=quiet, varext=varext, vormap=vormap,
+                    quiet=quiet, varext=varext, vormap=vormap,
                     logfile=logfile)
     return cube, vormap
 
@@ -182,27 +179,27 @@ def __get_spaxels(cube, cols=None, rows=None):
 # handle the FITLOOP execution.
 # In its own function due to commonality between single- and
 # multi-threaded execution
-def execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, oned,
+def execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist,
                     onefit, quiet, logfile=None):
     from q3dfit.common.fitloop import fitloop
     for ispax in range(0, nspax):
         fitloop(ispax, colarr, rowarr, cube, initdat, linelist,
-                oned, onefit, quiet, logfile=logfile)
+                onefit, quiet, logfile=logfile)
 
 
 # q3df setup for single-threaded execution
-def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
+def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
                  quiet=True):
     import time
     from sys import path
     # add common subdirectory to Python PATH for ease of importing
     path.append("common/")
     starttime = time.time()
-    
+
     if type(initproc) == str:
         initdat = __get_initdat(initproc)
     else:
-        initdat = initproc 
+        initdat = initproc
     # When initproc was a routine rather than an input dictionary
     #initdat = __get_initdat(initproc)
     linelist = __get_linelist(initdat)
@@ -212,8 +209,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
     else:
         logfile = None
 
-    print('initdat in q3df_oneCore: ', initdat)
-    cube, vormap = __get_CUBE(initdat, oned, quiet, logfile=logfile)
+    cube, vormap = __get_CUBE(initdat, quiet, logfile=logfile)
     if cols and rows and vormap:
         cols = __get_voronoi(cols, rows, vormap)
         rows = 1
@@ -221,7 +217,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
 
     # execute FITLOOP
 
-    execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, oned,
+    execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist,
                     onefit, quiet, logfile=logfile)
 
     if logfile is None:
@@ -237,7 +233,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, oned=False, onefit=False,
 
 
 # q3df setup for multi-threaded execution
-def q3df_multiCore(rank, initproc, cols=None, rows=None, oned=False,
+def q3df_multiCore(rank, initproc, cols=None, rows=None,
                    onefit=False, ncores=1, quiet=True):
     import time
     from numpy import floor
@@ -250,7 +246,7 @@ def q3df_multiCore(rank, initproc, cols=None, rows=None, oned=False,
     else:
         logfile = None
 
-    cube, vormap = __get_CUBE(initdat, oned, quiet, logfile=logfile)
+    cube, vormap = __get_CUBE(initdat, quiet, logfile=logfile)
     if cols and rows and vormap:
         cols = __get_voronoi(cols, rows, vormap)
         rows = 1
@@ -264,7 +260,7 @@ def q3df_multiCore(rank, initproc, cols=None, rows=None, oned=False,
     nspax_thisCore = stop-start
     # execute FITLOOP
     execute_fitloop(nspax_thisCore, colarr, rowarr, cube, initdat, linelist,
-                    oned, onefit, quiet, logfile=logfile)
+                    onefit, quiet, logfile=logfile)
     if logfile is None:
         from sys import stdout
         logtmp = stdout
@@ -306,10 +302,6 @@ if __name__ == "__main__":
     initproc = argv[1]
     cols = string_to_intArray(argv[2])
     rows = string_to_intArray(argv[3])
-    if argv[4].startswith("T"):
-        oned = True
-    else:
-        oned = False
     if argv[5].startswith("T"):
         onefit = True
     else:
@@ -318,4 +310,4 @@ if __name__ == "__main__":
         quiet = True
     else:
         quiet = False
-    q3df_multiCore(rank, initproc, cols, rows, oned, onefit, size, quiet)
+    q3df_multiCore(rank, initproc, cols, rows, onefit, size, quiet)

@@ -61,8 +61,8 @@ def miritest():
     # bad=1e99
     gal = 'miritest'
     outstr = ''
-    ncols = 16
-    nrows = 25
+    ncols = 37
+    nrows = 43
     # centcol = 9.002
     # centrow = 14.002
     platescale = 0.3
@@ -73,14 +73,14 @@ def miritest():
     volume = '../../../MIRISIM/MIRI-ETC-SIM/'
     infile = volume+'miri_etc_cube.fits'
     #infile = volume+'cube_reconstructed.fits'
-    #mapdir = volume+'maps/'
+    mapdir = volume+'maps/'
     outdir = volume+'outputs/'
-    #qsotemplate = volume+'miri_qsotemplate_B.npy'
+    qsotemplate = volume+'miri_qsotemplate_B.npy'
     #stellartemplates = \
     #    '/Users/caroline/Documents/ARI-Heidelberg/Q3D/Q3DFIT/q3dfit/Test_GMOS_DATA/pg1411/'+'pg1411hosttemplate.npy'
     logfile = outdir+gal+'_fitlog.txt'
-    #batchfile = '../common/fitloop.pro'
-    #batchdir = '/Users/drupke/src/idl/batch/'
+    batchfile = '../common/fitloop.pro'
+    batchdir = '/Users/drupke/src/idl/batch/'
 #
 # Required pars
 #
@@ -150,7 +150,7 @@ def miritest():
 
     # Velocity dispersion limits and fixed values
     siglim_gas = np.ndarray(2)
-    siglim_gas[:] = [5, 1000]
+    siglim_gas[:] = [5, 5000]
     # lratfix = {'[NI]5200/5198': [1.5]}
 
     #
@@ -169,9 +169,8 @@ def miritest():
             'maxncomp': maxncomp,
             'name': 'PG1411+442',
             'ncomp': ncomp,
-            #'mapdir': mapdir,
+            'mapdir': mapdir,
             'outdir': outdir,
-
             'platescale': platescale,
             'positionangle': 335,
             'minoraxispa': 75,
@@ -182,29 +181,22 @@ def miritest():
 #            'argscheckcomp': {'sigcut': 1,
 #                              'ignore': ['[OI]6300', '[OI]6364',
 #                                         '[SII]6716', '[SII]6731']},
-            # 'argscontfit': {'qsoxdr': qsotemplate,
-            #                 'siginit_stars': 50,
-            #                 'uselog': 1,
-            #                 'refit':'questfit',
-            #                 'args_questfit': {'config_file': cffilename,
-            #                     'global_ice_model': global_ice_model,
-            #                     'global_ext_model': global_ext_model,
-            #                     'models_dictionary': {},
-            #                     'template_dictionary': {}} 
-            #                 },
-
-            'argscontfit': {'config_file': cffilename,
-                            'global_ice_model': global_ice_model,
-                            'global_ext_model': global_ext_model,
-                            'models_dictionary': {},
-                            'template_dictionary': {} },
-
+            'argscontfit': {'qsoxdr': qsotemplate,
+                            'siginit_stars': 50,
+                            'uselog': 1,
+                            'refit':'questfit',
+                            'args_questfit': {'config_file': cffilename,
+                                'global_ice_model': global_ice_model,
+                                'global_ext_model': global_ext_model,
+                                'models_dictionary': {},
+                                'template_dictionary': {}} 
+                            },
             'argscontplot': {'xstyle':'log',
                              'ystyle':'log',
-                             #'waveunit_in': 'Angstrom',
-                             #'waveunit_out': 'Angstrom',
-                             #'fluxunit_in':'flambda',
-                             #'fluxunit_out':'flambda',
+                             'waveunit_in': 'Angstrom',
+                             'waveunit_out': 'Angstrom',
+                             'fluxunit_in':'flambda',
+                             'fluxunit_out':'flambda',
                              'mode':'dark'},
 
             'argslinelist': {'vacuum': False},
@@ -214,14 +206,14 @@ def miritest():
             'decompose_qso_fit': 1,
             # 'remove_scattered': 1,
             'fcncheckcomp': 'checkcomp',
-            'fcncontfit': 'questfit',
+            'fcncontfit': 'fitqsohost',
             #'fcncontfit': 'ppxf',
             'maskwidths_def': 2000,
 #            'tweakcntfit': tweakcntfit,
             'emlsigcut': 2,
             'logfile': logfile,
-            #'batchfile': batchfile,
-            #'batchdir': batchdir,
+            'batchfile': batchfile,
+            'batchdir': batchdir,
             'siglim_gas': siglim_gas,
             'siginit_gas': siginit_gas,
             'siginit_stars': 50,

@@ -1,9 +1,12 @@
 # Make quasar template
-# from q3dfit.common.makeqsotemplate import makeqsotemplate
-# volume = '/Users/drupke/Box Sync/q3d/pg1411/'
-# outpy = volume + 'pg1411qsotemplate.npy'
-# infits = volume + 'pg1411rb1.fits'
-# makeqsotemplate(infits, outpy, dataext=None, dqext=None, waveext=None)
+from q3dfit.common.makeqsotemplate import makeqsotemplate
+
+# Dave
+volume = '/Users/drupke/Box Sync/q3d/testing/pg1411/'
+outpy = volume + 'pg1411qsotemplate.npy'
+infits = volume + 'pg1411rb1.fits'
+
+makeqsotemplate(infits, outpy, wmapext=None, waveunit_in='Angstrom')
 
 import numpy as np
 from q3dfit.common.q3df import q3df

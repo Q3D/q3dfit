@@ -1,12 +1,12 @@
 from astropy.constants import c
 from astropy.io import fits
 from astropy import units as u
+from q3dfit.exceptions import CubeError
 from scipy import interpolate
 from sys import stdout
 
 import copy
 import numpy as np
-import os
 import pdb
 import warnings
 
@@ -126,166 +126,226 @@ cube = CUBE(fp='/path/to/data/', infile='datafits')
 class CUBE:
     def __init__(self, **kwargs):
         warnings.filterwarnings("ignore")
-        fp = kwargs.get('fp','')
+        # file path
+        fp = kwargs.get('fp', '')
         self.fp = fp
-        infile=kwargs.get('infile','')
+        # input file
+        infile = kwargs.get('infile', '')
         self.infile = infile
+        # log file; default STDOUT
         logfile = kwargs.get('logfile', stdout)
+        # input file
         try:
-            os.path.isfile(fp+infile)
-            #hdu = fits.open(fp+infile,ignore_missing_end=True)
-            #hdu.info()
-        except:
-            print('CUBE:' + infile + ' does not exist.', file=logfile)
-        hdu = fits.open(fp+infile, ignore_missing_end=True)
-        #hdu.info()
-        # fits extensions to be read
-        datext = kwargs.get('datext',1) # data
-        varext = kwargs.get('varext',2) # inverse variance
-        dqext =  kwargs.get('dqext',3)  # DQ
-        wmapext = kwargs.get('wmapext',4) # WMAP
-        error = kwargs.get('error',False)
-        invvar = kwargs.get('invvar',False)
-        linearize = kwargs.get('linearize',False)
-        quiet = kwargs.get('quiet',True)
-        waveext = kwargs.get('waveext',None)
-        zerodq = kwargs.get('zerodq',False)
-        vormap = kwargs.get('vormap',None)
+            hdu = fits.open(fp+infile, ignore_missing_end=True)
+        except FileNotFoundError:
+            raise CubeError(infile+' does not exist')
+        # fits extensions labels
+        datext = kwargs.get('datext', 1)  # data
+        varext = kwargs.get('varext', 2)  # variance
+        dqext = kwargs.get('dqext', 3)   # DQ
+        wmapext = kwargs.get('wmapext', 4)  # WMAP; assume for JWST
         self.datext = datext
         self.varext = varext
         self.dqext = dqext
         self.wmapext = wmapext
+
+        # other keyword arguments
+        error = kwargs.get('error', False)
+        invvar = kwargs.get('invvar', False)
+        quiet = kwargs.get('quiet', True)
+        linearize = kwargs.get('linearize', False)
+        wavext = kwargs.get('wavext', None)
+        zerodq = kwargs.get('zerodq', False)
+        vormap = kwargs.get('vormap', None)
+
+        # populate hdus
         self.hdu = hdu
         self.phu = hdu[0]
         try:
             self.dat = np.array((hdu[datext].data).T)
-        except:
-            print('CUBE: Data extension does not exist.', file=logfile)
-        try:
-            self.var = np.array((hdu[varext].data).T)
-            badvar = np.where(self.var < 0)
-            if np.size(badvar) > 0:
-                print('CUBE: Negative values encountered in variance array.' +
-                      'Taking absolute value.',
-                      file=logfile)
-            self.var = np.abs(self.var)
-            self.err = np.array(copy.copy(self.var) ** 0.5)
-        except:
-            print('CUBE: Variance extension does not exist.', file=logfile)
-        try:
-            self.dq = np.array((hdu[dqext].data).T)
-        except:
-            print('CUBE: Quality flag extension does not exist.', file=logfile)
-        try:
-            self.wmap = (hdu[wmapext].data).T
-        except:
-            print('CUBE: WMAP extension does not exist.', file=logfile)
-        # The current default input and working wavelengths are um
-        waveunit_tmp = kwargs.get('waveunit_in','micron')
-        waveunit_out = kwargs.get('waveunit_out','micron')
-        try:
-            self.waveunit_in = hdu[datext].header['CUNIT3']
-        except:
-            self.waveunit_in = waveunit_tmp
-            # print('CUBE: wavelength unit does not exist in the header of sci hdu.', file=logfile)
-        self.waveunit_out = waveunit_out
+        except (IndexError or KeyError):
+            raise CubeError('Data extension not properly specified or absent')
+
+        if varext is not None:
+            try:
+                self.var = np.array((hdu[varext].data).T)
+            except (IndexError or KeyError):
+                raise CubeError('Variance extension not properly specified ' +
+                                'or absent')
+            if invvar:
+                self.var = 1./self.var
+            if error:
+                self.err = self.var
+                self.var = self.var**2.
+            else:
+                badvar = np.where(self.var < 0)
+                if np.size(badvar) > 0:
+                    print('CUBE: Negative values encountered in variance ' +
+                          'array. Taking absolute value.', file=logfile)
+                self.var = np.abs(self.var)
+                self.err = np.array(copy.copy(self.var) ** 0.5)
+        else:
+            self.var = None
+            self.err = None
+
+        if dqext is not None:
+            try:
+                self.dq = np.array((hdu[dqext].data).T)
+            except (IndexError or KeyError):
+                raise CubeError('DQ extension not properly specified ' +
+                                'or absent')
+        else:
+            self.dq = None
         # put all dq to good (0)
-        if zerodq == True:
-            self.dq = np.zeros(np.shape(self.data))
+        if zerodq:
+            self.dq = np.zeros(np.shape(self.dat))
 
-        fluxunit_in = kwargs.get('fluxunit_in', 'MJy/sr')
-        fluxunit_out = kwargs.get('fluxunit_out', 'erg/s/cm2/micron/sr')
-        self.fluxunit_in = fluxunit_in
-        self.fluxunit_out = fluxunit_out
+        if wmapext is not None:
+            try:
+                self.wmap = (hdu[wmapext].data).T
+            except (IndexError or KeyError):
+                raise CubeError('WMAP extension not properly specified ' +
+                                'or absent')
+        else:
+            self.wmap = None
 
-        # reading wavelength from wavelength extention
-        if waveext:
-            self.wave = hdu[waveext].data
-            self.crval = 0
-            self.crpix = 1
-            self.cdelt = 1
+        # headers
         self.header_phu = hdu[0].header
         self.header_dat = hdu[datext].header
         self.header_var = hdu[varext].header
         self.header_dq = hdu[dqext].header
+        header = copy.copy(self.header_dat)
 
+        # Get shape of cube
         datashape = np.shape(self.dat)
         if np.size(datashape) == 3:
             ncols = (datashape)[0]
             nrows = (datashape)[1]
             nw = (datashape)[2]
-            try:
-                np.max([nrows,ncols]) < nw
-            except:
-                print('CUBE: Data cube dimensions not in [nw, nrows, ncols] ',
-                      'format.', file=logfile)
+            if np.max([nrows, ncols]) > nw:
+                raise CubeError('Data cube dimensions not in ' +
+                                '[nw, nrows, ncols] format')
             CDELT = 'CDELT3'
-            CRVAL ='CRVAL3'
+            CRVAL = 'CRVAL3'
             CRPIX = 'CRPIX3'
             CDELT = 'CDELT3'
             CD = 'CD3_3'
             CUNIT = 'CUNIT3'
             BUNIT = 'BUNIT'
         elif np.size(datashape) == 2:
-            print('CUBE: Reading 2D image. Assuming dispersion direction ' +
-                  'is along rows.', file=logfile)
+            if not quiet:
+                print('CUBE: Reading 2D image. Assuming dispersion ' +
+                      'is along rows.', file=logfile)
             nrows = 1
             ncols = (datashape)[1]
             nw = (datashape)[-1]
             CDELT = 'CDELT1'
-            CRVAL ='CRVAL1'
+            CRVAL = 'CRVAL1'
             CRPIX = 'CRPIX1'
             CDELT = 'CDELT1'
             CD = 'CD1_1'
+            CUNIT = 'CUNIT1'
+            BUNIT = 'BUNIT'
         elif np.size(datashape) == 1:
             nrows = 1
             ncols = 1
             nw = (datashape)[0]
             CDELT = 'CDELT1'
-            CRVAL ='CRVAL1'
+            CRVAL = 'CRVAL1'
             CRPIX = 'CRPIX1'
             CDELT = 'CDELT1'
             CD = 'CD1_1'
+            CUNIT = 'CUNIT1'
+            BUNIT = 'BUNIT'
         self.ncols = int(ncols)
         self.nrows = int(nrows)
         self.nw = int(nw)
-        # obtain the wavelenghth array using header
-        if not waveext:
-            header = copy.copy(self.header_dat)
+
+        # The current default input and working wavelengths are um
+        # The current default input flux is MJy/sr; working flux is
+        # erg/s/cm2/micron/sr'
+        waveunit_tmp = kwargs.get('waveunit_in', 'micron')
+        self.waveunit_out = kwargs.get('waveunit_out', 'micron')
+        fluxunit_tmp = kwargs.get('fluxunit_in', 'MJy/sr')
+        self.fluxunit_out = kwargs.get('fluxunit_out', 'erg/s/cm2/micron/sr')
+        try:
+            self.waveunit_in = header[CUNIT]
+        except KeyError:
+            self.waveunit_in = waveunit_tmp
+            if not quiet:
+                print('CUBE: No wavelength units in header; assuming micron.',
+                      file=logfile)
+        try:
+            self.fluxunit_in = header[BUNIT]
+        except KeyError:
+            self.fluxunit_in = fluxunit_tmp
+            if not quiet:
+                print('CUBE: No flux units in header; assuming MJy/sr',
+                      file=logfile)
+
+        # cases of weirdo flux units
+        if self.fluxunit_in.find('/A/') != -1:
+            self.fluxunit_in = self.fluxunit_in.replace('/A/', '/Angstrom/')
+
+        # reading wavelength from wavelength extention
+        if wavext is not None:
+            try:
+                self.wave = hdu[wavext].data
+            except (IndexError or KeyError):
+                raise CubeError('Wave extension not properly specified ' +
+                                'or absent')
+            self.crval = 0
+            self.crpix = 1
+            self.cdelt = 1
+        else:
+            try:
+                self.crval = header[CRVAL]
+                self.crpix = header[CRPIX]
+            except KeyError:
+                raise CubeError('Cannot compute wavelengths; ' +
+                                'CRVAL and/or CRPIX missing')
             if CDELT in header:
                 self.wav0 = header[CRVAL] - (header[CRPIX] - 1) * header[CDELT]
                 self.wave = self.wav0 + np.arange(nw)*header[CDELT]
                 self.cdelt = header[CDELT]
-            if CD in header:
+            elif CD in header:
                 self.wav0 = header[CRVAL] - (header[CRPIX] - 1) * header[CD]
                 self.wave = self.wav0 + np.arange(nw)*header[CD]
                 self.cdelt = header[CD]
-        # updated with try and except by cbertemes
-        try:
-            self.crval = header[CRVAL]
-            self.crpix = header[CRPIX]
-            if CUNIT in header:
-                self.cunit = header[CUNIT]
-            BUNIT = 'BUNIT'
-            if BUNIT in header:
-                self.bunit = header[BUNIT]
-        except Exception as e:
-            print(e)
-            print('... Continuing anyway ...')
-            pass
+            else:
+                raise CubeError('Cannot find or compute wavelengths')
+
+        # convert wavelengths if requested
         if self.waveunit_in != self.waveunit_out:
             wave_in = self.wave * u.Unit(self.waveunit_in)
             self.wave = wave_in.to(u.Unit(self.waveunit_out)).value
-        try:
-            self.wave
-        except:
-            print('wavelength array not loaded successfully!', file=logfile)
-            breakpoint()
 
-        # default working flux unit is erg/s/cm^2/um/sr
-        # For now, /sr is implicit for all inputs
+        # indexing of Voronoi-tessellated data
+        if vormap:
+            ncols = np.max(vormap)
+            nrows = 1
+            vordat = np.zeros((ncols, nrows, nw))
+            vorvar = np.zeros((ncols, nrows, nw))
+            vordq = np.zeros((ncols, nrows, nw))
+            vorcoords = np.zeros((ncols, 2), dtype=int)
+            nvor = np.zeros((ncols))
+            for i in np.arange(ncols):
+                ivor = np.where(vormap == i+1)
+                xyvor = [ivor[0][0], ivor[0][1]]
+                vordat[i, 0, :] = self.dat[xyvor[0], xyvor[1], :]
+                vorvar[i, 0, :] = self.var[xyvor[0], xyvor[1], :]
+                vordq[i, 0, :] = self.dq[xyvor[0], xyvor[1], :]
+                vorcoords[i, :] = xyvor
+                nvor[i] = (np.shape(ivor))[1]
+            self.dat = vordat
+            self.var = vorvar
+            self.dq = vordq
+
+        # Flux unit conversions
+        # default working flux unit is erg/s/cm^2/um/sr or erg/s/cm^2/um
         convert_flux = 1.
-        if fluxunit_in == 'MJy/sr':
+        if u.Unit(self.fluxunit_in) == u.Unit('MJy/sr') or \
+            u.Unit(self.fluxunit_in) == u.Unit('MJy'):
             # IR units: https://coolwiki.ipac.caltech.edu/index.php/Units
             # default input flux unit is MJy/sr
             # 1 Jy = 10^-26 W/m^2/Hz
@@ -296,36 +356,27 @@ class CUBE:
             convert_flux = 1e6 * 1e-23 * c.value / wave_out.to('m').value / \
                 wave_out.to('micron').value
 
-        # case of input flux units: erg/s/cm^2/A (/sr)
-        elif fluxunit_in == 'erg/s/cm2/Angstrom/sr':
+        # case of input flux units: erg/s/cm^2/Anstrom (/arcsec2/sr)
+        elif u.Unit(self.fluxunit_in) == u.Unit('erg/s/cm2/Angstrom/sr') or \
+            u.Unit(self.fluxunit_in) == u.Unit('erg/s/cm2/Angstrom') or \
+            u.Unit(self.fluxunit_in) == \
+                u.Unit('erg/s/cm2/Angstrom/arcsec2/sr') or \
+            u.Unit(self.fluxunit_in) == \
+                u.Unit('erg/s/cm2/Angstrom/arcsec2'):
             convert_flux = 1e4
 
-        if fluxunit_out == 'erg/s/cm2/Angstrom/sr':
+        # case of output flux units: erg/s/cm^2/Anstrom (/arcsec2/sr)
+        if u.Unit(self.fluxunit_out) == u.Unit('erg/s/cm2/Angstrom/sr') or \
+            u.Unit(self.fluxunit_out) == u.Unit('erg/s/cm2/Angstrom') or \
+            u.Unit(self.fluxunit_out) == \
+                u.Unit('erg/s/cm2/Angstrom/arcsec2/sr') or \
+            u.Unit(self.fluxunit_out) == \
+                u.Unit('erg/s/cm2/Angstrom/arcsec2'):
             convert_flux /= 1e4
 
         self.dat = self.dat * convert_flux
         self.var = self.var / (convert_flux**2)
         self.err = self.err * convert_flux
-
-        if vormap:
-            ncols = np.max(vormap)
-            nrows = 1
-            vordat = np.zeros((ncols,nrows,nw))
-            vorvar = np.zeros((ncols,nrows,nw))
-            vordq = np.zeros((ncols,nrows,nw))
-            vorcoords = np.zeros((ncols,2),dtype=int)
-            nvor = np.zeros((ncols))
-            for i in np.arange(ncols):
-                ivor = np.where(vormap == i+1)
-                xyvor = [ivor[0][0],ivor[0][1]]
-                vordat[i,0,:] = self.dat[xyvor[0],xyvor[1],:]
-                vorvar[i,0,:] = self.var[xyvor[0],xyvor[1],:]
-                vordq[i,0,:] = self.dq[xyvor[0],xyvor[1],:]
-                vorcoords[i,:] = xyvor
-                nvor[i] = (np.shape(ivor))[1]
-            dat = vordat
-            var = vorvar
-            dq = vordq
 
         # linearize in the wavelength direction
         if linearize:
@@ -335,19 +386,22 @@ class CUBE:
             dqold = copy.copy(self.dq)
             self.crpix = 1
             self.cdelt = (waveold[-1]-waveold[0]) / (self.nz-1)
-            wave = np.linspace(waveold[0],waveold[-1],num=self.nz)
+            wave = np.linspace(waveold[0], waveold[-1], num=self.nz)
             self.wave = wave
-            spldat = interpolate.splrep(waveold,datold,s=0)
-            self.dat = interpolate.splev(waveold,spldat,der=0)
-            splvar = interpolate.splrep(waveold,varold,s=0)
-            self.var = interpolate.splev(waveold,splvar,der=0)
-            spldq = interpolate.splrep(waveold,dqold,s=0)
-            self.dq = interpolate.splev(waveold,spldq,der=0)
-            print('CUBE: Interpolating DQ; values > 0.01 set to 1.',
-                  sfile=logfile)
+            spldat = interpolate.splrep(waveold, datold, s=0)
+            self.dat = interpolate.splev(waveold, spldat, der=0)
+            splvar = interpolate.splrep(waveold, varold, s=0)
+            self.var = interpolate.splev(waveold, splvar, der=0)
+            spldq = interpolate.splrep(waveold, dqold, s=0)
+            self.dq = interpolate.splev(waveold, spldq, der=0)
+            if not quiet:
+                print('CUBE: Interpolating DQ; values > 0.01 set to 1.',
+                      file=logfile)
             ibd = np.where(self.dq > 0.01)
             if np.size(ibd) > 0:
-                dq[ibd] = 1
+                self.dq[ibd] = 1
+
+        # close the fits file
         hdu.close()
 
 

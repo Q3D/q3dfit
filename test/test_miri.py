@@ -33,8 +33,8 @@ if not template_exists:
 
 from q3dfit.common.q3df import q3df
 q3df('miritest', cols=7, rows=14, quiet=False)
-# from q3dfit.common.q3da import q3da
-# q3da('miritest', cols=7, rows=14, quiet=False)
+from q3dfit.common.q3da import q3da
+q3da('miritest', cols=7, rows=14, quiet=False)
 
 
 

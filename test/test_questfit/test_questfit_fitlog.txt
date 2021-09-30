@@ -1,2 +1,7 @@
+<<<<<<< HEAD
 CUBE: No wavelength units in header; assuming micron.
 CUBE: No flux units in header; assuming MJy/sr
+=======
+[col,row]=[1,1] out of [1,1]
+Q3DF: Total time for calculation: 7.86 s.
+>>>>>>> 31a1093 (Applied Dave's recent updates to the jupyter notebook for the mockETCcube test to the command-line script as well (./init/miritest.py), mostly for proper plotting to work.)

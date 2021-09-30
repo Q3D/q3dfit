@@ -142,11 +142,10 @@ def miritest():
     linoth = np.full((1, 1), '', dtype=object)
     linoth[0, 0] = '[[NeII]12.81]'
     argspltlin1 = {'nx': 1,
-                    'ny': 1,
-                    'label': ['test-MIRLINE'],
-                        'wave': [128130.0],
-                        'off': [[-120,90]],
-                        'linoth': linoth}
+               'ny': 1,
+               'line': lines,
+               'size': [1.]}
+
 
     # Velocity dispersion limits and fixed values
     siglim_gas = np.ndarray(2)
@@ -169,73 +168,35 @@ def miritest():
             'maxncomp': maxncomp,
             'name': 'PG1411+442',
             'ncomp': ncomp,
-            #'mapdir': mapdir,
             'outdir': outdir,
-
-            'platescale': platescale,
-            'positionangle': 335,
-            'minoraxispa': 75,
             'zinit_stars': zinit_stars,
             'zinit_gas': zinit_gas,
             'zsys_gas': 0.0,
-            # Optional pars
-#            'argscheckcomp': {'sigcut': 1,
-#                              'ignore': ['[OI]6300', '[OI]6364',
-#                                         '[SII]6716', '[SII]6731']},
-            # 'argscontfit': {'qsoxdr': qsotemplate,
-            #                 'siginit_stars': 50,
-            #                 'uselog': 1,
-            #                 'refit':'questfit',
-            #                 'args_questfit': {'config_file': cffilename,
-            #                     'global_ice_model': global_ice_model,
-            #                     'global_ext_model': global_ext_model,
-            #                     'models_dictionary': {},
-            #                     'template_dictionary': {}} 
-            #                 },
 
+
+            # Optional pars
             'argscontfit': {'config_file': cffilename,
                             'global_ice_model': global_ice_model,
                             'global_ext_model': global_ext_model,
                             'models_dictionary': {},
-                            'template_dictionary': {} },
-
-            'argscontplot': {'xstyle':'log',
-                             'ystyle':'log',
-                             #'waveunit_in': 'Angstrom',
-                             #'waveunit_out': 'Angstrom',
-                             #'fluxunit_in':'flambda',
-                             #'fluxunit_out':'flambda',
-                             'mode':'dark'},
-
+                            'template_dictionary': {}},
             'argslinelist': {'vacuum': False},
-            #'startempfile': stellartemplates,
             'argspltlin1': argspltlin1,
-            # 'donad': 1,
-            'decompose_qso_fit': 1,
-            # 'remove_scattered': 1,
+            #'decompose_qso_fit': 1,
             'fcncheckcomp': 'checkcomp',
             'fcncontfit': 'questfit',
-            #'fcncontfit': 'ppxf',
             'maskwidths_def': 2000,
-#            'tweakcntfit': tweakcntfit,
             'emlsigcut': 2,
             'logfile': logfile,
-            #'batchfile': batchfile,
-            #'batchdir': batchdir,
             'siglim_gas': siglim_gas,
             'siginit_gas': siginit_gas,
             'siginit_stars': 50,
-                #            'cutrange': np.array([14133, 14743]),
             'nocvdf': 1,
-            # 'cvdf_vlimits': [-3e3,3e3],
-            # 'cvdf_vstep': 10d,
-            # 'host': {'dat_fits': volume+'ifs/gmos/cubes/'+gal+'/'+\
-            #         gal+outstr+'_host_dat_2.fits'} \
             'plotMIR': True,
-            'qsoonly':1,
             'argsreadcube': {'fluxunit_in': 'Jy',
                             'waveunit_in': 'angstrom',
                             'waveunit_out': 'micron'}        
+
             }
 
     return(init)

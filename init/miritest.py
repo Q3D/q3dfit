@@ -188,19 +188,19 @@ def miritest():
             'argspltlin1': argspltlin1,
             'decompose_qso_fit': 1,
             'compare_to_real_decomp': 1,
-            'fcncheckcomp': 'checkcomp',
-            'fcncontfit': 'questfit',
-            'maskwidths_def': 2000,
-            'emlsigcut': 2,
-            'logfile': logfile,
-            'siglim_gas': siglim_gas,
-            'siginit_gas': siginit_gas,
-            'siginit_stars': 50,
-            'nocvdf': 1,
-            'plotMIR': True,
-            'argsreadcube': {'fluxunit_in': 'Jy',
-                            'waveunit_in': 'angstrom',
-                            'waveunit_out': 'micron'}        
+
+            # 'fcncheckcomp': 'checkcomp            # 'fcncontfit': 'questfit',
+            # 'maskwidths_def': 2000,
+            # 'emlsigcut': 2,
+            # 'logfile': logfile,
+            # 'siglim_gas': siglim_gas,
+            # 'siginit_gas': siginit_gas,
+            # 'siginit_stars': 50,
+            # 'nocvdf': 1,
+            # 'plotMIR': True,
+            # 'argsreadcube': {'fluxunit_in': 'Jy',
+            #                 'waveunit_in': 'angstrom',
+            #                 'waveunit_out': 'micron'}        
 
             }
 

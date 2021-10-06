@@ -8,6 +8,7 @@ from sys import stdout
 import copy
 import numpy as np
 import pdb
+import re
 import warnings
 
 
@@ -162,13 +163,13 @@ class CUBE:
         self.hdu = hdu
         self.phu = hdu[0]
         try:
-            self.dat = np.array((hdu[datext].data).T)
+            self.dat = np.array((hdu[datext].data).T, dtype='float64')
         except (IndexError or KeyError):
             raise CubeError('Data extension not properly specified or absent')
 
         if varext is not None:
             try:
-                self.var = np.array((hdu[varext].data).T)
+                self.var = np.array((hdu[varext].data).T, dtype='float64')
             except (IndexError or KeyError):
                 raise CubeError('Variance extension not properly specified ' +
                                 'or absent')
@@ -282,10 +283,23 @@ class CUBE:
             if not quiet:
                 print('CUBE: No flux units in header; assuming MJy/sr',
                       file=logfile)
+        # Remove whitespace from units
+        self.waveunit_in.strip()
+        self.fluxunit_in.strip()
 
         # cases of weirdo flux units
+        # remove string literal '/A/'
         if self.fluxunit_in.find('/A/') != -1:
             self.fluxunit_in = self.fluxunit_in.replace('/A/', '/Angstrom/')
+        # remove string literal '/Ang' if it's at the end of the string
+        if self.fluxunit_in.find('/Ang') != -1 and \
+            self.fluxunit_in.find('/Ang') == len(self.fluxunit_in)-4:
+            self.fluxunit_in = self.fluxunit_in.replace('/Ang', '/Angstrom')
+        # remove scientific notation # and trailing whitespace
+        # https://stackoverflow.com/questions/18152597/extract-scientific-number-from-string
+        match_number = re.compile('-?\ *[0-9]+\.?[0-9]*(?:[Ee]' +
+                                  '\ *-?\ *[0-9]+)\ *')
+        self.fluxunit_in = re.sub(match_number, '', self.fluxunit_in)
 
         # reading wavelength from wavelength extention
         if wavext is not None:
@@ -343,7 +357,7 @@ class CUBE:
 
         # Flux unit conversions
         # default working flux unit is erg/s/cm^2/um/sr or erg/s/cm^2/um
-        convert_flux = 1.
+        convert_flux = np.float64(1.)
         if u.Unit(self.fluxunit_in) == u.Unit('MJy/sr') or \
             u.Unit(self.fluxunit_in) == u.Unit('MJy'):
             # IR units: https://coolwiki.ipac.caltech.edu/index.php/Units
@@ -363,7 +377,7 @@ class CUBE:
                 u.Unit('erg/s/cm2/Angstrom/arcsec2/sr') or \
             u.Unit(self.fluxunit_in) == \
                 u.Unit('erg/s/cm2/Angstrom/arcsec2'):
-            convert_flux = 1e4
+            convert_flux = np.float64(1e4)
 
         # case of output flux units: erg/s/cm^2/Anstrom (/arcsec2/sr)
         if u.Unit(self.fluxunit_out) == u.Unit('erg/s/cm2/Angstrom/sr') or \
@@ -372,11 +386,11 @@ class CUBE:
                 u.Unit('erg/s/cm2/Angstrom/arcsec2/sr') or \
             u.Unit(self.fluxunit_out) == \
                 u.Unit('erg/s/cm2/Angstrom/arcsec2'):
-            convert_flux /= 1e4
+            convert_flux /= np.float64(1e4)
 
-        self.dat = self.dat * convert_flux
-        self.var = self.var / (convert_flux**2)
-        self.err = self.err * convert_flux
+        #self.dat = self.dat * convert_flux
+        #self.var = self.var * convert_flux**2
+        #self.err = self.err * convert_flux
 
         # linearize in the wavelength direction
         if linearize:

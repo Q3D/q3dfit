@@ -6,12 +6,12 @@ from q3dfit.common.q3da import q3da
 ippath = '/Users/drupke/specfits/q3dfit/testing/22128896/'
 
 # Caroline
-ippath = '../test/test_questfit/'
-initproc_npy_exists = False
-if not initproc_npy_exists:
-    from q3dfit.init.f22128896mir import f22128896mir
-    initproc = f22128896mir()
-    np.save(ippath+'initproc.npy', initproc)
+#ippath = '../test/test_questfit/'
+#initproc_npy_exists = False
+#if not initproc_npy_exists:
+#    from q3dfit.init.f22128896mir import f22128896mir
+#    initproc = f22128896mir()
+#    np.save(ippath+'initproc.npy', initproc)
 
 initproc = np.load(ippath+'initproc.npy', allow_pickle=True)
 

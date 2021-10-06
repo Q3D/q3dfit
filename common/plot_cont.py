@@ -30,23 +30,29 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
               compspec=None, comptitles=None, ps=None,
               title=None, fitran=None, yranminmax=None, IR=False):
 
+    xstyle = 'log'
+    ystyle = 'log'
+    # JWST defaults:
+    waveunit_in = 'micron'
+    waveunit_out = 'micron'
+    fluxunit_in = 'flambda'
+    fluxunit_out = 'flambda'
+    mode = 'light'
     if 'argscontplot' in initdat:
-        xstyle = initdat['argscontplot']['xstyle']
-        ystyle = initdat['argscontplot']['ystyle']
-        waveunit_in = initdat['argscontplot']['waveunit_in']
-        waveunit_out = initdat['argscontplot']['waveunit_out']
-        fluxunit_in = initdat['argscontplot']['fluxunit_in']
-        fluxunit_out = initdat['argscontplot']['fluxunit_out']
-        mode = initdat['argscontplot']['mode']
-    else:
-        xstyle = 'log'
-        ystyle = 'log'
-        # JWST defaults:
-        waveunit_in = 'micron'
-        waveunit_out = 'micron'
-        fluxunit_in = 'flambda'
-        fluxunit_out = 'flambda'
-        mode = 'light'
+        if 'xstyle' in initdat['argscontplot']:
+            xstyle = initdat['argscontplot']['xstyle']
+        if 'ystyle' in initdat['argscontplot']:
+            ystyle = initdat['argscontplot']['ystyle']
+        if 'waveunit_in' in initdat['argscontplot']:
+            waveunit_in = initdat['argscontplot']['waveunit_in']
+        if 'waveunit_out' in initdat['argscontplot']:
+            waveunit_out = initdat['argscontplot']['waveunit_out']
+        if 'fluxunit_in' in initdat['argscontplot']:
+            fluxunit_in = initdat['argscontplot']['fluxunit_in']
+        if 'fluxunit_out' in initdat['argscontplot']:
+            fluxunit_out = initdat['argscontplot']['fluxunit_out']
+        if 'mode' in initdat['argscontplot']:
+            mode = initdat['argscontplot']['mode']
 
     # dark mode just for fun:
     if mode == 'dark':
@@ -233,8 +239,8 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                     # finding min/max values at indices from idict
                     dat_et_mod = np.concatenate((ydat[idict[count]],
                                                  ymod[idict[count]]))
-                    maximum = np.max(dat_et_mod)
-                    minimum = np.min(dat_et_mod)
+                    maximum = np.nanmax(dat_et_mod)
+                    minimum = np.nanmin(dat_et_mod)
                     # set min and max in yran
                     if yranminmax is not None:
                         yran = [minimum, maximum]
@@ -255,8 +261,8 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
 
                     ymodisort = ymodi[iysort]
                     if ysort[ny - ntop] < ysort[ny - 1] * maxthresh:
-                        yran[1] = max(ysort[0:ny - ntop] +
-                                      ymodisort[0:ny - ntop])
+                        yran[1] = np.nanmax(ysort[0:ny - ntop] +
+                                            ymodisort[0:ny - ntop])
 
                     # plotting
                     plt.xlim(xrans[count][0], xrans[count][1])
@@ -279,7 +285,7 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                         xticks = np.arange(math.floor(xrans[count][0]/100.0)*100,
                                            (math.floor(xrans[count][1]/100)*100)+100, 100)
                         plt.xticks(xticks, fontsize=10)
-                    if min(ydat) > 1e-10:
+                    if np.nanmin(ydat) > 1e-10:
                         # this will fail if fluxes are very low (<~1e-10)
                         plt.yticks(np.arange(yran[0], yran[1],
                                              np.around((yran[1] - yran[0])/5.,
@@ -486,12 +492,12 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
                     # finding max value between ydat and ymod at indices from i1
                     for i in idict[count]:
-                        bigboy = max(ydat[i], ymod[i])
+                        bigboy = np.nanmax(ydat[i], ymod[i])
                         if bigboy > maximum:
                             maximum = bigboy
                     # finding min
                     for i in idict[count]:
-                        smallboy = min(ydat[i], ymod[i])
+                        smallboy = np.nanmin(ydat[i], ymod[i])
                         if smallboy < minimum:
                             minimum = smallboy
                     # set min and max in yran
@@ -514,7 +520,8 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
 
                     ymodisort = ymodi[iysort]
                     if ysort[ny - ntop] < ysort[ny - 1] * maxthresh:
-                        yran[1] = max(ysort[0:ny - ntop] + ymodisort[0:ny - ntop])
+                        yran[1] = np.nanmax(ysort[0:ny - ntop] +
+                                            ymodisort[0:ny - ntop])
 
                     # plotting
                     plt.xlim(xrans[count][0], xrans[count][1])

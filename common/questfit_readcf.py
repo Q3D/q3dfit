@@ -1,4 +1,5 @@
 import numpy as np
+import pdb
 
 
 def readcf(filename):
@@ -8,18 +9,17 @@ def readcf(filename):
         out:
         '''
 
+    cf = np.loadtxt(filename, dtype='str')
 
-    cf = np.loadtxt(filename, dtype = 'str')
-    
     numberoftemplates=list(cf.T[0]).count('template')
     numberofBB=list(cf.T[0]).count('blackbody')
     numberofpl=list(cf.T[0]).count('powerlaw')
     numberofext=list(cf.T[0]).count('extinction')
     numberofabs=list(cf.T[0]).count('absorption')
     numberofsources=list(cf.T[0]).count('source')
-    
+
     #Creating the initilization for the models:
-    
+
     init_questfit = {}
     for i in cf:
         if i[0] == 'template' or i[0] == 'powerlaw' or i[0] == 'blackbody':
@@ -42,10 +42,10 @@ def readcf(filename):
         if i[0] == 'absorption' or i[0] == 'extinction':
             #init_questfit[i[0]+'_'+i[1]+'_'+i[4]+'_'+i[10]] = i[1:]
             init_questfit[i[4]] = i[1]
-             
-        
+
+
         if i[0] == 'source' :
             init_questfit['source'] = i[1:]
 
-             
+
     return init_questfit

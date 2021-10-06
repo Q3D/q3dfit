@@ -550,12 +550,12 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                         if 'qsoord' in initdat['argscontfit']:
                             qsoord = initdat['argscontfit']['qsoord']
                         else:
-                            qsoord = False  # ?
+                            qsoord = None  # ?
 
                         if 'hostord' in initdat['argscontfit']:
                             hostord = initdat['argscontfit']['hostord']
                         else:
-                            hostord = False  # ?
+                            hostord = None  # ?
 
                         if 'blrpar' in initdat['argscontfit']:
                             blrterms = len(initdat['argscontfit']['blrpar'])

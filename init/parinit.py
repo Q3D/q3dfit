@@ -28,10 +28,14 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             dblt_pairs[doublets['line2'][idx]] = doublets['line1'][idx]
 
     if not specres:
-        specres = 0.
+        specres = np.float64(0.)
+    else:
+        specres = np.float64(specres)
     # A reasonable lower limit of 5d for physicality
     if siglim is None:
-        siglim = [5., 2000.]
+        siglim = np.array([5., 2000.])
+    else:
+        siglim = np.array(siglim, dtype='float64')
 
     # converts the astropy.Table structure of linelist into a Python
     # dictionary that is compatible with the code downstream
@@ -147,8 +151,9 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
                         initval = lineratio['value'][ilinrat]
                     else:
                         initval = \
-                            fit_params[f'{lmline1.lmlabel}_{comp}_flx'] / \
-                            fit_params[f'{lmline2.lmlabel}_{comp}_flx']
+                            np.divide(
+                                fit_params[f'{lmline1.lmlabel}_{comp}_flx'],
+                                fit_params[f'{lmline2.lmlabel}_{comp}_flx'])
                     lmrat = f'{lmline1.lmlabel}_div_{lmline2.lmlabel}_{comp}'
                     fit_params.add(lmrat, value=initval)
                     # tie second line to first line divided by the ratio
@@ -214,7 +219,10 @@ def manygauss(x, flx, cwv, sig, srsigslam):
     # param 0 flux
     # param 1 central wavelength
     # param 2 sigma
-    c = 299792.458
+    c = np.float64(299792.458)
     sigs = np.sqrt(np.power((sig/c)*cwv, 2.) + np.power(srsigslam, 2.))
     gaussian = flx*np.exp(-np.power((x-cwv) / sigs, 2.)/2.)
+    #maskval = np.float64(1e-4*max(gaussian))
+    #maskind = np.asarray(gaussian < maskval).nonzero()[0]
+    #gaussian[maskind] = np.float64(0.)
     return gaussian

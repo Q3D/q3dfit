@@ -1,5 +1,6 @@
+import lmfit
 import numpy as np
-# import pdb
+import pdb
 import ppxf.ppxf_util as util
 import sys
 
@@ -12,9 +13,10 @@ from scipy import interpolate
 
 def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
                zstar, quiet=True, blrpar=None, qsoxdr=None,
-               qsoonly=False, index_log=None, refit=None,
-               add_poly_degree=None, siginit_stars=None,
-               polyspec_refit=None, fitran=None, fittol=None,
+               qsoonly=False, index_log=None, err_log=None,
+               flux_log=None, refit=None,
+               add_poly_degree=30, siginit_stars=None,
+               fitran=None, fittol=None,
                qsoord=None, hostonly=False, hostord=None, blronly=False,
                blrterms=None, **kwargs):
     '''Function defined to fit the continuum
@@ -77,7 +79,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     qsoflux = qsoflux_full[iqsoflux]
 
     # Normalizing qsoflux template
-    qsoflux = qsoflux/np.median(qsoflux)#*np.mean(flux)
+    qsoflux = qsoflux/np.median(qsoflux)  # *np.mean(flux)
     index = np.array(index)
     index = index.astype(dtype='int')
 
@@ -87,67 +89,69 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     iweight = weight[index]
     # ierr = err[index]
 
-    if add_poly_degree is None:
-        add_poly_degree = 30
-
     ymod, params = \
-        qsohostfcn(wave, params_fit=None, quiet=quiet, blrpar=blrpar,
-                   qsoxdr=qsoxdr, qsoonly=qsoonly, index_log=index_log,
-                   refit=refit, add_poly_degree=add_poly_degree,
-                   siginit_stars=siginit_stars, polyspec_refit=polyspec_refit,
-                   fitran=fitran, fittol=fittol, qsoord=qsoord,
-                   hostonly=hostonly, hostord=hostord,
-                   blronly=blronly, qsoflux=qsoflux, **kwargs)
+        qsohostfcn(wave, params_fit=None, qsoxdr=qsoxdr, qsoonly=qsoonly,
+                   qsoord=qsoord, hostonly=hostonly, hostord=hostord,
+                   blronly=blronly, blrpar=blrpar, qsoflux=qsoflux, **kwargs)
+    if quiet:
+        lmverbose = 0  # verbosity for scipy.optimize.least_squares
+    else:
+        lmverbose = 2
+    fit_kws = {'verbose': lmverbose}
 
-    result = ymod.fit(iflux, params, weights=iweight, qso_model=qsoflux[index],
+    result = ymod.fit(iflux, params, weights=np.sqrt(iweight),
+                      qsotemplate=qsoflux[index],
                       wave=iwave, x=iwave, method='least_squares',
-                      nan_policy='omit')
+                      nan_policy='omit', fit_kws=fit_kws)
+
+    if not quiet:
+        lmfit.report_fit(result.params)
 
     # comps = result.eval_components(wave=wave, qso_model=qsoflux, x=wave)
-    continuum = result.eval(wave=wave, qso_model=qsoflux, x=wave)
-    import lmfit
-    lmfit.report_fit(result.params)
-#    Test plot
-    import matplotlib.pyplot as plt
+    continuum = result.eval(wave=wave, qsotemplate=qsoflux, x=wave)
+    # Test plot
+    # import matplotlib.pyplot as plt
     # for i in comps.keys():
     #     plt.plot(wave, comps[i], label=i)
-    plt.plot(wave, continuum, label='best-fit')
-    plt.plot(wave,flux,label='flux')
-    plt.plot(wave,flux-continuum,label='resid')
-    # plt.plot(wave,test_qsofcn,label='test')
-    plt.legend(loc='best')
-    plt.show()
+    # plt.plot(wave, continuum, label='best-fit')
+    # plt.plot(wave, flux, label='flux')
+    # plt.plot(wave, flux-continuum, label='resid')
+    # plt.plot(wave, test_qsofcn, label='test')
+    # plt.legend(loc='best')
+    # plt.show()
 
     ct_coeff = result.params
 
-    if refit is None:
-        return continuum, ct_coeff, zstar
-    # Fit residual with PPXF
-    if refit==True:
-        resid = flux - continuum
+    if refit == 'ppxf' and index_log is not None and \
+        err_log is not None and flux_log is not None:
 
         # log rebin residual
         # lamRange1 = np.array([wave.min(), wave.max()])/(1+zstar)
-        resid_log, residlambda_log, velscale = util.log_rebin(fitran, resid)
-        residerrsq_log, _, _ = util.log_rebin(fitran, np.divide(1., weight))
-        residerr_log = np.sqrt(residerrsq_log)
+        cont_log, lambda_log, velscale = util.log_rebin(fitran, continuum)
+
+        resid_log = flux_log - cont_log
+
+        # nan_indx = np.where(np.isnan(resid_log))[0]
+        # if len(nan_indx) > 0:
+        #    resid_log[nan_indx] = 0
 
         # Interpolate template to same grid as data
-        temp_log = interptemp(residlambda_log, np.log(template_wave.T[0]),
+        temp_log = interptemp(lambda_log, np.log(template_wave.T[0]),
                               template_flux)
 
         # vel = c*np.log(1 + zstar)   # eq.(8) of Cappellari (2017)
         # t = clock()
         start = [0, siginit_stars]  # (km/s), starting guess for [V, sigma]
-        pp = ppxf(temp_log, resid_log, residerr_log, velscale, start,
+        pp = ppxf(temp_log, resid_log, err_log, velscale, start,
                   goodpixels=index_log,  quiet=quiet,  # plot=True, moments=2
                   degree=add_poly_degree)  # clean=False
 
         # resample additive polynomial to linear grid
-        poly_log = pp.apoly
-        pinterp = interpolate.interp1d(residlambda_log, poly_log,
-                                       kind='cubic', fill_value="extrapolate")
-        poly = pinterp(np.log(wave))
+        # poly_log = pp.apoly
+        # pinterp = \
+        #     interpolate.interp1d(residlambda_log, poly_log,
+        #                          kind='cubic', fill_value="extrapolate")
+        # poly = pinterp(np.log(wave))
 
         ct_coeff = {'qso_host': result.params,
                     'stel': pp.weights,
@@ -164,36 +168,33 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
         ineg = np.where(continuum < 0)
         continuum[ineg] = 0
 
-        continuum_log = pp.bestfit
-        cinterp = interpolate.interp1d(residlambda_log, continuum_log,
+        ppxfcontinuum_log = pp.bestfit
+        cinterp = interpolate.interp1d(lambda_log, ppxfcontinuum_log,
                                        kind='cubic', fill_value="extrapolate")
 
-        cont_resid = cinterp(np.log(wave))
-        continuum += cont_resid
+        ppxfcont_resid = cinterp(np.log(wave))
+        continuum += ppxfcont_resid
 
         return continuum, ct_coeff, zstar
 
+    elif refit == 'questfit':
 
-    if refit == 'questfit':
-            from q3dfit.common.questfit import questfit
-            resid = flux - continuum
-            argscontfit_use = kwargs['args_questfit']
-            cont_resid, ct_coeff, zstar = questfit(wave, resid, weight, b'0',
-                                                   b'0', index, zstar,
-                                                   quiet=quiet, **argscontfit_use)
+        from q3dfit.common.questfit import questfit
+        resid = flux - continuum
+        argscontfit_use = kwargs['args_questfit']
+        cont_resid, ct_coeff, zstar = questfit(wave, resid, weight, b'0',
+                                               b'0', index, zstar,
+                                               quiet=quiet, **argscontfit_use)
 
-            from q3dfit.common.plot_quest import plot_quest
-            from matplotlib import pyplot as plt
-            initdatdict = argscontfit_use.copy()
-            initdatdict['label'] = 'miritest'
-            initdatdict['plotMIR'] = True
-            plot_quest(wave, resid, cont_resid, ct_coeff, initdatdict)
-            plt.show()
+        from q3dfit.common.plot_quest import plot_quest
+        from matplotlib import pyplot as plt
+        initdatdict = argscontfit_use.copy()
+        initdatdict['label'] = 'miritest'
+        initdatdict['plotMIR'] = True
+        plot_quest(wave, resid, cont_resid, ct_coeff, initdatdict)
+        plt.show()
 
-            continuum += cont_resid
-            ct_coeff['qso_host'] = result.params
+        continuum += cont_resid
+        ct_coeff['qso_host'] = result.params
 
-            return continuum, ct_coeff, zstar
-
-
-
+    return continuum, ct_coeff, zstar

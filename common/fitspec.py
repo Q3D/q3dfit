@@ -146,22 +146,20 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             siginit_gas=None, siglim_gas=None, tweakcntfit=None,
             col=None, row=None):
 
-    flux_out = flux
-    err_out = err
+    bad = 1e99
 
     flux = copy.deepcopy(flux)
     err = copy.deepcopy(err)
+    flux_out = copy.deepcopy(flux)
+    err_out = copy.deepcopy(err)
 
-    # flux.setflags(write=True)
-    # err.setflags(write=True)
-
-    siginit_gas_def = 100.  # default sigma for initial guess
-                            # for emission line widths
+    # default sigma for initial guess for emission line widths
+    siginit_gas_def = np.float64(100.)
 
     if 'ebv_star' in initdat:
-        ebv_star=initdat['ebv_star']
+        ebv_star = initdat['ebv_star']
     else:
-        ebv_star=None
+        ebv_star = None
     if 'fcninitpar' in initdat:
         fcninitpar = initdat['fcninitpar']
     else:
@@ -171,22 +169,23 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         linelabel = initdat['lines']
     else:
         linelabel = b'0'
+    # default half-width in km/s for emission line masking
     if 'maskwidths_def' in initdat:
         maskwidths_def = initdat['maskwidths_def']
     else:
-        maskwidths_def = 1000.  # default half-width in km/s for emission line masking
+        maskwidths_def = np.float64(1000.)
     if 'nomaskran' in initdat:
-        nomaskran=initdat['nomaskran']
+        nomaskran = initdat['nomaskran']
     else:
-        nomaskran=''
+        nomaskran = ''
     if 'startempfile' in initdat:
-        istemp = b'1'
+        istemp = True
     else:
-        istemp=b'0'
+        istemp = False
     if 'vacuum' in initdat:
-        vacuum=b'1'
+        vacuum = True
     else:
-        vacuum=b'0'
+        vacuum = False
 
     noemlinfit = b'0'
     if 'noemlinfit' in initdat:
@@ -201,7 +200,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     if noemlinfit == b'1' and 'doemlinmask' not in initdat:
         noemlinmask = b'1'
 
-    if bool(int(istemp)) and initdat['fcncontfit']!='questfit':
+    if istemp and initdat['fcncontfit'] != 'questfit':
 
         # Get stellar templates
         startempfile = initdat['startempfile']
@@ -215,7 +214,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         templatelambdaz = np.copy(template['lambda'])
         if 'keepstarz' not in initdat:
             templatelambdaz *= 1. + zstar
-        if vacuum == b'1':
+        if vacuum:
             templatelambdaz = airtovac(templatelambdaz)
         if 'waveunit' in initdat:
             templatelambdaz *= initdat['waveunit']
@@ -236,108 +235,96 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # # Pick out regions to fit
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-    flux_raw = flux
-    err_raw = err
     if 'fitran' in initdat:
         fitran_tmp = initdat['fitran']
     else:
-        fitran_tmp = [wlambda[0],wlambda[len(wlambda)-1]]
+        fitran_tmp = [wlambda[0], wlambda[len(wlambda)-1]]
     # indices locating good data and data within fit range
-    gd_indx_1 = set(np.where(flux != 0)[0])
-    gd_indx_2 = set(np.where(err > 0)[0])
-    gd_indx_4 = set(np.where(np.isfinite(flux) == True)[0])
-    gd_indx_6 = set(np.where(np.isfinite(err) == True)[0])
-    gd_indx_7 = set(np.where(dq == 0 )[0])
-    gd_indx_8 = set(np.where(wlambda >= min(templatelambdaz))[0])
-    gd_indx_9 = set(np.where(wlambda <= max(templatelambdaz))[0])
-    gd_indx_10 = set(np.where(wlambda >= fitran_tmp[0])[0])
-    gd_indx_11 = set(np.where(wlambda <= fitran_tmp[1])[0])
-
-    gd_indx_full = gd_indx_1.intersection(gd_indx_2, gd_indx_4, gd_indx_6,
-                                          gd_indx_7, gd_indx_8, gd_indx_9,
-                                          gd_indx_10, gd_indx_11)
+    # these index the full data range.
+    gd_indx_1 = set(np.where(flux != 0.)[0])
+    gd_indx_2 = set(np.where(err > 0.)[0])
+    gd_indx_3 = set(np.where(np.isfinite(flux))[0])
+    gd_indx_4 = set(np.where(np.isfinite(err))[0])
+    gd_indx_5 = set(np.where(dq == 0)[0])
+    gd_indx_6 = set(np.where(wlambda >= min(templatelambdaz))[0])
+    gd_indx_7 = set(np.where(wlambda <= max(templatelambdaz))[0])
+    gd_indx_8 = set(np.where(wlambda >= fitran_tmp[0])[0])
+    gd_indx_9 = set(np.where(wlambda <= fitran_tmp[1])[0])
+    gd_indx_full = gd_indx_1.intersection(gd_indx_2, gd_indx_3, gd_indx_4,
+                                          gd_indx_5, gd_indx_6, gd_indx_7,
+                                          gd_indx_8, gd_indx_9)
     gd_indx_full = list(gd_indx_full)
-    fitran = [min(wlambda[gd_indx_full]), max(wlambda[gd_indx_full])]
-
-    # Find where flux is <= 0 or error is <= 0 or infinite or NaN
-    # (Otherwise MPFIT chokes.)
-    neg_indx = np.where(flux > 0)[0]
-    ctneg = len(neg_indx)
-
-    zerinf_indx_1 = np.where(flux == 0)[0]
-    zerinf_indx_2 = np.where(err <= 0)[0]
-    zerinf_indx_3 = np.where(np.isfinite(flux) == False)[0]
-    zerinf_indx_5 = np.where(np.isfinite(err) == False)[0]
-    zerinf_indx = np.unique(np.hstack([zerinf_indx_1, zerinf_indx_2,
-                                       zerinf_indx_3, zerinf_indx_5]))
-
-    ctzerinf = len(zerinf_indx)
-    maxerr = max(err[gd_indx_full])
-
-
-    # if ctneg gt 0 then begin
-    #   flux[neg_indx]=-1d*flux[neg_indx]
-    #   err[neg_indx]=maxerr*100d
-    #   if not quiet then print,'Setting ',ctneg,' points from neg. flux to pos. '+$
-    #       'and max(err)x100.',format='(A,I0,A)'
-    if ctzerinf > 0:
-        flux[zerinf_indx]= np.median(flux[gd_indx_full])
-        err[zerinf_indx]=maxerr*100.
-        if not quiet:
-            print('{:s}{:0.1f}{:s}'.
-                  format('FITLOOP: Setting ', ctzerinf,
-                         ' points from zero/inf./NaN flux or ' +
-                         'neg./zero/inf./NaN error to med(flux) ' +
-                         'and max(err)x100.'))
+    # limit actual fit range to good data
+    fitran = [np.min(wlambda[gd_indx_full]), np.max(wlambda[gd_indx_full])]
 
     # indices locating data within actual fit range
     fitran_indx1 = np.where(wlambda >= fitran[0])[0]
     fitran_indx2 = np.where(wlambda <= fitran[1])[0]
-    fitran_indx = np.intersect1d(fitran_indx1,fitran_indx2)
-    ctfitran = len(fitran_indx)
-
+    fitran_indx = np.intersect1d(fitran_indx1, fitran_indx2)
     # indices locating good regions within wlambda[fitran_indx]
     gd_indx_full_rezero = gd_indx_full - fitran_indx[0]
     max_gd_indx_full_rezero = max(fitran_indx) - fitran_indx[0]
-
     igdfz1 = np.where(gd_indx_full_rezero >= 0)[0]
     igdfz2 = np.where(gd_indx_full_rezero <= max_gd_indx_full_rezero)[0]
-    i_gd_indx_full_rezero = np.intersect1d(igdfz1,igdfz2)
-    ctgd = len(i_gd_indx_full_rezero)
-
+    i_gd_indx_full_rezero = np.intersect1d(igdfz1, igdfz2)
+    # Final index for addressing ALL "good" pixels
+    # these address only the fitted data range; i.e., they address gdflux, etc.
     gd_indx = gd_indx_full_rezero[i_gd_indx_full_rezero]
 
-    # Limit data to fitrange
-    npix     = len(fitran_indx)
-    gdflux   = flux[fitran_indx]
+    # Limit data to fit range
+    gdflux = flux[fitran_indx]
     gdlambda = wlambda[fitran_indx]
-    gderr    = err[fitran_indx]
+    gderr = err[fitran_indx]
+    gddq = dq[fitran_indx]
+    gdinvvar = 1./np.power(gderr, 2.)  # inverse variance
 
-    # Weight
-    gdweight = 1./np.power(gderr,2.)
-
-    # Log rebin galaxy spectrum for finding bad regions in log space
-    gdflux_log,_,_  = log_rebin(fitran,flux_raw[fitran_indx])
-    gderrsq_log,_,_ = log_rebin(fitran,np.power(err_raw[fitran_indx],2.))
-    gderr_log = np.sqrt(gderrsq_log)
-    #  neg_indx_log = where(gdflux_log lt 0,ctneg_log)
-
-    zil1 = set(np.where(gdflux_log == 0)[0])
-    zil2 = set(np.where(gdflux_log <= 0)[0])
-    zil3 = set(np.where(np.isfinite(gderr_log) == False)[0])
-    zerinf_indx_log = list(zil1.intersection(zil2,zil3))
-    ctzerinf_log = len(zerinf_indx_log)
-    gd_indx_log = np.arange(ctfitran)
-    if ctzerinf_log > 0:
-        gd_indx_log = np.setdiff1d(gd_indx_log,zerinf_indx_log)
-
-    # Log rebin galaxy spectrum for use with PPXF, this time with
-    # errors corrected before rebinning
-    gdflux_log, gdlambda_log,velscale = log_rebin(fitran,gdflux)
+    # Log rebin galaxy spectrum for PPXF
+    gdflux_log, gdlambda_log, velscale = log_rebin(fitran, gdflux)
     gderrsq_log, _, _ = log_rebin(fitran, np.power(gderr, 2.))
-
     gderr_log = np.sqrt(gderrsq_log)
+    # gdinvvar_log = 1./np.power(gderr_log, 2.)
+
+    # Find where flux is <= 0 or error is <= 0 or infinite or NaN or dq != 0
+    # these index the fitted data range
+    zerinf_indx_1 = np.where(gdflux == 0.)[0]
+    zerinf_indx_2 = np.where(gderr <= 0.)[0]
+    zerinf_indx_3 = np.where(np.isinf(gdflux))[0]
+    zerinf_indx_4 = np.where(np.isinf(gderr))[0]
+    zerinf_indx_5 = np.where(gddq != 0)[0]
+    zerinf_indx = np.unique(np.hstack([zerinf_indx_1, zerinf_indx_2,
+                                       zerinf_indx_3, zerinf_indx_4,
+                                       zerinf_indx_5]))
+
+    zerinf_indx_1 = np.where(gdflux_log == 0.)[0]
+    zerinf_indx_2 = np.where(gderr_log <= 0.)[0]
+    zerinf_indx_3 = np.where(np.isinf(gdflux_log))[0]
+    zerinf_indx_4 = np.where(np.isinf(gderr_log))[0]
+    # to-do: log rebin dq and apply here?
+    zerinf_indx_log = np.unique(np.hstack([zerinf_indx_1, zerinf_indx_2,
+                                           zerinf_indx_3, zerinf_indx_4]))
+
+    # good indices for log arrays
+    ctfitran = len(gdflux_log)
+    gd_indx_log = np.arange(ctfitran)
+    ctzerinf_log = len(zerinf_indx_log)
+    if ctzerinf_log > 0:
+        gd_indx_log = np.setdiff1d(gd_indx_log, zerinf_indx_log)
+
+    # Set bad points to nan so lmfit will ignore
+    ctzerinf = len(zerinf_indx)
+    if ctzerinf > 0:
+        gdflux[zerinf_indx] = np.nan
+        gderr[zerinf_indx] = np.nan
+        gdinvvar[zerinf_indx] = np.nan
+        if not quiet:
+            print('{:s}{:0f}{:s}'.
+                  format('FITLOOP: Setting ', ctzerinf,
+                         ' points from zero/inf flux or ' +
+                         'neg/zero/inf error to np.nan'))
+    if ctzerinf_log > 0:
+        gdflux_log[zerinf_indx_log] = bad
+        gderr_log[zerinf_indx_log] = bad
+        # gdinvvar_log[zerinf_indx_log] = bad
 
     # timer
     fit_time0 = time.time()
@@ -350,8 +337,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
         # Some defaults. These only apply in case of fitting with stellar model
         # + additive polynomial.
-        stel_mod = 0.
-        poly_mod = 0.
+        # stel_mod = 0.
+        # poly_mod = 0.
 
         # Mask emission lines
         # Note that maskwidths is now an astropy Table
@@ -391,8 +378,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             module = import_module('q3dfit.common.' + initdat['fcncontfit'])
             fcncontfit = getattr(module, initdat['fcncontfit'])
 
-            if initdat['fcncontfit'] == 'questfit' or istemp == b'0':
-                istemp = None
+            if initdat['fcncontfit'] == 'questfit' or not istemp:
+                istemp = False
 
             if istemp:
                 templatelambdaz_tmp = templatelambdaz
@@ -407,18 +394,21 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 argscontfit_use = dict()
             if initdat['fcncontfit'] == 'fitqsohost':
                 argscontfit_use['fitran'] = fitran
-            if 'uselog' in argscontfit_use.keys():
-                argscontfit_use['index_log'] = ct_indx_log
+            if 'refit' in argscontfit_use.keys():
+                if argscontfit_use['refit'] == 'ppxf':
+                    argscontfit_use['index_log'] = ct_indx_log
+                    argscontfit_use['flux_log'] = gdflux_log
+                    argscontfit_use['err_log'] = gderr_log
 
             continuum, ct_coeff, zstar = \
-                fcncontfit(gdlambda, gdflux, gdweight,
+                fcncontfit(gdlambda, gdflux, gdinvvar,
                            templatelambdaz_tmp,
                            templateflux_tmp, ct_indx, zstar,
                            quiet=quiet, **argscontfit_use)
 
-            if initdat['fcncontfit'] == 'ifsf_fitqsohost' and \
-                'refit' in initdat['argscontfit']:
-                ppxf_sigma = ct_coeff['ppxf_sigma']
+            if 'refit' in argscontfit_use.keys():
+                if argscontfit_use['refit'] == 'ppxf':
+                    ppxf_sigma = ct_coeff['ppxf_sigma']
             else:
                 ppxf_sigma = 0.
 
@@ -429,7 +419,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         # # Option 2: PPXF
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        elif (istemp == b'1' and 'siginit_stars' in initdat):
+        elif (istemp and 'siginit_stars' in initdat):
 
             # Interpolate template to same grid as data
             temp_log = interptemp(gdlambda_log, np.log(templatelambdaz),
@@ -445,7 +435,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             pp = ppxf(temp_log, gdflux_log, gderr_log, velscale[0],
                       [0, initdat['siginit_stars']], goodpixels=ct_indx_log,
                       degree=add_poly_degree, quiet=quiet, reddening=ebv_star)
-            poly_mod = pp.apoly
+            # poly_mod = pp.apoly
             continuum_log = pp.bestfit
             add_poly_weights = pp.polyweights
             ct_coeff = pp.weights
@@ -519,26 +509,26 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
             if 'dividecont' in initdat:
                 gdflux_nocnt = gdflux / continuum - 1
-                gdweight_nocnt = gdweight * np.power(continuum, 2.)
-                gderr_nocnt = gderr / continuum
-                method   = 'CONTINUUM DIVIDED'
+                gdinvvar_nocnt = gdinvvar * np.power(continuum, 2.)
+                # gderr_nocnt = gderr / continuum
+                method = 'CONTINUUM DIVIDED'
             else:
                 gdflux_nocnt = gdflux - continuum
-                gdweight_nocnt = gdweight
-                gderr_nocnt = gderr
-                method   = 'CONTINUUM SUBTRACTED'
+                gdinvvar_nocnt = gdinvvar
+                # gderr_nocnt = gderr
+                method = 'CONTINUUM SUBTRACTED'
     else:
-        add_poly_weights=0.
+        add_poly_weights = 0.
         gdflux_nocnt = gdflux
-        gderr_nocnt = gderr
-        method   = 'NO CONTINUUM FIT'
+        # gderr_nocnt = gderr
+        method = 'NO CONTINUUM FIT'
         continuum = 0.
         continuum_pretweak = 0.
         ct_coeff = 0.
         ct_indx = 0.
-        ct_rchisq=0.
-        ppxf_sigma=0.
-        ppxf_sigma_err=0.
+        ct_rchisq = 0.
+        ppxf_sigma = 0.
+        ppxf_sigma_err = 0.
 
     fit_time1 = time.time()
     if not quiet:
@@ -558,8 +548,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 peakinit = initdat['peakinit']
             else:
                 peakinit = {line: None for line in initdat['lines']}
+                fline = interp1d(gdlambda, gdflux_nocnt, kind='linear')
                 for line in initdat['lines']:
-                    fline = interp1d(gdlambda, gdflux_nocnt, kind='linear')
                     # Check that line wavelength is in data range
                     # Use first component as a proxy for all components
                     if listlinesz[line][0] >= min(gdlambda) and \
@@ -600,7 +590,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # Actual fit
         # from matplotlib import pyplot as plt
         # plt, ax = plt.subplots()
-        # ax.plot(gdlambda, 1./np.sqrt(gdweight_nocnt))
+        # ax.plot(gdlambda, 1./np.sqrt(gdinvvar_nocnt))
         # ax.plot(gdlambda, gdflux__nocnt)
         # plt.show()
         # pdb.set_trace()
@@ -618,36 +608,33 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         if 'argslinefit' in initdat:
             for key, val in initdat['argslinefit'].items():
                 fit_kws[key] = val
+
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
-                           method='least_squares', weights=gdweight_nocnt,
+                           method='least_squares',
+                           weights=np.sqrt(gdinvvar_nocnt),
                            nan_policy='omit', fit_kws=fit_kws)
 
-        specfit = lmout.best_fit
+        param = lmout.best_values
+        specfit = emlmod.eval(lmout.params, x=gdlambda)
         if not quiet:
             print(lmout.fit_report(show_correl=False))
 
-        param = lmout.best_values
-        if 'plotMIR' in initdat.keys():    # Test plot here - need to transfer this to q3dfa later
-          print('Plotting')
-          from matplotlib import pyplot as plt
-          plot_quest(gdlambda, gdflux, continuum+specfit, ct_coeff, initdat, lines=[12.8], linespec=specfit)
+        # Test plot here - need to transfer this to q3dfa later
+        if 'plotMIR' in initdat.keys():
+            print('Plotting')
+            plot_quest(gdlambda, gdflux, continuum+specfit, ct_coeff, initdat,
+                       lines=[12.8], linespec=specfit)
         covar = lmout.covar
         dof = lmout.nfree
         rchisq = lmout.redchi
-        errmsg = lmout.message
-        status = lmout.success
 
         # error messages corresponding to LMFIT,plt
         # documentation was not very helpful with the error messages...
-        if status == False :
-            raise Exception('LMFIT: '+errmsg)
-        # #     outstr = 0
-        # #     goto,finish
-        # if status == 5:
-        #     print('LMFIT: Max. iterations reached.')
+        if not lmout.success:
+            raise Exception('LMFIT: '+lmout.message)
 
         # Errors from covariance matrix and from fit residual.
-        resid = gdflux-continuum-specfit
+        # resid = gdflux - continuum - specfit
         perror = dict()
         for p in lmout.params:
             perror[p] = lmout.params[p].stderr
@@ -744,7 +731,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               'noemlinmask': noemlinmask,  # were emission lines masked?
               'redchisq': rchisq,
               # 'niter': niter, (DOES NOT EXIST)
-              'fitstatus': status,
+              # 'fitstatus': status, [leftover from MPFIT]
               'linelist': outlistlines,
               'linelabel': linelabel,
               'maxncomp': initdat['maxncomp'],

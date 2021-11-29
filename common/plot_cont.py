@@ -39,6 +39,7 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
     fluxunit_in = 'flambda'
     fluxunit_out = 'flambda'
     mode = 'light'
+
     if 'argscontplot' in initdat:
         if 'xstyle' in initdat['argscontplot']:
             xstyle = initdat['argscontplot']['xstyle']

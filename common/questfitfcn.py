@@ -59,7 +59,7 @@ def set_up_fit_blackbody_model(p,p_fixfree,name):
     blackbody_model_parameters = blackbody_model.make_params()
     print(p_fixfree[0])
     blackbody_model_parameters[model_name+'a'].set(value=p[0],min=0.,vary=p_fixfree[0])
-    blackbody_model_parameters[model_name+'T'].set(value=p[1],min=1.,vary=p_fixfree[1])
+    blackbody_model_parameters[model_name+'T'].set(value=p[1],min=50.,vary=p_fixfree[1])
 
     return blackbody_model,blackbody_model_parameters
 

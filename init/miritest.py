@@ -71,10 +71,14 @@ def miritest():
 #   These are unique to the user
     #volume = '/Users/Endeavour/Projects/Q3D_dev/MIRI_ETC_sim/'
     volume = '../../../MIRISIM/MIRI-ETC-SIM/'
+    infile = volume+'miri_etc_cube_quasar.fits'
     infile = volume+'miri_etc_cube.fits'
-    #infile = volume+'cube_reconstructed.fits'
+    
     #mapdir = volume+'maps/'
+    
     outdir = volume+'outputs/'
+    #outdir = volume+'miri_etc_cube_quasar_outputs/'
+
     #qsotemplate = volume+'miri_qsotemplate_B.npy'
     #stellartemplates = \
     #    '/Users/caroline/Documents/ARI-Heidelberg/Q3D/Q3DFIT/q3dfit/Test_GMOS_DATA/pg1411/'+'pg1411hosttemplate.npy'
@@ -176,13 +180,14 @@ def miritest():
 
             # Optional pars
             'argscontfit': {'config_file': cffilename,
-                            'global_ice_model': global_ice_model,
-                            'global_ext_model': global_ext_model,
+                            #'global_ice_model': global_ice_model,
+                            #'global_ext_model': global_ext_model,
                             'models_dictionary': {},
                             'template_dictionary': {}},
             'argslinelist': {'vacuum': False},
             'argspltlin1': argspltlin1,
-            #'decompose_qso_fit': 1,
+            'decompose_qso_fit': 1,
+            'compare_to_real_decomp': 1,
             'fcncheckcomp': 'checkcomp',
             'fcncontfit': 'questfit',
             'maskwidths_def': 2000,

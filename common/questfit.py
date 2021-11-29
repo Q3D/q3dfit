@@ -64,6 +64,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
         flux = flux[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
         wlambda = wlambda[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
     if global_ext_model != 'None': global_extinction = True
+    else:   global_extinction = False
 
     if singletemplatelambda!=b'0':
         print('Trying to pass a single separate template to questfit, which is not implemented ... Halting.')
@@ -83,14 +84,13 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
 
                 model_temp_BB,param_temp_BB = questfitfcn.set_up_fit_blackbody_model([float(model_parameters[1]),float(model_parameters[7])],[float(model_parameters[2]),float(model_parameters[8])],name_model[:])
                 
-                if global_extinction == False:
-                    model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],name_model+'_ext',extinction_model,model_parameters[6])
-                    
-                    model_temp = model_temp_BB*model_temp_extinction
-                    param_temp = param_temp_BB + param_temp_extinction
+                if global_extinction == False and config_file[i][3] != '_' and config_file[i][3] != '-':
+                        model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],name_model+'_ext',extinction_model,model_parameters[6])
+                        
+                        model_temp = model_temp_BB*model_temp_extinction
+                        param_temp = param_temp_BB + param_temp_extinction
 
-                    models_dictionary[extinction_model] = config_file[extinction_model]
-                
+                        models_dictionary[extinction_model] = config_file[extinction_model]                
                 else:
                     model_temp = model_temp_BB
                     param_temp = param_temp_BB
@@ -115,12 +115,16 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
 
                 model_temp_powerlaw,param_temp_powerlaw = questfitfcn.set_up_fit_powerlaw_model([1,float(model_parameters[7])],[float(model_parameters[2]),float(model_parameters[8])],name_model[:])
 
-                model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],'powerlaw'+str(int(float(model_parameters[7])))+'_ext',extinction_model,model_parameters[6])
-                
-                model_temp = model_temp_powerlaw*model_temp_extinction
-                param_temp = param_temp_powerlaw + param_temp_extinction
+                if global_extinction == False and config_file[i][3] != '_' and config_file[i][3] != '-':
+                        model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],'powerlaw'+str(int(float(model_parameters[7])))+'_ext',extinction_model,model_parameters[6])
+                        
+                        model_temp = model_temp_powerlaw*model_temp_extinction
+                        param_temp = param_temp_powerlaw + param_temp_extinction
 
-                models_dictionary[extinction_model] = config_file[extinction_model]
+                        models_dictionary[extinction_model] = config_file[extinction_model]
+                else:
+                    model_temp = model_temp_powerlaw
+                    param_temp = param_temp_powerlaw
 
                 if 'ice' in i and global_extinction == False: #checking if we need to add ice absorption
                     model_temp_ice,param_temp_ice = questfitfcn.set_up_absorption([float(model_parameters[10])],[float(model_parameters[11])],name_model+'_abs',model_parameters[9])
@@ -151,14 +155,14 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
 
                     template_dictionary[name_model] = config_file[i][0]
             
-                if global_extinction == False:
+                if global_extinction == False and config_file[i][3] != '_' and config_file[i][3] != '-':
 
-                    model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],name_model+'_ext',extinction_model,model_parameters[6])
-                
-                    model_temp = model_temp_template*model_temp_extinction
-                    param_temp = param_temp_template + param_temp_extinction
+                        model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],name_model+'_ext',extinction_model,model_parameters[6])
+                        #breakpoint()
+                        model_temp = model_temp_template*model_temp_extinction
+                        param_temp = param_temp_template + param_temp_extinction
 
-                    models_dictionary[extinction_model] = config_file[extinction_model]
+                        models_dictionary[extinction_model] = config_file[extinction_model]
 
                 else:
                     model_temp = model_temp_template
@@ -178,6 +182,8 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
                     param += param_temp
 
                 n_temp+=1
+
+
         #if qsoflux is not None:
             #model_qso, param_qso = questfitfcn.set_up_fit_model_scale
 
@@ -214,7 +220,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
             temp_model = np.load(loc_models+template_dictionary[i],allow_pickle=True)
             temp_wave = []
             temp_value = []
-            
+
             try:
                 temp_wave=temp_model['WAVE']
                 temp_value=temp_model['FLUX']
@@ -226,14 +232,16 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
             
             #temp_value_rebin = interptemp.interptemp(wave_temp,temp_wave,temp_value)
             temp_value_rebin = interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
-            models_dictionary[i] = temp_value_rebin*c_scale
+            if convert2Flambda: 
+                models_dictionary[i] = temp_value_rebin*c_scale
             models_dictionary[i] = models_dictionary[i]/models_dictionary[i].max()  # normalise
 
 
         models_dictionary['wave'] = wlambda/(1+z)
         models_dictionary['fitFlambda'] = bool(convert2Flambda)
         
-        flux *= c_scale
+        if convert2Flambda:
+            flux *= c_scale
 
         flux_cut = flux[index]
         models_dictionary_cut = copy.deepcopy(models_dictionary)
@@ -241,11 +249,14 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
             if not ('fitFlambda' in el):
                 models_dictionary_cut[el] = models_dictionary_cut[el][index]
 
-
+        outpy = '../data/questfit_templates/' + 'miri_qsotemplate_flex.npy'
+        data1 = np.load(outpy, allow_pickle=True)
+        f_orig = data1.item()['flux'][:-1]
         result = model.fit(flux_cut,param,**models_dictionary_cut,max_nfev=int(1e5),method='least_squares',nan_policy='omit')#method='least_squares'nan_policy='omit'
 
         best_fit = result.eval(**models_dictionary) # use models_dictionary rather than models_dictionary_cut to evaluate over all wavelengths within fitran (not just [index])
         comp_best_fit = result.eval_components(**models_dictionary)
+        # print(result.best_values)
 
         if convert2Flambda:
             flux /= c_scale
@@ -262,6 +273,80 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
 
         #return best_fit,comp_best_fit,result
         return best_fit, ct_coeff, z
+
+
+def quest_extract_QSO_contrib(ct_coeff, initdat):
+    '''
+    This function can be used to recover the QSO-host decomposition after running questfit
+
+    :Params:
+        ct_coeff: in, required, type=dict
+            dict returned by questfit containing the continuum fitting results
+        initdat: in, required, type=dict
+            dict that was used to initialize the fit
+        
+        qso_out_ext: out, type=array
+            spectrum of the QSO component (with dust extinction and ice absorption)
+        host_out_ext:  out, type=array
+            spectrum of the host component (with dust extinction and ice absorption)        
+    '''
+    comp_best_fit = ct_coeff['comp_best_fit']
+    qso_out_ext = np.array([])
+    qso_out_intr = np.array([])
+
+    if 'argscontfit' in initdat:
+
+      if 'global_ext_model' in initdat['argscontfit'] or ('args_questfit' in initdat['argscontfit'] and 'global_ext_model' in initdat['argscontfit']['args_questfit']):
+        str_global_ext = list(comp_best_fit.keys())[-2]
+        str_global_ice = list(comp_best_fit.keys())[-1]
+        if len(comp_best_fit[str_global_ext].shape) > 1:  # global_ext is a multi-dimensional array
+          comp_best_fit[str_global_ext] = comp_best_fit[str_global_ext] [:,0,0]
+        if len(comp_best_fit[str_global_ice].shape) > 1:  # global_ice is a multi-dimensional array
+          comp_best_fit[str_global_ice] = comp_best_fit[str_global_ice] [:,0,0]
+        host_out_ext = np.zeros(len(comp_best_fit[str_global_ext]))
+        host_out_intr = np.zeros(len(comp_best_fit[str_global_ext]))
+
+        for i, el in enumerate(comp_best_fit):
+          if (el != str_global_ext) and (el != str_global_ice):
+            if len(comp_best_fit[el].shape) > 1:              # component is a multi-dimensional array
+              comp_best_fit[el] = comp_best_fit[el] [:,0,0]
+            if 'decompose_qso_fit' in initdat:
+              if initdat['decompose_qso_fit'] and i==0:
+                qso_out_ext = comp_best_fit[el]*comp_best_fit[str_global_ext]*comp_best_fit[str_global_ice]
+                qso_out_intr = comp_best_fit[el]
+              else:
+                host_out_ext += comp_best_fit[el]*comp_best_fit[str_global_ext]*comp_best_fit[str_global_ice]
+                host_out_intr += comp_best_fit[el]
+      else:
+        el1 = list(comp_best_fit.keys())[0]
+        host_out_ext = np.zeros(len(comp_best_fit[el1]))
+        host_out_intr = np.zeros(len(comp_best_fit[el1]))
+
+        spec_i = np.array([])
+        for i, el in enumerate(comp_best_fit):
+            if len(comp_best_fit[el].shape) > 1:
+              comp_best_fit[el] = comp_best_fit[el] [:,0,0]
+
+            if not ('_ext' in el or '_abs' in el):
+                spec_i = comp_best_fit[el]
+                intr_spec_i = comp_best_fit[el].copy()
+                if el+'_ext' in comp_best_fit.keys():
+                    spec_i = spec_i*comp_best_fit[el+'_ext']
+                if el+'_abs' in comp_best_fit.keys():
+                    spec_i = spec_i*comp_best_fit[el+'_abs']
+
+                if 'decompose_qso_fit' in initdat:
+                    if initdat['decompose_qso_fit'] and i==0:
+                        qso_out_ext = spec_i
+                        qso_out_intr = intr_spec_i
+                    else:
+                        host_out_ext += spec_i
+                        host_out_intr += intr_spec_i
+                        #breakpoint()
+
+    return qso_out_ext, host_out_ext, qso_out_intr, host_out_intr
+
+
 
 
 do_test = False

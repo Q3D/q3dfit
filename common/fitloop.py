@@ -209,7 +209,6 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, onefit,
                                  siglim_gas=siglim_gas,
                                  siginit_gas=siginit_gas,
                                  tweakcntfit=tweakcntfit)
-
             # if not quiet:
             #    print('FIT STATUS: '+structinit['fitstatus'])
             # To-do: Need to add a check on fit status here.

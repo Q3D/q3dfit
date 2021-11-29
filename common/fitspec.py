@@ -619,11 +619,12 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         if not quiet:
             print(lmout.fit_report(show_correl=False))
 
-        # Test plot here - need to transfer this to q3dfa later
-        if 'plotMIR' in initdat.keys():
+        param = lmout.best_values
+        if 'plotMIR' in initdat.keys():    # Test plot here - need to transfer this to q3da later
+          if initdat['plotMIR']:
             print('Plotting')
-            plot_quest(gdlambda, gdflux, continuum+specfit, ct_coeff, initdat,
-                       lines=[12.8], linespec=specfit)
+            from matplotlib import pyplot as plt
+            plot_quest(gdlambda, gdflux, continuum+specfit, ct_coeff, initdat, lines=[12.8], linespec=specfit)
         covar = lmout.covar
         dof = lmout.nfree
         rchisq = lmout.redchi

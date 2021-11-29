@@ -24,11 +24,12 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import pdb
+from matplotlib import rcParams
 
 
 def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
               compspec=None, comptitles=None, ps=None,
-              title=None, fitran=None, yranminmax=None, IR=False):
+              title=None, fitran=None, yranminmax=None, IR=False, compcols=None):
 
     xstyle = 'log'
     ystyle = 'log'
@@ -76,6 +77,10 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                 ncomp = 1
             compcolors = ['c', 'plum', 'm']
             complabels = ['QSO', 'Host', 'Wind']
+            if comptitles is not None:
+                complabels = comptitles
+            if compcols is not None:
+                compcolors = compcols
         else:
             ncomp = 0
 
@@ -125,6 +130,8 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
         # plot on a log scale:
         if xstyle == 'log' or ystyle == 'log':
             plt.style.use(pltstyle)
+            if mode=='light':
+                rcParams['savefig.facecolor'] = 'white'    # CB: Otherwise the background becomes black and the axes ticks unreadable when saving the figure
             fig = plt.figure(figsize=(20, 10))
             #fig = plt.figure()
             plt.axis('off')  # so the subplots don't share a y-axis
@@ -147,6 +154,7 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
             #ax1.set_xticklabels([])
             if ystyle == 'log':
                 ax1.set_yscale('log')
+
             ax1.set_ylabel(ytit, fontsize=20)
             if title == 'QSO':
                 ax1.set_ylim(10e-7)
@@ -158,6 +166,13 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                 for i in range(0, ncomp):
                     plt.plot(wave, compspec[i], compcolors[i], linewidth=3,
                              label=complabels[i])
+
+            yticks_used = ax1.get_yticks()
+            ylim_used = ax1.get_ylim()
+            yticks_used = np.append(np.append(ylim_used[0], yticks_used), ylim_used[1])
+            ax1.set_yticks(yticks_used)
+            ax1.set_ylim(ylim_used)
+
 
             l = ax1.legend(loc='upper right', fontsize=12)
             for text in l.get_texts():

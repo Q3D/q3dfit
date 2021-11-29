@@ -259,6 +259,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                 else:
                     iuse = i
                     juse = j
+
                 if not novortile:
                     flux = cube.dat[iuse, juse, :].flatten()
                     err = cube.err[iuse, juse, :].flatten()
@@ -681,6 +682,19 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                                              qsoflux = qsoflux, blronly=True,
                                              blrpar = initdat['argscontfit']['blrpar'], qsoord = qsoord,
                                              hostord = hostord)
+                    elif  initdat['fcncontfit'] == 'questfit':      # CB: adding option to plot decomposed QSO fit if questfit is used
+                        from q3dfit.common.questfit import quest_extract_QSO_contrib
+                        qsomod, hostmod, qsomod_intr, hostmod_intr = quest_extract_QSO_contrib(struct['ct_coeff'], initdat)
+                        qsomod_polynorm = 1.
+                        qsomod_notweak = qsomod
+                        qsoflux = qsomod.copy()/np.median(qsomod)
+                        qsomod_normonly = qsoflux
+                        polymod_refit = 0.
+
+                        print(struct['cont_dat']/(qsomod+hostmod))
+                        #breakpoint()
+
+
                 elif initdat['fcncontfit'] == 'ppxf' and 'qsotempfile' in initdat:
                     qsotempfile = np.load(initdat['qsotempfile'], allow_pickle='TRUE').item()
                     struct_qso = qsotempfile
@@ -801,6 +815,8 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                                        ' Leg. poly.', 'stel. temp.']
                         else:
                             compspec = hostmod
+                            if initdat['fcncontfit'] == 'questfit':     ##  CB: Work-around - think about this more later
+                                compspec = [hostmod]
                             compfit = ['exponential terms']
                         module = importlib.import_module('q3dfit.common.' +
                                                          fcnpltcont)
@@ -827,6 +843,9 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                         else:
                             compspec = [[qsomod_normonly]]
                             compfit = ['raw template']
+                            if initdat['fcncontfit'] == 'questfit':     ##  CB: Work-around - think about this more later
+                                compspec = [qsomod_normonly]
+
                         if 'argspltcont' in initdat:
                             pltcontfcn(struct_qso, str(outfile) + '_cnt_qso',
                                        compspec=compspec, compfit=compfit,
@@ -863,6 +882,118 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                                        comptitles=['QSO', 'host'],
                                        fitran=initdat['fitran'],
                                        initdat=initdat)
+
+                        if 'compare_to_real_decomp' in initdat:     # CB: in the case of the MIR mock ETC cube, compare the recovered QSO/host contribution from the combined cube to the real ones from the QSO/host only simulations
+                            if initdat['compare_to_real_decomp']:
+                                from q3dfit.common import readcube
+                                argsreadcube_dict = {'fluxunit_in': 'Jy',
+                                                    'waveunit_in': 'angstrom',
+                                                    'waveunit_out': 'micron'} 
+
+                                if 'argsreadcube' in initdat:
+                                    if initdat.__contains__('waveext'):
+                                        cube2 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_galaxy.fits', datext=datext, dqext=dqext,
+                                                quiet=quiet, varext=varext,
+                                                waveext=initdat['waveext'], **initdat['argsreadcube'])
+                                        cube3 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_quasar.fits', datext=datext, dqext=dqext,
+                                                quiet=quiet, varext=varext,
+                                                waveext=initdat['waveext'], **initdat['argsreadcube'])
+                                    else:
+                                        cube2 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_galaxy.fits', quiet=quiet,
+                                                header=header, datext=datext, varext=varext,
+                                                dqext=dqext, **initdat['argsreadcube'])
+                                        cube3 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_quasar.fits', quiet=quiet,
+                                                header=header, datext=datext, varext=varext,
+                                                dqext=dqext, **initdat['argsreadcube'])
+                                else:
+                                    if initdat.__contains__('waveext'):
+                                        cube2 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_galaxy.fits', quiet=quiet,
+                                                header=header, datext=datext, varext=varext,
+                                                waveext=initdat['waveext'], dqext=dqext)
+                                        cube3 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_quasar.fits', quiet=quiet,
+                                                header=header, datext=datext, varext=varext,
+                                                waveext=initdat['waveext'], dqext=dqext)
+                                    else:
+                                        cube2 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_galaxy.fits', quiet=quiet,
+                                                header=header, datext=datext, varext=varext,
+                                                dqext=dqext)
+                                        cube3 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_quasar.fits', quiet=quiet,
+                                                header=header, datext=datext, varext=varext,
+                                                dqext=dqext)
+
+                                cube4 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube.fits', quiet=quiet, header=header, datext=datext, varext=varext, dqext=dqext, **initdat['argsreadcube'])
+
+                                print(struct['cont_dat']/(qsomod+hostmod))
+                                #breakpoint()
+
+
+                                lam_exclude = sorted(set(cube2.wave.tolist()) - set(struct['wave'].tolist()))
+                                okwave = np.ones(len(cube2.wave)).astype(bool)
+                                for i,lam_i in enumerate(cube2.wave):
+                                    if lam_i in lam_exclude:
+                                        okwave[i] = False
+                                from scipy import constants
+                                from astropy import units as u
+                                c_scale =  constants.c * u.Unit('m').to('micron') /(cube2.wave[okwave])**2 *1e-23  *1e10      # [1e-10 erg/s/cm^2/um/sr]]
+
+                                hostspec_real = cube2.dat[iuse, juse, :].flatten()[okwave] # * c_scale
+                                qsospec_real = cube3.dat[iuse, juse, :].flatten()[okwave] # * c_scale
+
+                                #struct_overpredict['cont_dat'] = struct_overpredict['cont_dat'] * c_scale
+                                #struct_overpredict['cont_fit'] = struct_overpredict['cont_fit'] * c_scale
+
+
+                                struct_overpredict = struct.copy()
+                                struct_overpredict['cont_dat'] = 1.*struct['cont_fit']/struct['cont_dat']
+                                struct_overpredict['cont_fit'] = 1.*struct['cont_fit']/struct['cont_dat']
+
+                                print( (qsospec_real + hostspec_real)/struct['cont_dat'] )
+                                #breakpoint()
+
+                                if 'argspltcont' in initdat:
+                                    pltcontfcn(struct, outfile + '_cnt_decomp',
+                                               #compspec=np.array([qsomod, hostmod, qsomod_intr, hostmod_intr, qsospec_real, hostspec_real]),
+                                               compspec=np.array([qsomod, hostmod, qsospec_real, hostspec_real]),
+                                               title='Total',
+                                               #comptitles=['QSO model ext. & abs.', 'host model ext. & abs.', 'QSO model intrinsic', 'host model intrinsic', 'QSO intrinsic real', 'host intrinsic real'],
+                                               comptitles=['QSO model', 'host model', 'QSO real', 'host real'],
+                                               #compcols=['lightgrey', 'lightgrey' , 'c', 'plum', 'mediumblue', 'darkviolet'],
+                                               compcols=['c', 'plum', 'mediumblue', 'darkviolet'],
+                                               fitran=initdat.fitran,
+                                               **initdat['argspltcont'],
+
+                                               initdat=initdat)
+                                    pltcontfcn(struct_overpredict, outfile + '_cnt_overpredict',
+                                               compspec=np.array([1.*qsomod/qsospec_real, 1.*hostmod/hostspec_real]),
+                                               title='Total',
+                                               comptitles=['QSO_model / QSO_real = {:.3f}'.format(np.median(1.*qsomod/qsospec_real)), '<host_model / host_real> = {:.3f}'.format(np.median(1.*hostmod/hostspec_real))],
+
+                                               compcols=['c', 'plum'],
+                                               fitran=initdat.fitran,
+                                               **initdat['argspltcont'],
+                                               initdat=initdat)
+
+                                else:
+                                    pltcontfcn(struct, outfile + '_cnt_decomp',
+                                               compspec=np.array([qsomod, hostmod, qsospec_real, hostspec_real]),
+                                               title='Total',
+                                               comptitles=['QSO model', 'host model', 'QSO real', 'host real'],
+                                               #compcols=['paleturquoise', 'thistle' , 'c', 'plum', 'mediumblue', 'darkviolet'],
+                                               compcols=['c', 'plum', 'mediumblue', 'darkviolet'],
+                                               fitran=initdat['fitran'],
+                                               initdat=initdat)
+                                    pltcontfcn(struct_overpredict, outfile + '_cnt_overpredict',
+                                               compspec=np.array([1.*qsomod/qsospec_real, 1.*hostmod/hostspec_real]),
+                                               title='Total',
+                                               #comptitles=['QSO_model / QSO_real', 'host_model / host_real'],
+                                               comptitles=['QSO_model / QSO_real = {:.3f}'.format(np.median(1.*qsomod/qsospec_real)), '<host_model / host_real> = {:.3f}'.format(np.median(1.*hostmod/hostspec_real))],
+                                               compcols=['c', 'plum'],
+                                               fitran=initdat['fitran'],
+                                               initdat=initdat)
+
+
+
+
                     elif 'decompose_ppxf_fit' in initdat:
                         if 'argspltcont' in initdat:
                             pltcontfcn(struct, outfile + '_cnt',

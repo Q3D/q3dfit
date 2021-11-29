@@ -28,25 +28,35 @@ def plot_quest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat, templ_ma
           ax1.plot(MIRgdlambda, linespec, color='r', linestyle='-', alpha=0.7, linewidth=1.5)
 
         if 'argscontfit' in initdat:
-            if 'global_ext_model' in initdat['argscontfit'] or 'global_ext_model' in initdat['argscontfit']['args_questfit']:
-               for i in np.arange(0,len(comp_best_fit.keys())-2,1):
-                  if len(comp_best_fit[list(comp_best_fit.keys())[i]].shape) > 1:
-                    comp_best_fit[list(comp_best_fit.keys())[i]] = comp_best_fit[list(comp_best_fit.keys())[i]] [:,0,0]
-                  if len(comp_best_fit[list(comp_best_fit.keys())[-2]].shape) > 1:
-                    comp_best_fit[list(comp_best_fit.keys())[-2]] = comp_best_fit[list(comp_best_fit.keys())[-2]] [:,0,0]
-                  if len(comp_best_fit[list(comp_best_fit.keys())[-1]].shape) > 1:
-                    comp_best_fit[list(comp_best_fit.keys())[-1]] = comp_best_fit[list(comp_best_fit.keys())[-1]] [:,0,0]
-                  ax1.plot(MIRgdlambda_temp,comp_best_fit[list(comp_best_fit.keys())[i]]*comp_best_fit[list(comp_best_fit.keys())[-2]]*comp_best_fit[list(comp_best_fit.keys())[-1]],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
-
+            if 'global_ext_model' in initdat['argscontfit'] or ('args_questfit' in initdat['argscontfit'] and 'global_ext_model' in initdat['argscontfit']['args_questfit']):
+               str_global_ext = list(comp_best_fit.keys())[-2]
+               str_global_ice = list(comp_best_fit.keys())[-1]
+               if len(comp_best_fit[str_global_ext].shape) > 1:  # global_ext is a multi-dimensional array
+                  comp_best_fit[str_global_ext] = comp_best_fit[str_global_ext] [:,0,0]
+               if len(comp_best_fit[str_global_ice].shape) > 1:  # global_ice is a multi-dimensional array
+                  comp_best_fit[str_global_ice] = comp_best_fit[str_global_ice] [:,0,0]
+               for i, el in enumerate(comp_best_fit):
+                  if (el != str_global_ext) and (el != str_global_ice):
+                    if len(comp_best_fit[el].shape) > 1:              # component is a multi-dimensional array
+                      comp_best_fit[el] = comp_best_fit[el] [:,0,0]
+                    ax1.plot(MIRgdlambda_temp, comp_best_fit[el]*comp_best_fit[str_global_ext]*comp_best_fit[str_global_ice], label=el,linestyle='--',alpha=0.5)
             else:
-               for i in np.arange(0,len(comp_best_fit.keys()),3):
-                  if len(comp_best_fit[list(comp_best_fit.keys())[i]].shape) > 1:
-                    comp_best_fit[list(comp_best_fit.keys())[i]] = comp_best_fit[list(comp_best_fit.keys())[i]] [:,0,0]
-                  if len(comp_best_fit[list(comp_best_fit.keys())[i+1]].shape) > 1:
-                    comp_best_fit[list(comp_best_fit.keys())[i+1]] = comp_best_fit[list(comp_best_fit.keys())[i+1]] [:,0,0]
-                  if len(comp_best_fit[list(comp_best_fit.keys())[i+2]].shape) > 1:
-                    comp_best_fit[list(comp_best_fit.keys())[i+2]] = comp_best_fit[list(comp_best_fit.keys())[i+2]] [:,0,0]
-                  ax1.plot(MIRgdlambda_temp,comp_best_fit[list(comp_best_fit.keys())[i]]*comp_best_fit[list(comp_best_fit.keys())[i+1]]*comp_best_fit[list(comp_best_fit.keys())[i+2]],label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
+
+              for i, el in enumerate(comp_best_fit):
+                if len(comp_best_fit[el].shape) > 1:
+                  comp_best_fit[el] = comp_best_fit[el] [:,0,0]
+
+                if not ('_ext' in el or '_abs' in el):
+                    spec_i = comp_best_fit[el]
+                    label_i = el
+                    if el+'_ext' in comp_best_fit.keys():
+                        spec_i = spec_i*comp_best_fit[el+'_ext']
+                    if el+'_abs' in comp_best_fit.keys():
+                        spec_i = spec_i*comp_best_fit[el+'_abs']
+                    ax1.plot(MIRgdlambda_temp, spec_i, label=label_i,linestyle='--',alpha=0.5)
+
+
+
         else:
             print('argscontfit  missing in the init dict \n --> Not plotting MIR fitting results correctly.')
 

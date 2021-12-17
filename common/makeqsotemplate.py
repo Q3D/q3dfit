@@ -25,11 +25,11 @@ from q3dfit.common import readcube
 
 
 def makeqsotemplate(infits, outpy, datext=1, dqext=2, varext=3, wavext=None,
-                    wmapext=4, plot=True, waveunit_in='micron'):
+                    wmapext=4, plot=True, waveunit_in='micron',waveunit_out='micron'):
 
     cube = readcube.CUBE(infile=infits, datext=datext, dqext=dqext,
                          varext=varext, wavext=wavext, wmapext=wmapext,
-                         waveunit_in=waveunit_in)
+                         waveunit_in=waveunit_in,waveunit_out= waveunit_out)
 
     white_light_image = np.median(cube.dat, axis=2)
 
@@ -37,7 +37,7 @@ def makeqsotemplate(infits, outpy, datext=1, dqext=2, varext=3, wavext=None,
 
     qsotemplate = {'wave': cube.wave}
     if cube.dat is not None:
-        norm = np.median(cube.dat[loc_max[0][0], loc_max[1][0]])
+        norm = 1#np.median(cube.dat[loc_max[0][0], loc_max[1][0]])
         qsotemplate['flux'] = cube.dat[loc_max[0][0], loc_max[1][0]] / norm
         if plot:
             plt.plot(cube.wave, qsotemplate['flux'])

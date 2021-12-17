@@ -19,9 +19,9 @@ from q3dfit.common import readcube
 #plt.imshow(np.log10(cube.wmap[:,:,2871]))
 
 from q3dfit.common.q3df import q3df
-q3df('nirtest', cols=20, rows=21, quiet=False)
+q3df('nirtest')#, cols=20, rows=21, quiet=False)
 from q3dfit.common.q3da import q3da
-q3da('nirtest', cols=20, rows=21, quiet=False)
+q3da('nirtest')#, cols=20, rows=21, quiet=False)
 
 
 breakpoint()

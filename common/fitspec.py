@@ -409,6 +409,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             if 'refit' in argscontfit_use.keys():
                 if argscontfit_use['refit'] == 'ppxf':
                     ppxf_sigma = ct_coeff['ppxf_sigma']
+                else:
+                    ppxf_sigma = 0.
             else:
                 ppxf_sigma = 0.
 

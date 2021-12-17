@@ -568,7 +568,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                             add_poly_degree = \
                                 initdat['argscontfit']['add_poly_degree']
                         else:
-                            add_poly_degree = 30
+                            add_poly_degree = 0#30
 
                         # These lines mirror ones in IFSF_FITQSOHOST
                         struct_tmp = struct
@@ -602,15 +602,15 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                         #and stellar components
                         #TODO who is ct coeff help
                         if 'refit' in initdat['argscontfit'] and 'args_questfit' not in initdat['argscontfit']:
-                            par_qsohost = struct['ct_coeff']['qso_host']
-                            par_stel = struct['ct_coeff']['stel']
+                            par_qsohost = struct['ct_coeff']#['qso_host']
+                            par_stel = struct['ct_coeff']#['stel']
                             #line 622
                             dumy_log, wave_rebin,_ = log_rebin([struct['wave'][0],
                                 struct['wave'][len(struct['wave'])-1]],
                                 struct['spec'])
                             xnorm = cap_range(-1.0, 1.0, len(wave_rebin)) #1D?
                             if add_poly_degree > 0:
-                                par_poly = struct['ct_coeff']['poly']
+                                par_poly = struct['ct_coeff']#['poly']
                                 polymod_log = 0.0 # Additive polynomial
                                 for k in range(0, add_poly_degree):
                                     cfpllegfun = legendre(k)
@@ -619,7 +619,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                                 polymod_refit = interpfunct(np.log(struct['wave']))
                             else:
                                 polymod_refit = np.zeros(len(struct['wave']), dtype=float)
-                            contcube['stel_sigma'][i, j] = struct['ct_coeff']['ppxf_sigma']
+                            contcube['stel_sigma'][i, j] = struct['ct_coeff']#['ppxf_sigma']
                             contcube['stel_z'][i, j] = struct['zstar']
 
                             #Don't know ct_error's type
@@ -829,7 +829,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                                        initdat=initdat)
                         else:
                             pltcontfcn(struct_host, outfile + '_cnt_host',
-                                       compspec=compspec,
+                                       compspec=[compspec],
                                        title='Host', fitran=initdat['fitran'],
                                        initdat=initdat)
                         if 'blrpar' in initdat['argscontfit']:

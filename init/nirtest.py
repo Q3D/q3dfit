@@ -66,16 +66,18 @@ def nirtest():
     # centcol = 9.002
     # centrow = 14.002
     platescale = 0.1
-    fitrange = [9800,18000]
+    fitrange = [0.9800,1.8000]
 
 #   These are unique to the user
-    volume = '/jwst0nb/lwz/jwst_q3d_data/'
-    infile = volume+'NRS00001-QG-F100LP-G140H_comb_1234_g140h-f100lp_s3d.fits'
+#    volume = '/Users/Endeavour/Projects/Q3D_dev/NIRSpec_sim/'
+    volume = '/Users/Endeavour/Projects/Q3D_dev/NIRSpec_ETC_sim/'
+    infile = volume+'miri_etc_cube_both.fits'
     mapdir = volume+'maps/'
     outdir = volume+'outputs/'
-    qsotemplate = '/jwst0nb/lwz/jwst_q3d_data/nirtest_qsotemplate.npy'
-    stellartemplates = \
-        volume+'pg1411/pg1411hosttemplate.npy'
+    #    qsotemplate = volume+'nirtest_qsotemplate.npy'
+    qsotemplate = volume+'nirspec_ETC_QSO.npy'
+#    stellartemplates = \
+#        volume+'pg1411hosttemplate.npy'
     logfile = outdir+gal+'_fitlog.txt'
     batchfile = '/jwst0nb/lwz/q3dfit/common/fitloop.pro'
     batchdir = '/Users/drupke/src/idl/batch/'
@@ -103,7 +105,7 @@ def nirtest():
         linetie[i] = 'Halpha'
         ncomp[i] = np.full((ncols,nrows),maxncomp)
         ncomp[i][8,13] = 0
-        zinit_gas[i] = np.full((ncols,nrows,maxncomp),2.5)
+        zinit_gas[i] = np.full((ncols,nrows,maxncomp),1.5)
         siginit_gas[i] = np.full(maxncomp,50)
         #zinit_gas[i][2,18,:]=0.091
         #zinit_gas[i][4,21:22,:]=0.091
@@ -112,7 +114,7 @@ def nirtest():
         #zinit_gas[i][1:4,1:7,:]=0.0894
         #zinit_gas[i][6:16,0:7,:]=0.089
         #zinit_gas[i][11,8:9,:]=0.089
-        zinit_stars=np.full((ncols,nrows),2.5)
+        zinit_stars=np.full((ncols,nrows),1.5)
 
 #
 # Optional pars
@@ -163,7 +165,7 @@ def nirtest():
 
     init = { \
             # Required pars
-            'fcninitpar': 'gmos',
+            'fcninitpar': 'parinit',
             'fitran': fitrange,
             'fluxunits': 1,  # erg/s/cm^2/sr
             'infile': infile,
@@ -180,19 +182,18 @@ def nirtest():
             'minoraxispa': 75,
             'zinit_stars': zinit_stars,
             'zinit_gas': zinit_gas,
-            'zsys_gas': 0.0898,
+            'zsys_gas': 1.5,
             # Optional pars
-            'argscheckcomp': {'sigcut': 3,
+            'argscheckcomp': {'sigcut': 2,
                               'ignore': ['[OI]6300', '[OI]6364',
                                          '[SII]6716', '[SII]6731']},
-            'argscontfit': {'blrpar': [0, 7150, 5000/299792*7150,
-                                       0, 5300, 5000/299792*5300],
+            'argscontfit': {'blrpar': [0, 1.6400, 5000/299792*7150,
+                                       0, 1.2150, 5000/299792*5300],
                             'qsoxdr': qsotemplate,
                             'siginit_stars': 50,
-                            'uselog': 1,
-                            'refit': 1},
+                            'uselog': 1},
             'argslinelist': {'vacuum': False},
-            'startempfile': stellartemplates,
+#            'startempfile': stellartemplates,
             'argspltlin1': argspltlin1,
             # 'donad': 1,
             'decompose_qso_fit': 1,
@@ -201,7 +202,7 @@ def nirtest():
             'fcncontfit': 'fitqsohost',
             #'fcncontfit': 'ppxf',
             'maskwidths_def': 500,
-            'tweakcntfit': tweakcntfit,
+#            'tweakcntfit': tweakcntfit,
             'emlsigcut': 2,
             'logfile': logfile,
             'batchfile': batchfile,
@@ -209,8 +210,12 @@ def nirtest():
             'siglim_gas': siglim_gas,
             'siginit_gas': siginit_gas,
             'siginit_stars': 50,
-            'cutrange': np.array([6410, 6430]),
+            'cutrange': np.array([1.4133, 1.4743]),
             'nocvdf': 1,
+            'datext': 1,
+            'varext': 2,
+            'dqext': 3,
+            'argsreadcube':{'wmapext': None}
             # 'cvdf_vlimits': [-3e3,3e3],
             # 'cvdf_vstep': 10d,
             # 'host': {'dat_fits': volume+'ifs/gmos/cubes/'+gal+'/'+\

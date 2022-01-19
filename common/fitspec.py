@@ -187,17 +187,17 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     else:
         vacuum = False
 
-    noemlinfit = b'0'
+    noemlinfit = False
     if 'noemlinfit' in initdat:
         ct_comp_emlist = 0
     else:
         comp_emlist = np.where(np.array(list(ncomp.values())) != 0)[0]
         ct_comp_emlist = len(comp_emlist)
     if ct_comp_emlist == 0:
-        noemlinfit = b'1'
+        noemlinfit = True
 
     noemlinmask = b'0'
-    if noemlinfit == b'1' and 'doemlinmask' not in initdat:
+    if noemlinfit == True and 'doemlinmask' not in initdat:
         noemlinmask = b'1'
 
     if istemp and initdat['fcncontfit'] != 'questfit':
@@ -542,7 +542,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     #
 
     fit_params = []
-    if noemlinfit != b'1':
+    if not noemlinfit:
 
         # Initial guesses for emission line peak fluxes (above continuum)
         if peakinit is None:

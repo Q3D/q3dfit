@@ -61,7 +61,7 @@ def setup_qso_mult_exp(p):
     return qsotemplate_x_exp, qso_mult_exp_pars
 
 
-def qso_mult_leg(wave, qsotemplate, i, j, k, l, m):
+def qso_mult_leg(wave, qsotemplate, i, j, k, l, m, n, o, p, q, r):
     '''Model legendre polys for qso template multiplier
 
         Parameters
@@ -77,7 +77,8 @@ def qso_mult_leg(wave, qsotemplate, i, j, k, l, m):
         '''
 
     x = np.linspace(0., 1., len(wave))
-    multiplier = np.polynomial.legendre.legval(x, [i, j, k, l, m])
+    multiplier = \
+        np.polynomial.legendre.legval(x, [i, j, k, l, m, n, o, p, q, r])
     return multiplier*qsotemplate
 
 
@@ -102,7 +103,8 @@ def setup_qso_mult_leg(p):
                     prefix=model_name)
     qso_mult_leg_pars = qsotemplate_x_leg.make_params()
 
-    for counter, i in enumerate(['i', 'j', 'k', 'l', 'm']):
+    for counter, i in enumerate(['i', 'j', 'k', 'l', 'm',
+                                 'n', 'o', 'p', 'q', 'r']):
         if not np.isnan(p[counter]):
             qso_mult_leg_pars[model_name+i].set(value=p[counter], min=0.)
         else:
@@ -111,7 +113,7 @@ def setup_qso_mult_leg(p):
     return qsotemplate_x_leg, qso_mult_leg_pars
 
 
-def stars_add_leg(wave, i, j, k, l, m):
+def stars_add_leg(wave, i, j, k, l, m, n, o, p, q, r):
     '''Model legendre for additive starlight continuum
 
         Parameters
@@ -127,7 +129,8 @@ def stars_add_leg(wave, i, j, k, l, m):
         '''
 
     x = np.linspace(-1., 1., len(wave))
-    starlight = np.polynomial.legendre.legval(x, [i, j, k, l, m])
+    starlight = \
+        np.polynomial.legendre.legval(x, [i, j, k, l, m, n, o, p, q, r])
     return starlight
 
 
@@ -150,7 +153,8 @@ def setup_stars_add_leg(p):
                         prefix=model_name)
     stars_add_leg_pars = stars.make_params()
 
-    for counter, i in enumerate(['i', 'j', 'k', 'l', 'm']):
+    for counter, i in enumerate(['i', 'j', 'k', 'l', 'm',
+                                 'n', 'o', 'p', 'q', 'r']):
         if not np.isnan(p[counter]):
             stars_add_leg_pars[model_name+i].set(value=p[counter], min=0.)
         else:
@@ -216,7 +220,7 @@ def qsohostfcn(wave, params_fit=None, qsoflux=None,
                blronly=False, blrpar=None, **kwargs):
 
     # maximum model legendre polynomial order
-    legordmax = 4
+    legordmax = 10
 
     # Additive starlight component:
     if not qsoonly and not blronly:

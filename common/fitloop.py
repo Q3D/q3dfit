@@ -112,7 +112,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, onefit,
         else:
             indx_bad=dq
    #the oned keyword was having trouble because np.nonzero doesn't work for zero arrays. I think this fixes the issue
-  
+
     flux[indx_bad] = 0.
     err[indx_bad] = errmax*100.
 
@@ -165,7 +165,10 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, onefit,
                 siginit_gas = False
 
 #           initialize stellar redshift initial guess
-            zstar = initdat['zinit_stars'][i, j]
+            if 'zinit_stars' in initdat:
+                zstar = initdat['zinit_stars'][i, j]
+            else:
+                zstar = np.nan
 
 #           regions to ignore in fitting. Set to max(err)
             if initdat.__contains__('cutrange'):

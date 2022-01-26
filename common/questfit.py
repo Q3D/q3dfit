@@ -321,9 +321,9 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
         if use_emcee:
 
             # -- Originally used max_nfev=int(1e5), and method='least_squares'
-            #emcee_kws = dict(steps=50000, burn=500, thin=20, is_weighted=False, progress=False) #, run_mcmc_kwargs={'skip_initial_state_check': True} )
-            # emcee_kws = dict(nwalkers=500, steps=5000, burn=500, thin=20, workers=pool, is_weighted=False, progress=True) #, run_mcmc_kwargs={'skip_initial_state_check': True} )
-            emcee_kws = dict(nwalkers=256, steps=10000, burn=500, thin=5, is_weighted=False, progress=True) #, run_mcmc_kwargs={'skip_initial_state_check': True} )
+            emcee_kws = dict(steps=5000, burn=500, thin=20, is_weighted=False, progress=True) #, run_mcmc_kwargs={'skip_initial_state_check': True} )
+            #emcee_kws = dict(nwalkers=500, steps=5000, burn=500, thin=20, workers=pool, is_weighted=False, progress=True) #, run_mcmc_kwargs={'skip_initial_state_check': True} )
+            # emcee_kws = dict(nwalkers=256, steps=50000, burn=500, thin=5, is_weighted=False, progress=True) #, run_mcmc_kwargs={'skip_initial_state_check': True} )
 
             param.add('__lnsigma', value=np.log(0.1), min=np.log(0.001), max=np.log(2.0))
             import time 

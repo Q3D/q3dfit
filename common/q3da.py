@@ -101,26 +101,31 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
     else:
         dqext = initdat['dqext']
 
+    if not ('wmapext' in initdat):
+        wmapext = 4
+    else:
+        wmapext = initdat['wmapext']
+
     header = bytes(1)
 
     if 'argsreadcube' in initdat:
-        if initdat.__contains__('waveext'):
+        if initdat.__contains__('wavext'):
             cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
                     quiet=quiet, varext=varext,
-                    waveext=initdat['waveext'], **initdat['argsreadcube'])
+                    wavext=initdat['wavext'], **initdat['argsreadcube'])
         else:
             cube = CUBE(infile=initdat['infile'], quiet=quiet,
                     header=header, datext=datext, varext=varext,
                     dqext=dqext, **initdat['argsreadcube'])
 
     else:
-        if initdat.__contains__('waveext'):
+        if initdat.__contains__('wavext'):
             cube = CUBE(infile=initdat['infile'], quiet=quiet,
-                    header=header, datext=datext, varext=varext,
-                    waveext=initdat['waveext'], dqext=dqext)
+                    header=header, datext=datext, varext=varext, wmapext=wmapext,
+                    wavext=initdat['wavext'], dqext=dqext)
         else:
             cube = CUBE(infile=initdat['infile'], quiet=quiet,
-                    header=header, datext=datext, varext=varext,
+                    header=header, datext=datext, varext=varext, wmapext=wmapext,
                     dqext=dqext)
 
     if 'vormap' in initdat:
@@ -880,61 +885,58 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                                        initdat=initdat)
 
                         if 'compare_to_real_decomp' in initdat:     # CB: in the case of the MIR mock ETC cube, compare the recovered QSO/host contribution from the combined cube to the real ones from the QSO/host only simulations
-                            if initdat['compare_to_real_decomp']:
+                            if initdat['compare_to_real_decomp']['on']:
                                 from q3dfit.common import readcube
                                 argsreadcube_dict = {'fluxunit_in': 'Jy',
                                                     'waveunit_in': 'angstrom',
-                                                    'waveunit_out': 'micron'}
+                                                    'waveunit_out': 'micron'} 
+                                file_host = initdat['compare_to_real_decomp']['file_host']
+                                file_qso = initdat['compare_to_real_decomp']['file_qso']
 
                                 if 'argsreadcube' in initdat:
-                                    if initdat.__contains__('waveext'):
-                                        cube2 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_galaxy.fits', datext=datext, dqext=dqext,
+                                    if initdat.__contains__('wavext'):
+                                        cube2 = CUBE(infile=file_host, datext=datext, dqext=dqext,
                                                 quiet=quiet, varext=varext,
-                                                waveext=initdat['waveext'], **initdat['argsreadcube'])
-                                        cube3 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_quasar.fits', datext=datext, dqext=dqext,
+                                                wavext=initdat['wavext'], **initdat['argsreadcube'])
+                                        cube3 = CUBE(infile=file_qso, datext=datext, dqext=dqext,
                                                 quiet=quiet, varext=varext,
-                                                waveext=initdat['waveext'], **initdat['argsreadcube'])
+                                                wavext=initdat['wavext'], **initdat['argsreadcube'])
                                     else:
-                                        cube2 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_galaxy.fits', quiet=quiet,
+                                        cube2 = CUBE(infile=file_host, quiet=quiet,
                                                 header=header, datext=datext, varext=varext,
                                                 dqext=dqext, **initdat['argsreadcube'])
-                                        cube3 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_quasar.fits', quiet=quiet,
+                                        cube3 = CUBE(infile=file_qso, quiet=quiet,
                                                 header=header, datext=datext, varext=varext,
                                                 dqext=dqext, **initdat['argsreadcube'])
                                 else:
-                                    if initdat.__contains__('waveext'):
-                                        cube2 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_galaxy.fits', quiet=quiet,
+                                    if initdat.__contains__('wavext'):
+                                        cube2 = CUBE(infile=file_host, quiet=quiet, 
                                                 header=header, datext=datext, varext=varext,
-                                                waveext=initdat['waveext'], dqext=dqext)
-                                        cube3 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_quasar.fits', quiet=quiet,
+                                                wavext=initdat['wavext'], dqext=dqext)
+                                        cube3 = CUBE(infile=file_qso, quiet=quiet, 
                                                 header=header, datext=datext, varext=varext,
-                                                waveext=initdat['waveext'], dqext=dqext)
+                                                wavext=initdat['wavext'], dqext=dqext)
                                     else:
-                                        cube2 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_galaxy.fits', quiet=quiet,
+                                        cube2 = CUBE(infile=file_host, quiet=quiet,
                                                 header=header, datext=datext, varext=varext,
                                                 dqext=dqext)
-                                        cube3 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_quasar.fits', quiet=quiet,
+                                        cube3 = CUBE(infile=file_qso, quiet=quiet,
                                                 header=header, datext=datext, varext=varext,
                                                 dqext=dqext)
 
-                                cube4 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube.fits', quiet=quiet, header=header, datext=datext, varext=varext, dqext=dqext, **initdat['argsreadcube'])
 
-
-                                lam_exclude = sorted(set(cube2.wave.tolist()) - set(struct['wave'].tolist()))
+                                lam_exclude = sorted(set(cube2.wave.tolist()) - set(struct['wave'].tolist())) # exclude wavelength that are in cube2.wave but not in struct['wave']
                                 okwave = np.ones(len(cube2.wave)).astype(bool)
                                 for i,lam_i in enumerate(cube2.wave):
                                     if lam_i in lam_exclude:
                                         okwave[i] = False
-                                from scipy import constants
-                                from astropy import units as u
-                                c_scale =  constants.c * u.Unit('m').to('micron') /(cube2.wave[okwave])**2 *1e-23  *1e10      # [1e-10 erg/s/cm^2/um/sr]]
+
+                                # from scipy import constants
+                                # from astropy import units as u
+                                # c_scale =  constants.c * u.Unit('m').to('micron') /(cube2.wave[okwave])**2 *1e-23  *1e10      # [1e-10 erg/s/cm^2/um/sr]]
 
                                 hostspec_real = cube2.dat[iuse, juse, :].flatten()[okwave] # * c_scale
                                 qsospec_real = cube3.dat[iuse, juse, :].flatten()[okwave] # * c_scale
-
-
-                                #struct_overpredict['cont_dat'] = struct_overpredict['cont_dat'] * c_scale
-                                #struct_overpredict['cont_fit'] = struct_overpredict['cont_fit'] * c_scale
 
 
                                 struct_overpredict = struct.copy()

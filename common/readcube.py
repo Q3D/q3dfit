@@ -65,7 +65,7 @@ cube = CUBE(fp='/path/to/data/', infile='datafits')
       Suppress progress messages.
     varext: in, optional, type=integer, default=2
       Extension # of variance plane.
-    waveext: in, optional, type=integer
+    wavext: in, optional, type=integer
       The extention number of a wavelength array.
     zerodq: in, optional, type=byte
       Zero out the DQ array.

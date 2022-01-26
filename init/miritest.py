@@ -192,20 +192,25 @@ def miritest():
             'argslinelist': {'vacuum': False},
             'argspltlin1': argspltlin1,
             'decompose_qso_fit': 1,
-            'compare_to_real_decomp': 1,
-
-            # 'fcncheckcomp': 'checkcomp            # 'fcncontfit': 'questfit',
-            # 'maskwidths_def': 2000,
-            # 'emlsigcut': 2,
-            # 'logfile': logfile,
-            # 'siglim_gas': siglim_gas,
-            # 'siginit_gas': siginit_gas,
-            # 'siginit_stars': 50,
-            # 'nocvdf': 1,
+            'compare_to_real_decomp':   {'on': 1,   ### Option to compare recovered QSO-host decomposition from mock ETC cube to "real" one (only makes sense when running on the combined QSO+host cube)
+                                        'file_host': volume+'miri_etc_cube_galaxy.fits', 
+                                        'file_qso': volume+'miri_etc_cube_quasar.fits'}, 
+            'fcncontfit': 'questfit',
+            
+            'fcncheckcomp': 'checkcomp',            
+            'maskwidths_def': 2000,
+            'emlsigcut': 2,
+            'logfile': logfile,
+            'siglim_gas': siglim_gas,
+            'siginit_gas': siginit_gas,
+            'siginit_stars': 50,
+            'nocvdf': 1,
             # 'plotMIR': True,
-            # 'argsreadcube': {'fluxunit_in': 'Jy',
-            #                 'waveunit_in': 'angstrom',
-            #                 'waveunit_out': 'micron'}        
+            'wmapext': None,
+            'argsreadcube': {'fluxunit_in': 'Jy',
+                            'waveunit_in': 'angstrom',
+                            'waveunit_out': 'micron',
+                            'wmapext': None}        
 
             }
 

@@ -16,7 +16,7 @@ import os
 # volume = '/Volumes/fingolfin/ifs/gmos/cubes/pg1411/'
 # outpy = volume + 'pg1411qsotemplate.npy'
 # infits = volume + 'pg1411rb1.fits'
-# makeqsotemplate(infits, outpy, dataext=None, dqext=None, waveext=None)
+# makeqsotemplate(infits, outpy, datext=None, dqext=None, wavext=None)
 
 
 #cube = readcube.CUBE(infile='/jwst0nb/lwz/jwst_q3d_data/NRS00001-QG-F100LP-G140H_comb_1234_g140h-f100lp_s3d.fits')
@@ -30,16 +30,16 @@ import os
 def Get_flex_template(nrow, ncol, name_out='miri_qsotemplate_flex.npy'):
     volume = '../../../MIRISIM/MIRI-ETC-SIM/'
     infits = volume + 'miri_etc_cube_quasar.fits'
-    argsreadcube = {'fluxunit_in': 'Jy', 'waveunit_in': 'angstrom', 'waveunit_out': 'micron'} 
-    cube_templ = readcube.CUBE(infile=infits, dataext=1, varext=2, dqext=3, waveext=None, **argsreadcube)
+    argsreadcube = {'fluxunit_in': 'Jy', 'waveunit_in': 'angstrom', 'waveunit_out': 'micron', 'wmapext': None} 
+    cube_templ = readcube.CUBE(infile=infits, datext=1, varext=2, dqext=3, wavext=None,   **argsreadcube)
     #breakpoint()
     outpy = '../data/questfit_templates/' + name_out
     qsotemplate = {'wave':cube_templ.wave,'flux':cube_templ.dat[ncol-1, nrow-1, :],'dq':cube_templ.dq[ncol-1, nrow-1, :]}
     np.save(outpy,qsotemplate)
 
     infits2 = volume + 'miri_etc_cube_galaxy.fits'
-    argsreadcube = {'fluxunit_in': 'Jy', 'waveunit_in': 'angstrom', 'waveunit_out': 'micron'} 
-    cube_templ = readcube.CUBE(infile=infits2, dataext=1, varext=2, dqext=3, waveext=None, **argsreadcube)
+    argsreadcube = {'fluxunit_in': 'Jy', 'waveunit_in': 'angstrom', 'waveunit_out': 'micron', 'wmapext': None} 
+    cube_templ = readcube.CUBE(infile=infits2, datext=1, varext=2, dqext=3, wavext=None,   **argsreadcube)
     outpy = '../data/questfit_templates/' + 'miri_gal_spec.npy'
     galtemplate = {'wave':cube_templ.wave,'flux':cube_templ.dat[ncol-1, nrow-1, :],'dq':cube_templ.dq[ncol-1, nrow-1, :]}
     np.save(outpy,galtemplate)
@@ -52,7 +52,7 @@ def Get_central_template():
     #outpy = volume + 'miri_qsotemplate_B.npy'
     outpy = '../data/questfit_templates/' + 'miri_qsotemplate_flex.npy'
     infits = volume + 'miri_etc_cube.fits'
-    makeqsotemplate(infits, outpy, dataext=1, varext=2, dqext=3, waveext=None)
+    makeqsotemplate(infits, outpy, datext=1, varext=2, dqext=3, wmapext=None, wavext=None)
 
 
 def init_guess_ampl(nrow, ncol, templ_name):
@@ -64,12 +64,12 @@ def init_guess_ampl(nrow, ncol, templ_name):
     iuse = ncol-1
     juse = nrow-1
     from q3dfit.common import readcube
-    argsreadcube_dict = {'fluxunit_in': 'Jy', 'waveunit_in': 'angstrom', 'waveunit_out': 'micron'} 
+    argsreadcube_dict = {'fluxunit_in': 'Jy', 'waveunit_in': 'angstrom', 'waveunit_out': 'micron', 'wmapext': None} 
     cube2 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_galaxy.fits', quiet=quiet,
-        header=header, datext=datext, varext=varext, dqext=dqext, **argsreadcube_dict)
+        header=header, datext=datext, varext=varext, dqext=dqext,  **argsreadcube_dict)
     cube3 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_quasar.fits', quiet=quiet,
         header=header, datext=datext, varext=varext, dqext=dqext, **argsreadcube_dict)
-    cube4 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube.fits', quiet=quiet, header=header, \
+    cube4 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube.fits',   quiet=quiet, header=header, \
         datext=datext, varext=varext, dqext=dqext, **argsreadcube_dict)
 
     # cube4.dat[iuse, juse, :].flatten() / (cube2.dat[iuse, juse, :].flatten()+cube3.dat[iuse, juse, :].flatten())

@@ -190,7 +190,6 @@ def miritest():
             'argslinelist': {'vacuum': False},
             'argspltlin1': argspltlin1,
             'decompose_qso_fit': 1,
-
             'compare_to_real_decomp':   {'on': 1,   ### Option to compare recovered QSO-host decomposition from mock ETC cube to "real" one (only makes sense when running on the combined QSO+host cube)
                                         'file_host': volume+'miri_etc_cube_galaxy.fits', 
                                         'file_qso': volume+'miri_etc_cube_quasar.fits'}, 

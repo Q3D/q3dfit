@@ -904,6 +904,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                 argsreadcube_dict = {'fluxunit_in': 'Jy',
                                                     'waveunit_in': 'angstrom',
                                                     'waveunit_out': 'micron'}
+
                                 file_host = initdat['compare_to_real_decomp']['file_host']
                                 file_qso = initdat['compare_to_real_decomp']['file_qso']
 
@@ -924,10 +925,10 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                                 dqext=dqext, **initdat['argsreadcube'])
                                 else:
                                     if initdat.__contains__('wavext'):
-                                        cube2 = CUBE(infile=file_host, quiet=quiet,
+                                        cube2 = CUBE(infile=file_host, quiet=quiet, 
                                                 header=header, datext=datext, varext=varext,
                                                 wavext=initdat['wavext'], dqext=dqext)
-                                        cube3 = CUBE(infile=file_qso, quiet=quiet,
+                                        cube3 = CUBE(infile=file_qso, quiet=quiet, 
                                                 header=header, datext=datext, varext=varext,
                                                 wavext=initdat['wavext'], dqext=dqext)
                                     else:

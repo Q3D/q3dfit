@@ -272,7 +272,6 @@ def set_up_fit_extinction(p,p_fixfree,model_name,extinction_model,mixed_or_scree
     return model_extinction,model_extinction_parameters
 
 
-
 def set_up_fit_model_scale(p,p_fixfree,model_name,model, fitFlambda=True, maxamp=None):
     '''Function defined to set up fitting model_scale within lmfit
         

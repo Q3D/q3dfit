@@ -938,7 +938,6 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                                 header=header, datext=datext, varext=varext,
                                                 dqext=dqext)
 
-
                                 lam_exclude = sorted(set(cube2.wave.tolist()) - set(struct['wave'].tolist())) # exclude wavelength that are in cube2.wave but not in struct['wave']
                                 okwave = np.ones(len(cube2.wave)).astype(bool)
                                 for i,lam_i in enumerate(cube2.wave):
@@ -951,7 +950,6 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
 
                                 hostspec_real = cube2.dat[iuse, juse, :].flatten()[okwave] # * c_scale
                                 qsospec_real = cube3.dat[iuse, juse, :].flatten()[okwave] # * c_scale
-
 
                                 struct_overpredict = struct.copy()
                                 struct_overpredict['cont_dat'] = 1.*struct['cont_fit']/struct['cont_dat']

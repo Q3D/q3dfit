@@ -11,6 +11,7 @@ from matplotlib import pyplot as plt
 from q3dfit.common import interp_temp_quest
 from q3dfit.common import writeout_quest
 import q3dfit
+from matplotlib import pyplot as plt
 
 
 
@@ -146,8 +147,45 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
                 extinction_model = config_file[i][3]
                 ice_model = config_file[i][9]
 
-                model_temp_template,param_temp_template = questfitfcn.set_up_fit_model_scale([float(model_parameters[1])],[float(model_parameters[2])],name_model,name_model)#name_model.split('.')[0]template+'_'+str(n_temp)
-                
+                if not 'poly' in i:
+                    model_temp_template,param_temp_template = questfitfcn.set_up_fit_model_scale([float(model_parameters[1])],[float(model_parameters[2])],name_model,name_model, maxamp=1.05*max(flux[index]) ) #name_model.split('.')[0]template+'_'+str(n_temp)
+                else:
+                    minamp = float(model_parameters[1]) / 1.25
+                    maxamp = float(model_parameters[1]) * 1.25
+                    model_temp_template,param_temp_template = questfitfcn.set_up_fit_model_scale_withpoly([float(model_parameters[1])],[float(model_parameters[2])],name_model,name_model, minamp=minamp, maxamp=maxamp)#1.05*max(flux[index])) #name_model.split('.')[0]template+'_'+str(n_temp)
+
+                    testing = False
+                    if testing:
+                        temp_model = np.load(loc_models+'miri_qsotemplate_flex.npy', allow_pickle=True)
+                        temp_model = temp_model[()]
+                        wave_ex = temp_model['wave']
+                        flux_ex = temp_model['flux']
+                        c_scale =  constants.c * u.Unit('m').to('micron') /(wave_ex)**2 *1e-23  *1e10      # [1e-10 erg/s/cm^2/um/sr]]
+                        flux_ex = flux_ex * c_scale
+                        flux_ex = flux_ex/flux_ex.max()
+                        c2 = [1., 0., 0.]
+                        c2 = [0.116, 0.224, 147.71]
+                        c2 = [0.213, 0.024, 75.794]
+                        c2 = [1, 100., 500.71]
+                        m1 = model_temp_template.eval(template_0=flux_ex , wave=wave_ex, template_0_amp=1.,template_0_multpolyA=1.,template_0_multpolyB=2.,template_0_multpolyC = 3. )
+                        m2 = model_temp_template.eval(template_0=flux_ex , wave=wave_ex, template_0_amp=1.,template_0_multpolyA=c2[0],template_0_multpolyB=c2[1],template_0_multpolyC = c2[2] )
+
+                        ex_poly = lambda lam, p0,p1,p2:  (p0+p1*lam+p2*lam**2)/max(p0+p1*lam+p2*lam**2)
+                        ex_poly2 = lambda lam, p0,p1,p2:  (p0+p1*lam+p2*lam**7)/max(p0+p1*lam+p2*lam**7)
+                        ex_poly = lambda lam, p0,p1,p2:  (p0+p1*lam+p2*lam**2)/max(p0+p1*lam+p2*lam**2)
+                        lin_poly = lambda lam, p0,p1,p2:  (p0+p1*np.arange(len(lam)))/max((p0+p1*np.arange(len(lam))))
+                        plt.figure()
+                        plt.plot(wave_ex, flux_ex, label='orig', color='k', linewidth=2.5)
+                        plt.plot(wave_ex, m1, linewidth=1, label='model.eval() with  A=1, B=2, C=3 (and Amp=1)')
+                        plt.plot(wave_ex, m2, linewidth=1, label='model.eval() with  A={}, B={}, C={} (and Amp=1)'.format(c2[0], c2[1], c2[2]))
+                        plt.xlabel(r'$\lambda$')
+                        plt.ylabel('F_norm')
+                        plt.legend()
+                        plt.show()
+
+                        breakpoint()
+
+
                 if 'si' in i:
                     #config_file[i][0].split('.')[0]
                     template_dictionary[name_model] = 'silicatemodels/'+config_file[i][0]
@@ -158,7 +196,6 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
                 if global_extinction == False and config_file[i][3] != '_' and config_file[i][3] != '-':
 
                         model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],name_model+'_ext',extinction_model,model_parameters[6])
-                        #breakpoint()
                         model_temp = model_temp_template*model_temp_extinction
                         param_temp = param_temp_template + param_temp_extinction
 
@@ -207,10 +244,9 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
             temp_wave=temp_model['WAVE']
             temp_value=temp_model['FLUX']
 
-            #temp_value_rebin = interptemp.interptemp(wave_temp,temp_wave,temp_value)
-            #temp_value_rebin = interp_temp_quest.interp_lis(wave, temp_wave, temp_value)
+
             temp_value_rebin = interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
-            models_dictionary[i] = temp_value_rebin#/temp_value_rebin.max()
+            models_dictionary[i] = temp_value_rebin
 
 
         c_scale =  constants.c * u.Unit('m').to('micron') /(wlambda)**2 *1e-23  *1e10      # [1e-10 erg/s/cm^2/um/sr]]
@@ -230,7 +266,6 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
                 temp_value=temp_model['flux']
 
             
-            #temp_value_rebin = interptemp.interptemp(wave_temp,temp_wave,temp_value)
             temp_value_rebin = interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
             if convert2Flambda: 
                 models_dictionary[i] = temp_value_rebin*c_scale
@@ -243,6 +278,30 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
         if convert2Flambda:
             flux *= c_scale
 
+
+        plot_ini_guess = False
+        if plot_ini_guess:        
+            plt.plot(models_dictionary['wave'], param['template_0_amp'].value * models_dictionary['template_0']/c_scale, color='c', label = 'QSO model init')
+
+            data1 = np.load('../data/questfit_templates/' + 'miri_qsotemplate_flexB.npy', allow_pickle='TRUE').item()
+            F1 = data1['flux'][:-1] * c_scale
+            plt.plot(models_dictionary['wave'], F1/c_scale, color='b', label = 'QSO real')
+
+            gal_model_comp = [el for el in models_dictionary if 'template' in el and 'template_0' not in el]
+            Fgalmodel = 0
+            for comp_i in gal_model_comp:
+                Fgalmodel += param[comp_i+'_amp'].value * models_dictionary[comp_i]
+            plt.plot(models_dictionary['wave'], Fgalmodel/c_scale, color='plum', label = 'host model init')
+
+            data2 = np.load('../data/questfit_templates/' + 'miri_gal_spec.npy', allow_pickle='TRUE').item()
+            F2 = data2['flux'][:-1] * c_scale
+            plt.plot(models_dictionary['wave'], F2/c_scale, color='darkviolet', label = 'host real')
+            plt.yscale("log")
+            plt.xlabel(r'$\lambda \ \mathrm{[micron]}$')
+            plt.legend()
+            plt.show()
+            breakpoint()
+
         flux_cut = flux[index]
         models_dictionary_cut = copy.deepcopy(models_dictionary)
         for el in models_dictionary.keys():
@@ -252,7 +311,37 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
         outpy = '../data/questfit_templates/' + 'miri_qsotemplate_flex.npy'
         data1 = np.load(outpy, allow_pickle=True)
         f_orig = data1.item()['flux'][:-1]
-        result = model.fit(flux_cut,param,**models_dictionary_cut,max_nfev=int(1e5),method='least_squares',nan_policy='omit')#method='least_squares'nan_policy='omit'
+
+
+        
+
+        # from multiprocessing import Pool
+        # with Pool() as pool:
+        use_emcee = True
+        if use_emcee:
+
+            # -- Originally used max_nfev=int(1e5), and method='least_squares'
+            #emcee_kws = dict(steps=50000, burn=500, thin=20, is_weighted=False, progress=False) #, run_mcmc_kwargs={'skip_initial_state_check': True} )
+            # emcee_kws = dict(nwalkers=500, steps=5000, burn=500, thin=20, workers=pool, is_weighted=False, progress=True) #, run_mcmc_kwargs={'skip_initial_state_check': True} )
+            emcee_kws = dict(nwalkers=256, steps=10000, burn=500, thin=5, is_weighted=False, progress=True) #, run_mcmc_kwargs={'skip_initial_state_check': True} )
+
+            param.add('__lnsigma', value=np.log(0.1), min=np.log(0.001), max=np.log(2.0))
+            import time 
+            t1 = time.time()
+            result = model.fit(flux_cut,param,**models_dictionary_cut,max_nfev=int(1e5),method='emcee',nan_policy='omit', fit_kws=emcee_kws)#method='least_squares'nan_policy='omit'
+            print('Time needed for fitting: ', time.time()-t1)
+
+            import corner
+            emcee_plot = corner.corner(result.flatchain, labels=result.var_names,truths=list(result.params.valuesdict().values()))
+            plt.savefig('../../../MIRISIM/MIRI-ETC-SIM/outputs/corner')
+
+        else:
+            result = model.fit(flux_cut,param,**models_dictionary_cut,max_nfev=int(1e5),method='cobyla',nan_policy='omit')#method='least_squares'nan_policy='omit'
+
+        lmfit.report_fit(result.params)
+        with open('../../../MIRISIM/MIRI-ETC-SIM/outputs/fit_result.txt', 'w') as fh:
+            fh.write(result.fit_report())
+            fh.write('\n')
 
         best_fit = result.eval(**models_dictionary) # use models_dictionary rather than models_dictionary_cut to evaluate over all wavelengths within fitran (not just [index])
         comp_best_fit = result.eval_components(**models_dictionary)

@@ -73,6 +73,7 @@ def miritest():
     volume = '../../../MIRISIM/MIRI-ETC-SIM/'
     infile = volume+'miri_etc_cube_quasar.fits'
     infile = volume+'miri_etc_cube.fits'
+    # infile = volume+'miri_etc_cube_galaxy.fits'
     
     #mapdir = volume+'maps/'
     
@@ -85,9 +86,10 @@ def miritest():
     logfile = outdir+gal+'_fitlog.txt'
     #batchfile = '../common/fitloop.pro'
     #batchdir = '/Users/drupke/src/idl/batch/'
-#
-# Required pars
-#
+
+    #
+    # Required pars
+    #
 
     if not os.path.isfile(infile): print('Data cube not found.')
 
@@ -96,7 +98,10 @@ def miritest():
     global_ice_model = 'ice_hc'
     global_ext_model = 'CHIAR06'
     #cffilename = '../test/test_questfit/IRAS21219m1757_dlw_qst.cf'
+    # cffilename = '../test/test_questfit/miritest_NoQSO.cf'
     cffilename = '../test/test_questfit/miritest.cf'
+
+
     config_file = questfit_readcf.readcf(cffilename)
 
 

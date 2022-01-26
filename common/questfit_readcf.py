@@ -22,7 +22,7 @@ def readcf(filename):
 
     init_questfit = {}
     for i in cf:
-        if i[0] == 'template' or i[0] == 'powerlaw' or i[0] == 'blackbody':
+        if i[0] == 'template' or i[0] == 'powerlaw' or i[0] == 'blackbody' or i[0] == 'template_poly':
             #populate initilization dictionary with
 
             #col 0: filename (if nessesary; path hardcoded)

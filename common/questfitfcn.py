@@ -37,6 +37,7 @@ def blackbody(wave,a,T, fitFlambda=True):
 
     return a*BB_model/BB_model.max()
 
+
 def set_up_fit_blackbody_model(p,p_fixfree,name):
     '''Function defined to set up fitting blackbody_model within lmfit
         
@@ -59,9 +60,51 @@ def set_up_fit_blackbody_model(p,p_fixfree,name):
     blackbody_model_parameters = blackbody_model.make_params()
     print(p_fixfree[0])
     blackbody_model_parameters[model_name+'a'].set(value=p[0],min=0.,vary=p_fixfree[0])
-    blackbody_model_parameters[model_name+'T'].set(value=p[1],min=50.,vary=p_fixfree[1])
+    blackbody_model_parameters[model_name+'T'].set(value=p[1],min=50., max=1000.,vary=p_fixfree[1])
 
     return blackbody_model,blackbody_model_parameters
+
+
+def modelmultpoly(template_0, wave, amp, multpolyA, multpolyB, multpolyC):
+
+    wave_new = (wave-min(wave))/(max(wave)-min(wave)) * 2 - 1 # mapped onto range [-1,1]
+    wave_new = 10**wave_new
+    polymodel = template_0 * (multpolyA + multpolyB * wave_new) # + multpolyC * wave_new**2)
+    return amp * polymodel/polymodel.max()
+
+
+def set_up_fit_model_scale_withpoly(p,p_fixfree,model_name,model, minamp=0., maxamp=None):
+
+    '''Function defined to set up fitting model_scale within lmfit
+        
+        Parameters
+        -----
+        p: list
+        list of initial guess for the model_scale fit
+        
+        
+        
+        returns
+        -------
+        scale_model_model: lmfit model
+        scale_model_paramters: lmfit model parameters
+        '''
+    
+    model_scale_model = lmfit.Model(modelmultpoly, independent_vars=[model, 'wave'], name=model_name, prefix=model_name+'_')
+    model_scale_parameters = model_scale_model.make_params()
+    
+    if maxamp is not None:
+        model_scale_parameters[model+'_amp'].set(value=p[0],min=minamp, max=maxamp,vary=p_fixfree[0])#,min=0.
+    else:
+        model_scale_parameters[model+'_amp'].set(value=p[0],min=minamp,vary=p_fixfree[0])#,min=0.
+
+    model_scale_parameters[model+'_multpolyA'].set(value=1.,min=0., max=2., vary=p_fixfree[0])#,min=0.
+    model_scale_parameters[model+'_multpolyB'].set(value=1.,min=0., max=2., vary=p_fixfree[0])#,min=0.
+    model_scale_parameters[model+'_multpolyC'].set(value=0.1,min=0., max=2., vary=p_fixfree[0])#,min=0.
+
+    return model_scale_model,model_scale_parameters
+
+
 
 def powerlaw(wave,a,b, fitFlambda):
 
@@ -224,12 +267,12 @@ def set_up_fit_extinction(p,p_fixfree,model_name,extinction_model,mixed_or_scree
     model_extinction_parameters = model_extinction.make_params()
     print(p_fixfree[0])
     if mixed_or_screen == 'M':
-        model_extinction_parameters[model_name+'_Av'].set(value=p[0],min=1.,vary=p_fixfree[0])
+        model_extinction_parameters[model_name+'_Av'].set(value=p[0],min=1.,max=10.,vary=p_fixfree[0])
     if mixed_or_screen == 'S':
-        model_extinction_parameters[model_name+'_Av'].set(value=p[0],min=0.,vary=p_fixfree[0])
+        model_extinction_parameters[model_name+'_Av'].set(value=p[0],min=0.,max=10.,vary=p_fixfree[0])
     return model_extinction,model_extinction_parameters
 
-def set_up_fit_model_scale(p,p_fixfree,model_name,model, fitFlambda=True):
+def set_up_fit_model_scale(p,p_fixfree,model_name,model, fitFlambda=True, maxamp=None):
     '''Function defined to set up fitting model_scale within lmfit
         
         Parameters
@@ -250,10 +293,14 @@ def set_up_fit_model_scale(p,p_fixfree,model_name,model, fitFlambda=True):
     model_scale_model = ExpressionModel(exp,independent_vars=[model],name=model_name)
     model_scale_parameters = model_scale_model.make_params()
     
-    model_scale_parameters[model+'_amp'].set(value=p[0],min=0.,vary=p_fixfree[0])#,min=0.
+    if maxamp is not None:
+        model_scale_parameters[model+'_amp'].set(value=p[0],min=0., max=maxamp,vary=p_fixfree[0])#,min=0.
+    else:
+        model_scale_parameters[model+'_amp'].set(value=p[0],min=0.,vary=p_fixfree[0])#,min=0.
 
     
     return model_scale_model,model_scale_parameters
+
 
 
 def set_up_absorption(p,p_fixfree,model_name,abs_model):

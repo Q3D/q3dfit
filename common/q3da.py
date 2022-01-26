@@ -689,8 +689,6 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                         qsomod_normonly = qsoflux
                         polymod_refit = 0.
 
-                        print(struct['cont_dat']/(qsomod+hostmod))
-                        #breakpoint()
 
 
                 elif initdat['fcncontfit'] == 'ppxf' and 'qsotempfile' in initdat:
@@ -921,9 +919,6 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
 
                                 cube4 = CUBE(infile='../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube.fits', quiet=quiet, header=header, datext=datext, varext=varext, dqext=dqext, **initdat['argsreadcube'])
 
-                                print(struct['cont_dat']/(qsomod+hostmod))
-                                #breakpoint()
-
 
                                 lam_exclude = sorted(set(cube2.wave.tolist()) - set(struct['wave'].tolist()))
                                 okwave = np.ones(len(cube2.wave)).astype(bool)
@@ -937,6 +932,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                                 hostspec_real = cube2.dat[iuse, juse, :].flatten()[okwave] # * c_scale
                                 qsospec_real = cube3.dat[iuse, juse, :].flatten()[okwave] # * c_scale
 
+
                                 #struct_overpredict['cont_dat'] = struct_overpredict['cont_dat'] * c_scale
                                 #struct_overpredict['cont_fit'] = struct_overpredict['cont_fit'] * c_scale
 
@@ -945,8 +941,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                                 struct_overpredict['cont_dat'] = 1.*struct['cont_fit']/struct['cont_dat']
                                 struct_overpredict['cont_fit'] = 1.*struct['cont_fit']/struct['cont_dat']
 
-                                print( (qsospec_real + hostspec_real)/struct['cont_dat'] )
-                                #breakpoint()
+                                print('Check: host-only cube + QSO-only cube = combined-cube spectrum?: ', (qsospec_real + hostspec_real)/struct['cont_dat'], '\n(check only works if we are actually running on the combined cube)' )
 
                                 if 'argspltcont' in initdat:
                                     pltcontfcn(struct, outfile + '_cnt_decomp',

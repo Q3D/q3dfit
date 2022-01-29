@@ -39,12 +39,13 @@ B) Spectrum with strong MIR lines:  Data "cube" is single spectrum called 221288
 2. Run `q3df`/`q3da` from the notebook OR run `./test/test_f22128896mir.py` from a Python prompt.
 3. Compare outputs to files in `./test/test_questfit/`. Presently, two versions of the plots are made: a jpg file is created by `q3da`, and a png is created by `q3df` via `plot_quest`.
 
-## NIRSPEC simulation data in the hei box
+## NIRSPEC ETC simulation
 
-Data cube can be downloaded from the [heibox](https://heibox.uni-heidelberg.de/library/06eb022c-6252-40ea-aaa9-88af6d7d876d/Q3D/Simulations/May_2021)
-
-1. Modify `./init/nirtest.py` accordingly and prepare the qso template to use (using `test_makeqsotemplate_nir.py` for now)
-2. Run `./test/test_nirspec.py`
+1. Download necessary files from the [Q3D Box folder](https://rhodes.box.com/s/q4zsp63ps01olkkh846k1nzbfw744gns):
+   - `./simulations/NIRSPEC-ETC/nirspec_etc_cube_both.fits`
+   - `./simulations/NIRSPEC-ETC/nirspec_ETC_QSO.npy`
+2. Edit the input/output files in the Jupyter notebook `./jnb/run_q3dfit_nirspec-etc.ipynb`.
+3. Run `q3df`/`q3da` from the notebook OR run `./test/test_nirspec-etc.py` from a Python prompt.
 
 ## SDSS spectrum, rest-frame optical, two emission-line components, galaxy + emission lines
 
@@ -71,3 +72,10 @@ spectrum of Makani
    - `logfile` is an ASCII output file
    (- The config file 'cffilename' and QSO template 'qsotemplate' should be fine to leave as is, as these are relative paths. The jupyter notebook will generate the QSO template if it doesn't exist.) 
 3. Run `q3df` from the notebook OR run `./test/test_miri.py` from a Python prompt.
+
+
+## F05189-2524 UV STIS spectrum (test of polynomial fitter)
+
+1. Download necessary files from the [Box folder](https://rhodes.box.com/s/8dshrdxl6b9ngg3wvdhvn79u8cicgmdp)
+2. Edit the input/output files in the Jupyter notebook `./jnb/run_q3dfit_uvpoly.ipynb`.
+3. Run `q3df`/`q3da` from the notebook OR run `./test/test_uvpoly.py` from a Python prompt.

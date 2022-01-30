@@ -64,7 +64,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
     if fitran:
         flux = flux[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
         wlambda = wlambda[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
-        
+
 
     if singletemplatelambda!=b'0':
         print('Trying to pass a single separate template to questfit, which is not implemented ... Halting.')
@@ -398,6 +398,11 @@ def quest_extract_QSO_contrib(ct_coeff, initdat):
     qso_out_ext = np.array([])
     qso_out_intr = np.array([])
 
+    config_file = questfit_readcf.readcf(initdat['argscontfit']['config_file'])
+    if not 'qso' in list(config_file.keys())[1]:    ### This function assumes that in the config file the qso temple is the first template. Rudimentary check here.
+        print('\n\nWARNING during QSO-host decomposition: \nThe function assumes that in the config file the qso template is the first template, but its name does not contain \"qso\". Pausing here as a checkpoint, press c for continuing.\n')
+        breakpoint()
+
     if 'argscontfit' in initdat:
 
       if 'global_ext_model' in initdat['argscontfit'] or ('args_questfit' in initdat['argscontfit'] and 'global_ext_model' in initdat['argscontfit']['args_questfit']):
@@ -415,7 +420,7 @@ def quest_extract_QSO_contrib(ct_coeff, initdat):
             if len(comp_best_fit[el].shape) > 1:              # component is a multi-dimensional array
               comp_best_fit[el] = comp_best_fit[el] [:,0,0]
             if 'decompose_qso_fit' in initdat:
-              if initdat['decompose_qso_fit'] and i==0:
+              if initdat['decompose_qso_fit'] and i==0:     ### NOTE on i==0: This only works is in the config file the qso temple is the first template
                 qso_out_ext = comp_best_fit[el]*comp_best_fit[str_global_ext]*comp_best_fit[str_global_ice]
                 qso_out_intr = comp_best_fit[el]
               else:

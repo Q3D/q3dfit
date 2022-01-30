@@ -185,8 +185,6 @@ def miritest():
 
             # Optional pars
             'argscontfit': {'config_file': cffilename,
-                            #'global_ice_model': global_ice_model,
-                            #'global_ext_model': global_ext_model,
                             'models_dictionary': {},
                             'template_dictionary': {}},
             'argslinelist': {'vacuum': False},

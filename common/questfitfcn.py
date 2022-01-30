@@ -252,7 +252,6 @@ def set_up_fit_extinction(p,p_fixfree,model_name,extinction_model,mixed_or_scree
         powerlaw_model_paramters: lmfit model parameters
         '''
     
-    
     model_name = model_name
     if mixed_or_screen == 'M':
         exp = "1 - exp(-0.4*%s_Av*log10(%s))/(0.4*%s_Av*log10(%s))" % (model_name,extinction_model,model_name,extinction_model)
@@ -271,6 +270,8 @@ def set_up_fit_extinction(p,p_fixfree,model_name,extinction_model,mixed_or_scree
     if mixed_or_screen == 'S':
         model_extinction_parameters[model_name+'_Av'].set(value=p[0],min=0.,max=10.,vary=p_fixfree[0])
     return model_extinction,model_extinction_parameters
+
+
 
 def set_up_fit_model_scale(p,p_fixfree,model_name,model, fitFlambda=True, maxamp=None):
     '''Function defined to set up fitting model_scale within lmfit

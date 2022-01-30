@@ -41,7 +41,7 @@ def readcf(filename):
 
         if i[0] == 'absorption' or i[0] == 'extinction':
             #init_questfit[i[0]+'_'+i[1]+'_'+i[4]+'_'+i[10]] = i[1:]
-            init_questfit[i[4]] = i[1]
+            init_questfit[i[4]] = [i[1], i[0]]
 
 
         if i[0] == 'source' :

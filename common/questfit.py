@@ -64,8 +64,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
     if fitran:
         flux = flux[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
         wlambda = wlambda[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
-    if global_ext_model != 'None': global_extinction = True
-    else:   global_extinction = False
+        
 
     if singletemplatelambda!=b'0':
         print('Trying to pass a single separate template to questfit, which is not implemented ... Halting.')
@@ -73,14 +72,30 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
 
     else:
         config_file = questfit_readcf.readcf(config_file)
+        global_extinction = False
+        for key in config_file:
+            try:
+                if 'global' in config_file[key][3]:
+                    global_extinction = True
+            except:
+                continue
+
+        if global_extinction:
+            for key in config_file:
+                if 'extinction' in config_file[key]:
+                    global_ext_model = key
+                if 'absorption' in config_file[key]:
+                    global_ice_model = key
+
+
         loc_models = q3dfit.__path__[0]+'/data/questfit_templates/'
         n_temp = 0
         for i in config_file.keys(): #populating the models dictionary and setting up lmfit models
-
             if 'blackbody' in i: #starting with the blackbodies
                 model_parameters = config_file[i]
                 name_model = 'blackbody'+str(int(float(model_parameters[7])))#i
                 extinction_model = config_file[i][3]
+
                 ice_model = config_file[i][9]
 
                 model_temp_BB,param_temp_BB = questfitfcn.set_up_fit_blackbody_model([float(model_parameters[1]),float(model_parameters[7])],[float(model_parameters[2]),float(model_parameters[8])],name_model[:])
@@ -91,7 +106,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
                         model_temp = model_temp_BB*model_temp_extinction
                         param_temp = param_temp_BB + param_temp_extinction
 
-                        models_dictionary[extinction_model] = config_file[extinction_model]                
+                        models_dictionary[extinction_model] = config_file[extinction_model][0]                
                 else:
                     model_temp = model_temp_BB
                     param_temp = param_temp_BB
@@ -122,7 +137,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
                         model_temp = model_temp_powerlaw*model_temp_extinction
                         param_temp = param_temp_powerlaw + param_temp_extinction
 
-                        models_dictionary[extinction_model] = config_file[extinction_model]
+                        models_dictionary[extinction_model] = config_file[extinction_model][0]
                 else:
                     model_temp = model_temp_powerlaw
                     param_temp = param_temp_powerlaw
@@ -199,7 +214,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
                         model_temp = model_temp_template*model_temp_extinction
                         param_temp = param_temp_template + param_temp_extinction
 
-                        models_dictionary[extinction_model] = config_file[extinction_model]
+                        models_dictionary[extinction_model] = config_file[extinction_model][0]
 
                 else:
                     model_temp = model_temp_template
@@ -228,12 +243,12 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
             model_global_ext,param_global_ext = questfitfcn.set_up_fit_extinction([0],[1],'global_ext',global_ext_model,'S')
             model = model*model_global_ext
             param += param_global_ext
-            models_dictionary[global_ext_model] = config_file[global_ext_model]
+            models_dictionary[global_ext_model] = config_file[global_ext_model][0]
             model_global_ice,param_global_ice = questfitfcn.set_up_absorption([0],[1],'global_ice',global_ice_model)
 
             model = model*model_global_ice
             param += param_global_ice
-            models_dictionary[global_ice_model] = config_file[global_ice_model]
+            models_dictionary[global_ice_model] = config_file[global_ice_model][0]
 
         for i in models_dictionary.keys(): #loop over models dictionary, load them in and resample.
             temp_model = np.load(loc_models+models_dictionary[i],allow_pickle=True)
@@ -317,7 +332,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
 
         # from multiprocessing import Pool
         # with Pool() as pool:
-        use_emcee = True
+        use_emcee = False
         if use_emcee:
 
             # -- Originally used max_nfev=int(1e5), and method='least_squares'

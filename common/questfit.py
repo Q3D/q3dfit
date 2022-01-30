@@ -400,6 +400,7 @@ def quest_extract_QSO_contrib(ct_coeff, initdat):
     config_file = questfit_readcf.readcf(initdat['argscontfit']['config_file'])
     if not 'qso' in list(config_file.keys())[1]:    ### This function assumes that in the config file the qso temple is the first template. Rudimentary check here.
         print('\n\nWARNING during QSO-host decomposition: \nThe function assumes that in the config file the qso template is the first template, but its name does not contain \"qso\". Pausing here as a checkpoint, press c for continuing.\n')
+
         breakpoint()
 
     if 'argscontfit' in initdat:

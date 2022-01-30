@@ -105,7 +105,6 @@ Below is an example:
 |extinction           |        chiar06_i0857.npy   |  0.0    |  0.    | CHIAR06  |    0.0|   1. |  X |   0.0|  0.0  | _  | _  | _  |
 |absorption           |        ice+hc_abs.npy      |  0.0    |  0.    | ice_hc   |   0.0 |  1.  | X  |  0.0 |  0.0  | _  | _  | _  |
 
-
 - A: The type of data (template, blackbody, powerlaw, absorption, extinction, ...). Put 'source' for the data to be fitted.
 
 - B: This is the filename to read in. It will be ignored for types 'blackbody' or 'powerlaw' as these are generated in the code itself.
@@ -151,5 +150,4 @@ Below is an example:
 
 - M: For template, blackbody, powerlaw: fix/free parameter for absorption amplitude. 1=fixed, 0=free
         For source, extinction, absorption: any float/string; will be ignored
-
 

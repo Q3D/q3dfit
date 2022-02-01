@@ -30,6 +30,7 @@ Created: 7/9/2020
 """
 import copy as copy
 import importlib
+import matplotlib as mpl
 import numpy as np
 import os
 import pdb
@@ -39,22 +40,35 @@ from ppxf.ppxf_util import log_rebin
 from q3dfit.common.linelist import linelist
 from q3dfit.common.readcube import CUBE
 from q3dfit.common.sepfitpars import sepfitpars
-# from q3dfit.common.cmpweq import cmpweq
 from q3dfit.common import qsohostfcn
+from q3dfit.exceptions import InitializationError
 from scipy.special import legendre
 from scipy import interpolate
-# from timeit import default_timer as timer
 
 
-def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
+def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
+         inline=True):
 
     bad = 1.0 * 10**99
 
-    if isinstance(initproc, str):
-        from q3dfit.common.q3df_helperFunctions import __get_initdat
-        initdat = __get_initdat(initproc)
-    else:
+    if inline is False:
+        mpl.use('agg')
+
+    # If it's a string, assume it's an input .npy file
+    if type(initproc) == str:
+        # When initproc was a routine rather than an input dictionary
+        # initdat = __get_initdat(initproc)
+        initdatarr = np.load(initproc, allow_pickle=True)
+        initdat = initdatarr[()]
+    # If it's an ndarray, assume the file's been loaded but not stripped
+    # to dict{}
+    elif isinstance(initproc, np.ndarray):
+        initdat = initproc[()]
+    # If it's a dictionary, assume all is well
+    elif isinstance(initproc, dict):
         initdat = initproc
+    else:
+        raise InitializationError('initproc not in expected format')
 
     if 'noemlinfit' not in initdat:
         # get linelist
@@ -889,7 +903,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                                 from q3dfit.common import readcube
                                 argsreadcube_dict = {'fluxunit_in': 'Jy',
                                                     'waveunit_in': 'angstrom',
-                                                    'waveunit_out': 'micron'} 
+                                                    'waveunit_out': 'micron'}
                                 file_host = initdat['compare_to_real_decomp']['file_host']
                                 file_qso = initdat['compare_to_real_decomp']['file_qso']
 
@@ -910,10 +924,10 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
                                                 dqext=dqext, **initdat['argsreadcube'])
                                 else:
                                     if initdat.__contains__('wavext'):
-                                        cube2 = CUBE(infile=file_host, quiet=quiet, 
+                                        cube2 = CUBE(infile=file_host, quiet=quiet,
                                                 header=header, datext=datext, varext=varext,
                                                 wavext=initdat['wavext'], dqext=dqext)
-                                        cube3 = CUBE(infile=file_qso, quiet=quiet, 
+                                        cube3 = CUBE(infile=file_qso, quiet=quiet,
                                                 header=header, datext=datext, varext=varext,
                                                 wavext=initdat['wavext'], dqext=dqext)
                                     else:
@@ -1034,6 +1048,10 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True):
     np.save('{[outdir]}{[label]}'.format(initdat, initdat)+'.cont.npy',
             contcube)
 
+    # Output to fits files -- test
+    #from astropy.io import fits
+    #hdu = fits.PrimaryHDU(emlflx['ftot']['[OIII]5007'][:,:])
+    #hdu.writeto('{[outdir]}{[label]}'.format(initdat, initdat)+'_OIII5007flx.fits')
 
 def cap_range(x1, x2, n):
     a = np.zeros(1, dtype=float)

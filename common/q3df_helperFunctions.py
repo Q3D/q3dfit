@@ -190,18 +190,29 @@ def execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist,
 # q3df setup for single-threaded execution
 def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
                  quiet=True):
+    import numpy as np
     import time
     from sys import path
+    from q3dfit.exceptions import InitializationError
     # add common subdirectory to Python PATH for ease of importing
     path.append("common/")
     starttime = time.time()
 
+    # If it's a string, assume it's an input .npy file
     if type(initproc) == str:
-        initdat = __get_initdat(initproc)
-    else:
+        # When initproc was a routine rather than an input dictionary
+        # initdat = __get_initdat(initproc)
+        initdatarr = np.load(initproc, allow_pickle=True)
+        initdat = initdatarr[()]
+    # If it's an ndarray, assume the file's been loaded but not stripped
+    # to dict{}
+    elif isinstance(initproc, np.ndarray):
+        initdat = initproc[()]
+    # If it's a dictionary, assume all is well
+    elif isinstance(initproc, dict):
         initdat = initproc
-    # When initproc was a routine rather than an input dictionary
-    #initdat = __get_initdat(initproc)
+    else:
+        raise InitializationError('initproc not in expected format')
     linelist = __get_linelist(initdat)
 
     if 'logfile' in initdat:
@@ -235,10 +246,25 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
 # q3df setup for multi-threaded execution
 def q3df_multiCore(rank, initproc, cols=None, rows=None,
                    onefit=False, ncores=1, quiet=True):
+    import numpy as np
     import time
-    from numpy import floor
+#    from exceptions import InitializationError
     starttime = time.time()
-    initdat = initproc  #__get_initdat(initproc)
+    # If it's a string, assume it's an input .npy file
+    if type(initproc) == str:
+        # When initproc was a routine rather than an input dictionary
+        # initdat = __get_initdat(initproc)
+        initdatarr = np.load(initproc, allow_pickle=True)
+        initdat = initdatarr[()]
+    # If it's an ndarray, assume the file's been loaded but not stripped
+    # to dict{}
+    elif isinstance(initproc, np.ndarray):
+        initdat = initproc[()]
+    # If it's a dictionary, assume all is well
+    elif isinstance(initproc, dict):
+        initdat = initproc
+#    else:
+#        raise InitializationError('initproc not in expected format')
     linelist = __get_linelist(initdat)
 
     if 'logfile' in initdat:
@@ -252,8 +278,8 @@ def q3df_multiCore(rank, initproc, cols=None, rows=None,
         rows = 1
     nspax, colarr, rowarr = __get_spaxels(cube, cols, rows)
     # get the range of spaxels this core is responsible for
-    start = int(floor(nspax * rank / size))
-    stop = int(floor(nspax * (rank+1) / size))
+    start = int(np.floor(nspax * rank / size))
+    stop = int(np.floor(nspax * (rank+1) / size))
     colarr = colarr[start:stop]
     rowarr = rowarr[start:stop]
     # number of spaxels THIS CORE is responsible for
@@ -302,11 +328,11 @@ if __name__ == "__main__":
     initproc = argv[1]
     cols = string_to_intArray(argv[2])
     rows = string_to_intArray(argv[3])
-    if argv[5].startswith("T"):
+    if argv[4].startswith("T"):
         onefit = True
     else:
         onefit = False
-    if argv[6].startswith("T"):
+    if argv[5].startswith("T"):
         quiet = True
     else:
         quiet = False

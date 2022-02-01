@@ -75,6 +75,8 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     except:
         sys.exit('Cannot find quasar template (qsoxdr).')
 
+    #qsoflux = interptemp(wave, qsowave, qsoflux_full)
+
     iqsoflux = np.where((qsowave >= fitran[0]) & (qsowave <= fitran[1]))
     qsoflux = qsoflux_full[iqsoflux]
 

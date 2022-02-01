@@ -7,7 +7,15 @@ Message Passing Interface (MPI) standard. To enable this capability,
 [install](https://www.mpich.org/downloads/) `mpich` on your hardware
 and `pip install` the Python package `mpi4py.`
 
-These assume that Python is properly pathed.
+`mpich` install note for Macports: Run `sudo port select --set mpi
+mpich-mp-fortran` to get default commands (like `mpiexec`) working.
+
+These assume that Python is properly pathed via PYTHONPATH. In
+multi-core processing, system path is used. Thus the tool you use to
+run python (command line, Jupyter, Spyder) must inherit the system
+path to be able to find, e.g., `mpiexec` and `q3dfit`. This can be
+accomplished in the case of Jupyter or Spyder by running these
+applications from the command line.
 
 ## ground-based data, rest-frame optical, single emission-line component, single spaxel, quasar
 

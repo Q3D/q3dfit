@@ -214,6 +214,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         templatelambdaz = np.copy(template['lambda'])
         if 'keepstarz' not in initdat:
             templatelambdaz *= 1. + zstar
+        # This assumes template is in air wavelengths!
+        # TODO: make this an option
         if vacuum:
             templatelambdaz = airtovac(templatelambdaz)
         if 'waveunit' in initdat:

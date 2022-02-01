@@ -127,6 +127,7 @@ cube = CUBE(fp='/path/to/data/', infile='datafits')
 class CUBE:
     def __init__(self, **kwargs):
         warnings.filterwarnings("ignore")
+
         # file path
         fp = kwargs.get('fp', '')
         self.fp = fp

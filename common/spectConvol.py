@@ -24,9 +24,10 @@ JWST provides NIRSpec dispersion files. By default, the dispersion data files ar
 MIRI is not provided. Instead, I take a linear interpolation based on the curves in the Jdocs website. 
 
 EDIT: 
-- fixed typos
-- some changes to the initialization
-- simplified the MIRI and NIRSpec reading
+- Fixed typos
+- Some changes to the initialization
+- Simplified the MIRI and NIRSpec reading
+- Fixed the wavelength matching. Now the convolution function can read in any spectrum and convolve lines according to desired JWST instrument/channel
 
 """
 
@@ -34,17 +35,25 @@ class spectConvol:
     def __init__(self,initdat):
         self.datDIR = '../data/dispersion_files'
         self.printSILENCE = False
+        if initdat['spect_convol']['ws_instrum'] is not list:
+            initdat['spect_convol']['ws_instrum'] = list(initdat['spect_convol']['ws_instrum'])
+        if initdat['spect_convol']['ws_grating'] is not list:
+            initdat['spect_convol']['ws_grating'] = list(initdat['spect_convol']['ws_grating'])
+        if 'ws_method' not in initdat['spect_convol']:
+            initdat['spect_convol']['ws_method'] = 2
+        self.init_meth = initdat['spect_convol']['ws_method']
         self.init_inst = [wsi.upper() for wsi in initdat['spect_convol']['ws_instrum']]
         self.init_grat = [wsg.upper() for wsg in initdat['spect_convol']['ws_grating']]
         nirspec_grating = {'PRISM/CLEAR':None,
                            'G140M/F070LP':None,'G140M/F100LP':None,'G235M/F170LP':None,'G395M/F290LP':None,
                            'G140H/F070LP':None,'G140H/F100LP':None,'G235H/F170LP':None,'G395H/F290LP':None}
-        miri_grating = {'Ch1A':None,'Ch1B':None,'Ch1C':None,
-                        'Ch2A':None,'Ch2B':None,'Ch2C':None,
-                        'Ch3A':None,'Ch3B':None,'Ch3C':None,
-                        'Ch4A':None,'Ch4B':None,'Ch4C':None}
+        miri_grating = {'CH1A':None,'CH1B':None,'CH1C':None,
+                        'CH2A':None,'CH2B':None,'CH2C':None,
+                        'CH3A':None,'CH3B':None,'CH3C':None,
+                        'CH4A':None,'CH4B':None,'CH4C':None}
         self.grating_info = {'NIRSPEC':nirspec_grating,'MIRI':miri_grating}
         self.jwst_dispersions()
+        print('convolving!')
         return
     
     # now cycle through grating selections and extract the dispersion relations
@@ -61,7 +70,7 @@ class spectConvol:
                     gwvln_med = np.median(gwvln)
                     wdiff = np.abs(gwvln - gwvln_med)
                     grsln_med = np.median(grsln[np.where(wdiff == min(wdiff))[0]])
-                    self.grating_info[inst.upper()][ig] = {'gwave':gwvln,'gdisp':gdisp,'gres':grsln,'glamC':gwvln_med,'gResC':grsln_med}
+                    self.grating_info[inst.upper()][ig] = {'gwave':gwvln,'gdisp':gdisp,'gres':grsln,'glamC':gwvln_med,'gResC':grsln_med,'gwvRng':[min(gwvln),max(gwvln)]}
         return
     
     # read the FITS files
@@ -83,21 +92,37 @@ class spectConvol:
             return wvln,disp,rsln
         
     # now do the convolutions -- CALL THIS
-    def spect_convolver(self,wvlIN,fluxIN,INST=None,GRATING='PRISM/CLEAR',METHOD=2,SILENCE=False):
+    def spect_convolver(self,wvlIN,fluxIN,wvlcen,SILENCE=True):#,#INST=None,GRATING='PRISM/CLEAR',SILENCE=False):
         ''' 
         METHOD 0 = flat convolution by wavelength bins
         METHOD 1 = convolution by dispersion curves: loop through each pixel element)
         METHOD 2 = PPXF method (convolution by dispersion curves) - DEFAULT
         '''
+        INST   = self.init_inst
+        GRATING = self.init_grat
+        METHOD = self.init_meth
+        
         self.printSILENCE = SILENCE
         if INST == None or METHOD > 2:
             print('ERROR: select the instrument NIRSpec or MIRI')
             return None
-        if self.printSILENCE != True:
-            print(':: '+INST.upper()+' - convolution',GRATING,METHOD)
-        # now do the convolution 
-        igrat = self.grating_info[INST.upper()][GRATING]
         
+        wvnOUT,datOUT = [],[]
+        for inst in INST:
+            for grat in GRATING:
+                if grat.upper() in self.grating_info[inst.upper()]:
+                    wvrng = self.grating_info[inst.upper()][grat.upper()]['gwvRng']
+                    if ((wvlcen > wvrng[0])  & (wvlcen < wvrng[1])) == True:
+                        break
+                    else:
+                        wvnOUT = wvlIN
+                        datOUT = fluxIN
+            
+        if self.printSILENCE != True:
+            print(':: '+inst.upper()+' - convolution',grat,METHOD)
+            
+        # now do the convolution 
+        igrat = self.grating_info[inst.upper()][grat]
         igwave = igrat['gwave']
         igdisp = igrat['gdisp']
         # igresp = igrat['gres']
@@ -106,6 +131,8 @@ class spectConvol:
         
         w1 = np.where(wvlIN >= min(igwave))[0]
         w2 = np.where(wvlIN <= max(igwave))[0]
+        w1x = np.where(wvlIN < min(igwave))[0]
+        w2x = np.where(wvlIN > max(igwave))[0]
         ww = np.intersect1d(w1,w2)
         iwvIN  = wvlIN[ww]
         idatIN = fluxIN[ww]
@@ -115,13 +142,14 @@ class spectConvol:
         
         if METHOD == 0:
             iR_datconv = self.flat_convolve(iwvIN,idatIN,igResM,WCEN=None)
-            return iwvIN,iR_datconv
         elif METHOD == 1: # needs debugging
             # self.gaussian_filter1d_looper(iwvIN,idatIN,igdisp)
-            return iwvIN,idatIN
+            iR_datconv = idatIN
         elif METHOD == 2:
             iR_datconv = self.gaussian_filter1d_ppxf(iwvIN,idatIN,[igdisp])
-            return iwvIN,iR_datconv
+        wvnOUT = np.concatenate((wvlIN[w1x],iwvIN,wvlIN[w2x]))
+        datOUT = np.concatenate((wvlIN[w1x],iR_datconv,wvlIN[w2x]))
+        return wvnOUT,datOUT
     
     # METHOD 0
     def flat_convolve(self,wvlIN,fluxIN,Rspec,WCEN=None):
@@ -195,4 +223,3 @@ class spectConvol:
         conv_spectrum = np.sum(np.multiply(a,gau),0)
         
         return conv_spectrum
-    

@@ -16,7 +16,7 @@ import numpy as np
 import pdb
 
 
-def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
+def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, specConv,
             lineratio=None, siglim=None, sigfix=None, blrcomp=None,
             blrlines=None, specres=None):
 
@@ -53,7 +53,7 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             # LMFIT parameters can only consist of letters,  numbers, or _
             lmline = lmlabel(line)
             mName = f'{lmline.lmlabel}_{i}_'
-            imodel = Model(manygauss, prefix=mName)
+            imodel = Model(manygauss, prefix=mName,SPECRES=specConv)
             if isinstance(totmod, Model):
                 totmod += imodel
             else:
@@ -215,13 +215,15 @@ def set_params(fit_params, NAME, VALUE=None, VARY=True, LIMITED=None,
     return fit_params
 
 
-def manygauss(x, flx, cwv, sig, srsigslam):
+def manygauss(x, flx, cwv, sig, srsigslam, SPECRES=None):
     # param 0 flux
     # param 1 central wavelength
     # param 2 sigma
     c = np.float64(299792.458)
     sigs = np.sqrt(np.power((sig/c)*cwv, 2.) + np.power(srsigslam, 2.))
     gaussian = flx*np.exp(-np.power((x-cwv) / sigs, 2.)/2.)
+    if SPECRES != None:
+        SPECRES.spect_convolve(x,gaussian,INST=SPECRES.init_inst[0],GRATING=SPECRES.init_grat[0],METHOD=2)
     #maskval = np.float64(1e-4*max(gaussian))
     #maskind = np.asarray(gaussian < maskval).nonzero()[0]
     #gaussian[maskind] = np.float64(0.)

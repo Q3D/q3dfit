@@ -13,8 +13,8 @@ METHOD 2 = PPXF dispersion curve convolution (convolution by dispersion curves) 
 
 How to run this :
 import spectConvol
-spConv = spectConvol.spectConvol() # --> must create an spectConvol object
-spectOUT = spConv.gauss_convolve(waveIN,fluxIN,INST='nirspec',GRATING='G140M/F070LP',METHOD=2
+spConv = spectConvol.spectConvol() # --> must create an spectConvol object that will get passed through the q3dfit pipeline
+spectOUT = spConv.gauss_convolve(waveIN,fluxIN,INST='nirspec',GRATING='G140M/F070LP',METHOD=2)
 ==== 
                        
 - Will require a wrapper that calls gauss_convolve() and organizes the convolved spectra
@@ -22,6 +22,10 @@ spectOUT = spConv.gauss_convolve(waveIN,fluxIN,INST='nirspec',GRATING='G140M/F07
 
 JWST provides NIRSpec dispersion files. By default, the dispersion data files are used to set the resolution
 MIRI is not provided. Instead, I take a linear interpolation based on the curves in the Jdocs website. 
+
+EDIT: 
+- fixed typos
+- some changes to the initialization
 
 """
 
@@ -35,10 +39,11 @@ from scipy.interpolate import interp1d
 
 class spectConvol:
     
-    def __init__(self):
-        self.datDIR = '/Users/yuyuzo12/Desktop/research/q3d_JWST_ERS/dispersion'
+    def __init__(self,initdat):
+        self.datDIR = '../data/dispersion_files'
         self.printSILENCE = False
-
+        self.init_inst = [wsi.upper() for wsi in initdat['spect_convol']['ws_instrum']]
+        self.init_grat = [wsg.upper() for wsg in initdat['spect_convol']['ws_grating']]
         nirspec_grating = {'PRISM/CLEAR':None,
                            'G140M/F070LP':None,'G140M/F100LP':None,'G235M/F170LP':None,'G395M/F290LP':None,
                            'G140H/F070LP':None,'G140H/F100LP':None,'G235H/F170LP':None,'G395H/F290LP':None}
@@ -47,10 +52,11 @@ class spectConvol:
                         'Ch3A':[(11.52,13.49),(2530,2880)],'Ch3B':[(13.36,15.65),(1790,2640)],'Ch3C':[(15.43,18.08),(1980,2790)],
                         'Ch4A':[(17.65,20.94),(1460,1930)],'Ch4B':[(20.41,24.22),(1680,1770)],'Ch4C':[(23.88,28.34),(1630,1330)]}
         self.grating_info = {'NIRSPEC':nirspec_grating,'MIRI':miri_grating}
-        
-        self.nirspec_dispersion()
-        self.miri_dipserion()
-        
+
+        if 'NIRSPEC' in self.init_inst:
+            self.nirspec_dispersion()
+        elif 'MIRI' in self.init_inst:
+            self.miri_dispersion()
         return
     
     # now cycle through grating selections and extract the dispersion relations
@@ -58,28 +64,29 @@ class spectConvol:
         print(':: NIRSpec - extracting dispersion relations')
         displist = self.get_dispersion(NIRSPEC=True)
         for ig,igrat in self.grating_info['NIRSPEC'].items():
-            gwvln,gdisp,grsln = self.dispersion_data(displist,ig)
-            gwvln_med = np.median(gwvln)
-            wdiff = np.abs(gwvln - gwvln_med)
-            grsln_med = np.median(grsln[np.where(wdiff == min(wdiff))[0]])
-            self.grating_info['NIRSPEC'][ig] = {'gwave':gwvln,'gdisp':gdisp,'gres':grsln,'glamC':gwvln_med,'gResC':grsln_med}
+            if ig in self.init_grat:
+                gwvln,gdisp,grsln = self.dispersion_data(displist,ig)
+                gwvln_med = np.median(gwvln)
+                wdiff = np.abs(gwvln - gwvln_med)
+                grsln_med = np.median(grsln[np.where(wdiff == min(wdiff))[0]])
+                self.grating_info['NIRSPEC'][ig] = {'gwave':gwvln,'gdisp':gdisp,'gres':grsln,'glamC':gwvln_med,'gResC':grsln_med}
         return
     
-    def miri_dipserion(self):#,DISP_INFO,WSTEP=0.01,NWVLN=100):
+    def miri_dispersion(self):#,DISP_INFO,WSTEP=0.01,NWVLN=100):
         print(':: MIRI - extracting dispersion relations')
         for ig,igrat in self.grating_info['MIRI'].items():
-            gwvln = np.linspace(igrat[0][0], igrat[0][1],500)
-            yy = interp1d(igrat[0], igrat[1])
-            grsln = yy(gwvln)
-            gdisp = gwvln/grsln
-            gwvln_med = np.median(gwvln)
-            wdiff = np.abs(gwvln - gwvln_med)
-            grsln_med = np.median(grsln[np.where(wdiff == min(wdiff))[0]])
-            add_igrat = {'gwave':gwvln,'gdisp':gdisp,'gres':grsln,'glamC':gwvln_med,'gResC':grsln_med}
-            self.grating_info['MIRI'][ig].append(add_igrat)
+            if ig in self.init_grat:
+                gwvln = np.linspace(igrat[0][0], igrat[0][1],500)
+                yy = interp1d(igrat[0], igrat[1])
+                grsln = yy(gwvln)
+                gdisp = gwvln/grsln
+                gwvln_med = np.median(gwvln)
+                wdiff = np.abs(gwvln - gwvln_med)
+                grsln_med = np.median(grsln[np.where(wdiff == min(wdiff))[0]])
+                add_igrat = {'gwave':gwvln,'gdisp':gdisp,'gres':grsln,'glamC':gwvln_med,'gResC':grsln_med}
+                self.grating_info['MIRI'][ig].append(add_igrat)
         return 
         
-    
     def get_dispersion(self,NIRSPEC=False,MIRI=False):
         dispfiles = [dfile.split('/')[-1] for dfile in glob.glob(os.path.join(self.datDIR,'*.fits'))]
         dispOUT = []

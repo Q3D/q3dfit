@@ -74,6 +74,13 @@ def __get_linelist(initdat):
     else: linelist = linelist()
     return linelist
 
+# read in the dispersion list and save to memory: Default is None (no convolution)
+def __get_dispersion(initdat):
+    from q3dfit.common import spectConvol
+    if initdat['spect_convol'] != None:
+        return spectConvol.spectConvol(initdat)
+    else:
+        return None
 
 # initialize CUBE object
 def __get_CUBE(initdat, quiet, logfile=None):
@@ -179,11 +186,11 @@ def __get_spaxels(cube, cols=None, rows=None):
 # handle the FITLOOP execution.
 # In its own function due to commonality between single- and
 # multi-threaded execution
-def execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist,
+def execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, specConv,
                     onefit, quiet, logfile=None):
     from q3dfit.common.fitloop import fitloop
     for ispax in range(0, nspax):
-        fitloop(ispax, colarr, rowarr, cube, initdat, linelist,
+        fitloop(ispax, colarr, rowarr, cube, initdat, linelist, specConv,
                 onefit, quiet, logfile=logfile)
 
 
@@ -214,6 +221,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
     else:
         raise InitializationError('initproc not in expected format')
     linelist = __get_linelist(initdat)
+    specConv = __get_dispersion(initdat)
 
     if 'logfile' in initdat:
         logfile = open(initdat['logfile'], 'w+')
@@ -228,7 +236,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
 
     # execute FITLOOP
 
-    execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist,
+    execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, specConv,
                     onefit, quiet, logfile=logfile)
 
     if logfile is None:
@@ -266,6 +274,7 @@ def q3df_multiCore(rank, initproc, cols=None, rows=None,
 #    else:
 #        raise InitializationError('initproc not in expected format')
     linelist = __get_linelist(initdat)
+    specConv = __get_dispersion(initdat)
 
     if 'logfile' in initdat:
         logfile = open(initdat['logfile'] + '_core'+str(rank+1), 'w+')
@@ -285,7 +294,7 @@ def q3df_multiCore(rank, initproc, cols=None, rows=None,
     # number of spaxels THIS CORE is responsible for
     nspax_thisCore = stop-start
     # execute FITLOOP
-    execute_fitloop(nspax_thisCore, colarr, rowarr, cube, initdat, linelist,
+    execute_fitloop(nspax_thisCore, colarr, rowarr, cube, initdat, linelist, specConv,
                     onefit, quiet, logfile=logfile)
     if logfile is None:
         from sys import stdout

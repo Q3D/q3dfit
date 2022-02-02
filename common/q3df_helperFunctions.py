@@ -31,6 +31,7 @@ cols: in, optional, type=intarr, default=all
 History
     2020may21, DSNR, copied header from IFSF.pro
     2020jun29, canicetti, refoactored into helper functions and renamed q3df_helperfunctons.py
+    2022feb01, YI, added additional functions for wavelength convolution initialization
 
 Created on Tue May 26 13:37:58 2020
 
@@ -77,7 +78,9 @@ def __get_linelist(initdat):
 # read in the dispersion list and save to memory: Default is None (no convolution)
 def __get_dispersion(initdat):
     from q3dfit.common import spectConvol
-    if initdat['spect_convol'] != None:
+    if 'spect_convol' not in initdat:
+        return None
+    elif initdat['spect_convol'] != None:
         return spectConvol.spectConvol(initdat)
     else:
         return None

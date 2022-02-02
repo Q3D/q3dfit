@@ -122,6 +122,8 @@
        2020jul10, YI, bug fixes in perror_resid bloc; ran successfully
        2021jan, AV and DSNR, major changes in continuum implementation
        2021jan25, DSNR, fixed bug in errors passing into elin_lmfit
+       
+       2022feb01, YI, changed parameter calls for fitloop() and fitspec() to allow wavelength convolution
 """
 
 import copy
@@ -141,7 +143,7 @@ from q3dfit.common.plot_quest import plot_quest
 from scipy.interpolate import interp1d
 
 
-def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
+def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, specConv,
             initdat, maskwidths=None, peakinit=None, quiet=True,
             siginit_gas=None, siglim_gas=None, tweakcntfit=None,
             col=None, row=None):
@@ -584,7 +586,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             argsinitpar['siglim'] = siglim_gas
         emlmod, fit_params, siglim_gas = \
             run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
-                           siginit_gas, initdat['maxncomp'], ncomp,
+                           siginit_gas, initdat['maxncomp'], ncomp, specConv,
                            **argsinitpar)
 
         # testsize = len(parinit)

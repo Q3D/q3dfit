@@ -40,6 +40,7 @@ Take outputs from Q3DF and perform fitting loop.
      2018jun25, DSNR, added MC error calculation on stellar parameters
      2021jan20, DSNR, finished translating to Python
      2021feb22, DSNR, updated logfile treatment
+     2022feb01, YI, changed parameter calls for fitloop() and fitspec()
 
 """
 
@@ -52,7 +53,7 @@ import numpy as np
 import pdb
 
 
-def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, onefit,
+def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, specConv, onefit,
             quiet=True, logfile=None):
 
     if logfile is None:
@@ -216,7 +217,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, onefit,
             if not quiet:
                 print('FITLOOP: First call to FITSPEC')
             structinit = fitspec(cube.wave, flux, err, dq, zstar, listlines,
-                                 listlinesz, ncomp, initdat, quiet=quiet,
+                                 listlinesz, ncomp, specConv, initdat, quiet=quiet,
                                  siglim_gas=siglim_gas,
                                  siginit_gas=siginit_gas,
                                  tweakcntfit=tweakcntfit)
@@ -257,7 +258,7 @@ def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, onefit,
                 if not quiet:
                     print('FITLOOP: Second call to FITSPEC')
                 struct = fitspec(cube.wave, flux, err, dq, structinit['zstar'],
-                                 listlines, listlinesz, ncomp, initdat,
+                                 listlines, listlinesz, ncomp, specConv, initdat,
                                  quiet=quiet, maskwidths=maskwidths_tmp,
                                  peakinit=peakinit_tmp,
                                  siginit_gas=siginit_gas_tmp,

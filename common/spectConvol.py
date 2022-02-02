@@ -44,14 +44,11 @@ class spectConvol:
                         'Ch3A':None,'Ch3B':None,'Ch3C':None,
                         'Ch4A':None,'Ch4B':None,'Ch4C':None}
         self.grating_info = {'NIRSPEC':nirspec_grating,'MIRI':miri_grating}
-        self.jwst_dispersions(INST=self.grating_info.keys())
+        self.jwst_dispersions()
         return
     
     # now cycle through grating selections and extract the dispersion relations
     def jwst_dispersions(self,INST = None):
-        if INST == None:
-            print('ERROR: select instrument!')
-            return 
         dispfiles = [dfile.split('/')[-1] for dfile in glob.glob(os.path.join(self.datDIR,'*.fits'))]
         displist = []
         for dfile in dispfiles:

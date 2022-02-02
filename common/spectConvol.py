@@ -26,19 +26,11 @@ MIRI is not provided. Instead, I take a linear interpolation based on the curves
 EDIT: 
 - fixed typos
 - some changes to the initialization
+- simplified the MIRI and NIRSpec reading
 
 """
 
-import numpy as np
-import os
-from astropy.io import fits
-import glob
-import copy
-from scipy.ndimage import gaussian_filter1d
-from scipy.interpolate import interp1d
-
 class spectConvol:
-    
     def __init__(self,initdat):
         self.datDIR = '../data/dispersion_files'
         self.printSILENCE = False
@@ -47,56 +39,35 @@ class spectConvol:
         nirspec_grating = {'PRISM/CLEAR':None,
                            'G140M/F070LP':None,'G140M/F100LP':None,'G235M/F170LP':None,'G395M/F290LP':None,
                            'G140H/F070LP':None,'G140H/F100LP':None,'G235H/F170LP':None,'G395H/F290LP':None}
-        miri_grating = {'Ch1A':[(4.88,5.75),(3320,3710)],'Ch1B':[(5.63,6.63),(3190,3750)],'Ch1C':[(6.41,7.52),(3100,3610)],
-                        'Ch2A':[(7.48,8.76),(2990,3110)],'Ch2B':[(8.71,10.23),(2750,3170)],'Ch2C':[(10.02,11.75),(2860,3300)],
-                        'Ch3A':[(11.52,13.49),(2530,2880)],'Ch3B':[(13.36,15.65),(1790,2640)],'Ch3C':[(15.43,18.08),(1980,2790)],
-                        'Ch4A':[(17.65,20.94),(1460,1930)],'Ch4B':[(20.41,24.22),(1680,1770)],'Ch4C':[(23.88,28.34),(1630,1330)]}
+        miri_grating = {'Ch1A':None,'Ch1B':None,'Ch1C':None,
+                        'Ch2A':None,'Ch2B':None,'Ch2C':None,
+                        'Ch3A':None,'Ch3B':None,'Ch3C':None,
+                        'Ch4A':None,'Ch4B':None,'Ch4C':None}
         self.grating_info = {'NIRSPEC':nirspec_grating,'MIRI':miri_grating}
-
-        if 'NIRSPEC' in self.init_inst:
-            self.nirspec_dispersion()
-        elif 'MIRI' in self.init_inst:
-            self.miri_dispersion()
+        self.jwst_dispersions(INST=self.grating_info.keys())
         return
     
     # now cycle through grating selections and extract the dispersion relations
-    def nirspec_dispersion(self):
-        print(':: NIRSpec - extracting dispersion relations')
-        displist = self.get_dispersion(NIRSPEC=True)
-        for ig,igrat in self.grating_info['NIRSPEC'].items():
-            if ig in self.init_grat:
-                gwvln,gdisp,grsln = self.dispersion_data(displist,ig)
-                gwvln_med = np.median(gwvln)
-                wdiff = np.abs(gwvln - gwvln_med)
-                grsln_med = np.median(grsln[np.where(wdiff == min(wdiff))[0]])
-                self.grating_info['NIRSPEC'][ig] = {'gwave':gwvln,'gdisp':gdisp,'gres':grsln,'glamC':gwvln_med,'gResC':grsln_med}
+    def jwst_dispersions(self,INST = None):
+        if INST == None:
+            print('ERROR: select instrument!')
+            return 
+        dispfiles = [dfile.split('/')[-1] for dfile in glob.glob(os.path.join(self.datDIR,'*.fits'))]
+        displist = []
+        for dfile in dispfiles:
+            if ('jwst' in dfile ) and ('nirspec' in dfile or 'miri' in dfile) :
+                displist.append(os.path.join(self.datDIR,dfile))
+        for inst in self.init_inst:
+            for ig,igrat in self.grating_info[inst.upper()].items():
+                if ig in self.init_grat:
+                    gwvln,gdisp,grsln = self.dispersion_data(displist,ig)
+                    gwvln_med = np.median(gwvln)
+                    wdiff = np.abs(gwvln - gwvln_med)
+                    grsln_med = np.median(grsln[np.where(wdiff == min(wdiff))[0]])
+                    self.grating_info[inst.upper()][ig] = {'gwave':gwvln,'gdisp':gdisp,'gres':grsln,'glamC':gwvln_med,'gResC':grsln_med}
         return
     
-    def miri_dispersion(self):#,DISP_INFO,WSTEP=0.01,NWVLN=100):
-        print(':: MIRI - extracting dispersion relations')
-        for ig,igrat in self.grating_info['MIRI'].items():
-            if ig in self.init_grat:
-                gwvln = np.linspace(igrat[0][0], igrat[0][1],500)
-                yy = interp1d(igrat[0], igrat[1])
-                grsln = yy(gwvln)
-                gdisp = gwvln/grsln
-                gwvln_med = np.median(gwvln)
-                wdiff = np.abs(gwvln - gwvln_med)
-                grsln_med = np.median(grsln[np.where(wdiff == min(wdiff))[0]])
-                add_igrat = {'gwave':gwvln,'gdisp':gdisp,'gres':grsln,'glamC':gwvln_med,'gResC':grsln_med}
-                self.grating_info['MIRI'][ig].append(add_igrat)
-        return 
-        
-    def get_dispersion(self,NIRSPEC=False,MIRI=False):
-        dispfiles = [dfile.split('/')[-1] for dfile in glob.glob(os.path.join(self.datDIR,'*.fits'))]
-        dispOUT = []
-        for dfile in dispfiles:
-            if (NIRSPEC == True and 'nirspec' in dfile) :
-                dispOUT.append(os.path.join(self.datDIR,dfile))
-            elif (MIRI == True and 'miri' in dfile):
-                dispOUT.append(os.path.join(self.datDIR,dfile))
-        return dispOUT
-    
+    # read the FITS files
     def dispersion_data(self,filepath,gratName):
         gname = gratName.split('/')[0].lower()
         gfilepath = ''
@@ -115,25 +86,58 @@ class spectConvol:
             return wvln,disp,rsln
         
     # now do the convolutions -- CALL THIS
-    def gauss_convolve(self,wvlIN,fluxIN,INST=None,GRATING='PRISM/CLEAR',METHOD=2,SILENCE=False):
+    def spect_convolver(self,wvlIN,fluxIN,INST=None,GRATING='PRISM/CLEAR',METHOD=2,SILENCE=False):
         ''' 
         METHOD 0 = flat convolution by wavelength bins
         METHOD 1 = convolution by dispersion curves: loop through each pixel element)
         METHOD 2 = PPXF method (convolution by dispersion curves) - DEFAULT
         '''
         self.printSILENCE = SILENCE
-        # print('- Convolving by JWST grating resolution')
-        # print(INST,GRATING,METHOD)
         if INST == None or METHOD > 2:
             print('ERROR: select the instrument NIRSpec or MIRI')
             return None
-        elif INST.upper() == 'NIRSPEC' :
-            wvnOUT,datOUT = self.do_NIRSPEC(wvlIN,fluxIN,GRATING=GRATING,METHOD=METHOD)
-            return wvnOUT,datOUT
-        elif INST.upper() == 'MIRI' :
-            wvnOUT,datOUT = self.do_MIRI(wvlIN,fluxIN,GRATING=GRATING,METHOD=METHOD)
-            return wvnOUT,datOUT
+        if self.printSILENCE != True:
+            print(':: '+INST.upper()+' - convolution',GRATING,METHOD)
+        # now do the convolution 
+        igrat = self.grating_info[INST.upper()][GRATING]
+        
+        igwave = igrat['gwave']
+        igdisp = igrat['gdisp']
+        # igresp = igrat['gres']
+        # igwvnM = igrat['glamC']
+        igResM = igrat['gResC']
+        
+        w1 = np.where(wvlIN >= min(igwave))[0]
+        w2 = np.where(wvlIN <= max(igwave))[0]
+        ww = np.intersect1d(w1,w2)
+        iwvIN  = wvlIN[ww]
+        idatIN = fluxIN[ww]
+        
+        func1 = interp1d(igwave,igdisp)#,fill_value=0)#,fill_value="extrapolate")
+        igdisp = func1(iwvIN)
+        
+        if METHOD == 0:
+            iR_datconv = self.flat_convolve(iwvIN,idatIN,igResM,WCEN=None)
+            return iwvIN,iR_datconv
+        elif METHOD == 1: # needs debugging
+            # self.gaussian_filter1d_looper(iwvIN,idatIN,igdisp)
+            return iwvIN,idatIN
+        elif METHOD == 2:
+            iR_datconv = self.gaussian_filter1d_ppxf(iwvIN,idatIN,[igdisp])
+            return iwvIN,iR_datconv
     
+    # METHOD 0
+    def flat_convolve(self,wvlIN,fluxIN,Rspec,WCEN=None):
+        wdiff = wvlIN[1]-wvlIN[0]
+        mw = WCEN
+        if WCEN == None:
+            mw = np.median(wvlIN)
+        fwhm = (mw/Rspec) # km/s
+        sigma =  (fwhm/2.355)/wdiff
+        datconvol = gaussian_filter1d(fluxIN, sigma)
+        return datconvol
+    
+    # METHOD 1
     def gaussian_filter1d_looper(self,wvlIN,flxIN,DISP_INFO):
         wdiff = wvlIN[1]-wvlIN[0]
         fwhm = DISP_INFO[1]
@@ -170,17 +174,7 @@ class spectConvol:
         # return datconvol
         return wvOUT,dcOUT
         
-        
-    def flat_convolve(self,wvlIN,fluxIN,Rspec,WCEN=None):
-        wdiff = wvlIN[1]-wvlIN[0]
-        mw = WCEN
-        if WCEN == None:
-            mw = np.median(wvlIN)
-        fwhm = (mw/Rspec) # km/s
-        sigma =  (fwhm/2.355)/wdiff
-        datconvol = gaussian_filter1d(fluxIN, sigma)
-        return datconvol
-    
+    # METHOD 2
     def gaussian_filter1d_ppxf(self,wvlIN,flxIN,DISP_INFO):
         spec = copy.deepcopy(flxIN)
         fwhm = np.array(DISP_INFO[0])
@@ -204,67 +198,4 @@ class spectConvol:
         conv_spectrum = np.sum(np.multiply(a,gau),0)
         
         return conv_spectrum
-    
-    
-    def do_NIRSPEC(self,wvIN,datIN,GRATING='',METHOD=2):
-        # print(self.printSILENCE )
-        if self.printSILENCE != True:
-            print(':: NIRSpec - convolution',GRATING,METHOD)
-        # now do the convolution 
-        igrat = self.grating_info['NIRSPEC'][GRATING]
-        
-        igwave = igrat['gwave']
-        igdisp = igrat['gdisp']
-        # igresp = igrat['gres']
-        # igwvnM = igrat['glamC']
-        igResM = igrat['gResC']
-        
-        w1 = np.where(wvIN >= min(igwave))[0]
-        w2 = np.where(wvIN <= max(igwave))[0]
-        ww = np.intersect1d(w1,w2)
-        iwvIN  = wvIN[ww]
-        idatIN = datIN[ww]
-        
-        func1 = interp1d(igwave,igdisp)#,fill_value=0)#,fill_value="extrapolate")
-        igdisp = func1(iwvIN)
-        
-        if METHOD == 0:
-            iR_datconv = self.flat_convolve(iwvIN,idatIN,igResM,WCEN=None)
-            return iwvIN,iR_datconv
-        elif METHOD == 1:
-            self.gaussian_filter1d_looper(iwvIN,idatIN,igdisp)
-            return
-        elif METHOD == 2:
-            iR_datconv = self.gaussian_filter1d_ppxf(iwvIN,idatIN,[igdisp])
-            return iwvIN,iR_datconv
-    
-    def do_MIRI(self,wvIN,datIN,GRATING='',METHOD=2):
-        if self.printSILENCE != True:
-            print(':: MIRI - convolution',GRATING,METHOD)
-        igrat = self.grating_info['MIRI'][GRATING]
-        
-        igwave = igrat[2]['gwave']
-        igdisp = igrat[2]['gdisp']
-        # igresp = igrat['gres']
-        # igwvnM = igrat['glamC']
-        igResM = igrat[2]['gResC']
-        
-        w1 = np.where(wvIN >= min(igwave))[0]
-        w2 = np.where(wvIN <= max(igwave))[0]
-        ww = np.intersect1d(w1,w2)
-        iwvIN  = wvIN[ww]
-        idatIN = datIN[ww]
-        
-        func1 = interp1d(igwave,igdisp)#,fill_value=0)#,fill_value="extrapolate")
-        igdisp = func1(iwvIN)
-        
-        if METHOD == 0:
-            iR_datconv = self.flat_convolve(iwvIN,idatIN,igResM,WCEN=None)
-            return iwvIN,iR_datconv
-        elif METHOD == 1:
-            self.gaussian_filter1d_looper(iwvIN,idatIN,igdisp)
-            return
-        elif METHOD == 2:
-            iR_datconv = self.gaussian_filter1d_ppxf(iwvIN,idatIN,[igdisp])
-            return iwvIN,iR_datconv
     

@@ -7,10 +7,29 @@ from skimage.transform import rescale
 from scipy.ndimage import fourier_shift, shift, rotate
 from astropy.io import fits
 
-cube_both = readcube.CUBE(infile='miri_etc_cube_both.fits',dataext=1, varext=2, dqext=3, waveext=None)
+
+volume = '../../../MIRISIM/MIRI-ETC-SIM/'
+cube_both = readcube.CUBE(infile=volume+'miri_etc_cube_both.fits',dataext=1, varext=2, dqext=3, waveext=None, wmapext=None)
 #cube_both = readcube.CUBE(infile='../NIRSpec_sim/NRS00001-QG-F100LP-G140H_comb_1234_g140h-f100lp_s3d.fits',dataext=1, varext=2, dqext=3, waveext=None)
-cube_psf = readcube.CUBE(infile='miri_etc_cube_quasar.fits',dataext=1, varext=2, dqext=3, waveext=None)
-cube_galaxy = readcube.CUBE(infile='miri_etc_cube_galaxy.fits',dataext=1, varext=2, dqext=3, waveext=None)
+cube_psf = readcube.CUBE(infile=volume+'miri_etc_cube_quasar.fits',dataext=1, varext=2, dqext=3, waveext=None, wmapext=None)
+cube_galaxy = readcube.CUBE(infile=volume+'miri_etc_cube_galaxy.fits',dataext=1, varext=2, dqext=3, waveext=None, wmapext=None)
+
+
+
+def write_psfsubcube(file_in, file_out, datext, flux_psfsub):
+    
+    hdul_in = fits.open(file_in)
+
+
+    prihdu = fits.PrimaryHDU( header=hdul_in[0].header, data=hdul_in[0].data)
+    hdus_list = [prihdu]
+    for i in range(1,len(hdul_in)):
+        if i == datext:
+            hdus_list.append(fits.ImageHDU(data=flux_psfsub, header=hdul_in[i].header))
+        else:
+            hdus_list.append(fits.ImageHDU(data=hdul_in[i].data, header=hdul_in[i].header))
+    thdulist = fits.HDUList(hdus_list)
+    thdulist.writeto(file_out, overwrite=True)
 
 
 
@@ -54,6 +73,7 @@ def scale_cube(cube_in,shift_back = None,scaling = None):
         
         '''
     cube_out = zeros((29,29,3926)) #for ETC
+    cube_out= zeros((16, 25, 907)) # for MIRI ETC cube
     #    cube_out = zeros((37,37,3945)) #for NIRSpec sim
 
     #checking if the loaded cube is a numpy array or a class object.
@@ -75,6 +95,8 @@ def scale_cube(cube_in,shift_back = None,scaling = None):
             image_in = cube_in.dat[0:29,:,i]
         #        image_in = cube_in.dat[0:,0:37,i]
 
+
+
         #scaling an individual wavelength slice
         im_scale = rescale(image_in,
                            (scaling_y, scaling_x),
@@ -89,11 +111,14 @@ def scale_cube(cube_in,shift_back = None,scaling = None):
         sum_after = np.sum(im_scale)
         im_scale = im_scale * (sum_before / sum_after) #conserving flux of the scaled image.
 
+
         image_out = np.zeros(image_in.shape)
         if shift_back==True:
             npix_del = image_out.shape[-1] - im_scale.shape[-1]
+            npix_delx = image_out.shape[-2] - im_scale.shape[-2]      # x direction
         if shift_back==None:
             npix_del = im_scale.shape[-1] - image_out.shape[-1]
+            npix_delx = im_scale.shape[-2] - image_out.shape[-2]      # x direction
 
         if npix_del == 0:
             image_out = im_scale
@@ -101,16 +126,31 @@ def scale_cube(cube_in,shift_back = None,scaling = None):
             if npix_del % 2 == 0:
                 npix_del_a = int(npix_del/2)
                 npix_del_b = int(npix_del/2)
-            
             else:
                 npix_del_a = int((npix_del-1)/2)
                 npix_del_b = int((npix_del+1)/2)
 
+            ### x direction
+            if npix_delx % 2 == 0:
+                npix_delx_a = int(npix_delx/2)
+                npix_delx_b = int(npix_delx/2)
+            else:
+                npix_delx_a = int((npix_delx-1)/2)
+                npix_delx_b = int((npix_delx+1)/2)
+
+            if npix_delx_b==0:      # preventing getting sth like image_out = im_scale[0:-0, 0:-0] below, i.e. an empty array
+                npix_delx_b = -im_scale.shape[-2]-1
+            if npix_del_b==0:
+                npix_del_b = -im_scale.shape[-2]-1
+
             if shift_back==True:
-                cube_out[npix_del_a:-npix_del_b, npix_del_a:-npix_del_b,i] = im_scale
+                # cube_out[npix_del_a:-npix_del_b, npix_del_a:-npix_del_b,i] = im_scale
+                cube_out[npix_delx_a:-npix_delx_b, npix_del_a:-npix_del_b,i] = im_scale
             if shift_back==None:
-                image_out = im_scale[npix_del_a:-npix_del_b, npix_del_a:-npix_del_b]
+                #image_out = im_scale[npix_del_a:-npix_del_b, npix_del_a:-npix_del_b]
+                image_out = im_scale[npix_delx_a:-npix_delx_b, npix_del_a:-npix_del_b]
                 cube_out[:,:,i] = image_out
+
         
         if npix_del % 2 == 1:
             if shift_back == True:
@@ -119,30 +159,33 @@ def scale_cube(cube_in,shift_back = None,scaling = None):
                 image_out = shift(image_out, (-0.5, -0.5), order=3, mode='constant')
                 cube_out[:,:,i] = image_out
 
-
-
-
     return cube_out
+
 
 #testing
 if __name__ == "__main__":
     S = scaling_factors(cube_both.wave)
     cube_scaled = scale_cube(cube_both)
     hdu=fits.PrimaryHDU(cube_scaled)
-    hdu.writeto('cube_scaled.fits',overwrite='True')
+    hdu.writeto(volume+'cube_scaled.fits',overwrite='True')
 
 
     psf = (median(cube_scaled[:,:,0:1954],axis=2))#+median(cube_scaled[:,:,2171:3912],axis=2))/2.
     psf = psf/psf.max()
 
-    psf_sub = zeros((29,29,cube_both.dat.shape[2]))
+    #psf_sub = zeros((29,29,cube_both.dat.shape[2]))
+    psf_sub = zeros(cube_both.dat.shape)
     for i in arange(0,cube_both.dat.shape[2]):
         psf_sub[:,:,i] = cube_scaled[:,:,i]#-psf#*cube_scaled[:,:,i].max()
 
     psf_sub_i = scale_cube(psf_sub,shift_back = True, scaling=S)
 
     hdu = fits.PrimaryHDU(psf_sub_i)
-    hdu.writeto('cube_psf_sub.fits',overwrite=True)
+    hdu.writeto(volume+'cube_psf_sub.fits',overwrite=True)
+
+    write_psfsubcube(file_in=volume+'miri_etc_cube_both.fits', file_out=volume+'miri_etc_psf_sub.fits', datext=1, flux_psfsub=psf_sub_i.T)
+
+
 
     WL_sub = (sum(psf_sub_i[:,:,0:1500],axis=2))#+sum(psf_sub[:,:,2171:3912],axis=2))/1.
 

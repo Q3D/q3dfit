@@ -836,6 +836,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                         module = importlib.import_module('q3dfit.common.' +
                                                          fcnpltcont)
                         pltcontfcn = getattr(module, fcnpltcont)
+
                         if 'argspltcont' in initdat:
                             pltcontfcn(struct_host, outfile + '_cnt_host',
                                        compspec=compspec, compfit=compfit,
@@ -843,8 +844,14 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                        **initdat['argspltcont'],
                                        initdat=initdat)
                         else:
-                            pltcontfcn(struct_host, outfile + '_cnt_host',
+                            if isinstance(compspec, list) and len(compspec)==1:
+                                pltcontfcn(struct_host, outfile + '_cnt_host',
                                        compspec=compspec,
+                                       title='Host', fitran=initdat['fitran'],
+                                       initdat=initdat)
+                            else:
+                                pltcontfcn(struct_host, outfile + '_cnt_host',
+                                       compspec=[compspec],
                                        title='Host', fitran=initdat['fitran'],
                                        initdat=initdat)
                         if 'blrpar' in initdat['argscontfit']:

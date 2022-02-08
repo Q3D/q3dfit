@@ -95,8 +95,6 @@ def miritest():
 
 
     ### more MIR settings
-    global_ice_model = 'ice_hc'
-    global_ext_model = 'CHIAR06'
     #cffilename = '../test/test_questfit/IRAS21219m1757_dlw_qst.cf'
     # cffilename = '../test/test_questfit/miritest_NoQSO.cf'
     cffilename = '../test/test_questfit/miritest.cf'

@@ -151,7 +151,6 @@ def scale_cube(cube_in,shift_back = None,scaling = None):
                 image_out = im_scale[npix_delx_a:-npix_delx_b, npix_del_a:-npix_del_b]
                 cube_out[:,:,i] = image_out
 
-        
         if npix_del % 2 == 1:
             if shift_back == True:
                 cube_out[:,:,i] = shift(cube_out[:,:,i], (0.5, 0.5), order=3, mode='constant')

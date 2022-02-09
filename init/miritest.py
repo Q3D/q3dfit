@@ -155,8 +155,7 @@ def miritest():
 
 
     # Velocity dispersion limits and fixed values
-    siglim_gas = np.ndarray(2)
-    siglim_gas[:] = [5, 1000]
+    siglim_gas = np.array([5., 1000.])
     # lratfix = {'[NI]5200/5198': [1.5]}
 
     #

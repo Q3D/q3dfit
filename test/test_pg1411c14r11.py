@@ -19,5 +19,5 @@ initproc = np.load('/Users/drupke/specfits/gmos/pg1411/rb3/initproc.npy',
 # initproc = np.load('/Users/hadley/Desktop/research/q3dfit/jnb/initproc.npy',
 #                    allow_pickle = "True")
 
-q3df(initproc[()], cols=14, rows=11, quiet=False)
-q3da(initproc[()], cols=14, rows=11, quiet=False)
+q3df(initproc[()], cols=14, rows=11) #, quiet=False)
+q3da(initproc[()], cols=14, rows=11) #, quiet=False)

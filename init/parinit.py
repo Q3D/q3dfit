@@ -223,8 +223,10 @@ def manygauss(x, flx, cwv, sig, srsigslam, SPECRES=None):
     sigs = np.sqrt(np.power((sig/c)*cwv, 2.) + np.power(srsigslam, 2.))
     gaussian = flx*np.exp(-np.power((x-cwv) / sigs, 2.)/2.)
     if SPECRES != None:
-        SPECRES.spect_convolver(x,gaussian,cwv)
+        wvnconv,datconv = SPECRES.spect_convolver(x,gaussian,cwv)
+        return datconv
     #maskval = np.float64(1e-4*max(gaussian))
     #maskind = np.asarray(gaussian < maskval).nonzero()[0]
     #gaussian[maskind] = np.float64(0.)
-    return gaussian
+    else:
+        return gaussian

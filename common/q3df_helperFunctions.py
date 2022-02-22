@@ -211,9 +211,12 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
     # If it's a string, assume it's an input .npy file
     if type(initproc) == str:
         # When initproc was a routine rather than an input dictionary
-        # initdat = __get_initdat(initproc)
-        initdatarr = np.load(initproc, allow_pickle=True)
-        initdat = initdatarr[()]
+        try:
+            initdatarr = np.load(initproc, allow_pickle=True)
+            initdat = initdatarr[()]
+        except:
+            initdat = __get_initdat(initproc)
+
     # If it's an ndarray, assume the file's been loaded but not stripped
     # to dict{}
     elif isinstance(initproc, np.ndarray):

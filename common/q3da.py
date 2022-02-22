@@ -57,9 +57,12 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
     # If it's a string, assume it's an input .npy file
     if type(initproc) == str:
         # When initproc was a routine rather than an input dictionary
-        # initdat = __get_initdat(initproc)
-        initdatarr = np.load(initproc, allow_pickle=True)
-        initdat = initdatarr[()]
+        try:
+            initdatarr = np.load(initproc, allow_pickle=True)
+            initdat = initdatarr[()]
+        except:
+            from q3dfit.common.q3df_helperFunctions import __get_initdat
+            initdat = __get_initdat(initproc)
     # If it's an ndarray, assume the file's been loaded but not stripped
     # to dict{}
     elif isinstance(initproc, np.ndarray):

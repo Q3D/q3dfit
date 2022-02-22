@@ -98,7 +98,7 @@ Below is an example:
 
 |  A                                    |    B      |  C    |  D     |  E       |   F  |  G   |  H  |  I    |  J    | K  | L  | M  |
 | -----------                            | --------- | ----- | ------ | -------- | ---- | ---- | --- | ---  | ----- |--- |--- |--- |
-| source                            | miritest.npy |    11.55 |  13.45|   dummy  |   0.0|  0.0 |  X  |  0.0 |  0.0  | _  | _  | _  |
+| source                            | miritest.npy |    11.55|  13.45|   dummy  |   0.0|  0.0 |  X  |  0.0 |  0.0  | _  | _  | _  |
 |template_poly       | miri_qsotemplate_flex.npy   |  0.059  |  1.    |      _   |     _ |    _ |   S|   0.0|  0.0  | _  | _  | _  |
 |template             |        smith_nftemp4.npy   |  0.175  |  1.    | global   |    1.5|   1. |  S |   0.0|  0.0  | _  | _  | _  |
 |blackbody            |                 warm       |  0.1    |  1.    | CHIAR06  |    1.5|   1. |  S | 250.0|  1.0  | _  | _  | _  |

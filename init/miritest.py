@@ -95,8 +95,6 @@ def miritest():
 
 
     ### more MIR settings
-    global_ice_model = 'ice_hc'
-    global_ext_model = 'CHIAR06'
     #cffilename = '../test/test_questfit/IRAS21219m1757_dlw_qst.cf'
     # cffilename = '../test/test_questfit/miritest_NoQSO.cf'
     cffilename = '../test/test_questfit/miritest.cf'
@@ -157,8 +155,7 @@ def miritest():
 
 
     # Velocity dispersion limits and fixed values
-    siglim_gas = np.ndarray(2)
-    siglim_gas[:] = [5, 1000]
+    siglim_gas = np.array([5., 1000.])
     # lratfix = {'[NI]5200/5198': [1.5]}
 
     #

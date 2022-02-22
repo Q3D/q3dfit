@@ -65,7 +65,6 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
         flux = flux[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
         wlambda = wlambda[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
 
-
     if singletemplatelambda!=b'0':
         print('Trying to pass a single separate template to questfit, which is not implemented ... Halting.')
         import sys; sys.exit()

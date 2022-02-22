@@ -839,6 +839,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                         module = importlib.import_module('q3dfit.common.' +
                                                          fcnpltcont)
                         pltcontfcn = getattr(module, fcnpltcont)
+
                         if 'argspltcont' in initdat:
                             pltcontfcn(struct_host, outfile + '_cnt_host',
                                        compspec=compspec, compfit=compfit,
@@ -846,8 +847,14 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                        **initdat['argspltcont'],
                                        initdat=initdat)
                         else:
-                            pltcontfcn(struct_host, outfile + '_cnt_host',
+                            if isinstance(compspec, list) and len(compspec)==1:
+                                pltcontfcn(struct_host, outfile + '_cnt_host',
                                        compspec=compspec,
+                                       title='Host', fitran=initdat['fitran'],
+                                       initdat=initdat)
+                            else:
+                                pltcontfcn(struct_host, outfile + '_cnt_host',
+                                       compspec=[compspec],
                                        title='Host', fitran=initdat['fitran'],
                                        initdat=initdat)
                         if 'blrpar' in initdat['argscontfit']:
@@ -907,6 +914,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                 argsreadcube_dict = {'fluxunit_in': 'Jy',
                                                     'waveunit_in': 'angstrom',
                                                     'waveunit_out': 'micron'}
+
                                 file_host = initdat['compare_to_real_decomp']['file_host']
                                 file_qso = initdat['compare_to_real_decomp']['file_qso']
 
@@ -927,10 +935,10 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                                 dqext=dqext, **initdat['argsreadcube'])
                                 else:
                                     if initdat.__contains__('wavext'):
-                                        cube2 = CUBE(infile=file_host, quiet=quiet,
+                                        cube2 = CUBE(infile=file_host, quiet=quiet, 
                                                 header=header, datext=datext, varext=varext,
                                                 wavext=initdat['wavext'], dqext=dqext)
-                                        cube3 = CUBE(infile=file_qso, quiet=quiet,
+                                        cube3 = CUBE(infile=file_qso, quiet=quiet, 
                                                 header=header, datext=datext, varext=varext,
                                                 wavext=initdat['wavext'], dqext=dqext)
                                     else:
@@ -940,7 +948,6 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                         cube3 = CUBE(infile=file_qso, quiet=quiet,
                                                 header=header, datext=datext, varext=varext,
                                                 dqext=dqext)
-
 
                                 lam_exclude = sorted(set(cube2.wave.tolist()) - set(struct['wave'].tolist())) # exclude wavelength that are in cube2.wave but not in struct['wave']
                                 okwave = np.ones(len(cube2.wave)).astype(bool)
@@ -954,7 +961,6 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
 
                                 hostspec_real = cube2.dat[iuse, juse, :].flatten()[okwave] # * c_scale
                                 qsospec_real = cube3.dat[iuse, juse, :].flatten()[okwave] # * c_scale
-
 
                                 struct_overpredict = struct.copy()
                                 struct_overpredict['cont_dat'] = 1.*struct['cont_fit']/struct['cont_dat']

@@ -12,10 +12,12 @@ from matplotlib import pyplot as plt
 volume = '../../../MIRISIM/MIRI-ETC-SIM/'
 
 hdul = fits.open('../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_both.fits')
-prihdu = fits.PrimaryHDU( header=hdul[0].header, data=hdul[0].data[:, 4:-5, :])
+#prihdu = fits.PrimaryHDU( header=hdul[0].header, data=hdul[0].data[:, 4:-5, :])
+prihdu = fits.PrimaryHDU( header=hdul[0].header, data=hdul[0].data[:, 5:-4, :])
 hdus_list = [prihdu]
 for i in range(1,len(hdul)):
-    hdus_list.append(fits.ImageHDU(data=hdul[i].data[:, 4:-5, :], header=hdul[i].header))
+    # hdus_list.append(fits.ImageHDU(data=hdul[i].data[:, 4:-5, :], header=hdul[i].header))
+    hdus_list.append(fits.ImageHDU(data=hdul[i].data[:, 5:-4, :], header=hdul[i].header))
 
 thdulist = fits.HDUList(hdus_list)
 thdulist.writeto('../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_both_cut.fits', overwrite=True)
@@ -231,6 +233,7 @@ if __name__ == "__main__":
         hdu.writeto(volume+'psf_cut_T.fits',overwrite=True)
 
 
+    breakpoint()
 
     write_psfsubcube(file_in=volume+'miri_etc_cube_both.fits', file_out=volume+'miri_etc_psf_sub.fits', datext=1, flux_psfsub=psf_sub_i.T)
 

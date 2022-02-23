@@ -1,0 +1,20 @@
+[[Model]]
+    ((((Model(template_0) + Model(blackbody, prefix='blackbody500')) + Model(blackbody, prefix='blackbody50')) * Model(global_ext)) * Model(global_ice))
+[[Fit Statistics]]
+    # fitting method   = COBYLA
+    # function evals   = 332
+    # data points      = 234
+    # variables        = 7
+    chi-square         = 2.2927e-04
+    reduced chi-square = 1.0100e-06
+    Akaike info crit   = -3223.61082
+    Bayesian info crit = -3199.42358
+##  Warning: uncertainties could not be estimated:
+[[Variables]]
+    template_0_amp:  0.02488216 +/-        nan (nan%) (init = 0.1)
+    blackbody500a:   0.00117249 +/-        nan (nan%) (init = 0.1)
+    blackbody500T:   990.250629 +/-        nan (nan%) (init = 500)
+    blackbody50a:    0.00914668 +/-        nan (nan%) (init = 0.1)
+    blackbody50T:    125.975517 +/-        nan (nan%) (init = 50)
+    global_ext_Av:   0.03129582 +/-        nan (nan%) (init = 0)
+    global_ice_tau:  0.48893406 +/- 0.04459037 (9.12%) (init = 0)

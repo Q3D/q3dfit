@@ -1,5 +1,5 @@
 source		                  22128896.npy    5.4 30.0 dummy         0.0  0.0   X    0.0  0.0 _   _   _
-template                     smith_nftemp3.npy    0.1  1.  CHIAR06       0.0  0.0   S    0.0  0.0 ice_hc 0.0  0.
+template                     smith_nftemp3.npy    0.1  1.  global        0.0  0.0   S    0.0  0.0 ice_hc 0.0  0.
 blackbody                              hot        0.1  1.  CHIAR06       0.0  0.0   S  500.0  1.0 ice_hc 0.0  1.
 blackbody                             cold        0.1  1.  CHIAR06       0.0  0.0   S   50.0  1.0 ice_hc 0.0  1.
 extinction                   chiar06_i0857.npy    0.0  0.  CHIAR06       0.0  0.0   X    0.0  0.0 _   _   _

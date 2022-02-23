@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 
 def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, index, 
     z, quiet=True, config_file=None, global_ice_model='None', global_ext_model='None', \
-    models_dictionary={}, template_dictionary={}, fitran=None, convert2Flambda=True):
+    models_dictionary={}, template_dictionary={}, fitran=None, convert2Flambda=True, outdir='../test/test_questfit/'):
     '''Function defined to fit the MIR continuum
 
     Parameters
@@ -347,13 +347,13 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
 
             import corner
             emcee_plot = corner.corner(result.flatchain, labels=result.var_names,truths=list(result.params.valuesdict().values()))
-            plt.savefig('../../../MIRISIM/MIRI-ETC-SIM/outputs/corner')
+            plt.savefig(outdir+'corner')
 
         else:
             result = model.fit(flux_cut,param,**models_dictionary_cut,max_nfev=int(1e5),method='cobyla',nan_policy='omit')#method='least_squares'nan_policy='omit'
 
         lmfit.report_fit(result.params)
-        with open('../../../MIRISIM/MIRI-ETC-SIM/outputs/fit_result.txt', 'w') as fh:
+        with open(outdir+'it_result.txt', 'w') as fh:
             fh.write(result.fit_report())
             fh.write('\n')
 

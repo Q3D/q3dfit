@@ -183,7 +183,8 @@ def miritest():
             # Optional pars
             'argscontfit': {'config_file': cffilename,
                             'models_dictionary': {},
-                            'template_dictionary': {}},
+                            'template_dictionary': {},
+                            'outdir': outdir},
             'argslinelist': {'vacuum': False},
             'argspltlin1': argspltlin1,
             'decompose_qso_fit': 1,

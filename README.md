@@ -127,7 +127,7 @@ Below is an example:
 - F: For template, blackbody, powerlaw: extinction value (A_V)  
 	For source, extinction, absorption: any float; will be ignored  
 
-- G: For template, bl, powerlaw: fix/free parameter for A_V. 1=fixed, 0=free  
+- G: For template, bl, powerlaw: fix/free parameter for A_V. 0=fixed, 1=free  
 	For source, extinction, absorption: any float; will be ignored  
 
 - H: For template, blackbody, powerlaw: S=screen extinction, M=mixed extinction. (CB: Only screen has been tested so far)  
@@ -137,8 +137,8 @@ Below is an example:
 	For powerlaw: index  
 	For source, template, absorption, extinction: any float; will be ignored  
 
-- J: For blackbody: fix/free parameter for temperature. 1=fixed, 0=free  
-	For powerlaw: fix/free parameter for powerlaw index. 1=fixed, 0=free  
+- J: For blackbody: fix/free parameter for temperature. 0=fixed, 1=free  
+	For powerlaw: fix/free parameter for powerlaw index. 0=fixed, 1=free  
 	For source, template, absorption, extinction: any float; will be ignored  
 
 - K: For template, blackbody, powerlaw: In case of individual extinction/absorption applied to each component, set which absorption should be applied by the shorthand defined in column E.  
@@ -148,6 +148,6 @@ Below is an example:
 - L: For template, blackbody, powerlaw: initial guess for the amplitude of the absorption  
         For source, extinction, absorption: any float/string; will be ignored  
 
-- M: For template, blackbody, powerlaw: fix/free parameter for absorption amplitude. 1=fixed, 0=free
+- M: For template, blackbody, powerlaw: fix/free parameter for absorption amplitude. 0=fixed, 1=free
         For source, extinction, absorption: any float/string; will be ignored
 

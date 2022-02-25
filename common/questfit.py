@@ -15,9 +15,10 @@ from matplotlib import pyplot as plt
 
 
 
-def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, index, 
+def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, index,
     z, quiet=True, config_file=None, global_ice_model='None', global_ext_model='None', \
-    models_dictionary={}, template_dictionary={}, fitran=None, convert2Flambda=True, outdir='../test/test_questfit/'):
+    models_dictionary={}, template_dictionary={}, fitran=None, convert2Flambda=True, \
+    outdir=None):
     '''Function defined to fit the MIR continuum
 
     Parameters
@@ -32,11 +33,11 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
         Weights of each individual pixel to be fit
 
     singletemplatelambda: array
-        Disregarded if set to b'0'. 
+        Disregarded if set to b'0'.
         Otherwise, this is a wavelength array for any continuum template separate from the simple empirical BB, power-law etc. components.
 
     singletemplateflux: array
-        Disregarded if set to b'0'. 
+        Disregarded if set to b'0'.
         Otherwise, this is a flux array for any continuum template separate from the simple empirical BB, power-law etc. components.
 
     index: array
@@ -56,7 +57,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
         best fit parameters
 
     '''
-    
+
 
     models_dictionary = {}
     template_dictionary = {}
@@ -98,23 +99,23 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
                 ice_model = config_file[i][9]
 
                 model_temp_BB,param_temp_BB = questfitfcn.set_up_fit_blackbody_model([float(model_parameters[1]),float(model_parameters[7])],[float(model_parameters[2]),float(model_parameters[8])],name_model[:])
-                
+
                 if global_extinction == False and config_file[i][3] != '_' and config_file[i][3] != '-':
                         model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],name_model+'_ext',extinction_model,model_parameters[6])
-                        
+
                         model_temp = model_temp_BB*model_temp_extinction
                         param_temp = param_temp_BB + param_temp_extinction
 
-                        models_dictionary[extinction_model] = config_file[extinction_model][0]                
+                        models_dictionary[extinction_model] = config_file[extinction_model][0]
                 else:
                     model_temp = model_temp_BB
                     param_temp = param_temp_BB
-                
+
                 if 'ice' in i and global_extinction == False: #checking if we need to add ice absorption
                     model_temp_ice,param_temp_ice = questfitfcn.set_up_absorption([float(model_parameters[10])],[float(model_parameters[11])],name_model+'_abs',model_parameters[9])
                     model_temp = model_temp*model_temp_ice
                     param_temp += param_temp_ice
-                    models_dictionary[model_parameters[9]] = config_file[model_parameters[9]]
+                    models_dictionary[model_parameters[9]] = config_file[model_parameters[9]][0]
                 if 'model' not in vars():
                     model,param = model_temp,param_temp
 
@@ -132,7 +133,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
 
                 if global_extinction == False and config_file[i][3] != '_' and config_file[i][3] != '-':
                         model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],'powerlaw'+str(int(float(model_parameters[7])))+'_ext',extinction_model,model_parameters[6])
-                        
+
                         model_temp = model_temp_powerlaw*model_temp_extinction
                         param_temp = param_temp_powerlaw + param_temp_extinction
 
@@ -145,7 +146,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
                     model_temp_ice,param_temp_ice = questfitfcn.set_up_absorption([float(model_parameters[10])],[float(model_parameters[11])],name_model+'_abs',model_parameters[9])
                     model_temp = model_temp*model_temp_ice
                     param_temp += param_temp_ice
-                    models_dictionary[model_parameters[9]] = config_file[model_parameters[9]]
+                    models_dictionary[model_parameters[9]] = config_file[model_parameters[9]][0]
 
                 if 'model' not in vars():
                     model,param = model_temp,param_temp
@@ -206,7 +207,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
                 else:
 
                     template_dictionary[name_model] = config_file[i][0]
-            
+
                 if global_extinction == False and config_file[i][3] != '_' and config_file[i][3] != '-':
 
                         model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],name_model+'_ext',extinction_model,model_parameters[6])
@@ -254,7 +255,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
 
             temp_wave = []
             temp_value = []
-            
+
             temp_wave=temp_model['WAVE']
             temp_value=temp_model['FLUX']
 
@@ -279,22 +280,22 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
                 temp_wave=temp_model['wave']
                 temp_value=temp_model['flux']
 
-            
+
             temp_value_rebin = interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
-            if convert2Flambda: 
+            if convert2Flambda:
                 models_dictionary[i] = temp_value_rebin*c_scale
             models_dictionary[i] = models_dictionary[i]/models_dictionary[i].max()  # normalise
 
 
         models_dictionary['wave'] = wlambda/(1+z)
         models_dictionary['fitFlambda'] = bool(convert2Flambda)
-        
+
         if convert2Flambda:
             flux *= c_scale
 
 
         plot_ini_guess = False
-        if plot_ini_guess:        
+        if plot_ini_guess:
             plt.plot(models_dictionary['wave'], param['template_0_amp'].value * models_dictionary['template_0']/c_scale, color='c', label = 'QSO model init')
 
             data1 = np.load('../data/questfit_templates/' + 'miri_qsotemplate_flexB.npy', allow_pickle='TRUE').item()
@@ -327,7 +328,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
         f_orig = data1.item()['flux'][:-1]
 
 
-        
+
 
         # from multiprocessing import Pool
         # with Pool() as pool:
@@ -340,7 +341,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
             # emcee_kws = dict(nwalkers=256, steps=50000, burn=500, thin=5, is_weighted=False, progress=True) #, run_mcmc_kwargs={'skip_initial_state_check': True} )
 
             param.add('__lnsigma', value=np.log(0.1), min=np.log(0.001), max=np.log(2.0))
-            import time 
+            import time
             t1 = time.time()
             result = model.fit(flux_cut,param,**models_dictionary_cut,max_nfev=int(1e5),method='emcee',nan_policy='omit', fit_kws=emcee_kws)#method='least_squares'nan_policy='omit'
             print('Time needed for fitting: ', time.time()-t1)
@@ -350,7 +351,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
             plt.savefig(outdir+'corner')
 
         else:
-            result = model.fit(flux_cut,param,**models_dictionary_cut,max_nfev=int(1e5),method='cobyla',nan_policy='omit')#method='least_squares'nan_policy='omit'
+            result = model.fit(flux_cut,param,**models_dictionary_cut,max_nfev=int(1e5),method='least_squares',nan_policy='omit')#method='least_squares'nan_policy='omit'
 
         lmfit.report_fit(result.params)
         with open(outdir+'it_result.txt', 'w') as fh:
@@ -387,11 +388,11 @@ def quest_extract_QSO_contrib(ct_coeff, initdat):
             dict returned by questfit containing the continuum fitting results
         initdat: in, required, type=dict
             dict that was used to initialize the fit
-        
+
         qso_out_ext: out, type=array
             spectrum of the QSO component (with dust extinction and ice absorption)
         host_out_ext:  out, type=array
-            spectrum of the host component (with dust extinction and ice absorption)        
+            spectrum of the host component (with dust extinction and ice absorption)
     '''
     comp_best_fit = ct_coeff['comp_best_fit']
     qso_out_ext = np.array([])
@@ -494,7 +495,7 @@ if do_test:
     wave = data_to_fit['WAVE'].astype('float')[wave_min:wave_max]
     flux = data_to_fit['FLUX'].astype('float')[wave_min:wave_max]
     weights = data_to_fit['stdev'].astype('float')[wave_min:wave_max]
-    
+
 
 
     singletemplatelambda = b'0'

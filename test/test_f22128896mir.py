@@ -13,7 +13,7 @@ ippath = '/Users/drupke/specfits/q3dfit/testing/22128896/'
 #    initproc = f22128896mir()
 #    np.save(ippath+'initproc.npy', initproc)
 
-initproc = np.load(ippath+'initproc.npy', allow_pickle=True)
+initproc = ippath+'initproc.npy'
 
-q3df(initproc[()], cols=1, rows=1, quiet=False)
-q3da(initproc[()], cols=1, rows=1, quiet=False)
+q3df(initproc, cols=1, rows=1, quiet=False)
+q3da(initproc, cols=1, rows=1, quiet=False)

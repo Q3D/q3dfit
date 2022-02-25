@@ -854,7 +854,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                        initdat=initdat)
                             else:
                                 pltcontfcn(struct_host, outfile + '_cnt_host',
-                                       compspec=[compspec],
+                                       compspec=compspec,
                                        title='Host', fitran=initdat['fitran'],
                                        initdat=initdat)
                         if 'blrpar' in initdat['argscontfit']:

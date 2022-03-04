@@ -1,8 +1,7 @@
 Installation
 ==================
 
-Downloading and Installing Q3DFIT
-++++++++++++++++++++++++++++++++++++
+**Downloading and Installing Q3DFIT**
 
 Q3DFIT is only supported and tested for Python 3.7, 3.8 and 3.9. We recommend installation of clean environment via conda.
 

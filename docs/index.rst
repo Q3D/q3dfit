@@ -47,6 +47,8 @@ The website for the project listing lead team members is `available here <https:
    :maxdepth: 1
    :caption: Contents:
    
+   self
+
    installation
 
 ..   examples/one_spaxel

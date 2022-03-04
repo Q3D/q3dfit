@@ -14,14 +14,16 @@ from q3dfit.common.lmlabel import lmlabel
 from q3dfit.exceptions import InitializationError
 import numpy as np
 import pdb
-
+import q3dfit.data
+import os
 
 def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, specConv,
             lineratio=None, siglim=None, sigfix=None, blrcomp=None,
             blrlines=None, specres=None):
 
     # Get fixed-ratio doublet pairs for tying intensities
-    doublets = Table.read('../data/linelists/doublets.tbl', format='ipac')
+    data_path = os.path.abspath(q3dfit.data.__file__)[:-11]
+    doublets = Table.read(data_path+'linelists/doublets.tbl', format='ipac')
     dblt_pairs = dict()
     for idx, name in enumerate(doublets['line1']):
         if doublets['fixed_ratio'][idx] == 1:

@@ -44,7 +44,7 @@ from q3dfit.common import qsohostfcn
 from q3dfit.exceptions import InitializationError
 from scipy.special import legendre
 from scipy import interpolate
-
+import q3dfit.data
 
 def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
          inline=True):
@@ -81,7 +81,8 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
             listlines = linelist(initdat['lines'])
 
         # table with doublets to combine
-        doublets = Table.read('../data/linelists/doublets.tbl', format='ipac')
+        data_path = os.path.abspath(q3dfit.data.__file__)[:-11]
+        doublets = Table.read(data_path+'linelists/doublets.tbl', format='ipac')
         # make a copy of singlet list
         lines_with_doublets = copy.deepcopy(initdat['lines'])
         # append doublet names to singlet list

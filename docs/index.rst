@@ -1,15 +1,30 @@
-Q3DFIT
-===========
+q3dfit
+======
 
-Q3DFIT is custom software for scientific analysis of integral field unit (IFU) spectroscopy of quasars and their host galaxies, specifically aimed at producing science-ready measurements from James Webb Space Telescope (JWST) IFU spectrographs. Q3DFIT takes advantage of the spectral differences between quasars and their host galaxies for maximal-contrast subtraction of the quasar point-spread function (PSF) to reveal and characterize the faint extended emission of the host galaxy. Host galaxy emission is carefully fit with a combination of stellar continuum, emission and absorption of dust and ices, and ionic and molecular emission lines. 
+``q3dfit`` is custom software for scientific analysis of integral
+field unit (IFU) spectroscopy of quasars and their host galaxies,
+specifically aimed at producing science-ready measurements from James
+Webb Space Telescope (JWST) IFU spectrographs. ``q3dfit`` takes advantage
+of the spectral differences between quasars and their host galaxies
+for maximal-contrast subtraction of the quasar point-spread function
+(PSF) to reveal and characterize the faint extended emission of the
+host galaxy. Host galaxy emission is carefully fit with a combination
+of stellar continuum, emission and absorption of dust and ices, and
+ionic and molecular emission lines.
 
-Q3DFIT has been tested on ground-based data where PSF is weakly wavelength-dependent. The update of Q3DFIT to the case of the strongly wavelength-dependent JWST PSF is currently in development. 
+``q3dfit`` has been tested on ground-based data where PSF is weakly
+wavelength-dependent. The update of ``q3dfit`` to the case of the strongly
+wavelength-dependent JWST PSF is currently in development.
 
 .. warning::
 
-   This software has not yet been officially released to the public. You are viewing pre-release test documentation and content in active development. 
+   This software has not yet been officially released. You are viewing
+   pre-release test documentation and content in active development.
 
-Our papers describing Q3DFIT and all its functionalities are currently in preparation and the links will be posted here. If you use this package before these papers are published, kindly cite the following references:
+Our papers describing ``q3dfit`` and all its functionalities are
+currently in preparation and the links will be posted here. If you use
+this package before these papers are published, kindly cite the
+following references:
 
 .. code-block:: none
 
@@ -41,7 +56,14 @@ Our papers describing Q3DFIT and all its functionalities are currently in prepar
    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
    }
 
-The website for the project listing lead team members is `available here <https://wwwstaff.ari.uni-heidelberg.de/dwylezalek/q3d.html>`_. We acknowledge funding provided by NASA through a contract issued by Space Telescope Science Institute for support of Early Release Science observations with JWST and in-kind contributions by leading and contributing members at the University of Heidelberg, Rhodes College, Johns Hopkins University, and University of Maryland College Park. 
+The website for the project listing lead team members is `available
+here
+<https://wwwstaff.ari.uni-heidelberg.de/dwylezalek/q3d.html>`_. We
+acknowledge funding provided by NASA through a contract issued by
+Space Telescope Science Institute for support of Early Release Science
+observations with JWST and in-kind contributions by leading and
+contributing members at the University of Heidelberg, Rhodes College,
+Johns Hopkins University, and University of Maryland College Park.
 
 .. toctree::
    :maxdepth: 1
@@ -51,5 +73,7 @@ The website for the project listing lead team members is `available here <https:
 
    installation
 
+   testing
+   
 ..   examples/one_spaxel
 

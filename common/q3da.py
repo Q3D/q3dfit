@@ -845,19 +845,19 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                         if 'argspltcont' in initdat:
                             pltcontfcn(struct_host, outfile + '_cnt_host',
                                        compspec=compspec, compfit=compfit,
-                                       title='Host', fitran=initdat['fitran'],
+                                       title='Host', fitran=initdat['fitran'], comptitles=['Host', 'Host'],
                                        **initdat['argspltcont'],
                                        initdat=initdat)
                         else:
                             if isinstance(compspec, list) and len(compspec)==1:
                                 pltcontfcn(struct_host, outfile + '_cnt_host',
                                        compspec=compspec,
-                                       title='Host', fitran=initdat['fitran'],
+                                       title='Host', fitran=initdat['fitran'], comptitles=['Host', 'Host'],
                                        initdat=initdat)
                             else:
                                 pltcontfcn(struct_host, outfile + '_cnt_host',
                                        compspec=compspec,
-                                       title='Host', fitran=initdat['fitran'],
+                                       title='Host', fitran=initdat['fitran'], comptitles=['Host', 'Host'],
                                        initdat=initdat)
                         if 'blrpar' in initdat['argscontfit']:
                             qsomod_blrnorm = np.median(qsomod) / \
@@ -873,17 +873,32 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                             if initdat['fcncontfit'] == 'questfit':     ##  CB: Work-around - think about this more later
                                 compspec = [qsomod_normonly]
 
-                        if 'argspltcont' in initdat:
-                            pltcontfcn(struct_qso, str(outfile) + '_cnt_qso',
-                                       compspec=compspec, compfit=compfit,
-                                       title='QSO', fitran=initdat['fitran'],
-                                       **initdat['argspltcont'],
-                                       initdat=initdat)
+                        if initdat['fcncontfit'] != 'questfit':
+                            if 'argspltcont' in initdat:
+                                pltcontfcn(struct_qso, str(outfile) + '_cnt_qso',
+                                           compspec=compspec, compfit=compfit,
+                                           title='QSO', fitran=initdat['fitran'],
+                                           **initdat['argspltcont'],
+                                           initdat=initdat)
+                            else:
+                                pltcontfcn(struct_qso, outfile + '_cnt_qso',
+                                           compspec=compspec, compfit=compfit,
+                                           title='QSO', fitran=initdat['fitran'],
+                                           initdat=initdat)
                         else:
-                            pltcontfcn(struct_qso, outfile + '_cnt_qso',
-                                       compspec=compspec, comptitles=compfit,
-                                       title='QSO', fitran=initdat['fitran'],
-                                       initdat=initdat)
+                            if 'argspltcont' in initdat:
+                                pltcontfcn(struct_qso, str(outfile) + '_cnt_qso',
+                                           compspec=[struct_qso['cont_fit']], 
+                                           title='QSO', fitran=initdat['fitran'], comptitles = ['QSO'],
+                                           **initdat['argspltcont'],
+                                           initdat=initdat)
+                            else:
+                                pltcontfcn(struct_qso, outfile + '_cnt_qso',
+                                           compspec=[struct_qso['cont_dat']],
+                                           title='QSO', fitran=initdat['fitran'], comptitles = ['QSO'],
+                                           initdat=initdat)
+
+
                 # Plot continuum
                 # Make sure fit doesn't indicate no continuum; avoids
                 # plot range error in continuum fitting routine,
@@ -1020,7 +1035,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                        compspec=np.array([cont_fit_stel,
                                                           cont_fit_poly]),
                                        title='Total',
-                                       comptitless=['stel. temp.', 'ord. ' +
+                                       comptitles=['stel. temp.', 'ord. ' +
                                                     str(add_poly_degree) +
                                                     'Leg.poly'],
                                        fitran=initdat['fitran'],

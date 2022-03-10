@@ -569,7 +569,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                         contcube['stel_z_err'][i, j, :] \
                             = [struct['zstar_err'], struct['zstar_err']]
 
-                elif 'decompose_qso_fit' in initdat:
+                elif 'decompose_qso_fit' in initdat and initdat['decompose_qso_fit']:
                     if initdat['fcncontfit'] == 'fitqsohost':
                         if 'qsoord' in initdat['argscontfit']:
                             qsoord = initdat['argscontfit']['qsoord']
@@ -840,6 +840,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                         module = importlib.import_module('q3dfit.common.' +
                                                          fcnpltcont)
                         pltcontfcn = getattr(module, fcnpltcont)
+
 
                         if 'argspltcont' in initdat:
                             pltcontfcn(struct_host, outfile + '_cnt_host',

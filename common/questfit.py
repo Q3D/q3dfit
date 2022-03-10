@@ -401,12 +401,17 @@ def quest_extract_QSO_contrib(ct_coeff, initdat):
     config_file = questfit_readcf.readcf(initdat['argscontfit']['config_file'])
     if not 'qso' in list(config_file.keys())[1]:    ### This function assumes that in the config file the qso temple is the first template. Rudimentary check here.
         print('\n\nWARNING during QSO-host decomposition: \nThe function assumes that in the config file the qso template is the first template, but its name does not contain \"qso\". Pausing here as a checkpoint, press c for continuing.\n')
+        import pdb; pdb.set_trace()
 
-        breakpoint()
+    global_extinction = False
+    for key in config_file:
+        try:
+            if 'global' in config_file[key][3]:
+                    global_extinction = True
+        except:
+            continue
 
-    if 'argscontfit' in initdat:
-
-      if 'global_ext_model' in initdat['argscontfit'] or ('args_questfit' in initdat['argscontfit'] and 'global_ext_model' in initdat['argscontfit']['args_questfit']):
+    if global_extinction:
         str_global_ext = list(comp_best_fit.keys())[-2]
         str_global_ice = list(comp_best_fit.keys())[-1]
         if len(comp_best_fit[str_global_ext].shape) > 1:  # global_ext is a multi-dimensional array
@@ -427,7 +432,7 @@ def quest_extract_QSO_contrib(ct_coeff, initdat):
               else:
                 host_out_ext += comp_best_fit[el]*comp_best_fit[str_global_ext]*comp_best_fit[str_global_ice]
                 host_out_intr += comp_best_fit[el]
-      else:
+    else:
         el1 = list(comp_best_fit.keys())[0]
         host_out_ext = np.zeros(len(comp_best_fit[el1]))
         host_out_intr = np.zeros(len(comp_best_fit[el1]))

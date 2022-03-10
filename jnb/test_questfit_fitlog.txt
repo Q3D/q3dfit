@@ -1,4 +1,4 @@
 CUBE: No wavelength units in header; assuming micron.
 CUBE: No flux units in header; assuming MJy/sr
 [col,row]=[1,1] out of [1,1]
-Q3DF: Total time for calculation: 0.73 s.
+Q3DF: Total time for calculation: 0.60 s.

@@ -103,6 +103,10 @@ def __get_CUBE(initdat, quiet, logfile=None):
         dqext = 3
     else:
         dqext = initdat['dqext']
+    if not initdat.__contains__('wavext'):
+        wavext = None
+    else:
+        datext = initdat['wavext']
 #   Check for additional arguments
     if not initdat.__contains__('vormap'):
         vormap = False
@@ -112,23 +116,13 @@ def __get_CUBE(initdat, quiet, logfile=None):
         from sys import stdout
         logfile = stdout
     if initdat.__contains__('argsreadcube'):
-        if initdat.__contains__('waveext'):
-            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+        cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
                     quiet=quiet, varext=varext, vormap=vormap,
-                    logfile=logfile, waveext=initdat['waveext'], **initdat['argsreadcube'])
-        else:
-            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
-                    quiet=quiet, varext=varext, vormap=vormap,
-                    logfile=logfile, **initdat['argsreadcube'])
+                    logfile=logfile, wavext=wavext, **initdat['argsreadcube'])
     else:
-        if initdat.__contains__('waveext'):
-            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+        cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
                     quiet=quiet, varext=varext, vormap=vormap,
-                    logfile=logfile, waveext=initdat['waveext'])
-        else:
-            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
-                    quiet=quiet, varext=varext, vormap=vormap,
-                    logfile=logfile)
+                    logfile=logfile, wavext=wavext)
     return cube, vormap
 
 

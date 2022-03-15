@@ -40,10 +40,12 @@ import glob
 import copy
 from scipy.ndimage import gaussian_filter1d
 from scipy.interpolate import interp1d
+import q3dfit.data.dispersion_files
 
 class spectConvol:
     def __init__(self,initdat):
-        self.datDIR = '../data/dispersion_files'
+        #self.datDIR = '../data/dispersion_files'
+        self.datDIR = os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],'dispersion_files')
         self.printSILENCE = False
         if 'ws_method' not in initdat['spect_convol']:
             initdat['spect_convol']['ws_method'] = 2

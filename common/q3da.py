@@ -882,7 +882,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                            initdat=initdat)
                             else:
                                 pltcontfcn(struct_qso, outfile + '_cnt_qso',
-                                           compspec=compspec, compfit=compfit,
+                                           compspec=compspec, comptitles=compfit,
                                            title='QSO', fitran=initdat['fitran'],
                                            initdat=initdat)
                         else:

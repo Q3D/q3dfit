@@ -7,7 +7,6 @@ setup(
     author='David Rupke',
     author_email='rupked@rhodes.edu',
     license='BSD 2-clause',
-    #packages=['pyexample'],
 
     packages=find_packages(include=[
         'common',

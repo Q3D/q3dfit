@@ -74,6 +74,8 @@ Johns Hopkins University, and University of Maryland College Park.
    installation
 
    testing
+
+   configuration
    
 ..   examples/one_spaxel
 

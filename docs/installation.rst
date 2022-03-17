@@ -14,27 +14,11 @@ Installation
 
             conda env create -f jwebbinar-test-py38.yml
 
-       You may be getting error messages (something to do with wheels). Even if that's the case, proceed to 
-
     #. Activate it:
 
         .. code-block:: console
 
             conda activate jwebbinar-test-py38
-
-    #. If you had error messages previously, it is likely that you do not have either ``mpich`` or ``mpi4py`` or both. Install them via these commands:
-
-        .. code-block:: console
-
-            brew install mpich
-            pip install mpi4py
-
-
-    #. Update the environment again: 
-
-        .. code-block:: console
-
-            conda env update -f jwebbinar-test-py38.yml --prune
 
     #. Install ``q3dfit`` into the newly created environment:
 
@@ -53,25 +37,42 @@ Installation
 	    import q3dfit
 
 
-**Multi-processing capability**
+**Optional multi-processing capability**
 
-The ``mpich`` package parallelizes ``q3dfit`` across multiple processor cores using the Message Passing Interface (MPI) standard.
+``q3dfit`` has the optional capability to parallelize fitting across multiple processor cores using the Message Passing Interface (MPI) standard. This is accomplished using the ``mpich`` package and its python wrapper ``mpi4py``. Installation instructions for ``mpich`` vary dependending on the user's system configurations. Some common methods include: 
 
-``mpich`` install note for Macports: Run
+     * Install via Macports:
 
-.. code-block:: console
+	.. code-block:: console
 
-    sudo port select --set mpi mpich-mp-fortran
+	    sudo port select --set mpi mpich-mp-fortran
 
-to get default commands (like ``mpiexec``) working.
+     * Install via Brew:
 
-The system path is used. Thus, similarly to the trick we used above to import ``q3dfit`` itself, we must make sure that the path to ``mpich`` is known in order for it to work. Again, one option is to install it in ``/Users/username/work/`` directory and run ``jupyter notebook`` or ``python`` from there. Alternatively, the path to ``mpich`` can be appended:
+        .. code-block:: console
 
-.. code-block:: python
+            brew install mpich
 
-    import sys
-    sys.path.append("/usr/local/share/doc/")
-    import mpich
+     * Install via Conda:
+
+        .. code-block:: console
+
+            conda install mpich
+
+If ``mpich`` is successfully installed, you should be able to locate the path to its main executable by typing ``which mpiexec``. 
+
+The final step is to install ``mpi4py``, the ``mpich`` wrapper for the multi-processor mode. This can be done by
+
+        .. code-block:: console
+
+            conda install mpi4py
+
+or
+
+        .. code-block:: console
+
+            pip install mpi4py==3.1.3
+
 
 .. 
  In multi-core processing, the system path is used. Thus the tool you

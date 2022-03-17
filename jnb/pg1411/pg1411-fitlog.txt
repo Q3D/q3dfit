@@ -1,3 +1,0 @@
-CUBE: Negative values encountered in variance array. Taking absolute value.
-[col,row]=[14,11] out of [17,26]
-Q3DF: Total time for calculation: 45.19 s.

@@ -41,19 +41,19 @@ Installation
 
 ``q3dfit`` has the optional capability to parallelize fitting across multiple processor cores using the Message Passing Interface (MPI) standard. This is accomplished using the ``mpich`` package and its python wrapper ``mpi4py``. Installation instructions for ``mpich`` vary dependending on the user's system configurations. Some common methods include: 
 
-     #. Install via Macports:
+     * Install via Macports:
 
 	.. code-block:: console
 
 	    sudo port select --set mpi mpich-mp-fortran
 
-     #. Install via Brew:
+     * Install via Brew:
 
         .. code-block:: console
 
             brew install mpich
 
-     #. Install via Conda:
+     * Install via Conda:
 
         .. code-block:: console
 

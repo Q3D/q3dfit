@@ -9,7 +9,7 @@ def readcf(filename):
         out:
         '''
 
-    cf = np.loadtxt(filename, dtype='str')
+    cf = np.loadtxt(filename, dtype='str', comments="#")
 
     numberoftemplates=list(cf.T[0]).count('template')
     numberofBB=list(cf.T[0]).count('blackbody')

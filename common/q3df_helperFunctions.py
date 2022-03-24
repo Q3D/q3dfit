@@ -106,7 +106,7 @@ def __get_CUBE(initdat, quiet, logfile=None):
     if not initdat.__contains__('wavext'):
         wavext = None
     else:
-        datext = initdat['wavext']
+        wavext = initdat['wavext']
 #   Check for additional arguments
     if not initdat.__contains__('vormap'):
         vormap = False

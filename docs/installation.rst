@@ -45,6 +45,7 @@ Installation
 
 	.. code-block:: console
 
+	    sudo port install mpich
 	    sudo port select --set mpi mpich-mp-fortran
 
      * Install via Brew:

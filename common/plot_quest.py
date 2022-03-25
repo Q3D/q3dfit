@@ -100,5 +100,7 @@ def plot_quest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat, templ_ma
         ax2.set_xlabel('Wavelength [micron]')
         gs.update(wspace=0.0, hspace=0.05)
 
-        plt.savefig('../test/test_questfit/'+initdat['label'])
+        if 'argscontfit' in initdat:
+            if 'outdir' in initdat['argscontfit']:
+                plt.savefig(initdat['argscontfit']['outdir']+initdat['label']+'_decomposition')
         plt.show()

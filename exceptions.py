@@ -2,10 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Jun 11 14:26:58 2020
-
-@author: drupke
 """
-
 
 class InitializationError(Exception):
     """Exception raised for initialization errors.

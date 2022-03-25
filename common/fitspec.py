@@ -576,7 +576,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, specCon
                     np.zeros(initdat['maxncomp']) + siginit_gas_def
 
         # Fill out parameter structure with initial guesses and constraints
-        impModule = import_module('q3dfit.init.' + fcninitpar)
+        impModule = import_module('q3dfit.common.' + fcninitpar)
         run_fcninitpar = getattr(impModule, fcninitpar)
         if 'argsinitpar' in initdat:
             argsinitpar = initdat['argsinitpar']

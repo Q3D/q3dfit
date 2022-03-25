@@ -15,7 +15,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
                zstar, quiet=True, blrpar=None, qsoxdr=None,
                qsoonly=False, index_log=None, err_log=None,
                flux_log=None, refit=None,
-               add_poly_degree=30, siginit_stars=None,
+               add_poly_degree=30, siginit_stars=50.,
                fitran=None, fittol=None,
                qsoord=None, hostonly=False, hostord=None, blronly=False,
                blrterms=None, **kwargs):

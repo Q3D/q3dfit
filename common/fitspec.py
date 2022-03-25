@@ -403,6 +403,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, specCon
                     argscontfit_use['index_log'] = ct_indx_log
                     argscontfit_use['flux_log'] = gdflux_log
                     argscontfit_use['err_log'] = gderr_log
+                    if 'siginit_stars' in initdat:
+                        argscontfit_use['siginit_stars'] = \
+                            initdat['siginit_stars']
 
             continuum, ct_coeff, zstar = \
                 fcncontfit(gdlambda, gdflux, gdinvvar,

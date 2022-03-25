@@ -18,7 +18,7 @@ from matplotlib import pyplot as plt
 def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, index,
     z, quiet=True, config_file=None, global_ice_model='None', global_ext_model='None', \
     models_dictionary={}, template_dictionary={}, fitran=None, convert2Flambda=True, \
-    outdir=None):
+    outdir=None, plot_decomp=None):
     '''Function defined to fit the MIR continuum
 
     Parameters

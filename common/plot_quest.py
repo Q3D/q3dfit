@@ -9,8 +9,8 @@ def plot_quest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat, templ_ma
 
     plot_noext = False
 
-    if 'plotMIR' in initdat.keys(): # Test plot - To do: move this to the correct place in q3da
-      if initdat['plotMIR']:
+    if 'argscontfit' in initdat.keys() and 'plot_decomp' in initdat['argscontfit'].keys(): # Test plot - To do: move this to the correct place in q3da
+      if initdat['argscontfit']['plot_decomp']:
         config_file = questfit_readcf.readcf(initdat['argscontfit']['config_file'])
         global_extinction = False
         for key in config_file:
@@ -92,6 +92,7 @@ def plot_quest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat, templ_ma
         ax1.set_yscale('log')
         ax1.set_xticklabels([])
         ax1.set_ylim(1e-5,1e2)
+        ax1.set_ylabel('Flux')
 
         ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
         ax2.plot(MIRgdlambda,MIRgdflux/MIRcontinuum,color='black')

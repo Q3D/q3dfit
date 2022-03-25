@@ -1070,16 +1070,14 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                 # Make sure fit doesn't indicate no continuum; avoids
                 # plot range error in continuum fitting routine,
                 # as well as a blank plot!
-                if not noplots and 'plotMIR' in initdat.keys():
-                    if initdat['plotMIR']:
-                        from matplotlib import pyplot as plt
-                        from q3dfit.common.plot_quest import plot_quest
-                        #breakpoint()
-                        #plot_quest(gdlambda, gdflux, continuum+specfit, ct_coeff, initdat, lines=[12.8], linespec=specfit)
-                        lam_lines = struct['linelist']['lines'].tolist()
-                        plot_quest(struct['wave'], struct['cont_dat']+struct['emlin_dat'], struct['cont_fit']+struct['emlin_fit'], \
-                         struct['ct_coeff'], initdat, lines=lam_lines, linespec=struct['emlin_fit']) #, lines=[12.8], linespec=struct['emlin_fit'])
-
+                if not noplots and 'argscontfit' in initdat.keys():
+                    if 'plot_decomp' in initdat['argscontfit'].keys():
+                        if initdat['argscontfit']['plot_decomp']:
+                            from matplotlib import pyplot as plt
+                            from q3dfit.common.plot_quest import plot_quest
+                            lam_lines = struct['linelist']['lines'].tolist()
+                            plot_quest(struct['wave'], struct['cont_dat']+struct['emlin_dat'], struct['cont_fit']+struct['emlin_fit'], \
+                             struct['ct_coeff'], initdat, lines=lam_lines, linespec=struct['emlin_fit']) #, lines=[12.8], linespec=struct['emlin_fit'])
 
     # Save emission line and continuum dictionaries
     np.savez('{[outdir]}{[label]}'.format(initdat, initdat)+'.lin.npz',

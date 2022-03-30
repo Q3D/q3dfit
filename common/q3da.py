@@ -119,31 +119,15 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
     else:
         dqext = initdat['dqext']
 
-    if not ('wmapext' in initdat):
-        wmapext = 4
-    else:
-        wmapext = initdat['wmapext']
-
     header = bytes(1)
 
     if 'argsreadcube' in initdat:
-        if initdat.__contains__('wavext'):
-            cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
-                    quiet=quiet, varext=varext,
-                    wavext=initdat['wavext'], **initdat['argsreadcube'])
-        else:
-            cube = CUBE(infile=initdat['infile'], quiet=quiet,
-                    header=header, datext=datext, varext=varext,
-                    dqext=dqext, **initdat['argsreadcube'])
-
+        
+        cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+                    quiet=quiet, varext=varext, **initdat['argsreadcube'])
     else:
-        if initdat.__contains__('wavext'):
-            cube = CUBE(infile=initdat['infile'], quiet=quiet,
-                    header=header, datext=datext, varext=varext, wmapext=wmapext,
-                    wavext=initdat['wavext'], dqext=dqext)
-        else:
-            cube = CUBE(infile=initdat['infile'], quiet=quiet,
-                    header=header, datext=datext, varext=varext, wmapext=wmapext,
+        cube = CUBE(infile=initdat['infile'], quiet=quiet,
+                    header=header, datext=datext, varext=varext,
                     dqext=dqext)
 
     if 'vormap' in initdat:
@@ -569,7 +553,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                         contcube['stel_z_err'][i, j, :] \
                             = [struct['zstar_err'], struct['zstar_err']]
 
-                elif 'decompose_qso_fit' in initdat and initdat['decompose_qso_fit']:
+                elif 'decompose_qso_fit' in initdat:
                     if initdat['fcncontfit'] == 'fitqsohost':
                         if 'qsoord' in initdat['argscontfit']:
                             qsoord = initdat['argscontfit']['qsoord']

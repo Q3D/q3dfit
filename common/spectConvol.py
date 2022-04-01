@@ -75,6 +75,7 @@ class spectConvol:
                 
                 name_match = '_'.join([inst,igrat]).lower()+'_'
                 matched = False
+                
                 for dfile in displist:
                     if name_match in dfile:
                         matched = True
@@ -112,9 +113,13 @@ class spectConvol:
                                                        'gdwvn':idelw,'gres':irsln,
                                                        'glamC':gwvln_med,'gResC':grsln_med,'gwvRng':[min(iwvln),max(iwvln)]}
                 if matched == False:
-                    dispvalue  = int(re.findall(r'\d+', igrat)[0])
-                    convmethod = re.findall(r'[a-zA-Z]', igrat)[0] 
-                    self.make_dispersion(dispvalue,TYPE=convmethod)#,OVERWRITE=True)
+                    convmethod = ''.join(re.findall("[a-zA-Z]", igrat))
+                    dispvalue  = '.'.join(re.findall("\d+", igrat))
+                    if len(dispvalue) > 1:
+                        dispvalue = float(dispvalue)
+                    else:
+                        dispvalue = int(dispvalue)
+                    self.make_dispersion(dispvalue,TYPE=convmethod,OVERWRITE=True)
                     dispfiles = [dfile.split('/')[-1] for dfile in glob.glob(os.path.join(self.datDIR,'*.fits'))]
                     self.get_dispersion_data(dispfiles)
         return
@@ -269,18 +274,21 @@ class spectConvol:
         yintp = yy(gwvln)
         clist = [c1]
         ig = TYPE.lower()
-        if TYPE == 'R' or TYPE is None :
+        if TYPE.upper() == 'R' or TYPE is None :
             # default is Resolving power
-            print("R = ",dispValue)
+            if self.printSILENCE != True:
+                print("R = ",dispValue)
             grsln = yintp
             clist.append(fits.Column(name='R', format='E', array=grsln))
-        elif TYPE == 'dlambda' :
-            print("dlambda [Å] = ",dispValue)
+        elif TYPE.upper() == 'DLAMBDA' :
+            if self.printSILENCE != True:
+                print("dlambda [Å] = ",dispValue)
             dlambda = yintp * 1e-4 #convert from Angstrom to micron
             gdisp = dlambda
             clist.append(fits.Column(name='DLAM', format='E', array=gdisp))
-        elif TYPE == 'kms':
-            print("velocity = ",dispValue,"km/s")
+        elif TYPE.upper() == 'KMS':
+            if self.printSILENCE != True:
+                print("velocity = ",dispValue,"km/s")
             vel = yintp
             clist.append(fits.Column(name='VELOCITY', format='E', array=vel))
         

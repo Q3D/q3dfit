@@ -35,6 +35,7 @@ EDIT:
 
 import numpy as np
 import os
+import re
 from astropy.io import fits
 import glob
 import copy
@@ -43,10 +44,10 @@ from scipy.interpolate import interp1d
 import q3dfit.data.dispersion_files
 
 class spectConvol:
-    def __init__(self,initdat):
+    def __init__(self,initdat,SILENCE=True):
+        self.printSILENCE = SILENCE
         #self.datDIR = '../data/dispersion_files'
         self.datDIR = os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],'dispersion_files')
-        self.printSILENCE = False
         if 'ws_method' not in initdat['spect_convol']:
             initdat['spect_convol']['ws_method'] = 2
         self.init_meth = initdat['spect_convol']['ws_method']
@@ -67,24 +68,41 @@ class spectConvol:
     # generalized dispersion file organizer and reader
     # cycle through all specified grating selections, extract the dispersion relations, and save the relevant ones to memory
     def get_dispersion_data(self,dispfiles):
+        # from q3dfit.common.make_dispersion import make_dispersion
         displist = copy.deepcopy(dispfiles)
         for inst,gratlist in self.init_inst.items():
             for igrat in gratlist:
+                
                 name_match = '_'.join([inst,igrat]).lower()+'_'
+                matched = False
                 for dfile in displist:
                     if name_match in dfile:
+                        matched = True
+                        # print(inst,igrat,dfile)
                         gfilepath = os.path.join(self.datDIR,dfile)
                         idispDat  = fits.open(gfilepath)[1].data
                         icols = idispDat.columns.names
                         
                         iwvln = idispDat['WAVELENGTH'] # wavelength [μm]
+                        irsln,idelw = [],[]
                         if 'VELOCITY' in icols:
                             irsln = 299792/idispDat['VELOCITY']
                         elif 'R' in icols:
                             irsln = idispDat['R'] 
+                            if 'DLAM' in icols:
+                                idelw = idispDat['DLAM']
+                            else:
+                                idelw = iwvln/irsln
+                        elif 'DLAM' in icols:
+                            idelw = idispDat['DLAM'] 
+                            if 'R' in icols:
+                                irsln = idispDat['R']
+                            else:
+                                irsln = iwvln/idelw
                         #idisp = idispDat['DLDS']       # dispersion [μm/pixel]
                         #irsln = idispDat['R']          # resolution [λ/Δλ] unitless 
-                        idelw = iwvln/irsln
+                        if len(idelw) == 0 :
+                            idelw = iwvln/irsln
                         
                         displist.remove(dfile)
                         gwvln_med = np.median(iwvln)
@@ -93,16 +111,22 @@ class spectConvol:
                         self.init_inst[inst][igrat] = {'gwave':iwvln,#'gdisp':idisp,
                                                        'gdwvn':idelw,'gres':irsln,
                                                        'glamC':gwvln_med,'gResC':grsln_med,'gwvRng':[min(iwvln),max(iwvln)]}
+                if matched == False:
+                    dispvalue  = int(re.findall(r'\d+', igrat)[0])
+                    convmethod = re.findall(r'[a-zA-Z]', igrat)[0] 
+                    self.make_dispersion(dispvalue,TYPE=convmethod)#,OVERWRITE=True)
+                    dispfiles = [dfile.split('/')[-1] for dfile in glob.glob(os.path.join(self.datDIR,'*.fits'))]
+                    self.get_dispersion_data(dispfiles)
         return
     
     # now do the convolutions -- CALL THIS
-    def spect_convolver(self,wvlIN,fluxIN,wvlcen,SILENCE=True):#,#INST=None,GRATING='PRISM/CLEAR',SILENCE=False):
+    def spect_convolver(self,wvlIN,fluxIN,wvlcen):#,SILENCE=True):#,#INST=None,GRATING='PRISM/CLEAR',SILENCE=False):
         ''' 
         METHOD 0 = flat convolution by wavelength bins
         METHOD 1 = convolution by dispersion curves: loop through each pixel element)
         METHOD 2 = PPXF method (convolution by dispersion curves) - DEFAULT
         '''
-        self.printSILENCE = SILENCE
+        # self.printSILENCE = SILENCE
         if self.init_inst == {} or self.init_meth > 2:
             print('ERROR: select the instrument or correct method')
             return None
@@ -122,7 +146,7 @@ class spectConvol:
         if found == False:
             return fluxIN   
         if self.printSILENCE != True:
-            print(':: '+inst.upper()+' - convolution',grat,self.init_meth)
+            print(':: '+inst.upper()+' - convolution',igrat,self.init_meth)
         
         # now do the convolution 
         igwave = self.init_inst[inst][igrat]['gwave']
@@ -225,3 +249,50 @@ class spectConvol:
         gau = np.divide(gau,np.sum(gau,0)[None,:])
         conv_spectrum = np.sum(np.multiply(a,gau),0)
         return conv_spectrum
+    
+    def make_dispersion(self,dispValue,WAVELEN=None,TYPE=None,OVERWRITE=True):
+        saveDIR = os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],'dispersion_files')
+        if self.printSILENCE != True:
+            print(':: make flat dispersion file')
+        xrange = WAVELEN
+        if WAVELEN is None:
+            xrange = [0.05,100] # wavelength in micron
+
+        yrange = dispValue
+        if type(yrange) is not tuple or type(yrange) is not list:
+            yrange = [yrange,yrange]
+
+        gwvln = np.linspace(xrange[0], xrange[1],10000)
+        c1 = fits.Column(name='WAVELENGTH', format='E', array=gwvln)
+
+        yy = interp1d(xrange, yrange)
+        yintp = yy(gwvln)
+        clist = [c1]
+        ig = TYPE.lower()
+        if TYPE == 'R' or TYPE is None :
+            # default is Resolving power
+            print("R = ",dispValue)
+            grsln = yintp
+            clist.append(fits.Column(name='R', format='E', array=grsln))
+        elif TYPE == 'dlambda' :
+            print("dlambda [Å] = ",dispValue)
+            dlambda = yintp * 1e-4 #convert from Angstrom to micron
+            gdisp = dlambda
+            clist.append(fits.Column(name='DLAM', format='E', array=gdisp))
+        elif TYPE == 'kms':
+            print("velocity = ",dispValue,"km/s")
+            vel = yintp
+            clist.append(fits.Column(name='VELOCITY', format='E', array=vel))
+        
+        cols = fits.ColDefs(clist)
+        tbhdu = fits.BinTableHDU.from_columns(cols)
+        
+        filename = 'flat_'+ig+str(dispValue)+'_disp.fits'
+        filepath = os.path.join(saveDIR,filename)
+        if  (os.path.exists(filepath) == True and OVERWRITE == False):
+            pass
+        if saveDIR is not None and (os.path.exists(filepath) != True or OVERWRITE != False):
+            if self.printSILENCE != True:
+                print('create dispersion to:',filename)
+            tbhdu.writeto(filepath,overwrite=OVERWRITE)
+        return 

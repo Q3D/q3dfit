@@ -44,7 +44,7 @@ from scipy.interpolate import interp1d
 import q3dfit.data.dispersion_files
 
 class spectConvol:
-    def __init__(self,initdat,SILENCE=True):
+    def __init__(self,initdat,cube,SILENCE=True):
         self.printSILENCE = SILENCE
         #self.datDIR = '../data/dispersion_files'
         self.datDIR = os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],'dispersion_files')
@@ -58,7 +58,7 @@ class spectConvol:
             self.init_inst[wsi.upper()] = {}
             for grat in inst:
                 self.init_inst[wsi.upper()][grat.upper()]=None
-        self.wavelength = initdat['argsreadcube']['waveunit_in']  
+        self.wavelength = cube.waveunit_out #initdat['argsreadcube']['waveunit_in']  
         
         dispfiles = [dfile.split('/')[-1] for dfile in glob.glob(os.path.join(self.datDIR,'*.fits'))]
         self.get_dispersion_data(dispfiles)
@@ -150,8 +150,8 @@ class spectConvol:
                 #    datOUT = []
         if found == False:
             return fluxIN   
-        if self.printSILENCE != True:
-            print(':: '+inst.upper()+' - convolution',igrat,self.init_meth)
+        #if self.printSILENCE != True:
+        #    print(':: '+inst.upper()+' - convolution',igrat,self.init_meth)
         
         # now do the convolution 
         igwave = self.init_inst[inst][igrat]['gwave']

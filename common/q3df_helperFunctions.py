@@ -76,12 +76,12 @@ def __get_linelist(initdat):
     return linelist
 
 # read in the dispersion list and save to memory: Default is None (no convolution)
-def __get_dispersion(initdat,quiet):
+def __get_dispersion(initdat,cube,quiet):
     from q3dfit.common import spectConvol
     if 'spect_convol' not in initdat:
         return None
     elif initdat['spect_convol'] != None:
-        return spectConvol.spectConvol(initdat,SILENCE=quiet)
+        return spectConvol.spectConvol(initdat,cube,SILENCE=quiet)
     else:
         return None
 
@@ -217,7 +217,6 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
     else:
         raise InitializationError('initproc not in expected format')
     linelist = __get_linelist(initdat)
-    specConv = __get_dispersion(initdat,quiet)
 
     if 'logfile' in initdat:
         logfile = open(initdat['logfile'], 'w+')
@@ -225,6 +224,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
         logfile = None
 
     cube, vormap = __get_CUBE(initdat, quiet, logfile=logfile)
+    specConv = __get_dispersion(initdat, cube, quiet)
     if cols and rows and vormap:
         cols = __get_voronoi(cols, rows, vormap)
         rows = 1

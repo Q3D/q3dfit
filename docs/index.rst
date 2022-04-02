@@ -1,9 +1,5 @@
 q3dfit
 ======
-
-.. image:: https://img.shields.io/badge/license-GNU%20GPL%20v.3.0-blue
-  :align: left
-  :alt: license GNU GPL v.3.0
 	
 .. image:: Q3D_logo.png
   :width: 200
@@ -87,6 +83,9 @@ Space Telescope Science Institute for support of Early Release Science
 observations with JWST and in-kind contributions by leading and
 contributing members at the University of Heidelberg, Rhodes College,
 Johns Hopkins University, and University of Maryland College Park.
+
+.. image:: https://img.shields.io/badge/license-GNU%20GPL%20v.3.0-blue
+  :alt: license GNU GPL v.3.0
 
 .. toctree::
    :maxdepth: 1

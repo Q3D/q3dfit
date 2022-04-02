@@ -2,10 +2,12 @@ q3dfit
 ======
 
 .. image:: https://img.shields.io/badge/license-GNU%20GPL%20v.3.0-blue
+  :align: left
   :alt: license GNU GPL v.3.0
-
+	
 .. image:: Q3D_logo.png
   :width: 200
+  :align: left
   :alt: Q3D logo
 
 ``q3dfit`` is custom software for scientific analysis of integral

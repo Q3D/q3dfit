@@ -1,6 +1,13 @@
 q3dfit
 ======
 
+.. image:: https://img.shields.io/badge/license-GNU%20GPL%20v.3.0-blue
+  :alt: license GNU GPL v.3.0
+
+.. image:: Q3D_logo.png
+  :width: 200
+  :alt: Q3D logo
+
 ``q3dfit`` is custom software for scientific analysis of integral
 field unit (IFU) spectroscopy of quasars and their host galaxies,
 specifically aimed at producing science-ready measurements from James
@@ -15,6 +22,19 @@ ionic and molecular emission lines.
 ``q3dfit`` has been tested on ground-based data where PSF is weakly
 wavelength-dependent. The update of ``q3dfit`` to the case of the strongly
 wavelength-dependent JWST PSF is currently in development.
+
+``q3dfit`` developers are:
+* David Rupke (Rhodes College, software lead)
+* Dominika Wylezalek (University of Heidelberg, PI)
+* Nadia Zakamska (Johns Hopkins University, CoPI)
+* Sylvain Veilleux (University of Maryland College Park, CoPI)
+* Andrey Vayner (Johns Hopkins University, primary developer)
+* Caroline Bertemes (Heidelberg, primary developer)
+* Yuzo Ishikawa (Johns Hopkins University, contributor)
+* Weizhe Liu (University of Maryland College Park, contributor)
+* Carlos Anicetti (Johns Hopkins University, contributor)
+* Lillian Whitesell (Rhodes College, contributor)
+* Grace Lim (Rhodes College, contributor)
 
 .. warning::
 
@@ -56,7 +76,8 @@ following references:
    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
    }
 
-The website for the project listing lead team members is `available
+The software is being developed in part as a contribution to the JWST Early Release Science program *Imaging Spectroscopy of Quasar Hosts with JWST
+analyzed with a powerful new PSF Decomposition and Spectral Analysis Package*. The website for the project is `available
 here
 <https://wwwstaff.ari.uni-heidelberg.de/dwylezalek/q3d.html>`_. We
 acknowledge funding provided by NASA through a contract issued by

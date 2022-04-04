@@ -331,10 +331,10 @@ class dispFile:
         tbhdu = fits.BinTableHDU.from_columns(cols)
         
         filename = 'flat_'+ig+str(dispValue)+'_disp.fits'
-        filepath = os.path.join(saveDIR,filename)
+        filepath = os.path.join(self.saveDIR,filename)
         if  (os.path.exists(filepath) == True and OVERWRITE == False):
             pass
-        if saveDIR is not None and (os.path.exists(filepath) != True or OVERWRITE != False):
+        if self.saveDIR is not None and (os.path.exists(filepath) != True or OVERWRITE != False):
             if self.printSILENCE != True:
                 print('create dispersion to:',filename)
             tbhdu.writeto(filepath,overwrite=OVERWRITE)

@@ -68,7 +68,7 @@ class spectConvol:
     # generalized dispersion file organizer and reader
     # cycle through all specified grating selections, extract the dispersion relations, and save the relevant ones to memory
     def get_dispersion_data(self,dispfiles):
-        # from q3dfit.common.make_dispersion import make_dispersion
+        dobj = dispFile(SILENCE=self.printSILENCE)
         displist = copy.deepcopy(dispfiles)
         for inst,gratlist in self.init_inst.items():
             for igrat in gratlist:
@@ -119,7 +119,7 @@ class spectConvol:
                         dispvalue = float(dispvalue)
                     else:
                         dispvalue = int(dispvalue)
-                    self.make_dispersion(dispvalue,TYPE=convmethod,OVERWRITE=True)
+                    dobj.make_dispersion(dispvalue,TYPE=convmethod,OVERWRITE=True)
                     dispfiles = [dfile.split('/')[-1] for dfile in glob.glob(os.path.join(self.datDIR,'*.fits'))]
                     self.get_dispersion_data(dispfiles)
         return
@@ -255,8 +255,43 @@ class spectConvol:
         conv_spectrum = np.sum(np.multiply(a,gau),0)
         return conv_spectrum
     
+class dispFile:
+    def __init__(self,SILENCE=True):
+        self.printSILENCE = SILENCE
+        self.saveDIR = os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],'dispersion_files')
+        return
+    
+    def make_custom_dispersion(self,wavelen,R=None,KMS=None,DLAMBDA=None,FILENAME='',OVERWRITE=False):
+        if R is None and KMS is None and DLBMDA is None:
+            return foo
+        import time
+        c1 = fits.Column(name='WAVELENGTH', format='E', array=gwvln)
+        clist = [c1]
+        if R is not None:
+            clist.append(fits.Column(name='R', format='E', array=grsln))
+        elif DLAMBDA is not None:
+            clist.append(fits.Column(name='DLAM', format='E', array=gdisp))
+        if KMS is not None:
+            clist.append(fits.Column(name='VELOCITY', format='E', array=vel))
+        
+        cols = fits.ColDefs(clist)
+        tbhdu = fits.BinTableHDU.from_columns(cols)
+        
+        filename = FILENAME+'_disp.fits'
+        if FILENAME == '' :
+            filename = 'custom_'+str(int(time.time()))+'_disp.fits'
+        filepath = os.path.join(self.saveDIR,filename)
+        if  (os.path.exists(filepath) == True and OVERWRITE == False):
+            pass
+        if saveDIR is not None and (os.path.exists(filepath) != True or OVERWRITE != False):
+            if self.printSILENCE != True:
+                print('create dispersion to:',filename)
+            tbhdu.writeto(filepath,overwrite=OVERWRITE)
+        return
+        
+    
     def make_dispersion(self,dispValue,WAVELEN=None,TYPE=None,OVERWRITE=True):
-        saveDIR = os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],'dispersion_files')
+        #self.saveDIR = os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],'dispersion_files')
         if self.printSILENCE != True:
             print(':: make flat dispersion file')
         xrange = WAVELEN

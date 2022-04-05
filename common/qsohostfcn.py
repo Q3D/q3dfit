@@ -252,7 +252,7 @@ def qsohostfcn(wave, params_fit=None, qsoflux=None,
         else:
             ymod += qso_mult[0]
             params += qso_mult[1]
-        # optional legendre polynomials up to order 5
+        # optional legendre polynomials
         if qsoord is not None:
             if qsoord <= legordmax:
                 initvals = np.zeros(legordmax+1)
@@ -304,7 +304,7 @@ def qsohostfcn(wave, params_fit=None, qsoflux=None,
                                           blrpar[counter + 1])
             gaussian_model_parameters\
                 [gaussian_name+'srsigslam'].set(value=0., vary=False)
-            if 'ymod' not in vars():
+            if blronly:
                 ymod = gaussian_model
                 params = gaussian_model_parameters
             else:

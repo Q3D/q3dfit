@@ -94,6 +94,12 @@ def pltlin(instr, pltpar, outfile):
     modlines = instr['emlin_fit']
     modtot = modstars + modlines
 
+    # To-do: Allow output wavelengths in Angstrom
+    #'waveunit_out' = 'micron'
+    # if 'waveunit_out' in pltpar:
+    #     if pltpar['waveunit_out'] = 'Angstrom':
+    #         waveunit_out = 'Angstrom'
+    
     # To-do: Get masking code from pltcont
 
     # lines
@@ -180,37 +186,15 @@ def pltlin(instr, pltpar, outfile):
             fig.add_subplot(ax0)
             fig.add_subplot(ax1)
             # create x-ticks
-            xticks = np.array([0])
-            if 'micron' in pltpar:
-                for t in range(int(xran[0]), int(xran[1])):
-                    if t % (0.5E4) == 0:
-                        xticks = np.append(xticks, t)
-            elif 'meter' in pltpar:
-                for t in range(int(xran[0]), int(xran[1])):
-                    if t % (0.5E10) == 0:
-                        xticks = np.append(xticks, t)
-            else:
-                for t in range(int(xran[0]), int(xran[1])):
-                    if t % 50 == 0:
-                        xticks = np.append(xticks, t)
-                    elif xran[1]<50:
-                        xticks = np.append(xticks, t)   # if plotting in micron but not specifying this
+            xticks = np.linspace(xran[0],xran[1],num=5,endpoint=False)
             xticks = np.delete(xticks, [0])
+            # if waveunit_out == 'Angstrom':
+            #     xticks = xticks * 1.E4
             # create minor x-ticks
-            xmticks = np.array([0])
-            if 'micron' in pltpar:
-                for t in range(int(xran[0]), int(xran[1])):
-                    if t % (0.1E4) == 0:
-                        xmticks = np.append(xmticks, t)
-            elif 'meter' in pltpar:
-                for t in range(int(xran[0]), int(xran[1])):
-                    if t % (0.1E10) == 0:
-                        xmticks = np.append(xmticks, t)
-            else:
-                for t in range(int(xran[0]), int(xran[1])):
-                    if t % 10 == 0:
-                        xmticks = np.append(xmticks, t)
+            xmticks = np.linspace(xran[0],xran[1],num=25,endpoint=False)
             xmticks = np.delete(xmticks, [0])
+            # if waveunit_out == 'Angstrom':
+            #     xmticks = xticks * 1.E4
             # set ticks
             ax0.set_xticks(xticks)
             ax1.set_xticks(xticks)
@@ -256,7 +240,9 @@ def pltlin(instr, pltpar, outfile):
             ax0.set_ylim([yran[0], yran[1]])
             # plots on ax0
             ax0.plot(wave, ydat, color='White', linewidth=1)
-            xtit = 'Observed Wavelength ($\AA$)'
+            xtit = 'Observed Wavelength ($\mu$m)'
+            # if waveunit_out == 'Angstrom':
+            #     xtit = 'Observed Wavelength ($\AA$)'
             ytit = ''
             ax0.plot(wave, ymod, color='Red', linewidth=2)
             # Plot all lines visible in plot range
@@ -317,12 +303,9 @@ def pltlin(instr, pltpar, outfile):
             ax1.plot(wave, ymod, color='Red')
 
     # title
-    if 'micron' in pltpar:
-        xtit = 'Observed Wavelength (\u03BC)'
-    elif 'meter' in pltpar:
-        xtit = 'Observed Wavelength (m)'
-    else:
-        xtit = 'Observed Wavelength ($\AA$)'
+    xtit = 'Observed Wavelength ($\mu$m)'
+    # if waveunit_out == 'Angstrom':
+    #     xtit = 'Observed Wavelength ($\AA$)'
     fig.suptitle(xtit, fontsize=25)
 
     fig.savefig(outfile + '.jpg')

@@ -45,25 +45,6 @@ __created__ = '2020 May 26'
 __last_modified__ = '2020 Jun 29'
 
 
-'''
-import pdb
-
-#   This functon reads in the dictionary from the master initialization file.
-#   The multi-step process is because initproc is a string variable. The
-#   initialization file must be in the init subdirectory of the Q3DFIT
-#   distribution for this to work. There may be a better way with an
-#   arbitrary path.
-'''
-def __get_initdat(initproc):
-    # add folder "init" to python PATH variable, to avoid importing beyond
-    # top-level package
-    from sys import path
-    import importlib
-    path.append("init")
-    module = importlib.import_module("q3dfit.init." + initproc)
-    fcninitproc = getattr(module, initproc)
-    return fcninitproc()
-
 #   Get linelist
 def __get_linelist(initdat):
     from q3dfit.common.linelist import linelist
@@ -200,12 +181,15 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
 
     # If it's a string, assume it's an input .npy file
     if type(initproc) == str:
-        # When initproc was a routine rather than an input dictionary
-        try:
-            initdatarr = np.load(initproc, allow_pickle=True)
-            initdat = initdatarr[()]
-        except:
-            initdat = __get_initdat(initproc)
+        initdatarr = np.load(initproc, allow_pickle=True)
+        initdat = initdatarr[()]
+    # If it's an ndarray, assume the file's been loaded but not stripped
+    # to dict{}
+    elif isinstance(initproc, np.ndarray):
+        initdat = initproc[()]
+    # If it's a dictionary, assume all is well
+    elif isinstance(initproc, dict):
+        initdat = initproc
 
     # If it's an ndarray, assume the file's been loaded but not stripped
     # to dict{}
@@ -252,12 +236,9 @@ def q3df_multiCore(rank, initproc, cols=None, rows=None,
                    onefit=False, ncores=1, quiet=True):
     import numpy as np
     import time
-#    from exceptions import InitializationError
     starttime = time.time()
     # If it's a string, assume it's an input .npy file
     if type(initproc) == str:
-        # When initproc was a routine rather than an input dictionary
-        # initdat = __get_initdat(initproc)
         initdatarr = np.load(initproc, allow_pickle=True)
         initdat = initdatarr[()]
     # If it's an ndarray, assume the file's been loaded but not stripped
@@ -267,8 +248,6 @@ def q3df_multiCore(rank, initproc, cols=None, rows=None,
     # If it's a dictionary, assume all is well
     elif isinstance(initproc, dict):
         initdat = initproc
-#    else:
-#        raise InitializationError('initproc not in expected format')
     linelist = __get_linelist(initdat)
     specConv = __get_dispersion(initdat)
 

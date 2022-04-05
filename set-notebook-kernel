@@ -1,0 +1,56 @@
+#! /usr/bin/env python
+
+# This script is used to set the kernel used by default by a newly
+# opened jupyter notebook.
+
+# usage: set-notebook-kernel  <kernel>  <kernel_name>  <notebooks...>
+
+import sys
+import json
+import argparse
+
+
+def set_kernel(kernel, display_name, notebook):
+    with open(notebook) as nbf:
+        loaded = json.loads(nbf.read())
+        spec = loaded["metadata"].get("kernelspec", {})
+        spec["display_name"] = display_name
+        spec["language"] = "python"
+        spec["name"] = kernel
+        loaded["metadata"]["kernelspec"] = spec
+
+    with open(notebook, "w+") as nbf:
+        nbf.write(json.dumps(loaded, indent=1))
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Set the default kernel and kernel display name in the specified Jupyter notebooks."
+    )
+    parser.add_argument(
+        "kernel", type=str, help="Jupyter kernel to use for notebooks by default."
+    )
+    parser.add_argument("notebooks", type=str, nargs="+", help="Notebooks to update")
+    args = parser.parse_args()
+    return args
+
+
+def main():
+    args = parse_args()
+    with open(f"/opt/environments/{args.kernel}/kernel.name") as f:
+        display_name = f.read().strip()
+    for notebook in args.notebooks:
+        if not notebook.startswith("#") and notebook.endswith(".ipynb"):
+            print(
+                f"Setting kernel={args.kernel}  display_name={display_name}  notebook={notebook}"
+            )
+            sys.stdout.flush()
+            if notebook.startswith("!"):
+                notebook = notebook[1:]
+            set_kernel(args.kernel, display_name, notebook)
+        else:
+            print("Skipping set kernel for", notebook)
+
+
+if __name__ == "__main__":
+    main()

@@ -40,7 +40,7 @@ cube = CUBE(fp='/path/to/data/', infile='datafits')
         header_dq: header for the dq extension
         ncols: number of columns in the cube
         nrows: number of rows in the cube
-        nz: number of elements in wavelength array
+        nwave: number of elements in wavelength array
 :Params:
     infile: in, required, type=string
      Name of input FITS file.
@@ -70,7 +70,7 @@ cube = CUBE(fp='/path/to/data/', infile='datafits')
     zerodq: in, optional, type=byte
       Zero out the DQ array.
     vormap: in, optional, 2D array for the voronoi binning map
-    waveunit: in, optional
+    waveunit_in: in, optional
       Default is micron; other option is Angstrom
     fluxunit: in, optional
       the flux unit input by the user to be multiplide to the flux
@@ -223,10 +223,10 @@ class CUBE:
         if np.size(datashape) == 3:
             ncols = (datashape)[0]
             nrows = (datashape)[1]
-            nw = (datashape)[2]
-            if np.max([nrows, ncols]) > nw:
+            nwave = (datashape)[2]
+            if np.max([nrows, ncols]) > nwave:
                 raise CubeError('Data cube dimensions not in ' +
-                                '[nw, nrows, ncols] format')
+                                '[nwave, nrows, ncols] format')
             CDELT = 'CDELT3'
             CRVAL = 'CRVAL3'
             CRPIX = 'CRPIX3'
@@ -240,7 +240,7 @@ class CUBE:
                       'is along rows.', file=logfile)
             nrows = 1
             ncols = (datashape)[1]
-            nw = (datashape)[-1]
+            nwave = (datashape)[-1]
             CDELT = 'CDELT1'
             CRVAL = 'CRVAL1'
             CRPIX = 'CRPIX1'
@@ -251,7 +251,7 @@ class CUBE:
         elif np.size(datashape) == 1:
             nrows = 1
             ncols = 1
-            nw = (datashape)[0]
+            nwave = (datashape)[0]
             CDELT = 'CDELT1'
             CRVAL = 'CRVAL1'
             CRPIX = 'CRPIX1'
@@ -261,7 +261,7 @@ class CUBE:
             BUNIT = 'BUNIT'
         self.ncols = int(ncols)
         self.nrows = int(nrows)
-        self.nw = int(nw)
+        self.nwave = int(nwave)
 
         # The current default input and working wavelengths are um
         # The current default input flux is MJy/sr; working flux is
@@ -321,11 +321,11 @@ class CUBE:
                                 'CRVAL and/or CRPIX missing')
             if CDELT in header:
                 self.wav0 = header[CRVAL] - (header[CRPIX] - 1) * header[CDELT]
-                self.wave = self.wav0 + np.arange(nw)*header[CDELT]
+                self.wave = self.wav0 + np.arange(nwave)*header[CDELT]
                 self.cdelt = header[CDELT]
             elif CD in header:
                 self.wav0 = header[CRVAL] - (header[CRPIX] - 1) * header[CD]
-                self.wave = self.wav0 + np.arange(nw)*header[CD]
+                self.wave = self.wav0 + np.arange(nwave)*header[CD]
                 self.cdelt = header[CD]
             else:
                 raise CubeError('Cannot find or compute wavelengths')
@@ -339,9 +339,9 @@ class CUBE:
         if vormap:
             ncols = np.max(vormap)
             nrows = 1
-            vordat = np.zeros((ncols, nrows, nw))
-            vorvar = np.zeros((ncols, nrows, nw))
-            vordq = np.zeros((ncols, nrows, nw))
+            vordat = np.zeros((ncols, nrows, nwave))
+            vorvar = np.zeros((ncols, nrows, nwave))
+            vordq = np.zeros((ncols, nrows, nwave))
             vorcoords = np.zeros((ncols, 2), dtype=int)
             nvor = np.zeros((ncols))
             for i in np.arange(ncols):
@@ -400,8 +400,8 @@ class CUBE:
             varold = copy.copy(self.var)
             dqold = copy.copy(self.dq)
             self.crpix = 1
-            self.cdelt = (waveold[-1]-waveold[0]) / (self.nz-1)
-            wave = np.linspace(waveold[0], waveold[-1], num=self.nz)
+            self.cdelt = (waveold[-1]-waveold[0]) / (self.nwave-1)
+            wave = np.linspace(waveold[0], waveold[-1], num=self.nwave)
             self.wave = wave
             spldat = interpolate.splrep(waveold, datold, s=0)
             self.dat = interpolate.splev(waveold, spldat, der=0)
@@ -419,6 +419,12 @@ class CUBE:
         # close the fits file
         hdu.close()
 
+    def about(self):
+        print("Size of data cube: [",self.ncols,",",self.nrows,",",\
+              self.nwave,"]")
+        print("Wavelength range: [",self.wave[0],",",\
+              self.wave[self.nwave-1],"] ",self.waveunit_out)
+        
 
 if __name__ == "__main__":
     cube = CUBE(fp='/path/to/data/', infile='data.fits')

@@ -414,18 +414,18 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                 # make and populate output data cubes
                 if firstcontproc is True:
                     hostcube = \
-                       {'dat': np.zeros((cube.ncols, cube.nrows, cube.nw)),
-                        'err': np.zeros((cube.ncols, cube.nrows, cube.nw)),
-                        'dq':  np.zeros((cube.ncols, cube.nrows, cube.nw)),
-                        'norm_div': np.zeros((cube.ncols, cube.nrows, cube.nw)),
-                        'norm_sub': np.zeros((cube.ncols, cube.nrows, cube.nw))}
+                       {'dat': np.zeros((cube.ncols, cube.nrows, cube.nwave)),
+                        'err': np.zeros((cube.ncols, cube.nrows, cube.nwave)),
+                        'dq':  np.zeros((cube.ncols, cube.nrows, cube.nwave)),
+                        'norm_div': np.zeros((cube.ncols, cube.nrows, cube.nwave)),
+                        'norm_sub': np.zeros((cube.ncols, cube.nrows, cube.nwave))}
 
                     if 'decompose_ppxf_fit' in initdat:
                         contcube = \
                             {'wave': struct['wave'],
-                             'all_mod': np.zeros((cube.ncols, cube.nrows, cube.nw)),
-                             'stel_mod': np.zeros((cube.ncols, cube.nrows, cube.nw)),
-                             'poly_mod': np.zeros((cube.ncols, cube.nrows, cube.nw)),
+                             'all_mod': np.zeros((cube.ncols, cube.nrows, cube.nwave)),
+                             'stel_mod': np.zeros((cube.ncols, cube.nrows, cube.nwave)),
+                             'poly_mod': np.zeros((cube.ncols, cube.nrows, cube.nwave)),
                              'stel_mod_tot': np.zeros((cube.ncols, cube.nrows))
                              + bad,
                              'poly_mod_tot': np.zeros((cube.ncols, cube.nrows))
@@ -450,13 +450,13 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                         contcube = \
                             {'wave': struct['wave'],
                              'qso_mod':
-                                 np.zeros((cube.ncols, cube.nrows, cube.nw)),
+                                 np.zeros((cube.ncols, cube.nrows, cube.nwave)),
                              'qso_poly_mod':
-                                 np.zeros((cube.ncols, cube.nrows, cube.nw)),
+                                 np.zeros((cube.ncols, cube.nrows, cube.nwave)),
                              'host_mod':
-                                 np.zeros((cube.ncols, cube.nrows, cube.nw)),
+                                 np.zeros((cube.ncols, cube.nrows, cube.nwave)),
                              'poly_mod':
-                                 np.zeros((cube.ncols, cube.nrows, cube.nw)),
+                                 np.zeros((cube.ncols, cube.nrows, cube.nwave)),
                              'npts':
                                  np.zeros((cube.ncols, cube.nrows)) + bad,
                              'stel_sigma':
@@ -476,7 +476,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                     else:
                         contcube = \
                             {'all_mod':
-                             np.zeros((cube.ncols, cube.nrows, cube.nw)),
+                             np.zeros((cube.ncols, cube.nrows, cube.nwave)),
                              'stel_z':
                                  np.zeros((cube.ncols, cube.nrows)) + bad,
                              'stel_z_err':

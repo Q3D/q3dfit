@@ -193,6 +193,8 @@ def pltlin(instr, pltpar, outfile):
                 for t in range(int(xran[0]), int(xran[1])):
                     if t % 50 == 0:
                         xticks = np.append(xticks, t)
+                    elif xran[1]<50:
+                        xticks = np.append(xticks, t)   # if plotting in micron but not specifying this
             xticks = np.delete(xticks, [0])
             # create minor x-ticks
             xmticks = np.array([0])
@@ -222,6 +224,7 @@ def pltlin(instr, pltpar, outfile):
                             width=2, color='white')
             ax1.tick_params('x', which='minor', direction='in', length=5,
                             width=1,  color='white')
+
             # create yran
             ydat = spectot
             ymod = modtot

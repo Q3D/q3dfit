@@ -142,10 +142,9 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
             ymod = modstars
             # plotting
             plt.xlim(xran[0], xran[1])
-            # tick formatting
-            plt.minorticks_on()
-            plt.tick_params(which='major', length=20, pad=30)
-            plt.tick_params(which='minor', length=10)
+
+            fig.axes[0].axis('off') # so the subplots don't share a y-axis
+            fig.axes[1].axis('off') # so the subplots don't share a y-axis
 
             gs = fig.add_gridspec(4,1)
             ax1 = fig.add_subplot(gs[:3, :])
@@ -168,24 +167,33 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                     plt.plot(wave, compspec[i], compcolors[i], linewidth=3,
                              label=complabels[i])
 
+            # tick formatting
             yticks_used = ax1.get_yticks()
             ylim_used = ax1.get_ylim()
             yticks_used = np.append(np.append(ylim_used[0], yticks_used), ylim_used[1])
             ax1.set_yticks(yticks_used)
             ax1.set_ylim(ylim_used)
 
+            ax1.minorticks_on()
+            ax1.tick_params(which='major', length=20, pad=10, labelsize = 20)
+            ax1.tick_params(which='minor', length=7, labelsize = 17)
 
-            l = ax1.legend(loc='upper right', fontsize=12)
+
+            l = ax1.legend(loc='upper right', fontsize=16)
             for text in l.get_texts():
                 text.set_color(dcolor)
             ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
             ax2.plot(wave, np.divide(specstars, modstars), color=dcolor)
             ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
-            ax2.set_ylabel('Data/Model', fontsize=15)
+            ax2.set_ylabel('Data/Model', fontsize=19)
+
+            ax2.tick_params(which='major', length=20, pad=20, labelsize = 18)
+            ax2.tick_params(which='minor', length=7, labelsize = 17)
+            
             if waveunit_out == 'micron':
-                ax2.set_xlabel('Wavelength ($\mu$m)', fontsize=15)
+                ax2.set_xlabel('Wavelength ($\mu$m)', fontsize=20)
             elif waveunit_out == 'Angstrom':
-                ax2.set_xlabel('Wavelength ($\AA$)', fontsize=15)
+                ax2.set_xlabel('Wavelength ($\AA$)', fontsize=20)
             gs.update(wspace=0.0, hspace=0.05)
             plt.gcf().subplots_adjust(bottom=0.1)
 

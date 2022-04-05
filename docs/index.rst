@@ -37,7 +37,9 @@ wavelength-dependent JWST PSF is currently in development.
 .. warning::
 
    This software has not yet been officially released. You are viewing
-   pre-release test documentation and content in active development.
+   pre-release test documentation and content in active development. We are not 
+   yet able to provide user support. If you find a bug or have a feature request, 
+   please `submit an issue <https://github.com/Q3D/q3dfit/issues>`_. 
 
 Our papers describing ``q3dfit`` and all its functionalities are
 currently in preparation and the links will be posted here. If you use

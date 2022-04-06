@@ -818,7 +818,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                             comptitles = ['ord. ' + str(add_poly_degree) +
                                        ' Leg. poly.', 'stel. temp.']
                         else:
-                            compspec = hostmod
+                            compspec = [hostmod]
                             if initdat['fcncontfit'] == 'questfit':     ##  CB: Work-around - think about this more later
                                 compspec = [hostmod]
                             comptitles = ['exponential terms']

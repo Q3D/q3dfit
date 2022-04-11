@@ -1,36 +1,38 @@
 def cmpweq(instr,linelist,doublets=None):
     """
-    Compute equivalent widths for the specified emission lines. 
-    Uses models of emission lines and continuum, and integrates over both using 
+    Compute equivalent widths for the specified emission lines.
+    Uses models of emission lines and continuum, and integrates over both using
     the "rectangle rule."
 
-    Returns:
-        Array of equivalent widths.
-        
-    Params:
-        instr: in, required, type=dictionary
-            Contains output of IFSF_FITSPEC.
-        linelist: in, required, type=astropy Table
-            Contains the output from linelist 
-            
-    Keywords:
-        doublets -- a 2D array of strings combining doublets in pairs if it's
-            desirable to return the total eq. width, for example:
-            doublets=[['[OIII]4959','[OIII]5007'],['[SII]6716','[SII]6731'],['[OII]3726','[OII]3729']]
+    Parameters
+    ----------
+    instr : dict
+        Contains output of IFSF_FITSPEC.
+    linelist: astropy Table
+        Contains the output from linelist.
+    doublets : ndarray
+        A 2D array of strings combining doublets in pairs if it's
+        desirable to return the total eq. width,
+        for example:
+            doublets=[['[OIII]4959','[OIII]5007'],['[SII]6716','[SII]6731']]
             or
             doublets=['[OIII]4959','[OIII]5007']
-            default: None
-        
-    @author: Nadia Zakamska
+        default: None
+
+    Returns
+    -------
+    ndarray
+        Array of equivalent widths.
+
     """
 
     import numpy as np
     from q3dfit.common.cmplin import cmplin
-    
+
     ncomp=instr['param'][1]
     nlam=len(instr['wave'])
     lines=linelist['name']
-    
+
     tot={}
     comp={}
     dwave=instr['wave'][1:nlam]-instr['wave'][0:nlam-1]

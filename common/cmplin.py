@@ -12,6 +12,20 @@ from q3dfit.common.lmlabel import lmlabel
 
 
 def cmplin(instr, line, comp, velsig=False):
+    '''
+    Function takes four parameters and returns specified flux
+
+    Parameters:
+    instr : dict
+    line : str
+    comp : int
+    velsig : bool
+
+    Returns
+    -------
+    flux : float
+    '''
+
 
     lmline = lmlabel(line)
     mName = '{0}_{1}_'.format(lmline.lmlabel, comp)

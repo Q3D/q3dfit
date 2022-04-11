@@ -1,85 +1,3 @@
-# docformat = 'rst'
-#
-#+
-#
-# Convert output of MPFIT, with best-fit line parameters in a single
-# array, into a structure with separate arrays for different line
-# parameters. Compute total line fluxes from the best-fit line
-# parameters.
-#
-# :Categories:
-#    IFSFIT
-#
-# :Returns:
-#    A structure with separate hashes for different line parameters. The hashes
-#    are indexed by line, and each value is an array over components.
-#    Tags: flux, fluxerr, fluxpk, fluxpkerr, nolines, wave, and sigma.
-#
-# :Params:
-#    linelist: in, required, type=hash(lines)
-#      List of emission line rest-frame wavelengths.
-#    param: in, required, type=dblarr(N)
-#      Best-fit parameter array output by MPFIT.
-#    perror: in, optional, type=dblarr(N)
-#      Errors in best fit parameters, output by MPFIT.
-#    parinfo: in, required, type=structure
-#      Structure input into MPFIT. Each tag has N values, one per parameter.
-#      Used to sort param and perror arrays.
-#
-# :Keywords:
-#    waveran: in, optional, type=dblarr(2)
-#      Set to upper and lower limits to return line parameters only
-#      for lines within the given wavelength range. Lines outside this
-#      range have fluxes set to 0.
-#    tflux: out, optional, type=structure
-#      A structure with separate hashes for total flux and error. The hashes
-#      are indexed by line. Tags: tflux, tfluxerr
-#
-# :Author:
-#    David S. N. Rupke::
-#      Rhodes College
-#      Department of Physics
-#      2000 N. Parkway
-#      Memphis, TN 38104
-#      drupke@gmail.com
-#
-# :History:
-#    ChangeHistory::
-#      2009may26, DSNR, created
-#      2009jun07, DSNR, added error propagation and rewrote
-#      2013nov01, DSNR, added documentation
-#      2013nov25, DSNR, renamed, added copyright and license
-#      2014jan13, DSNR, re-written to use hashes rather than arrays
-#      2014feb26, DSNR, replaced ordered hashes with hashes
-#      2015sep20, DSNR, compute total line flux and error
-#      2016sep26, DSNR, account for new treatment of spectral resolution#
-#                       fix flux errors for tied lines
-#      2016oct05, DSNR, include wavelength and sigma errors
-#      2016oct08, DSNR, turned off Ha/Hb limits b/c of issues with estimating
-#                       Hbeta error in a noisy spectrum when pegged at lower
-#                       limit
-#      2016oct10, DSNR, added option to combine doublets# changed calculation
-#                       of error when line ratio pegged
-#      2020may27, DW,   translated to Python
-#
-# :Copyright:
-#    Copyright (C) 2013--2016 David S. N. Rupke
-#
-#    This program is free software: you can redistribute it and/or
-#    modify it under the terms of the GNU General Public License as
-#    published by the Free Software Foundation, either version 3 of
-#    the License or any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY# without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#    General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see
-#    http://www.gnu.org/licenses/.
-#
-#
 import numpy as np
 import pdb
 from astropy.table import Table
@@ -91,6 +9,38 @@ from q3dfit.common.lmlabel import lmlabel
 def sepfitpars(linelist, param, perror, maxncomp, waveran=None,
                tflux=False, doublets=None):
 
+    """
+    Convert output of MPFIT, with best-fit line parameters in a single
+    array, into a structure with separate arrays for different line
+    parameters. Compute total line fluxes from the best-fit line
+    parameters.
+
+    Parameters
+    ----------
+    linelist : dict
+        List of emission line rest-frame wavelengths.
+    param : ndarray, shape (N,)
+        Best-fit parameter array output by MPFIT.
+    perror : ndarray, shape (N,)
+        Errors in best fit parameters, output by MPFIT.
+    parinfo : dict (the old version's type is structure)
+        Dictionary input into MPFIT. Each tag has N values, one per parameter.
+        Used to sort param and perror arrays.
+    waveran: ndarray, shape (2,), optional
+        Set to upper and lower limits to return line parameters only
+        for lines within the given wavelength range. Lines outside this
+        range have fluxes set to 0.
+    tflux: dict (the old version's type is structure), optional
+        A structure with separate hashes for total flux and error. The hashes
+        are indexed by line. Tags: tflux, tfluxerr
+
+    Returns
+    -------
+    dict
+        A structure with separate hashes for different line parameters. The dictionaries
+        are indexed by line, and each value is an array over components.
+        Tags: flux, fluxerr, fluxpk, fluxpkerr, nolines, wave, and sigma.
+    """
     # DW: param, perror and parinfo are lists of dictionaries which are not easy to handle
     # I therefore re-structure them into a single dictionary each
 

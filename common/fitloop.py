@@ -1,48 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Jun  8 11:14:14 2020
-
-@author: drupke
-
-Take outputs from Q3DF and perform fitting loop.
-
-:Returns:
-   None.
-
-:Params:
-   ispax: in, required, type=int
-     Value of index over which to loop
-   colarr: in, required,type=intarr(2)
-     Column # of spaxel (0-offset)
-   rowarr: in, required, type=intarr(2)
-     Row # of spaxel (0-offset)
-   cube: in, required, type=structure
-     Output from READCUBE, containing data
-   initdat: in, required, type=structure
-     Output from initialization routine, containing fit parameters
-   onefit: in, required, type=byte
-     If set, ignore second fit
-   quiet: in, required, type=byte
-     verbosity switch from Q3DF
-
-:Keywords:
-   logfile: in, optional, type=strarr
-     Names of log filesone per spaxel.
-
-
-:History:
-   ChangeHistory::
-     2016sep18, DSNR, copied from IFSF into standalone procedure
-     2016sep26, DSNR, small change in masking for new treatment of spec. res.
-     2016oct20, DSNR, fixed treatment of SIGINIT_GAS
-     2016nov17, DSNR, added flux calibration
-     2018jun25, DSNR, added MC error calculation on stellar parameters
-     2021jan20, DSNR, finished translating to Python
-     2021feb22, DSNR, updated logfile treatment
-     2022feb01, YI, changed parameter calls for fitloop() and fitspec()
-
-"""
 
 from q3dfit.exceptions import InitializationError
 from q3dfit.common.fitspec import fitspec
@@ -55,6 +12,34 @@ import pdb
 
 def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, specConv, onefit,
             quiet=True, logfile=None):
+    """
+Created on Mon Jun  8 11:14:14 2020
+
+Take outputs from Q3DF and perform fitting loop.
+
+
+Parameters
+----------
+
+ispax : int
+  Value of index over which to loop
+colarr : intarr(2)
+  Column # of spaxel (0-offset)
+rowarr : intarr(2)
+  Row # of spaxel (0-offset)
+cube : structure
+  Output from READCUBE, containing data
+initdat : structure
+  Output from initialization routine, containing fit parameters
+onefit : byte
+  If set, ignore second fit
+quiet : byte, default=True
+  verbosity switch from Q3DF
+logfile : strarr, optional, default=None
+     Names of log filesone per spaxel.
+
+    """
+
 
     if logfile is None:
         from sys import stdout

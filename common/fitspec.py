@@ -1,130 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-
-  This function is the core routine to fit the continuum and emission
-  lines of a spectrum.
-
-  The function requires an initialization structure with one required
-  and a bunch of optional tags, specified in INITTAGS.txt.
-
-
- :Categories:
-     IFSFIT
-
- :Returns:
-     A structure that contains the fit and much else ...
-
- :Params:
-     lambda: in, required, type=dblarr(npix)
-       Spectrum, observed-frame wavelengths.
-     flux: in, required, type=dblarr(npix)
-       Spectrum, fluxes.
-     err: in, required, type=dblarr(npix)
-       Spectrum, flux errors.
-     zstar: in, required, type=structure
-       Initial guess for stellar redshift
-     listlines: in, required, type=hash(lines)
-       Emission line rest frame wavelengths
-     listlinesz: in, required, type=hash(lines\,ncomp)
-       Emission line observed frame wavelengths.
-     ncomp: in, required, type=hash(lines)
-       Number of components fit to each line.
-     initdat: in, required, type=structure
-       Structure of initialization parameters, with tags specified in
-       INITTAGS.txt.
-
- :Keywords:
-     maskwidths: in, optional, type=hash(lines\,maxncomp)
-       Widths, in km/s, of regions to mask from continuum fit. If not
-       set, routine defaults to +/- 500 km/s. Can also be set in INITDAT.
-       Routine prioritizes the keyword definition.
-     peakinit: in, optional, type=hash(lines\,maxncomp)
-       Initial guesses for peak emission-line flux densities. If not
-       set, routine guesses from spectrum. Can also be set in INITDAT.
-       Routine prioritizes the keyword definition.
-     siginit_gas: in, optional, type=hash(lines\,maxncomp)
-       Initial guess for emission line widths for fitting.
-     siglim_gas: in, optional, type=dblarr(2)
-       Sigma limits for line fitting.
-     tweakcntfit: in, optional, type=dblarr(3\,nregions)
-       Parameters for tweaking continuum fit with localized polynomials. For
-       each of nregions regions, array contains lower limit, upper limit, and
-       polynomial degree.
-     quiet: in, optional, type=byte
-       Use to prevent detailed output to screen. Default is to print
-       detailed output.
-
- :History:
-     ChangeHistory::
-       2009, DSNR, copied base code from Harus Jabran Zahid
-       2009may, DSNR, tweaked for LRIS data
-       2009jun/jul, DSNR, rewritten
-       2010jan28, DSNR, fitting now done in observed frame, not rest frame
-       2010mar18, DSNR, added ct_coeff output to continuum fit
-       2013sep, DSNR, complete re-write
-       2013nov13, DSNR, renamed, added license and copyright
-       2013nov25, DSNR, changed structure tags of output spectra for clarity
-       2013dec09, DSNR, removed stellar z and sig optimization;
-                        added PPXF option
-       2013dec10, DSNR, removed docs of initdat tags, since it's
-                        repeated in INITTAGS.txt  removed linelabel
-                        parameter, since it's in initdat; changed
-                        'initstr' parameter to 'initdat', for
-                        consistency with IFSF; testing and bug fixes
-       2013dec11, DSNR, added MASK_HALFWIDTH variable; changed value
-                        from 500 to 1000 km/s
-       2013dec12, DSNR, added SIGINIT_GAS_DEFAULT variable
-       2013dec17, DSNR, started propagation of hashes through code and
-                        implementation of new calling sequence rubric
-       2014jan13, DSNR, propagated use of hashes
-       2014jan16, DSNR, updated treatment of redshifts; bugfixes
-       2014jan17, DSNR, bugfixes; implemented SIGINIT_GAS, TWEAKCNTFIT keywords
-       2014feb17, DSNR, removed code that added "treated" templates
-                        prior to running a generic continuum fitting
-                        routine (rebinning, adding polynomials, etc.);
-                        i.e., generic continuum fitting routine is now
-                        completely generic
-       2014feb26, DSNR, replaced ordered hashes with hashes
-       2014apr23, DSNR, changed MAXITER from 1000 to 100 in call to MPFIT
-       2016jan06, DSNR, allow no emission line fit with initdat.noemlinfit
-       2016feb02, DSNR, handle cases with QSO+stellar PPXF continuum fits
-       2016feb12, DSNR, changed treatment of sigma limits for emission lines
-                        so that they can be specified on a pixel-by-pixel basis
-       2016aug31, DSNR, added option to mask continuum range(s) by hand with
-                        INITDAT tag MASKCTRAN
-       2016sep13, DSNR, added internal logic to check if emission-line fit present
-       2016sep16, DSNR, allowed MASKWIDTHS_DEF to come in through INITDAT
-       2016sep22, DSNR, tweaked continuum function call to allow new continuum
-                        fitting capabilities; moved logging of things earlier
-                        instead of ensconcing in PPXF loop, for use of PPXF
-                        elsewhere; new output tag CONT_FIT_PRETWEAK
-       2016oct03, DSNR, multiply PERROR by reduced chi-squared, per prescription
-                        in MPFIT documentation
-       2016oct11, DSNR, added calculation of fit residual
-       2016nov17, DSNR, changed FTOL in MPFITFUN call from 1d-6 to
-                        default (1d-10)
-       2018mar05, DSNR, added option to convolve template with spectral resolution
-                        profile
-       2018may30, DSNR, added option to adjust XTOL and FTOL for line fitting
-       2018jun25, DSNR, added NOEMLINMASK switch, distinct from NOEMLINFIT
-       2020jun16, YI, rough translation to Python 3; changed all "lambda" variables to "wlambda" since it is a Python keyword
-       2020jun22, YI, replaced emission line MPFIT with LMFIT (testing separately)
-       2020jun22, YI, added scipy modules to extract XDR data (replace the IDL restore function)
-       2020jun23, YI, importing Nadia's airtovac() and the pPPXF log_rebin() functions
-       2020jun24, YI, importing the copy module and creating duplicate flux
-                      and err variables. I keep getting "ValueError:
-                      assignment destination is read-only"
-       2020jun26, YI, fixed bugs. tested the manygauss() emission line fit call. skipped the continuum fits
-       2020jun28, YI, tested the gmos.py line initialization calls for parameter set-up. minor changes
-       2020jul01, DSNR, bug fixes
-       2020jul07, DSNR, bug fixes; it runs all the way through now.
-       2020jul08, YI, cleaned up the emission line fit section; variables for new many_gauss.py
-       2020jul10, YI, bug fixes in perror_resid bloc; ran successfully
-       2021jan, AV and DSNR, major changes in continuum implementation
-       2021jan25, DSNR, fixed bug in errors passing into elin_lmfit
-       
-       2022feb01, YI, changed parameter calls for fitloop() and fitspec() to allow wavelength convolution
-"""
 
 import copy
 import numpy as np
@@ -147,6 +21,55 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, specCon
             initdat, maskwidths=None, peakinit=None, quiet=True,
             siginit_gas=None, siglim_gas=None, tweakcntfit=None,
             col=None, row=None):
+    """
+    This function is the core routine to fit the continuum and emission
+    lines of a spectrum.
+
+    Parameters
+    ----------
+
+    lambda : dblarr(npix)
+        Spectrum, observed-frame wavelengths.
+    flux : dblarr(npix)
+        Spectrum, fluxes.
+    err : dblarr(npix)
+        Spectrum, flux errors.
+    zstar : ?
+        Initial guess for stellar redshift
+    listlines : ?
+        Emission line rest frame wavelengths
+    listlinesz : ?
+        Emission line observed frame wavelengths.
+    ncomp : ?
+        Number of components fit to each line.
+    initdat : dict
+        Structure of initialization parameters
+    maskwidths : hash(lines,maxncomp), optional, default=None
+        Widths, in km/s, of regions to mask from continuum fit. If not
+        set, routine defaults to +/- 500 km/s. Can also be set in INITDAT.
+        Routine prioritizes the keyword definition.
+    peakinit : hash(lines,maxncomp), optional, default=None
+        Initial guesses for peak emission-line flux densities. If not
+        set, routine guesses from spectrum. Can also be set in INITDAT.
+        Routine prioritizes the keyword definition.
+    quiet : byte, optional, default=True
+        Use to prevent detailed output to screen. Default is to print
+        detailed output.
+    siginit_gas : hash(lines,maxncomp), optional, default=None
+        Initial guess for emission line widths for fitting.
+        siglim_gas: in, optional, type=dblarr(2)
+        Sigma limits for line fitting.
+    tweakcntfit : dblarr(3,nregions), optional, default=None
+        Parameters for tweaking continuum fit with localized polynomials. For
+        each of nregions regions, array contains lower limit, upper limit, and
+        polynomial degree.
+
+    Returns
+    -------
+    A dictionary that contains the fit and much else ...
+
+    """
+
 
     bad = 1e99
 

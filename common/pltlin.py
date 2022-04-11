@@ -1,76 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-
-@author: Lily Whitesell
-"""
-# Plot emission line fit and output to JPG
-
-# Categories: IFSFIT
-
-# Returns: None.
-
-#Params:
-#instr:in, required, type=structure
-   #contains results of fit
-#pltpar:in, required, type=structure
-   #contains parameters to control plot
-
-#label=np.arrange(Nlines)
-#label= str(label)
-#line labels for plot
-#wave= np.arrange((Nlines), float)
-#rest wavelengths of lines
-#lineoth= np.arrange((Notherlines, Ncomp), float)
-#wavelengths of other lines to plot
-#nx # of plot columns
-#ny # of plot rows
-#
-
-#outfile: in, required, type=string
-#Full path and name of output plot.
-
-#Keywords:
-#micron: in, optional, type=byte
-#Label output plots in um rather than A.
-   #Input wavelengths still assumed to be in A.
-
-#Author:
-#  David S. N. Rupke:
-#      Department of Physics
-#      2000 N. Parkway
-#      Memphis, TN 38104
-#      drupke@gmail.com
-
-#History:
-#   ChangeHistory:
-#      2009, DSNR, created
-#      13sep12, DSNR, re-written
-#      2013oct, DSNR, documented
-#      2013nov21, DSNR, renamed, added license and copyright
-#      2015may13, DSNR, switched from using LAYOUT keyword to using CGLAYOUT
-#                       procedure to fix layout issues
-#      2016aug31, DSNR, added overplotting of continuum ranges masked during
-#                       continuum fit with thick cyan line
-#      2016sep13, DSNR, added MICRON keyword
-#
-#Copyright:
-#    Copyright (C) 2013--2016 David S. N. Rupke
-#
-#    This program is free software: you can redistribute it and/or
-#    modify it under the terms of the GNU General Public License as
-#    published by the Free Software Foundation, either version 3 of
-#    the License or any later version.
-
-#   This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#    General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see
-#    http://www.gnu.org/licenses/.
-
-# Translated into python by Lily Whitesell, June 2020
 
 from q3dfit.common.cmplin import cmplin
 from q3dfit.common.lmlabel import lmlabel
@@ -83,7 +11,29 @@ import pdb
 
 
 def pltlin(instr, pltpar, outfile):
+    """
 
+    Plot emission line fit and output to JPG
+
+    Parameters
+    ----------
+    instr : dict
+       contains results of fit
+    pltpar : dict
+       contains parameters to control plot
+        label=np.arrange(Nlines)
+        label= str(label)
+        line labels for plot
+        wave= np.arrange((Nlines), float)
+        rest wavelengths of lines
+        lineoth= np.arrange((Notherlines, Ncomp), float)
+        wavelengths of other lines to plot
+        nx # of plot columns
+        ny # of plot rows
+    outfile : str
+        Full path and name of output plot.
+
+    """
     ncomp = instr['maxncomp']
     colors = ['Magenta', 'Green', 'Orange', 'Teal']
 
@@ -99,7 +49,7 @@ def pltlin(instr, pltpar, outfile):
     # if 'waveunit_out' in pltpar:
     #     if pltpar['waveunit_out'] = 'Angstrom':
     #         waveunit_out = 'Angstrom'
-    
+
     # To-do: Get masking code from pltcont
 
     # lines

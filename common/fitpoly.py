@@ -9,6 +9,7 @@ from astropy.modeling import models, fitting
 
 def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index, zstar,
             fitord=3, quiet=False, refit=False):
+   
 
     ilam=lam[index]
     iflux=flux[index]

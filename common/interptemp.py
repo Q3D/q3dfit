@@ -1,71 +1,35 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Dec 16 13:54:17 2020
-@author: drupke
-"""
-
-# docformat = 'rst'
-#
-#+
-#
-# (Linearly) interpolate templates from template wavelength grid to data
-# wavelength grid.
-#
-# :Categories:
-#    IFSFIT
-#
-# :Returns:
-#    The interpolated templates, of type dblarr(nwave_spec, ntemplates).
-#
-# :Params:
-#    spec_lam: in, required, type=dblarr(nwave_spec)
-#      Wavelengths of data arrays.
-#    temp_lam: in, required, type=dblarr(nwave_temp)
-#      Wavelengths of template arrays.
-#    template: in, required, type=dblarr(nwave_temp\, ntemplates)
-#      Model fluxes from templates.
-#
-# :Author:
-#    David S. N. Rupke::
-#      Rhodes College
-#      Department of Physics
-#      2000 N. Parkway
-#      Memphis, TN 38104
-#      drupke@gmail.com
-#
-# :History:
-#    Change History::
-#      2009, DSNR, copied base code from Harus Jabran Zahid
-#      2013oct17, DSNR, documented
-#      2013nov13, DSNR, renamed, added license and copyright
-#      2013dec11, DSNR, added a comment
-#
-# :Copyright:
-#    Copyright (C) 2013 David S. N. Rupke
-#
-#    This program is free software: you can redistribute it and/or
-#    modify it under the terms of the GNU General Public License as
-#    published by the Free Software Foundation, either version 3 of
-#    the License or any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY# without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#    General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see
-#    http://www.gnu.org/licenses/.
 
 from scipy import interpolate
 import numpy as np
 
+
 def interptemp(spec_lam, temp_lam, template):
+    """
+    (Linearly) interpolate templates from template wavelength grid to data
+    wavelength grid.
+
+    Parameters
+    ----------
+
+    spec_lam : dblarr(nwave_spec)
+        Wavelengths of data arrays.
+    temp_lam : dblarr(nwave_temp)
+        Wavelengths of template arrays.
+    template : dblarr(nwave_temp, ntemplates)
+        Model fluxes from templates.
+
+
+    Returns
+    -------
+
+    The interpolated templates, of type dblarr(nwave_spec, ntemplates).
+    """
 
     if len(template.shape) == 2:
         ntemp = template.shape(1)
-        new_temp = np.zeros((spec_lam.shape[0],ntemp))
+        new_temp = np.zeros((spec_lam.shape[0], ntemp))
     else:
         ntemp = 1
 
@@ -77,14 +41,13 @@ def interptemp(spec_lam, temp_lam, template):
               max(temp_lam) + ' to ' + max(spec_lam) + '.')
 
     # Default interpolation for INTERPOL is linear
-    if ntemp !=1:
+    if ntemp != 1:
         for i in range(ntemp - 1):
             interpfunc = \
-                interpolate.interp1d(temp_lam, template[:,i], kind='linear')
+                interpolate.interp1d(temp_lam, template[:, i], kind='linear')
             new_temp[:, i] = interpfunc(spec_lam)
     else:
         interpfunc = \
             interpolate.interp1d(temp_lam, template, kind='linear')
         new_temp = interpfunc(spec_lam)
     return new_temp
-    

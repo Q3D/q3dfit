@@ -2,11 +2,26 @@ def cmpcvdf(emlwav,emlwaverr,emlsig,emlsigerr,emlflx,emlflxerr,
                       ncomp,linelist,zref,vlimits=[-1.e4,1.e4],vstep=1.):
 
     """
-    Generates a dictionary of cumulative velocity distribution functions for all
-    emission lines and for all spaxels.
-    
-    Returns:
-        nested dictionary emlcvdf
+    Generates a dictionary of cumulative velocity distribution
+    functions for all emission lines and for all spaxels.
+
+    Parameters
+    ----------
+    enlwav: dict
+    emlwaverr : dict
+    emlsig : dict
+    emlsigerr: dict
+    emlflx : dict
+        A nested dictionary, with emlflx['ftot'], emlflx['fc1pk'], emlflx['fc2pk'] etc for the number
+        of Gaussian components. Within each of these dictionary entries, we have emission
+        lines called by name: emlflx['ftot']['Halpha'], emlflx['ftot']['Hbeta'] etc.
+        And each one of these is a 2D array of values in the image plane of the IFU cube.
+    emlflxerr: dict
+
+    Returns
+    -------
+    emlcvdf : dict
+        Nested dictionary, described as follows:
         emlcvdf={'vel': 1D array of velocities,
                  'flux':{dictionary with columns corresponding to line names and
                          3D data with two dimensions of imaging plane and number of
@@ -14,12 +29,12 @@ def cmpcvdf(emlwav,emlwaverr,emlsig,emlsigerr,emlflx,emlflxerr,
                  'fluxerr':{same},
                  'cumfluxnorm':{same},
                  'cumfluxnormerr':{same}}
-        
-    Input: 
-        
+
+    Notes
+    -----
     Description of the assumed input data dictionaries: emlwav, emlwaverr, emlsig, emlsigerr,
-    emlflx, emlflxerr: 
-    
+    emlflx, emlflxerr:
+
     1. List of fluxes for a list of lines:
         from linelist import linelist
         import numpy as np
@@ -33,43 +48,44 @@ def cmpcvdf(emlwav,emlwaverr,emlsig,emlsigerr,emlflx,emlflxerr,
     2. This functions cmpcvdf takes a much more complicated input. emlflx is a nested
     dictionary, with emlflx['ftot'], emlflx['fc1pk'], emlflx['fc2pk'] etc for the number
     of Gaussian components. Within each of these dictionary entries, we have emission
-    lines called by name: emlflx['ftot']['Halpha'], emlflx['ftot']['Hbeta'] etc. 
-    And each one of these is a 2D array of values in the image plane of the IFU cube.                   
+    lines called by name: emlflx['ftot']['Halpha'], emlflx['ftot']['Hbeta'] etc.
+    And each one of these is a 2D array of values in the image plane of the IFU cube.
+
     """
 
     import numpy as np
     from rebin import rebin
-    
-    # I am sure I need to do something else here for the 'bad' values... 
+
+    # I am sure I need to do something else here for the 'bad' values...
     bad=1e99
     c=299792.458
     # these are allegedly the smallest numbers recognized
-    minexp=-310 # this is the experimentally determined limit for when 
-    # I can take a log of a 1e-minexp 
+    minexp=-310 # this is the experimentally determined limit for when
+    # I can take a log of a 1e-minexp
     mymin=np.exp(minexp)
     # establish the velocity array from the inputs or from the defaults
     modvel=np.arange(vlimits[0],vlimits[1]+vstep,vstep)
     nmod=np.size(modvel)
-    
+
     # ok, emlflx['ftot'] has string-like attributes for lines, but for each line
     # it's a 2D array corresponding to the image plane... How do we do this?
-    # I think we need a dictionary? But the IDL one is more complex because 
+    # I think we need a dictionary? But the IDL one is more complex because
     # it also has other attributes? Like, all of the Gaussian components for
     # each line are also stored in it... OK, this will be a nested distionary
     # https://www.programiz.com/python-programming/nested-dictionary
-    
+
     # the output of the function is apparently also a dictionary with somewhat
     # of a same structure
     emlcvdf={'vel':modvel,'flux':{},'fluxerr':{},'cumfluxnorm':{},'cumfluxnormerr':{}}
-    
+
     # the list of line names in the input flux dictionary
     outlines=list(emlflx['ftot'].keys())
     # the size of the image:
-    # warning: IDL and python apparently go across the 2D arrays in different directions... 
+    # warning: IDL and python apparently go across the 2D arrays in different directions...
     size_cube=np.shape(emlflx['ftot'][outlines[0]])
     for line in outlines:
         # adding empty arrays to the dictionary, even though this is probably not
-        # a pythonic way to do this: 
+        # a pythonic way to do this:
         emlcvdf['flux'][line]=np.zeros((size_cube[0],size_cube[1],nmod))
         emlcvdf['fluxerr'][line]=np.zeros((size_cube[0],size_cube[1],nmod))
         emlcvdf['cumfluxnorm'][line]=np.zeros((size_cube[0],size_cube[1],nmod))
@@ -89,10 +105,10 @@ def cmpcvdf(emlwav,emlwaverr,emlsig,emlsigerr,emlflx,emlflxerr,
             rbpkwaveerrs = rebin(emlwaverr[cstr][line],newdims=(size_cube[0],size_cube[1],nmod))
             rbsigmas = rebin(emlsig[cstr][line],newdims=(size_cube[0],size_cube[1],nmod))
             rbsigmaerrs = rebin(emlsigerr[cstr][line],newdims=(size_cube[0],size_cube[1],nmod))
-            # in the original code there was a reshaping of modwaves, but I don't understand why... 
+            # in the original code there was a reshaping of modwaves, but I don't understand why...
             rbmodwaves = rebin(modwaves,newdims=(size_cube[0],size_cube[1],nmod))
             inz = ((rbsigmas > 0) & (rbsigmas != bad) & (rbpkwaves > 0) & (rbpkwaves != bad) &
-                   (rbpkwaveerrs > 0) & (rbpkwaveerrs != bad) & (rbpkfluxes > 0) & 
+                   (rbpkwaveerrs > 0) & (rbpkwaveerrs != bad) & (rbpkfluxes > 0) &
                    (rbpkfluxes != bad) & (rbpkfluxerrs > 0) & (rbpkfluxerrs != bad))
             if (sum(inz)>0):
                 exparg = np.zeros((size_cube[0],size_cube[1],nmod))-minexp
@@ -112,8 +128,8 @@ def cmpcvdf(emlwav,emlwaverr,emlsig,emlsigerr,emlflx,emlflxerr,
                     i_no_under_2 = ((df_norm > mymin) & (df_wave > mymin) & (df_sig > mymin))
                     if (sum(i_no_under_2)>0):
                         dfsq[i_no_under_2] = (df_norm[i_no_under_2])**2+(df_wave[i_no_under_2])**2+(df_sig[i_no_under_2])**2
-                    emlcvdf['fluxerr'][line][i_no_under] += dfsq 
-                        
+                    emlcvdf['fluxerr'][line][i_no_under] += dfsq
+
         inz = (emlcvdf['flux'][line] > 0)
         if (sum(inz)>0):
             emlcvdf['fluxerr'][line][inz] = np.sqrt(emlcvdf['fluxerr'][line][inz])
@@ -135,12 +151,12 @@ def cmpcvdf(emlwav,emlwaverr,emlsig,emlsigerr,emlflx,emlflxerr,
         if (sum(inz)>0):
             fluxnorm[inz]/=fluxint[inz]
             fluxnormerr[inz]/=fluxint[inz]
-                
+
         emlcvdf['cumfluxnorm'][line][:,:,0] = fluxnorm[:,:,0]
         for i in range(1,nmod):
             emlcvdf['cumfluxnorm'][line][:,:,i] = emlcvdf['cumfluxnorm'][line][:,:,i-1] + fluxnorm[:,:,i]
         emlcvdf['cumfluxnormerr'][line] = fluxnormerr
-           
+
     return(emlcvdf)
-        
-            
+
+

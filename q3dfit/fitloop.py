@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from q3dfit.exceptions import InitializationError
-from q3dfit.common.fitspec import fitspec
-from q3dfit.common.sepfitpars import sepfitpars
+from q3dfit.fitspec import fitspec
+from q3dfit.sepfitpars import sepfitpars
 
 import importlib
 import numpy as np
@@ -270,7 +270,7 @@ logfile : strarr, optional, default=None
                 linepars = sepfitpars(listlines, struct['param'],
                                       struct['perror'], initdat['maxncomp'])
                 ccModule = \
-                    importlib.import_module('q3dfit.common.' +
+                    importlib.import_module('q3dfit.' +
                                             initdat['fcncheckcomp'])
                 fcncheckcomp = getattr(ccModule, initdat['fcncheckcomp'])
                 # Note that this modifies the value of ncomp if necessary

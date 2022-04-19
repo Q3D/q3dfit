@@ -20,12 +20,12 @@ import bisect
 import matplotlib.pyplot as plt
 sys.path.append("/Users/hadley/Desktop/research") 
 
-from q3dfit.common.linelist import linelist
-from q3dfit.common.readcube import CUBE
-from q3dfit.common.rebin import rebin
-from q3dfit.common.cmpcvdf import cmpcvdf
-from q3dfit.common.cmpcompvals import cmpcompvals
-from q3dfit.common.lineratios import lineratios
+from q3dfit.linelist import linelist
+from q3dfit.readcube import CUBE
+from q3dfit.rebin import rebin
+from q3dfit.cmpcvdf import cmpcvdf
+from q3dfit.cmpcompvals import cmpcompvals
+from q3dfit.lineratios import lineratios
 
 from astropy.cosmology import FlatLambdaCDM
 from astropy.modeling import models, fitting

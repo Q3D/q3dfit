@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from q3dfit.common.cmplin import cmplin
-from q3dfit.common.lmlabel import lmlabel
+from q3dfit.cmplin import cmplin
+from q3dfit.lmlabel import lmlabel
 from q3dfit.exceptions import InitializationError
 
 import matplotlib.pyplot as plt

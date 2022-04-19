@@ -3,13 +3,13 @@ import lmfit
 import copy
 from scipy import constants
 from astropy import units as u
-from q3dfit.common import interptemp
-from q3dfit.common import questfitfcn
-from q3dfit.common import questfit_readcf
+from q3dfit import interptemp
+from q3dfit import questfitfcn
+from q3dfit import questfit_readcf
 from lmfit.models import ExpressionModel
 from matplotlib import pyplot as plt
-from q3dfit.common import interp_temp_quest
-from q3dfit.common import writeout_quest
+from q3dfit import interp_temp_quest
+from q3dfit import writeout_quest
 import q3dfit
 from matplotlib import pyplot as plt
 
@@ -298,7 +298,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
         if plot_ini_guess:
             plt.plot(models_dictionary['wave'], param['template_0_amp'].value * models_dictionary['template_0']/c_scale, color='c', label = 'QSO model init')
 
-            data1 = np.load('../data/questfit_templates/' + 'miri_qsotemplate_flexB.npy', allow_pickle='TRUE').item()
+            data1 = np.load(loc_models+'miri_qsotemplate_flexB.npy', allow_pickle='TRUE').item()
             F1 = data1['flux'][:-1] * c_scale
             plt.plot(models_dictionary['wave'], F1/c_scale, color='b', label = 'QSO real')
 
@@ -308,7 +308,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
                 Fgalmodel += param[comp_i+'_amp'].value * models_dictionary[comp_i]
             plt.plot(models_dictionary['wave'], Fgalmodel/c_scale, color='plum', label = 'host model init')
 
-            data2 = np.load('../data/questfit_templates/' + 'miri_gal_spec.npy', allow_pickle='TRUE').item()
+            data2 = np.load(loc_models+'miri_gal_spec.npy', allow_pickle='TRUE').item()
             F2 = data2['flux'][:-1] * c_scale
             plt.plot(models_dictionary['wave'], F2/c_scale, color='darkviolet', label = 'host real')
             plt.yscale("log")
@@ -323,7 +323,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux, i
             if not ('fitFlambda' in el):
                 models_dictionary_cut[el] = models_dictionary_cut[el][index]
 
-        outpy = '../data/questfit_templates/' + 'miri_qsotemplate_flex.npy'
+        outpy = loc_models+'miri_qsotemplate_flex.npy'
         data1 = np.load(outpy, allow_pickle=True)
         f_orig = data1.item()['flux'][:-1]
 

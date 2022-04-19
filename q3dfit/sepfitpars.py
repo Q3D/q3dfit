@@ -2,8 +2,8 @@ import numpy as np
 import pdb
 from astropy.table import Table
 from scipy import constants
-from q3dfit.common.gaussflux import gaussflux
-from q3dfit.common.lmlabel import lmlabel
+from q3dfit.gaussflux import gaussflux
+from q3dfit.lmlabel import lmlabel
 
 
 def sepfitpars(linelist, param, perror, maxncomp, waveran=None,

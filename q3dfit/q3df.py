@@ -48,11 +48,11 @@ __last_modified__ = '2021 Feb 22'
 def q3df(initproc, cols=None, rows=None, onefit=False, ncores=1,
          quiet=True, mpipath=None):
     if ncores == 1:
-        from q3dfit.common.q3df_helperFunctions import q3df_oneCore
+        from q3dfit.q3df_helperFunctions import q3df_oneCore
         q3df_oneCore(initproc, cols, rows, onefit, quiet)
     elif ncores > 1:
         from inspect import getfile
-        from q3dfit.common import q3df_helperFunctions
+        from q3dfit import q3df_helperFunctions
         from subprocess import call
         # convert cols and rows to string of form "[1,2,3...]"
         # Note no whitespace.

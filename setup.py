@@ -5,17 +5,13 @@ setup(
     version='0.1.0',    
     url='https://q3dfit.readthedocs.io/en/latest/index.html',
     author='David Rupke',
-    author_email='rupked@rhodes.edu',
-    license='BSD 2-clause',
+    author_email='drupke@gmail.com',
+    license='GPL-3',
 
-    packages=find_packages(include=[
-        'common',
-        'data',
-        'jnb',
-        'questfit_standalone',
-        'test',
-    ]),
+    packages=find_packages(),
 
+    include_package_data = True,
+    
     install_requires=[
         #'mpi4py>=2.0',
         'astropy>=4.3.1',

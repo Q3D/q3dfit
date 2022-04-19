@@ -1,7 +1,7 @@
 from os import chdir
 chdir('../jnb/')
-from q3dfit.common.q3df import q3df
-from q3dfit.common.q3da import q3da
+from q3dfit.q3df import q3df
+from q3dfit.q3da import q3da
 
 q3di = 'pg1411/q3di.npy'
 

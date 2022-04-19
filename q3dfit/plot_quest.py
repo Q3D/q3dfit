@@ -1,7 +1,7 @@
 
 import numpy as np
 from matplotlib import pyplot as plt
-from q3dfit.common import questfit_readcf
+from q3dfit import questfit_readcf
 
 
 def plot_quest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat, templ_mask=[], lines=[], linespec=[]):

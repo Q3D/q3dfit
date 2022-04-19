@@ -8,7 +8,7 @@ Created on Tue Jun  9 12:35:25 2020
 import numpy as np
 import pdb
 from astropy.constants import c
-from q3dfit.common.lmlabel import lmlabel
+from q3dfit.lmlabel import lmlabel
 
 
 def cmplin(instr, line, comp, velsig=False):

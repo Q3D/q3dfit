@@ -1,19 +1,10 @@
-import numpy as np
-from q3dfit.common.q3df import q3df
-from q3dfit.common.q3da import q3da
+from os import chdir
+from q3dfit.q3df import q3df
+from q3dfit.q3da import q3da
 
-# Dave
-ippath = '/Users/drupke/specfits/q3dfit/testing/22128896/'
+chdir('../jnb/')
 
-# Caroline
-#ippath = '../test/test_questfit/'
-#initproc_npy_exists = False
-#if not initproc_npy_exists:
-#    from q3dfit.init.f22128896mir import f22128896mir
-#    initproc = f22128896mir()
-#    np.save(ippath+'initproc.npy', initproc)
+q3di = '22128896/q3di.npy'
 
-initproc = ippath+'initproc.npy'
-
-q3df(initproc, cols=1, rows=1, quiet=False)
-q3da(initproc, cols=1, rows=1, quiet=False)
+q3df(q3di, quiet=False)
+q3da(q3di)

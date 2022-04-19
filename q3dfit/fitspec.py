@@ -9,16 +9,14 @@ from astropy.table import Table
 from importlib import import_module
 from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
-from q3dfit.common.airtovac import airtovac
-from q3dfit.common.masklin import masklin
-from q3dfit.common.interptemp import interptemp
-from q3dfit.common.questfit import questfit
-from q3dfit.common.plot_quest import plot_quest
+from q3dfit.airtovac import airtovac
+from q3dfit.masklin import masklin
+from q3dfit.interptemp import interptemp
 from scipy.interpolate import interp1d
 
 
-def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, specConv,
-            initdat, maskwidths=None, peakinit=None, quiet=True,
+def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
+            specConv, initdat, maskwidths=None, peakinit=None, quiet=True,
             siginit_gas=None, siglim_gas=None, tweakcntfit=None,
             col=None, row=None):
     """
@@ -70,7 +68,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, specCon
 
     """
 
-
     bad = 1e99
 
     flux = copy.deepcopy(flux)
@@ -121,9 +118,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, specCon
     if ct_comp_emlist == 0:
         noemlinfit = True
 
-    noemlinmask = b'0'
-    if noemlinfit == True and 'doemlinmask' not in initdat:
-        noemlinmask = b'1'
+    noemlinmask = False
+    if noemlinfit and 'doemlinmask' not in initdat:
+        noemlinmask = True
 
     if istemp and initdat['fcncontfit'] != 'questfit':
 
@@ -146,7 +143,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, specCon
         if 'waveunit' in initdat:
             templatelambdaz *= initdat['waveunit']
         if 'fcnconvtemp' in initdat:
-            impModule = import_module('q3dfit.common.'+initdat['fcnconvtemp'])
+            impModule = import_module('q3dfit.'+initdat['fcnconvtemp'])
             fcnconvtemp = getattr(impModule, initdat['fcnconvtemp'])
             if 'argsconvtemp' in initdat:
                 newtemplate = fcnconvtemp(templatelambdaz, template,
@@ -270,7 +267,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, specCon
         # Mask emission lines
         # Note that maskwidths is now an astropy Table
         # Column names are line labels, rows are components
-        if noemlinmask != b'1':
+        if not noemlinmask:
             if maskwidths is None:
                 if 'maskwidths' in initdat:
                     maskwidths = initdat['maskwidths']
@@ -302,7 +299,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, specCon
     # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if initdat['fcncontfit'] != 'ppxf':
 
-            module = import_module('q3dfit.common.' + initdat['fcncontfit'])
+            module = import_module('q3dfit.' + initdat['fcncontfit'])
             fcncontfit = getattr(module, initdat['fcncontfit'])
 
             if initdat['fcncontfit'] == 'questfit' or not istemp:
@@ -502,7 +499,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp, specCon
                     np.zeros(initdat['maxncomp']) + siginit_gas_def
 
         # Fill out parameter structure with initial guesses and constraints
-        impModule = import_module('q3dfit.common.' + fcninitpar)
+        impModule = import_module('q3dfit.' + fcninitpar)
         run_fcninitpar = getattr(impModule, fcninitpar)
         if 'argsinitpar' in initdat:
             argsinitpar = initdat['argsinitpar']

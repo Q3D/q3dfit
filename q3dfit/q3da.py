@@ -37,14 +37,15 @@ import pdb
 
 from astropy.table import Table
 from ppxf.ppxf_util import log_rebin
-from q3dfit.common.linelist import linelist
-from q3dfit.common.readcube import CUBE
-from q3dfit.common.sepfitpars import sepfitpars
-from q3dfit.common.qsohostfcn import qsohostfcn
+from q3dfit.linelist import linelist
+from q3dfit.readcube import CUBE
+from q3dfit.sepfitpars import sepfitpars
+from q3dfit.qsohostfcn import qsohostfcn
 from q3dfit.exceptions import InitializationError
 from numpy.polynomial import legendre
 from scipy import interpolate
 import q3dfit.data
+
 
 def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
          inline=True):
@@ -61,7 +62,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
             initdatarr = np.load(initproc, allow_pickle=True)
             initdat = initdatarr[()]
         except:
-            from q3dfit.common.q3df_helperFunctions import __get_initdat
+            from q3dfit.q3df_helperFunctions import __get_initdat
             initdat = __get_initdat(initproc)
     # If it's an ndarray, assume the file's been loaded but not stripped
     # to dict{}
@@ -81,8 +82,8 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
             listlines = linelist(initdat['lines'])
 
         # table with doublets to combine
-        data_path = os.path.abspath(q3dfit.data.__file__)[:-11]
-        doublets = Table.read(data_path+'linelists/doublets.tbl', format='ipac')
+        data_path = q3dfit.__path__[0]+'/data/linelists/'
+        doublets = Table.read(data_path+'doublets.tbl', format='ipac')
         # make a copy of singlet list
         lines_with_doublets = copy.deepcopy(initdat['lines'])
         # append doublet names to singlet list
@@ -101,7 +102,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
     else:
         #fcnpltcont = 'pltcont'
         fcnpltcont = 'plot_cont'
-    module = importlib.import_module('q3dfit.common.'+fcnpltcont)
+    module = importlib.import_module('q3dfit.'+fcnpltcont)
     pltcontfcn = getattr(module, fcnpltcont)
     if 'argspltcont' in initdat:
         argspltcont = initdat['argsplotcont']
@@ -327,7 +328,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                             else:
                                 fcnpltlin = 'pltlin'
                             module = \
-                                importlib.import_module('q3dfit.common.' +
+                                importlib.import_module('q3dfit.' +
                                                         fcnpltlin)
                             pltlinfcn = getattr(module, fcnpltlin)
                             if 'argspltlin1' in initdat:
@@ -689,7 +690,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                         else:
                             qsomod_blronly = 0.
                     elif  initdat['fcncontfit'] == 'questfit':      # CB: adding option to plot decomposed QSO fit if questfit is used
-                        from q3dfit.common.questfit import quest_extract_QSO_contrib
+                        from q3dfit.questfit import quest_extract_QSO_contrib
                         qsomod, hostmod, qsomod_intr, hostmod_intr = quest_extract_QSO_contrib(struct['ct_coeff'], initdat)
                         qsomod_polynorm = 1.
                         qsomod_notweak = qsomod
@@ -866,7 +867,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
 
                         if 'compare_to_real_decomp' in initdat:     # CB: in the case of the MIR mock ETC cube, compare the recovered QSO/host contribution from the combined cube to the real ones from the QSO/host only simulations
                             if initdat['compare_to_real_decomp']['on']:
-                                from q3dfit.common import readcube
+                                from q3dfit import readcube
                                 argsreadcube_dict = {'fluxunit_in': 'Jy',
                                                     'waveunit_in': 'angstrom',
                                                     'waveunit_out': 'micron'}
@@ -950,11 +951,14 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                 if not noplots and 'argscontfit' in initdat.keys():
                     if 'plot_decomp' in initdat['argscontfit'].keys():
                         if initdat['argscontfit']['plot_decomp']:
-                            from matplotlib import pyplot as plt
-                            from q3dfit.common.plot_quest import plot_quest
+                            from q3dfit.plot_quest import plot_quest
                             lam_lines = struct['linelist']['lines'].tolist()
-                            plot_quest(struct['wave'], struct['cont_dat']+struct['emlin_dat'], struct['cont_fit']+struct['emlin_fit'], \
-                             struct['ct_coeff'], initdat, lines=lam_lines, linespec=struct['emlin_fit']) #, lines=[12.8], linespec=struct['emlin_fit'])
+                            plot_quest(struct['wave'],
+                                       struct['cont_dat']+struct['emlin_dat'],
+                                       struct['cont_fit']+struct['emlin_fit'],
+                                       struct['ct_coeff'], initdat,
+                                       lines=lam_lines,
+                                       linespec=struct['emlin_fit'])
 
     # Save emission line and continuum dictionaries
     np.savez('{[outdir]}{[label]}'.format(initdat, initdat)+'.lin.npz',

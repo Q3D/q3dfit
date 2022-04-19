@@ -1,7 +1,7 @@
 import numpy as np
 import pdb
 from matplotlib import pyplot as plt
-from q3dfit.common import readcube
+from q3dfit import readcube
 
 '''Function defined to extract the quasar spectrum
 

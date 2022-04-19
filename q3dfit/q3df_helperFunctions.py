@@ -47,7 +47,7 @@ __last_modified__ = '2020 Jun 29'
 
 #   Get linelist
 def __get_linelist(initdat):
-    from q3dfit.common.linelist import linelist
+    from q3dfit.linelist import linelist
     if initdat.__contains__('lines'):
         if initdat.__contains__('argslinelist'):
             linelist = linelist(initdat['lines'], **initdat['argslinelist'])
@@ -58,7 +58,7 @@ def __get_linelist(initdat):
 
 # read in the dispersion list and save to memory: Default is None (no convolution)
 def __get_dispersion(initdat,cube,quiet):
-    from q3dfit.common import spectConvol
+    from q3dfit import spectConvol
     if 'spect_convol' not in initdat:
         return None
     elif initdat['spect_convol'] != None:
@@ -68,7 +68,7 @@ def __get_dispersion(initdat,cube,quiet):
 
 # initialize CUBE object
 def __get_CUBE(initdat, quiet, logfile=None):
-    from q3dfit.common.readcube import CUBE
+    from q3dfit.readcube import CUBE
 
 #   Read data
 #   Set default extensions
@@ -162,7 +162,7 @@ def __get_spaxels(cube, cols=None, rows=None):
 # multi-threaded execution
 def execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, specConv,
                     onefit, quiet, logfile=None):
-    from q3dfit.common.fitloop import fitloop
+    from q3dfit.fitloop import fitloop
     for ispax in range(0, nspax):
         fitloop(ispax, colarr, rowarr, cube, initdat, linelist, specConv,
                 onefit, quiet, logfile=logfile)

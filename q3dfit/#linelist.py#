@@ -1,4 +1,5 @@
-import q3dfit.data
+import importlib.resources as pkg_resources
+from q3dfit import data
 import os
 
 def linelist(inlines=None,linelab=True,waveunit='micron',vacuum=True):
@@ -90,7 +91,7 @@ OR
 
     # I will have more files here, and hopefully the script will be able to
     # handle them through this list, but the default is they are all in vacuum
-    data_path = os.path.abspath(q3dfit.data.__file__)[:-11]
+    data_path = importlib.resources.path(data,#os.path.abspath(q3dfit.data.__file__)[:-11]
     lines_DSNR=Table.read(data_path+'linelists/linelist_DSNR.tbl',format='ipac')
     lines_H2=Table.read(data_path+'linelists/linelist_H2.tbl',format='ipac')
     lines_fine_str=Table.read(data_path+'linelists/linelist_fine_str.tbl',format='ipac')

@@ -6,8 +6,8 @@ import sys
 
 from astropy.constants import c
 from ppxf.ppxf import ppxf
-from q3dfit.common.qsohostfcn import qsohostfcn
-from q3dfit.common.interptemp import interptemp
+from q3dfit.qsohostfcn import qsohostfcn
+from q3dfit.interptemp import interptemp
 from scipy import interpolate
 
 
@@ -179,14 +179,14 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
 
     elif refit == 'questfit':
 
-        from q3dfit.common.questfit import questfit
+        from q3dfit.questfit import questfit
         resid = flux - continuum
         argscontfit_use = kwargs['args_questfit']
         cont_resid, ct_coeff, zstar = questfit(wave, resid, weight, b'0',
                                                b'0', index, zstar,
                                                quiet=quiet, **argscontfit_use)
 
-        from q3dfit.common.plot_quest import plot_quest
+        from q3dfit.plot_quest import plot_quest
         from matplotlib import pyplot as plt
         initdatdict = argscontfit_use.copy()
         initdatdict['label'] = 'miritest'

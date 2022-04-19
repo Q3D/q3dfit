@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-
 import numpy as np
-import pdb
 
 
-def checkcomp(linepars, linetie, ncomp, siglim,
-              sigcut=None, ignore=[]):
+def checkcomp(linepars, linetie, ncomp, siglim, sigcut=None, ignore=[]):
     """
     Automatically search for "good" components.
 
@@ -74,7 +70,7 @@ def checkcomp(linepars, linetie, ncomp, siglim,
                         & (linepars['sigma'][line][:ncomp[line]] > siglim[0]) \
                         & (linepars['sigma'][line][:ncomp[line]] < siglim[1])
                 if igd.any():
-                    goodcomp[np.where(igd is True)] = 1
+                    goodcomp[np.where(igd)] = 1
             tmpncomp = goodcomp.sum()
             if tmpncomp < ncomp[key]:
                 newncomp[key] = tmpncomp

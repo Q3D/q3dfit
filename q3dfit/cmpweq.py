@@ -27,7 +27,7 @@ def cmpweq(instr,linelist,doublets=None):
     """
 
     import numpy as np
-    from q3dfit.common.cmplin import cmplin
+    from q3dfit.cmplin import cmplin
 
     ncomp=instr['param'][1]
     nlam=len(instr['wave'])

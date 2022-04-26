@@ -1,6 +1,9 @@
 Testing
 =======
 
+.. image:: https://mybinder.org/badge_logo.svg
+ :target: https://mybinder.org/v2/gh/Q3D/q3dfit/main
+
 **Ground-based data, rest-frame optical, single emission-line component, single spaxel, quasar**
 
 Data cube is from Gemini/GMOS observations of `PG1411+442

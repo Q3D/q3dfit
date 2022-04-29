@@ -115,7 +115,7 @@ class spectConvol:
                 if matched == False:
                     convmethod = ''.join(re.findall("[a-zA-Z]", igrat))
                     dispvalue  = '.'.join(re.findall("\d+", igrat))
-                    if len(dispvalue) > 1:
+                    if convmethod.upper() != 'R':
                         dispvalue = float(dispvalue)
                     else:
                         dispvalue = int(dispvalue)
@@ -138,51 +138,94 @@ class spectConvol:
         
         wvnOUT,datOUT = [],[]
         found = False
+        instList, foundList = [],[]
+        #print('wavecen at',np.round(wvlcen,3))
         for inst,gratlist in self.init_inst.items():
             for igrat in gratlist:
                 wvrng = self.init_inst[inst][igrat]['gwvRng']
-                if ((wvlcen > wvrng[0])  & (wvlcen < wvrng[1])) == True:
+                #print('conv CHECK',inst,igrat)
+                if ((wvlcen > wvrng[0]) and (wvlcen < wvrng[1])) == True:
                     found = True
-                    #print('conv w/',inst,igrat,self.init_meth,wvrng[0],wvrng[1],wvlcen)
-                    break
-                #else:
-                #    wvnOUT = []
-                #    datOUT = []
-        if found == False:
-            return fluxIN   
-        #if self.printSILENCE != True:
-        #    print(':: '+inst.upper()+' - convolution',igrat,self.init_meth)
-        
-        # now do the convolution 
-        igwave = self.init_inst[inst][igrat]['gwave']
-        #igdisp = self.init_inst[inst][igrat]['gdisp']
-        igdwvn = self.init_inst[inst][igrat]['gdwvn']
-        igResM = self.init_inst[inst][igrat]['gResC']
-        
-        w1 = np.where(wvlIN >= min(igwave))[0]
-        w2 = np.where(wvlIN <= max(igwave))[0]
-        w1x = np.where(wvlIN < min(igwave))[0]
-        w2x = np.where(wvlIN > max(igwave))[0]
-        ww = np.intersect1d(w1,w2)
-        iwvIN  = wvlIN[ww]
-        idatIN = fluxIN[ww]
-        
-        func1 = interp1d(igwave,igdwvn)#,fill_value=0)#,fill_value="extrapolate")
-        igdisp2 = func1(iwvIN)
-        
-        iR_datconv = np.zeros(len(ww))
-        if self.init_meth == 0:
-            #print('method 0')
-            iR_datconv = self.flat_convolve(iwvIN,idatIN,igResM,WCEN=None)
-        elif self.init_meth == 1: # needs debugging
-            # self.gaussian_filter1d_looper(iwvIN,idatIN,igdisp)
-            #print('method 1')
-            iR_datconv = idatIN
-        elif self.init_meth == 2:
-            #print('method 2')
-            iR_datconv = self.gaussian_filter1d_ppxf(iwvIN,idatIN,igdisp2)
-        #wvnOUT = np.concatenate((wvlIN[w1x],iwvIN,wvlIN[w2x]))
-        datOUT = np.concatenate((fluxIN[w1x],iR_datconv,fluxIN[w2x]))
+                    #print('conv w/',inst,igrat,self.init_meth,wvrng[0],wvrng[1],'- at',np.round(wvlcen,3))
+                    instList.append([inst,igrat,wvrng])
+                    foundList.append(found)
+                    #break
+ 
+        if len(foundList) == 0:
+            #print('no conv - at',np.round(wvlcen,3))
+            datOUT = copy.deepcopy(fluxIN)
+            #return datOUT
+        else:
+            #if self.printSILENCE != True:
+            #    print(':: '+inst.upper()+' - convolution',igrat,self.init_meth)
+            # now do the convolution 
+            #print('convolving')
+            
+            inst,igrat = None,None
+            igwave,igdwvn,igResM = None,None,None
+            
+            # grating wavelength overlap check --> take the middle point and stitch together
+            if len(foundList) == 2:
+                wvmin,wvmax = 0,0
+                jwvrng,jgwave,jgdwvn,jgResM = [],[],[],[]
+                for instoverlap in instList:
+                    jinst = instoverlap[0]
+                    jigrat = instoverlap[1]
+                    jwvrng.append(instoverlap[2])
+                    jgwave.append(self.init_inst[jinst][jigrat]['gwave'])
+                    jgdwvn.append(self.init_inst[jinst][jigrat]['gdwvn'])
+                    jgResM.append(self.init_inst[jinst][jigrat]['gResC'])
+                jmin,jmax = [jwvrng[0][0],jwvrng[1][0]],[jwvrng[0][1],jwvrng[1][1]]
+                wvmin = np.max(jmin)
+                wvmax = np.min(jmax)
+                wvmid = np.median([wvmin,wvmax])
+                wlo = np.where(jmin == wvmin)[0][0]
+                wup = np.where(jmax == wvmax)[0][0]
+                wj1 = np.where(jgwave[wlo] < wvmid)[0]
+                wj2 = np.where(jgwave[wup] > wvmid)[0]
+                igwave = np.concatenate((jgwave[wlo][wj1],jgwave[wup][wj2]))
+                igdwvn = np.concatenate((jgdwvn[wlo][wj1],jgdwvn[wup][wj2]))
+                igResM = np.median(jgResM)
+            elif len(foundList) > 2:
+                print('ERROR: check dispersion relations')
+                return foo
+            else:
+                jinst = instList[0][0]
+                jigrat = instList[0][1]
+                igwave = self.init_inst[jinst][jigrat]['gwave']
+                #igdisp = self.init_inst[inst][igrat]['gdisp']
+                igdwvn = self.init_inst[jinst][jigrat]['gdwvn']
+                igResM = self.init_inst[jinst][jigrat]['gResC']
+                #print('conv w/',inst,igrat,self.init_meth,igResM,'- at',np.round(wvlcen,3))
+            
+            w1 = np.where(wvlIN >= min(igwave))[0]
+            w1x = np.where(wvlIN < min(igwave))[0]
+            w2 = np.where(wvlIN <= max(igwave))[0]
+            w2x = np.where(wvlIN > max(igwave))[0]
+            ww = np.intersect1d(w1,w2)
+            iwvIN  = wvlIN[ww]
+            idatIN = fluxIN[ww]
+            #iwvIN  = wvlIN
+            #idatIN = fluxIN
+            #print(min(igwave),max(igwave),'--',min(wvlIN),max(wvlIN),'--',min(iwvIN),max(iwvIN))
+
+            func1 = interp1d(igwave,igdwvn)#,fill_value=0)#,fill_value="extrapolate")
+            igdisp2 = func1(iwvIN)
+
+            iR_datconv = np.zeros(len(ww))
+            if self.init_meth == 0:
+                #print('method 0')
+                iR_datconv = self.flat_convolve(iwvIN,idatIN,igResM,WCEN=None)
+            elif self.init_meth == 1: # needs debugging
+                # self.gaussian_filter1d_looper(iwvIN,idatIN,igdisp)
+                #print('method 1')
+                iR_datconv = idatIN
+            elif self.init_meth == 2:
+                #print('method 2')
+                iR_datconv = self.gaussian_filter1d_ppxf(iwvIN,idatIN,igdisp2)
+            #wvnOUT = np.concatenate((wvlIN[w1x],iwvIN,wvlIN[w2x]))
+            datOUT = np.concatenate((fluxIN[w1x],iR_datconv,fluxIN[w2x]))
+            #datOUT = iR_datconv
         return datOUT
     
     # METHOD 0
@@ -237,6 +280,7 @@ class spectConvol:
     def gaussian_filter1d_ppxf(self,wvlIN,flxIN,DISP_INFO):
         spec = copy.deepcopy(flxIN)
         fwhm = DISP_INFO
+        #print(fwhm)
         wdiff = wvlIN[1]-wvlIN[0]
         
         sigma =  np.divide(fwhm,2.355)/wdiff
@@ -326,6 +370,9 @@ class dispFile:
                 print("velocity = ",dispValue,"km/s")
             vel = yintp
             clist.append(fits.Column(name='VELOCITY', format='E', array=vel))
+        else: 
+            print("ERROR: making dispersion file - incorrect syntax. Select from 'R','kms','dlambda'")
+            return foo
         
         cols = fits.ColDefs(clist)
         tbhdu = fits.BinTableHDU.from_columns(cols)

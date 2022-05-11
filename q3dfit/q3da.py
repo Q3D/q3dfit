@@ -38,7 +38,7 @@ import pdb
 from astropy.table import Table
 from ppxf.ppxf_util import log_rebin
 from q3dfit.linelist import linelist
-from q3dfit.readcube import CUBE
+from q3dfit.readcube import Cube
 from q3dfit.sepfitpars import sepfitpars
 from q3dfit.qsohostfcn import qsohostfcn
 from q3dfit.exceptions import InitializationError
@@ -131,11 +131,11 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
 
     if 'argsreadcube' in initdat:
 
-        cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+        cube = Cube(initdat['infile'], datext=datext, dqext=dqext,
                     quiet=quiet, varext=varext, **initdat['argsreadcube'])
     else:
-        cube = CUBE(infile=initdat['infile'], quiet=quiet,
-                    header=header, datext=datext, varext=varext,
+        cube = Cube(initdat['infile'], quiet=quiet,
+                    datext=datext, varext=varext,
                     dqext=dqext)
 
     if 'vormap' in initdat:
@@ -876,19 +876,19 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                 file_qso = initdat['compare_to_real_decomp']['file_qso']
 
                                 if 'argsreadcube' in initdat:
-                                    cube2 = CUBE(infile=file_host, quiet=quiet,
+                                    cube2 = Cube(file_host, quiet=quiet,
                                                  header=header, datext=datext, varext=varext,
                                                  dqext=dqext, **initdat['argsreadcube'])
-                                    cube3 = CUBE(infile=file_qso, quiet=quiet,
-                                                 header=header, datext=datext, varext=varext,
+                                    cube3 = Cube(file_qso, quiet=quiet,
+                                                 datext=datext, varext=varext,
                                                  dqext=dqext, **initdat['argsreadcube'])
                                 else:
-                                    cube2 = CUBE(infile=file_host, quiet=quiet,
-                                                 header=header, datext=datext, varext=varext,
+                                    cube2 = Cube(file_host, quiet=quiet,
+                                                 datext=datext, varext=varext,
                                                  dqext=dqext)
-                                    cube3 = CUBE(infile=file_qso, quiet=quiet,
-                                                 header=header, datext=datext, varext=varext,
-                                                dqext=dqext)
+                                    cube3 = Cube(file_qso, quiet=quiet,
+                                                 datext=datext, varext=varext,
+                                                 dqext=dqext)
 
                                 lam_exclude = sorted(set(cube2.wave.tolist()) - set(struct['wave'].tolist())) # exclude wavelength that are in cube2.wave but not in struct['wave']
                                 okwave = np.ones(len(cube2.wave)).astype(bool)

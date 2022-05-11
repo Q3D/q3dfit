@@ -1,7 +1,7 @@
 import numpy as np
 import pdb
 from matplotlib import pyplot as plt
-from q3dfit import readcube
+from .readcube import Cube
 
 '''Function defined to extract the quasar spectrum
 
@@ -28,9 +28,9 @@ def makeqsotemplate(infits, outpy, datext=1, dqext=2, varext=3, wavext=None,
                     wmapext=4, plot=True, waveunit_in='micron',
                     waveunit_out='micron', radius=0.):
 
-    cube = readcube.CUBE(infile=infits, datext=datext, dqext=dqext,
-                         varext=varext, wavext=wavext, wmapext=wmapext,
-                         waveunit_in=waveunit_in,waveunit_out= waveunit_out)
+    cube = Cube(infits, datext=datext, dqext=dqext,
+                varext=varext, wavext=wavext, wmapext=wmapext,
+                waveunit_in=waveunit_in, waveunit_out=waveunit_out)
 
     white_light_image = np.median(cube.dat, axis=2)
 

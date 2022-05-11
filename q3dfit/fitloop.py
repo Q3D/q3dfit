@@ -27,8 +27,8 @@ colarr : intarr(2)
   Column # of spaxel (0-offset)
 rowarr : intarr(2)
   Row # of spaxel (0-offset)
-cube : structure
-  Output from READCUBE, containing data
+cube : object
+  instance of Cube class
 initdat : structure
   Output from initialization routine, containing fit parameters
 onefit : byte

@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 sys.path.append("/Users/hadley/Desktop/research") 
 
 from q3dfit.linelist import linelist
-from q3dfit.readcube import CUBE
+from q3dfit.readcube import Cube
 from q3dfit.rebin import rebin
 from q3dfit.cmpcvdf import cmpcvdf
 from q3dfit.cmpcompvals import cmpcompvals
@@ -303,7 +303,6 @@ def makemaps (initproc):
         file = initdat['outdir'] + initdat['label'] + '.cont.npy'
         contcube = (np.load(file, allow_pickle='TRUE')).item()
     
-
     #Get NaD parameters
     if 'donad' in initdat:
         file = initdat['outdir'] + initdat['label'] + '.nadspec.xdr'
@@ -363,10 +362,8 @@ def makemaps (initproc):
     if 'dqext' not in initdat: dqext = 3 
     else: dqext = initdat['dqext']
    
-    header = 1
-    datacube = CUBE(infile = initdat['infile'], quiet = True, oned = True, \
-                        header = header, datext = datext, varext = varext, \
-                        dqext = dqext)
+    datacube = Cube(initdat['infile'], datext=datext, varext=varext,
+                    dqext=dqext)
     if 'fluxfactor' in initmaps:
         datacube.dat *= initmaps['fluxfactor']
         datacube.var *= (initmaps['fluxfactor']) ^ 2.0

@@ -66,9 +66,9 @@ def __get_dispersion(initdat,cube,quiet):
     else:
         return None
 
-# initialize CUBE object
-def __get_CUBE(initdat, quiet, logfile=None):
-    from q3dfit.readcube import CUBE
+# initialize Cube object
+def __get_Cube(initdat, quiet, logfile=None):
+    from q3dfit.readcube import Cube
 
 #   Read data
 #   Set default extensions
@@ -93,11 +93,11 @@ def __get_CUBE(initdat, quiet, logfile=None):
         from sys import stdout
         logfile = stdout
     if initdat.__contains__('argsreadcube'):
-        cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+        cube = Cube(initdat['infile'], datext=datext, dqext=dqext,
                     quiet=quiet, varext=varext, vormap=vormap,
                     logfile=logfile, **initdat['argsreadcube'])
     else:
-        cube = CUBE(infile=initdat['infile'], datext=datext, dqext=dqext,
+        cube = Cube(initdat['infile'], datext=datext, dqext=dqext,
                     quiet=quiet, varext=varext, vormap=vormap,
                     logfile=logfile)
     return cube, vormap
@@ -207,7 +207,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
     else:
         logfile = None
 
-    cube, vormap = __get_CUBE(initdat, quiet, logfile=logfile)
+    cube, vormap = __get_Cube(initdat, quiet, logfile=logfile)
     specConv = __get_dispersion(initdat, cube, quiet)
     if cols and rows and vormap:
         cols = __get_voronoi(cols, rows, vormap)
@@ -256,7 +256,7 @@ def q3df_multiCore(rank, initproc, cols=None, rows=None,
     else:
         logfile = None
 
-    cube, vormap = __get_CUBE(initdat, quiet, logfile=logfile)
+    cube, vormap = __get_Cube(initdat, quiet, logfile=logfile)
     if cols and rows and vormap:
         cols = __get_voronoi(cols, rows, vormap)
         rows = 1

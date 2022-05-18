@@ -952,7 +952,11 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                     if 'plot_decomp' in initdat['argscontfit'].keys():
                         if initdat['argscontfit']['plot_decomp']:
                             from q3dfit.plot_quest import plot_quest
-                            lam_lines = struct['linelist']['lines'].tolist()
+                            if not struct['noemlinfit']:
+                                lam_lines = \
+                                    struct['linelist']['lines'].tolist()
+                            else:
+                                lam_lines = []
                             plot_quest(struct['wave'],
                                        struct['cont_dat']+struct['emlin_dat'],
                                        struct['cont_fit']+struct['emlin_fit'],

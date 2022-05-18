@@ -34,12 +34,7 @@ def cmplin(instr, line, comp, velsig=False):
     gausspar[1] = instr['param'][mName+'cwv']
     gausspar[2] = instr['param'][mName+'sig']
     if velsig:
-        gausspar[2] = \
-            np.sqrt((gausspar[2] * gausspar[1]/c.to('km/s').value)**2.0
-                    + instr['param'][mName+'srsigslam']**2.0)
-    else:
-        gausspar[2] = np.sqrt(gausspar[2]**2.0
-                              + instr['param'][mName+'srsigslam']**2.0)
+        gausspar[2] = gausspar[2] * gausspar[1]/c.to('km/s').value
 
     flux = gaussian(instr['wave'], gausspar)
 

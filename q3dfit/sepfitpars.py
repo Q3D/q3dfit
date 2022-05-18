@@ -115,7 +115,7 @@ def sepfitpars(linelist, param, perror, maxncomp, waveran=None,
                 ifluxpk = f'{lmline.lmlabel}_{i}_flx'
                 isigma = f'{lmline.lmlabel}_{i}_sig'
                 iwave = f'{lmline.lmlabel}_{i}_cwv'
-                ispecres = f'{lmline.lmlabel}_{i}_srsigslam'
+                #ispecres = f'{lmline.lmlabel}_{i}_srsigslam'
 
                 # make sure the line was fit -- necessary if, e.g., #
                 # components reset to 0 by checkcomp
@@ -252,7 +252,7 @@ def sepfitpars(linelist, param, perror, maxncomp, waveran=None,
                     if fluxpk[line][i] > 0:
                         sigmatmp = \
                             sigma[line][i]/(constants.c/1.e3)*wave[line][i]
-                        sigmatmp = np.sqrt(sigmatmp**2. + param[ispecres]**2.)
+                        # sigmatmp = np.sqrt(sigmatmp**2. + param[ispecres]**2.)
                         # in km/s
                         sigma_obs[line][i] = \
                             sigmatmp/wave[line][i]*(constants.c/1.e3)

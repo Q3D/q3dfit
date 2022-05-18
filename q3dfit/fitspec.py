@@ -529,19 +529,29 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             lmverbose = 0  # verbosity for scipy.optimize.least_squares
         else:
             lmverbose = 2
-        fit_kws = {'verbose': lmverbose}
+        fit_kws = {'verbose': lmverbose,
+                   'x_scale': 'jac'}
         # x_scale = 'jac' is option to minimizer 'least_squares';
         # greatly speeds up multi-gaussian fit in at least one test case
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
         # can add here using 'argslinefit' dict in init file
+        # Maximum # evals cannot be specified as a keyword to the minimzer,
+        # as it's a parameter of the fit method. Default is 100*n*(n+1); we
+        # change default to 10*n*(n+1)
+        max_nfev = 10*len(fit_params)*(len(fit_params)+1)
         if 'argslinefit' in initdat:
             for key, val in initdat['argslinefit'].items():
-                fit_kws[key] = val
+                if key == 'max_nfev':
+                    max_nfev = val
+                else:
+                    fit_kws[key] = val
 
+        #pdb.set_trace()
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
                            method='least_squares',
                            weights=np.sqrt(gdinvvar_nocnt),
-                           nan_policy='omit', fit_kws=fit_kws)
+                           nan_policy='omit', max_nfev=max_nfev,
+                           fit_kws=fit_kws)
 
         param = lmout.best_values
         specfit = emlmod.eval(lmout.params, x=gdlambda)

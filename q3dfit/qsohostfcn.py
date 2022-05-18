@@ -302,8 +302,8 @@ def qsohostfcn(wave, params_fit=None, qsoflux=None,
                                           blrpar[counter + 1],
                                           max=6000. / c.to('km/s').value *
                                           blrpar[counter + 1])
-            gaussian_model_parameters\
-                [gaussian_name+'srsigslam'].set(value=0., vary=False)
+            # gaussian_model_parameters\
+            #     [gaussian_name+'srsigslam'].set(value=0., vary=False)
             if blronly:
                 ymod = gaussian_model
                 params = gaussian_model_parameters

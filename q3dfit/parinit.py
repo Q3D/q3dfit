@@ -217,12 +217,13 @@ def set_params(fit_params, NAME, VALUE=None, VARY=True, LIMITED=None,
     return fit_params
 
 
-def manygauss(x, flx, cwv, sig, srsigslam, SPECRES=None):
+def manygauss(x, flx, cwv, sig, SPECRES=None):
     # param 0 flux
     # param 1 central wavelength
     # param 2 sigma
     c = np.float64(299792.458)
-    sigs = np.sqrt(np.power((sig/c)*cwv, 2.) + np.power(srsigslam, 2.))
+    # sigs = np.sqrt(np.power((sig/c)*cwv, 2.) + np.power(srsigslam, 2.))
+    sigs = (sig/c)*cwv
     gaussian = flx*np.exp(-np.power((x-cwv) / sigs, 2.)/2.)
     if SPECRES != None:
         datconv = SPECRES.spect_convolver(x,gaussian,cwv)

@@ -477,13 +477,31 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 peakinit = initdat['peakinit']
             else:
                 peakinit = {line: None for line in initdat['lines']}
-                fline = interp1d(gdlambda, gdflux_nocnt, kind='linear')
+                # apply some light filtering
+                # https://stackoverflow.com/questions/20618804/how-to-smooth-a-curve-in-the-right-way/20642478
+                # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html
+                from scipy.signal import savgol_filter
+                gdflux_nocnt_sm = savgol_filter(gdflux_nocnt, 11, 3)
+                fline = interp1d(gdlambda, gdflux_nocnt_sm, kind='linear')
                 for line in initdat['lines']:
                     # Check that line wavelength is in data range
                     # Use first component as a proxy for all components
                     if listlinesz[line][0] >= min(gdlambda) and \
                         listlinesz[line][0] <= max(gdlambda):
-                        peakinit[line] = fline(listlinesz[line][0:ncomp[line]])
+                        #peakinit[line] = fline(listlinesz[line][0:ncomp[line]])
+                        # look for peak within dz = +/-0.001
+                        peakinit[line] = np.zeros(initdat['maxncomp'])
+                        for icomp in range(0,ncomp[line]):
+                            # https://stackoverflow.com/questions/12141150/from-list-of-integers-get-number-closest-to-a-given-value
+                            lamwin = \
+                                [min(gdlambda, key=lambda x:
+                                    abs(x - listlinesz[line][icomp]*0.999)),
+                                 min(gdlambda, key=lambda x:
+                                     abs(x - listlinesz[line][icomp]*1.001))]
+                            ilamwin = [np.where(gdlambda == lamwin[0])[0][0],
+                                       np.where(gdlambda == lamwin[1])[0][0]]
+                            peakinit[line][icomp] = \
+                                max(gdflux_nocnt_sm[ilamwin[0]:ilamwin[1]])
                         # If initial guess is negative, set to 0 to prevent
                         # fitter from choking (since we limit peak to be >= 0)
                         peakinit[line] = \
@@ -546,6 +564,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # method 'lm' counts function calls in
         # Jacobian estimation if numerical Jacobian is used (again the default)
         max_nfev = 200*(len(fit_params)+1)
+        iter_cb = None
 
         # Add more using 'argslinefit' dict in init file
         if 'argslinefit' in initdat:
@@ -553,6 +572,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 # max_nfev goes in as parameter to fit method instead
                 if key == 'max_nfev':
                     max_nfev = val
+                # iter_cb goes in as parameter to fit method instead
+                elif key == 'iter_cb':
+                    iter_cb = globals()[val]
                 else:
                     fit_kws[key] = val
 
@@ -560,7 +582,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                            method='least_squares',
                            weights=np.sqrt(gdinvvar_nocnt),
                            nan_policy='omit', max_nfev=max_nfev,
-                           fit_kws=fit_kws)
+                           fit_kws=fit_kws, iter_cb=iter_cb)
 
         specfit = emlmod.eval(lmout.params, x=gdlambda)
         if not quiet:
@@ -577,7 +599,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # This can happen if, e.g., max_nfev is reached. Status message is in
         # this case not set, so we'll set it by hand.
         if not lmout.success:
-            raise Exception('LMFIT: '+lmout.message)
+            print('lmfit: '+lmout.message)
             status = 0
         else:
             status = lmout.status
@@ -696,7 +718,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
 
 # For diagnosing problems, print value of each parameter every iteration
-# To use, set 'iter_cb' = 'per_iteration' as a keyword/value pair in 'argslinefit'
+# To use, set 'iter_cb': 'per_iteration' as a keyword/value pair in 'argslinefit'
 # https://lmfit.github.io/lmfit-py/examples/documentation/model_with_iter_callback.html
 def per_iteration(pars, iteration, resid, *args, **kws):
     print(" ITER ", iteration, [f"{p.name} = {p.value:.5f}"

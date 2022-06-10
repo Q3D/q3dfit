@@ -53,18 +53,22 @@ def __get_linelist(initdat):
             linelist = linelist(initdat['lines'], **initdat['argslinelist'])
         else:
             linelist = linelist(initdat['lines'])
-    else: linelist = linelist()
+    else:
+        linelist = linelist()
     return linelist
 
-# read in the dispersion list and save to memory: Default is None (no convolution)
-def __get_dispersion(initdat,cube,quiet):
+
+# read in the dispersion list and save to memory
+# default return value is None (no convolution)
+def __get_dispersion(initdat, cube, quiet=True):
     from q3dfit import spectConvol
     if 'spect_convol' not in initdat:
         return None
-    elif initdat['spect_convol'] != None:
-        return spectConvol.spectConvol(initdat,cube,SILENCE=quiet)
+    elif initdat['spect_convol'] is not None:
+        return spectConvol.spectConvol(initdat, cube, quiet=quiet)
     else:
         return None
+
 
 # initialize Cube object
 def __get_Cube(initdat, quiet, logfile=None):
@@ -110,8 +114,8 @@ def __get_voronoi(cols, rows, vormap):
         cols = vormap[cols[0]-1, rows[0]-1]
         return cols
     else:
-        raise ValueError('Q3DF: ERROR: Can only specify 1 spaxel, or all spaxels, \
-              in Voronoi mode.')
+        raise ValueError('Q3DF: ERROR: Can only specify 1 spaxel, \
+                         or all spaxels, in Voronoi mode.')
 
 
 # Set up 1D arrays specifying column value and row value at each point to be
@@ -208,7 +212,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
         logfile = None
 
     cube, vormap = __get_Cube(initdat, quiet, logfile=logfile)
-    specConv = __get_dispersion(initdat, cube, quiet)
+    specConv = __get_dispersion(initdat, cube, quiet=quiet)
     if cols and rows and vormap:
         cols = __get_voronoi(cols, rows, vormap)
         rows = 1
@@ -234,6 +238,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
 # q3df setup for multi-threaded execution
 def q3df_multiCore(rank, initproc, cols=None, rows=None,
                    onefit=False, ncores=1, quiet=True):
+
     import numpy as np
     import time
     starttime = time.time()
@@ -249,7 +254,6 @@ def q3df_multiCore(rank, initproc, cols=None, rows=None,
     elif isinstance(initproc, dict):
         initdat = initproc
     linelist = __get_linelist(initdat)
-    specConv = __get_dispersion(initdat)
 
     if 'logfile' in initdat:
         logfile = open(initdat['logfile'] + '_core'+str(rank+1), 'w+')
@@ -257,6 +261,7 @@ def q3df_multiCore(rank, initproc, cols=None, rows=None,
         logfile = None
 
     cube, vormap = __get_Cube(initdat, quiet, logfile=logfile)
+    specConv = __get_dispersion(initdat, cube, quiet=quiet)
     if cols and rows and vormap:
         cols = __get_voronoi(cols, rows, vormap)
         rows = 1
@@ -269,8 +274,8 @@ def q3df_multiCore(rank, initproc, cols=None, rows=None,
     # number of spaxels THIS CORE is responsible for
     nspax_thisCore = stop-start
     # execute FITLOOP
-    execute_fitloop(nspax_thisCore, colarr, rowarr, cube, initdat, linelist, specConv,
-                    onefit, quiet, logfile=logfile)
+    execute_fitloop(nspax_thisCore, colarr, rowarr, cube, initdat,
+                    linelist, specConv, onefit, quiet, logfile=logfile)
     if logfile is None:
         from sys import stdout
         logtmp = stdout

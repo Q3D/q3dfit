@@ -118,14 +118,14 @@ class Cube:
 
         # Data
         try:
-            self.dat = np.array((hdu[datext].data).T, dtype='float64')
+            self.dat = np.array((hdu[datext].data).T, dtype='float32')
         except (IndexError or KeyError):
             raise CubeError('Data extension not properly specified or absent')
 
         # Variance/Error
         if varext is not None:
             try:
-                self.var = np.array((hdu[varext].data).T, dtype='float64')
+                self.var = np.array((hdu[varext].data).T, dtype='float32')
             except (IndexError or KeyError):
                 raise CubeError('Variance extension not properly specified ' +
                                 'or absent')
@@ -324,7 +324,7 @@ class Cube:
 
         # Flux unit conversions
         # default working flux unit is erg/s/cm^2/um/sr or erg/s/cm^2/um
-        convert_flux = np.float64(1.)
+        convert_flux = np.float32(1.)
         if u.Unit(self.fluxunit_in) == u.Unit('MJy/sr') or \
             u.Unit(self.fluxunit_in) == u.Unit('MJy'):
             # IR units: https://coolwiki.ipac.caltech.edu/index.php/Units
@@ -344,7 +344,7 @@ class Cube:
                 u.Unit('erg/s/cm2/Angstrom/arcsec2/sr') or \
             u.Unit(self.fluxunit_in) == \
                 u.Unit('erg/s/cm2/Angstrom/arcsec2'):
-            convert_flux = np.float64(1e4)
+            convert_flux = np.float32(1e4)
 
         # case of output flux units: erg/s/cm^2/Anstrom (/arcsec2/sr)
         if u.Unit(self.fluxunit_out) == u.Unit('erg/s/cm2/Angstrom/sr') or \
@@ -353,7 +353,7 @@ class Cube:
                 u.Unit('erg/s/cm2/Angstrom/arcsec2/sr') or \
             u.Unit(self.fluxunit_out) == \
                 u.Unit('erg/s/cm2/Angstrom/arcsec2'):
-            convert_flux /= np.float64(1e4)
+            convert_flux /= np.float32(1e4)
 
         # self.dat = self.dat * convert_flux
         # self.var = self.var * convert_flux**2

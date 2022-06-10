@@ -76,7 +76,7 @@ def qso_mult_leg(wave, qsotemplate, i, j, k, l, m, n, o, p, q, r):
         multiplier*qsotemplate: array
         '''
 
-    x = np.linspace(0., 1., len(wave))
+    x = np.linspace(-1., 1., len(wave))
     multiplier = \
         np.polynomial.legendre.legval(x, [i, j, k, l, m, n, o, p, q, r])
     return multiplier*qsotemplate
@@ -298,12 +298,7 @@ def qsohostfcn(wave, params_fit=None, qsoflux=None,
                                           vary=False)
             gaussian_model_parameters\
                 [gaussian_name+'sig'].set(value=blrpar[counter + 2],
-                                          min=2000. / c.to('km/s').value *
-                                          blrpar[counter + 1],
-                                          max=6000. / c.to('km/s').value *
-                                          blrpar[counter + 1])
-            # gaussian_model_parameters\
-            #     [gaussian_name+'srsigslam'].set(value=0., vary=False)
+                                          min=2000., max=6000.)
             if blronly:
                 ymod = gaussian_model
                 params = gaussian_model_parameters

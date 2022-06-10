@@ -76,7 +76,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     err_out = copy.deepcopy(err)
 
     # default sigma for initial guess for emission line widths
-    siginit_gas_def = np.float64(100.)
+    siginit_gas_def = np.float32(100.)
 
     if 'ebv_star' in initdat:
         ebv_star = initdat['ebv_star']
@@ -95,7 +95,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     if 'maskwidths_def' in initdat:
         maskwidths_def = initdat['maskwidths_def']
     else:
-        maskwidths_def = np.float64(1000.)
+        maskwidths_def = np.float32(1000.)
     if 'nomaskran' in initdat:
         nomaskran = initdat['nomaskran']
     else:
@@ -407,7 +407,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # # Option to tweak cont. fit with local polynomial fits
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if 'tweakcntfit' in initdat:
-            continuum_pretweak=continuum
+            continuum_pretweak = continuum.copy()
         # Arrays holding emission-line-masked data
             ct_lambda=gdlambda[ct_indx]
             ct_flux=gdflux[ct_indx]
@@ -434,21 +434,21 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     #                     ct_err[tmp_ctind],parinfo=parinfo,/quiet)
                     # continuum[tmp_ind] += poly(gdlambda[tmp_ind],tmp_pars)
         else:
-            continuum_pretweak=continuum
+            continuum_pretweak = continuum.copy()
 
-            if 'dividecont' in initdat:
-                gdflux_nocnt = gdflux / continuum - 1
-                gdinvvar_nocnt = gdinvvar * np.power(continuum, 2.)
-                # gderr_nocnt = gderr / continuum
-                method = 'CONTINUUM DIVIDED'
-            else:
-                gdflux_nocnt = gdflux - continuum
-                gdinvvar_nocnt = gdinvvar
-                # gderr_nocnt = gderr
-                method = 'CONTINUUM SUBTRACTED'
+        if 'dividecont' in initdat:
+            gdflux_nocnt = gdflux.copy() / continuum - 1
+            gdinvvar_nocnt = gdinvvar.copy() * np.power(continuum, 2.)
+            # gderr_nocnt = gderr / continuum
+            method = 'CONTINUUM DIVIDED'
+        else:
+            gdflux_nocnt = gdflux.copy() - continuum
+            gdinvvar_nocnt = gdinvvar.copy()
+            # gderr_nocnt = gderr
+            method = 'CONTINUUM SUBTRACTED'
     else:
         add_poly_weights = 0.
-        gdflux_nocnt = gdflux
+        gdflux_nocnt = gdflux.clpy()
         # gderr_nocnt = gderr
         method = 'NO CONTINUUM FIT'
         continuum = 0.
@@ -516,7 +516,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # if testsize == 0:
             # raise Exception('Bad initial parameter guesses.')
 
-        # Actual fit
         # from matplotlib import pyplot as plt
         # plt, ax = plt.subplots()
         # ax.plot(gdlambda, 1./np.sqrt(gdinvvar_nocnt))
@@ -525,6 +524,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # pdb.set_trace()
 
         # Actual fit
+
+        # Collect keywords to pass to the minimizer routine via lmfit
+        # Defaults
         if quiet:
             lmverbose = 0  # verbosity for scipy.optimize.least_squares
         else:
@@ -534,26 +536,32 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # x_scale = 'jac' is option to minimizer 'least_squares';
         # greatly speeds up multi-gaussian fit in at least one test case
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
-        # can add here using 'argslinefit' dict in init file
+
         # Maximum # evals cannot be specified as a keyword to the minimzer,
-        # as it's a parameter of the fit method. Default is 100*n*(n+1); we
-        # change default to 10*n*(n+1)
-        max_nfev = 10*len(fit_params)*(len(fit_params)+1)
+        # as it's a parameter of the fit method. Default for 'least_squares'
+        # is 100*npar*(npar+1), but lmfit changes this to 2000*(npar+1)
+        # https://github.com/lmfit/lmfit-py/blob/b930ddef320d93f984181db19fec8e9c9a41be8f/lmfit/minimizer.py#L1526
+        # We'll change default to 200*(npar+1).
+        # Note that lmfit method 'least_squares’ with default least_squares
+        # method 'lm' counts function calls in
+        # Jacobian estimation if numerical Jacobian is used (again the default)
+        max_nfev = 200*(len(fit_params)+1)
+
+        # Add more using 'argslinefit' dict in init file
         if 'argslinefit' in initdat:
             for key, val in initdat['argslinefit'].items():
+                # max_nfev goes in as parameter to fit method instead
                 if key == 'max_nfev':
                     max_nfev = val
                 else:
                     fit_kws[key] = val
 
-        #pdb.set_trace()
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
                            method='least_squares',
                            weights=np.sqrt(gdinvvar_nocnt),
                            nan_policy='omit', max_nfev=max_nfev,
                            fit_kws=fit_kws)
 
-        param = lmout.best_values
         specfit = emlmod.eval(lmout.params, x=gdlambda)
         if not quiet:
             print(lmout.fit_report(show_correl=False))
@@ -562,18 +570,24 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         covar = lmout.covar
         dof = lmout.nfree
         rchisq = lmout.redchi
+        nfev = lmout.nfev
 
-        # error messages corresponding to LMFIT,plt
+        # error messages corresponding to LMFIT, plt
         # documentation was not very helpful with the error messages...
+        # This can happen if, e.g., max_nfev is reached. Status message is in
+        # this case not set, so we'll set it by hand.
         if not lmout.success:
             raise Exception('LMFIT: '+lmout.message)
+            status = 0
+        else:
+            status = lmout.status
 
         # Errors from covariance matrix and from fit residual.
         # resid = gdflux - continuum - specfit
         perror = dict()
         for p in lmout.params:
             perror[p] = lmout.params[p].stderr
-        perror_resid = perror
+        perror_resid = copy.deepcopy(perror)
         # sigrange = 20.
         # for line in lines_arr:
         #     iline = np.array([ip for ip, item in enumerate(parinit)
@@ -604,14 +618,14 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         #             perror_resid[ifluxpk[i]] = \
         #                 np.sqrt(np.mean(np.power(resid[wlo:whi], 2.)))
 
-        outlistlines = listlines # this bit of logic prevents overwriting of listlines
-        cont_dat = gdflux - specfit
+        outlistlines = copy.deepcopy(listlines)
+        cont_dat = gdflux.copy() - specfit
     else:
-        cont_dat = gdflux
+        cont_dat = gdflux.copy()
         specfit = 0
         rchisq = 0
         dof = 1
-        niter = 0
+        nfev = 0
         status = 0
         outlistlines = 0
         parinit = 0
@@ -665,8 +679,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               'noemlinfit': noemlinfit,  # was emission line fit done?
               'noemlinmask': noemlinmask,  # were emission lines masked?
               'redchisq': rchisq,
-              # 'niter': niter, (DOES NOT EXIST)
-              # 'fitstatus': status, [leftover from MPFIT]
+              'nfev': nfev,
+              'fitstatus': status,
               'linelist': outlistlines,
               'linelabel': linelabel,
               'maxncomp': initdat['maxncomp'],
@@ -679,3 +693,11 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
     # finish:
     return outstr
+
+
+# For diagnosing problems, print value of each parameter every iteration
+# To use, set 'iter_cb' = 'per_iteration' as a keyword/value pair in 'argslinefit'
+# https://lmfit.github.io/lmfit-py/examples/documentation/model_with_iter_callback.html
+def per_iteration(pars, iteration, resid, *args, **kws):
+    print(" ITER ", iteration, [f"{p.name} = {p.value:.5f}"
+                                for p in pars.values()])

@@ -8,6 +8,7 @@ Initialize parameters for fitting.
 @author: drupke
 """
 
+from astropy.constants import c
 from astropy.table import QTable, Table
 from lmfit import Model
 from q3dfit.lmlabel import lmlabel
@@ -30,14 +31,14 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, sp
             dblt_pairs[doublets['line2'][idx]] = doublets['line1'][idx]
 
     if not specres:
-        specres = np.float64(0.)
+        specres = np.float32(0.)
     else:
-        specres = np.float64(specres)
+        specres = np.float32(specres)
     # A reasonable lower limit of 5d for physicality
     if siglim is None:
         siglim = np.array([5., 2000.])
     else:
-        siglim = np.array(siglim, dtype='float64')
+        siglim = np.array(siglim, dtype='float32')
 
     # converts the astropy.Table structure of linelist into a Python
     # dictionary that is compatible with the code downstream
@@ -84,7 +85,7 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, sp
         if gpar == 'flx':
             value = initflux[line.label][comp]
             limited = np.array([1, 0], dtype='uint8')
-            limits = np.array([0., 0.], dtype='float64')
+            limits = np.array([0., 0.], dtype='float32')
             # Check if it's a doublet; this will break if weaker line
             # is in list, but stronger line is not
             if line.label in dblt_pairs.keys():
@@ -97,7 +98,7 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, sp
             limited = np.array([1, 1], dtype='uint8')
             limits = np.array([linelistz[line.label][comp]*0.997,
                                linelistz[line.label][comp]*1.003],
-                              dtype='float64')
+                              dtype='float32')
             # Check if line is tied to something else
             if linetie[line.label] != line.label:
                 linetie_tmp = lmlabel(linetie[line.label])
@@ -110,7 +111,7 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, sp
         elif gpar == 'sig':
             value = initsig[line.label][comp]
             limited = np.array([1, 1], dtype='uint8')
-            limits = np.array(siglim, dtype='float64')
+            limits = np.array(siglim, dtype='float32')
             if linetie[line.label] != line.label:
                 linetie_tmp = lmlabel(linetie[line.label])
                 tied = f'{linetie_tmp.lmlabel}_{comp}_sig'
@@ -221,12 +222,11 @@ def manygauss(x, flx, cwv, sig, SPECRES=None):
     # param 0 flux
     # param 1 central wavelength
     # param 2 sigma
-    c = np.float64(299792.458)
     # sigs = np.sqrt(np.power((sig/c)*cwv, 2.) + np.power(srsigslam, 2.))
-    sigs = (sig/c)*cwv
-    gaussian = flx*np.exp(-np.power((x-cwv) / sigs, 2.)/2.)
-    if SPECRES != None:
-        datconv = SPECRES.spect_convolver(x,gaussian,cwv)
+    sigs = sig / c.to('km/s').value * cwv
+    gaussian = flx * np.exp(-np.power((x - cwv) / sigs, 2.)/2.)
+    if SPECRES is not None:
+        datconv = SPECRES.spect_convolver(x, gaussian, cwv)
         return datconv
     #maskval = np.float64(1e-4*max(gaussian))
     #maskind = np.asarray(gaussian < maskval).nonzero()[0]

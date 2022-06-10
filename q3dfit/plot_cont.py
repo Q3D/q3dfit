@@ -189,7 +189,7 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
 
             ax2.tick_params(which='major', length=20, pad=20, labelsize = 18)
             ax2.tick_params(which='minor', length=7, labelsize = 17)
-            
+
             if waveunit_out == 'micron':
                 ax2.set_xlabel('Wavelength ($\mu$m)', fontsize=20)
             elif waveunit_out == 'Angstrom':
@@ -227,9 +227,6 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                     i2.append(i)
                 if wave[i] > xran3[0] and wave[i] < xran3[1]:
                     i3.append(i)
-            ct1 = len(i1)
-            ct2 = len(i2)
-            ct3 = len(i3)
 
             maxthresh = 0.2
             ntop = 20
@@ -252,17 +249,15 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
             maximum = 0
             minimum = 0
             ''
-            cts = {1:ct1, 2:ct2, 3:ct3}
-            idict = {1:i1, 2:i2, 3:i3}
-            xrans = {1:xran1, 2:xran2, 3:xran3}
-            count = 1
-            for ct in cts.values():
-                if ct > 0:
-                    fig.add_subplot(3, 1, count)
+            idict = {1: i1, 2: i2, 3: i3}
+            xrans = {1: xran1, 2: xran2, 3: xran3}
+            for group in range(1,4):
+                if len(idict[group]) > 0:
+                    fig.add_subplot(3, 1, group)
 
                     # finding min/max values at indices from idict
-                    dat_et_mod = np.concatenate((ydat[idict[count]],
-                                                 ymod[idict[count]]))
+                    dat_et_mod = np.concatenate((ydat[idict[group]],
+                                                 ymod[idict[group]]))
                     maximum = np.nanmax(dat_et_mod)
                     minimum = np.nanmin(dat_et_mod)
                     # set min and max in yran
@@ -272,11 +267,11 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                         yran = [0, maximum]
 
                     # finding yran[1] aka max
-                    ydi = np.zeros(len(idict[count]))
-                    ydi = np.array(ydat)[idict[count]]
+                    ydi = np.zeros(len(idict[group]))
+                    ydi = np.array(ydat)[idict[group]]
 
-                    ymodi = np.zeros(len(idict[count]))
-                    ymodi = np.array(ymod)[idict[count]]
+                    ymodi = np.zeros(len(idict[group]))
+                    ymodi = np.array(ymod)[idict[group]]
                     y = np.array(ydi - ymodi)
                     ny = len(y)
 
@@ -289,10 +284,10 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                                             ymodisort[0:ny - ntop])
 
                     # plotting
-                    plt.xlim(xrans[count][0], xrans[count][1])
+                    plt.xlim(xrans[group][0], xrans[group][1])
                     plt.ylim(yran[0], yran[1])
                     plt.ylabel(ytit, fontsize=15)
-                    if count == 3:
+                    if group == 3:
                         plt.xlabel(xtit, fontsize=15, labelpad=10)
                     if ystyle == 'log':
                         plt.yscale('log')
@@ -302,12 +297,12 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                     plt.tick_params(which='major', length=10, pad=5)
                     plt.tick_params(which='minor', length=5)
                     if waveunit_out == 'micron':
-                        xticks = np.arange(np.around(xrans[count][0],1)-0.025,
-                                           np.around(xrans[count][1],1), 0.025)[:-1]
+                        xticks = np.arange(np.around(xrans[group][0],1)-0.025,
+                                           np.around(xrans[group][1],1), 0.025)[:-1]
                         plt.xticks(xticks, fontsize=10)
                     elif waveunit_out == 'Angstrom':
-                        xticks = np.arange(math.floor(xrans[count][0]/100.0)*100,
-                                           (math.floor(xrans[count][1]/100)*100)+100, 100)
+                        xticks = np.arange(math.floor(xrans[group][0]/100.0)*100,
+                                           (math.floor(xrans[group][1]/100)*100)+100, 100)
                         plt.xticks(xticks, fontsize=10)
                     if np.nanmin(ydat) > 1e-10:
                         # this will fail if fluxes are very low (<~1e-10)
@@ -325,9 +320,8 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                             plt.plot(wave, compspec[i], compcolors[i], linewidth=3, label=complabels[i])
 
                     plt.plot(wave, ymod, 'r', linewidth=4, label=title)
-                    if count == 1:
+                    if group == 1:
                         plt.legend(loc='upper right')
-                    count+=1
 
             # more formatting
             plt.subplots_adjust(hspace=0.25)
@@ -482,9 +476,6 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                     i2.append(i)
                 if wave[i] > xran3[0] and wave[i] < xran3[1]:
                     i3.append(i)
-            ct1 = len(i1)
-            ct2 = len(i2)
-            ct3 = len(i3)
 
             maxthresh = 0.2
             ntop = 20
@@ -503,24 +494,22 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
             maximum = 0
             minimum = 0
 
-            cts = {1:ct1, 2:ct2, 3:ct3}
             idict = {1:i1, 2:i2, 3:i3}
             xrans = {1:xran1, 2:xran2, 3:xran3}
-            count = 1
-            for ct in cts.values():
-                if ct > 0:
-                    fig.add_subplot(3, 1, count)
-                    ax = plt.subplot(3, 1, count)
+            for group in range(1,4):
+                if len(idict[group]) > 0:
+                    fig.add_subplot(3, 1, group)
+                    ax = plt.subplot(3, 1, group)
                     # shrink current axis by 10% to fit legend on side
                     box = ax.get_position()
                     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
                     # finding max value between ydat and ymod at indices from i1
-                    for i in idict[count]:
+                    for i in idict[group]:
                         bigboy = np.nanmax(ydat[i], ymod[i])
                         if bigboy > maximum:
                             maximum = bigboy
                     # finding min
-                    for i in idict[count]:
+                    for i in idict[group]:
                         smallboy = np.nanmin(ydat[i], ymod[i])
                         if smallboy < minimum:
                             minimum = smallboy
@@ -531,11 +520,11 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                         yran = [0, maximum]
 
                     # finding yran[1] aka max
-                    ydi = np.zeros(len(idict[count]))
-                    ydi = np.array(ydat)[idict[count]]
+                    ydi = np.zeros(len(idict[group]))
+                    ydi = np.array(ydat)[idict[group]]
 
-                    ymodi = np.zeros(len(idict[count]))
-                    ymodi = np.array(ymod)[idict[count]]
+                    ymodi = np.zeros(len(idict[group]))
+                    ymodi = np.array(ymod)[idict[group]]
                     y = np.array(ydi - ymodi)
                     ny = len(y)
 
@@ -548,10 +537,10 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                                             ymodisort[0:ny - ntop])
 
                     # plotting
-                    plt.xlim(xrans[count][0], xrans[count][1])
+                    plt.xlim(xrans[group][0], xrans[group][1])
                     plt.ylim(yran[0], yran[1])
                     plt.ylabel(ytit, fontsize=15)
-                    if count == 3:
+                    if group == 3:
                         plt.xlabel(xtit, fontsize=15, labelpad=10)
                     if ystyle == 'log':
                         plt.yscale('log')
@@ -561,11 +550,11 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                     plt.tick_params(which='major', length=10, pad=5)
                     plt.tick_params(which='minor', length=5)
                     if waveunit_out == 'micron':
-                        xticks = np.arange(np.around(xrans[count][0]), np.around(xrans[count][1]), 1)
+                        xticks = np.arange(np.around(xrans[group][0]), np.around(xrans[group][1]), 1)
                         plt.xticks(xticks, fontsize=10)
                     elif waveunit_out == 'Angstrom':
-                        xticks = np.arange(math.floor(xrans[count][0]/1000.0)*1000,
-                                           (math.floor(xrans[count][1]/1000.0)*1000)+1000, 10000)
+                        xticks = np.arange(math.floor(xrans[group][0]/1000.0)*1000,
+                                           (math.floor(xrans[group][1]/1000.0)*1000)+1000, 10000)
                         plt.xticks(xticks, fontsize=10)
                     if fluxunit_out != 'fnu':
                         # this will fail if fluxes are very low (<~1e-10)
@@ -599,10 +588,8 @@ def plot_cont(instr, outfile, ct_coeff=None, initdat=None,
                                                                comp_best_fit[list(comp_best_fit.keys())[i+2]])),
                                        label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
 
-                    if count == 1:
+                    if group == 1:
                         ax.legend(loc='upper right',bbox_to_anchor=(1.22, 1),prop={'size': 10})
-
-                    count += 1
 
         # more formatting
         plt.subplots_adjust(hspace=0.25)

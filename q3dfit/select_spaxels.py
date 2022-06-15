@@ -2,6 +2,7 @@ import numpy as np
 from q3dfit.readcube import Cube
 import matplotlib.pyplot as plt
 
+<<<<<<< HEAD
 def select_spaxels(infits, datext=0, varext=1, dqext=2, wavext=None,
                    wmapext=None, plot=True, waveunit_in='micron',
                    waveunit_out='micron',wavelength_segments=[]):
@@ -66,17 +67,3 @@ if __name__ == "__main__":
     spaxles_to_fit = select_spaxels(infits, datext=0, dqext=2, varext=1, wavext=None,
                wmapext=None, plot=True, waveunit_in='micron',
                waveunit_out='micron',wavelength_segments=[])
-
-
-##gd_indx_1 = set(np.where(flux != 0.)[0])
-##gd_indx_2 = set(np.where(err > 0.)[0])
-#gd_indx_3 = set(np.where(np.isfinite(flux)))
-#gd_indx_4 = set(np.where(np.isfinite(err)))
-#gd_indx_5 = set(np.where(dq == 1))
-#gd_indx_full = gd_indx_3.intersection(gd_indx_4,
-#                                       gd_indx_5)
-#
-#gd_indx_full = list(gd_indx_full)
-
-#gd_indx_8 = set(np.where(wlambda >= fitran_tmp[0])[0])
-#gd_indx_9 = set(np.where(wlambda <= fitran_tmp[1])[0])

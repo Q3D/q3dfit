@@ -18,7 +18,7 @@ from scipy.interpolate import interp1d
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             specConv, initdat, maskwidths=None, peakinit=None, quiet=True,
             siginit_gas=None, siglim_gas=None, tweakcntfit=None,
-            col=None, row=None):
+            col=None, row=None, logfile=None):
     """
     This function is the core routine to fit the continuum and emission
     lines of a spectrum.
@@ -38,6 +38,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         Emission line rest frame wavelengths
     listlinesz : ?
         Emission line observed frame wavelengths.
+    logfile : str
     ncomp : ?
         Number of components fit to each line.
     initdat : dict
@@ -78,6 +79,10 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     # default sigma for initial guess for emission line widths
     siginit_gas_def = np.float32(100.)
 
+    if logfile is None:
+        from sys import stdout
+        logfile = stdout
+
     if 'ebv_star' in initdat:
         ebv_star = initdat['ebv_star']
     else:
@@ -95,7 +100,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     if 'maskwidths_def' in initdat:
         maskwidths_def = initdat['maskwidths_def']
     else:
-        maskwidths_def = np.float32(1000.)
+        maskwidths_def = np.float32(500.)
     if 'nomaskran' in initdat:
         nomaskran = initdat['nomaskran']
     else:
@@ -536,8 +541,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
         # from matplotlib import pyplot as plt
         # plt, ax = plt.subplots()
-        # ax.plot(gdlambda, 1./np.sqrt(gdinvvar_nocnt))
-        # ax.plot(gdlambda, gdflux__nocnt)
+        # ax.plot(gdlambda, gdflux)
+        # ax.plot(gdlambda[ct_indx], continuum[ct_indx])
+        # #ax.plot(gdlambda, gdflux_nocnt)
         # plt.show()
         # pdb.set_trace()
 
@@ -549,15 +555,12 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             lmverbose = 0  # verbosity for scipy.optimize.least_squares
         else:
             lmverbose = 2
-        fit_kws = {'verbose': lmverbose,
-                   'x_scale': 'jac'}
-        # x_scale = 'jac' is option to minimizer 'least_squares';
-        # greatly speeds up multi-gaussian fit in at least one test case
-        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
+        fit_kws = {'verbose': lmverbose}
 
         # Maximum # evals cannot be specified as a keyword to the minimzer,
         # as it's a parameter of the fit method. Default for 'least_squares'
-        # is 100*npar*(npar+1), but lmfit changes this to 2000*(npar+1)
+        # with 'trf' method (which is what lmfit assumes)
+        # is 100*npar, but lmfit changes this to 2000*(npar+1)
         # https://github.com/lmfit/lmfit-py/blob/b930ddef320d93f984181db19fec8e9c9a41be8f/lmfit/minimizer.py#L1526
         # We'll change default to 200*(npar+1).
         # Note that lmfit method 'least_squares’ with default least_squares
@@ -599,7 +602,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # This can happen if, e.g., max_nfev is reached. Status message is in
         # this case not set, so we'll set it by hand.
         if not lmout.success:
-            print('lmfit: '+lmout.message)
+            print('lmfit: '+lmout.message, file=logfile)
+            if not quiet:
+                print('lmfit: '+lmout.message)
             status = 0
         else:
             status = lmout.status

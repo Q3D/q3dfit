@@ -56,17 +56,23 @@ logfile : strarr, optional, default=None
 
     if cube.dat.ndim == 1:
         print('[spec]=[1] out of [1]', file=logfile)
+        if not quiet:
+            print('[spec]=[1] out of [1]')
         flux = cube.dat
         err = cube.err
         dq = cube.dq
     elif cube.dat.ndim == 2:
         print(f'[spec]=[{i+1}] out of [{cube.ncols}]', file=logfile)
+        if not quiet:
+            print(f'[spec]=[{i+1}] out of [{cube.ncols}]')
         flux = cube.dat[:, i]
         err = cube.err[:, i]
         dq = cube.dq[:, i]
     else:
         print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]',
               file=logfile)
+        if not quiet:
+            print(f'[col,row]=[{i+1},{j+1}] out of [{cube.ncols},{cube.nrows}]')
         flux = cube.dat[i, j, :]
         err = cube.err[i, j, :]
         dq = cube.dq[i, j, :]
@@ -79,6 +85,8 @@ logfile : strarr, optional, default=None
         i = tmpi
         j = tmpj
         print(f'Reference coordinate: [col, row]=[{i+1}, {j+1}]', file=logfile)
+        if not quiet:
+            print(f'Reference coordinate: [col, row]=[{i+1}, {j+1}]')
 
     if cube.dat.ndim == 1:
         outlab = '{[outdir]}{[label]}'.format(initdat, initdat)
@@ -205,10 +213,10 @@ logfile : strarr, optional, default=None
                                  listlinesz, ncomp, specConv, initdat, quiet=quiet,
                                  siglim_gas=siglim_gas,
                                  siginit_gas=siginit_gas,
-                                 tweakcntfit=tweakcntfit)
-            # if not quiet:
-            #    print('FIT STATUS: '+structinit['fitstatus'])
-            # To-do: Need to add a check on fit status here.
+                                 tweakcntfit=tweakcntfit, logfile=logfile)
+            print('FIT STATUS: '+str(structinit['fitstatus']), file=logfile)
+            if not quiet:
+                print('FIT STATUS: '+str(structinit['fitstatus']))
 
             # Second fit
 
@@ -248,11 +256,10 @@ logfile : strarr, optional, default=None
                                  peakinit=peakinit_tmp,
                                  siginit_gas=siginit_gas_tmp,
                                  siglim_gas=siglim_gas,
-                                 tweakcntfit=tweakcntfit)
-
-                # if not quiet:
-                #    print('FIT STATUS: '+structinit['fitstatus'])
-                # To-do: Need to add a check on fit status here.
+                                 tweakcntfit=tweakcntfit, logfile=logfile)
+                print('FIT STATUS: '+str(structinit['fitstatus']), file=logfile)
+                if not quiet:
+                    print('FIT STATUS: '+str(structinit['fitstatus']))
 
             else:
 
@@ -288,6 +295,9 @@ logfile : strarr, optional, default=None
                     for line, nc in newncomp.items():
                         print(f'FITLOOP: Repeating the fit of {line} with ' +
                               f'{nc} components.', file=logfile)
+                        if not quiet:
+                            print(f'FITLOOP: Repeating the fit of {line} with ' +
+                              f'{nc} components.')
                 else:
                     dofit = False
             else:

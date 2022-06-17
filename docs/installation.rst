@@ -6,19 +6,19 @@ Installation
 ``q3dfit`` is only supported and tested for Python 3.7, 3.8 and
 3.9. We recommend installation of clean environment via conda.
 
-    #. Download one of the supported environment files: `for Python 3.7 <https://github.com/Q3D/q3dfit/blob/main/docs/jwebbinar-test-py37.yml>`_, `for Python 3.8 <https://github.com/Q3D/q3dfit/blob/main/docs/jwebbinar-test-py38.yml>`_, or `for Python 3.9 <https://github.com/Q3D/q3dfit/blob/main/docs/jwebbinar-test-py39.yml>`_. We are currently conducting all primary testing and development in Python 3.8. 
+    #. Download one of the supported environment files: `for Python 3.7 <https://github.com/Q3D/q3dfit/blob/main/docs/q3dfit-py37.yml>`_, `for Python 3.8 <https://github.com/Q3D/q3dfit/blob/main/docs/q3dfit-py38.yml>`_, or `for Python 3.9 <https://github.com/Q3D/q3dfit/blob/main/docs/q3dfit-py39.yml>`_. We are currently conducting all primary testing and development in Python 3.8. 
 
     #. Create a new conda environment from the environment file: 
 
         .. code-block:: console
 
-            conda env create -f jwebbinar-test-py38.yml
+            conda env create -f q3dfit-py38.yml
 
     #. Activate it:
 
         .. code-block:: console
 
-            conda activate jwebbinar-test-py38
+            conda activate q3dfit-py38
 
     #. Install ``q3dfit`` into the newly created environment:
 

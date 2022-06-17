@@ -1,21 +1,19 @@
-name: jwebbinar-test-py39
+name: q3dfit-py38
 channels:
-  - http://ssb.stsci.edu/astroconda
   - defaults
 dependencies:
   - ca-certificates=2021.10.26=hecd8cb5_2
-  - certifi=2021.10.8=py39hecd8cb5_2
+  - certifi=2021.10.8=py38hecd8cb5_2
   - libcxx=12.0.0=h2f01273_0
   - libffi=3.3=hb1e8313_2
   - ncurses=6.3=hca72f7f_2
   - openssl=1.1.1m=hca72f7f_0
-  - pip=21.2.4=py39hecd8cb5_0
-  - python=3.9.7=h88f2d9e_1
+  - pip=21.2.4=py38hecd8cb5_0
+  - python=3.8.12=h88f2d9e_0
   - readline=8.1.2=hca72f7f_1
-  - setuptools=58.0.4=py39hecd8cb5_0
+  - setuptools=58.0.4=py38hecd8cb5_0
   - sqlite=3.37.2=h707629a_0
   - tk=8.6.11=h7bc2e8c_0
-  - tzdata=2021e=hda174b7_0
   - wheel=0.37.1=pyhd3eb1b0_0
   - xz=5.2.5=h1de35cc_0
   - zlib=1.2.11=h4dc903c_4
@@ -41,6 +39,7 @@ dependencies:
     - fonttools==4.29.1
     - future==0.18.2
     - imageio==2.16.0
+    - importlib-resources==5.4.0
     - ipykernel==6.9.0
     - ipython==8.0.1
     - ipython-genutils==0.2.0
@@ -110,4 +109,4 @@ dependencies:
     - wcwidth==0.2.5
     - webencodings==0.5.1
     - widgetsnbextension==3.5.2
-prefix: /Users/drupke/opt/anaconda3/envs/jwebbinar-test-py39
+    - zipp==3.7.0

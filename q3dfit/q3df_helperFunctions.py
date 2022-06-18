@@ -147,17 +147,25 @@ def __get_spaxels(cube, cols=None, rows=None):
         nrows = 1
     else:
         nrows = rows[1]-rows[0]+1
-    colarr = np.empty((ncols, nrows), dtype=np.int32)
-    rowarr = np.empty((ncols, nrows), dtype=np.int32)
-    for i in range(nrows):
-        colarr[:, i] = np.arange(cols[0]-1, cols[1], dtype=np.int32)
-    for i in range(ncols):
-        rowarr[i, :] = np.arange(rows[0]-1, rows[1], dtype=np.int32)
-    # Flatten from 2D to 1D arrays to preserve indexing using only ispax
-    # currently not needed. fitloop expects 2D lists.
-    colarr = colarr.flatten()
-    rowarr = rowarr.flatten()
-    nspax = ncols * nrows
+
+    if len(cols) or len(rows) <= 2:
+        colarr = np.empty((ncols, nrows), dtype=np.int32)
+        rowarr = np.empty((ncols, nrows), dtype=np.int32)
+        for i in range(nrows):
+            colarr[:, i] = np.arange(cols[0]-1, cols[1], dtype=np.int32)
+        for i in range(ncols):
+            rowarr[i, :] = np.arange(rows[0]-1, rows[1], dtype=np.int32)
+
+        # Flatten from 2D to 1D arrays to preserve indexing using only ispax
+        # currently not needed. fitloop expects 2D lists.
+        colarr = colarr.flatten()
+        rowarr = rowarr.flatten()
+        nspax = ncols * nrows
+    if len(cols) or len(rows) >2:
+        colarr = cols
+        rowarr = rows
+        nspax = len(cols)*len(rows)
+
     return nspax, colarr, rowarr
 
 

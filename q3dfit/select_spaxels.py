@@ -34,7 +34,7 @@ def select_spaxels(infits, datext=0, varext=1, dqext=2, wavext=None,
         white_light_img = np.sum(flux,axis=2)
         white_light_img_std = np.sum(err,axis=2)**0.5
         SNR_map = white_light_img/white_light_img_std
-        spaxels_to_fit = np.where(SNR_map>5.)
+        spaxels_to_fit = np.where(SNR_map>10.)
 
     if len(wavelength_segments) > 0:
         SNR_map = np.zeros((flux.shape[0],flux.shape[1]))
@@ -56,7 +56,7 @@ def select_spaxels(infits, datext=0, varext=1, dqext=2, wavext=None,
     print('Number of spaxels to fit: ' + str(number_spaxels_to_fit))
 
 
-    return spaxels_to_fit,SNR_map
+    return list(spaxels_to_fit[0]),list(spaxels_to_fit[1])
 
 if __name__ == "__main__":
 #    cube = Cube(infile='../../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2.fits',datext=0, varext=1, dqext=2, wavext=None, wmapext=None)
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     infits = '../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2.fits'
     spaxles_to_fit = select_spaxels(infits, datext=0, dqext=2, varext=1, wavext=None,
                wmapext=None, plot=True, waveunit_in='micron',
-               waveunit_out='micron',wavelength_segments=wavelength_segments)
+               waveunit_out='micron',wavelength_segments=[])
 
 
 ##gd_indx_1 = set(np.where(flux != 0.)[0])

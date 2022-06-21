@@ -232,7 +232,6 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
     nspax, colarr, rowarr = __get_spaxels(cube, cols, rows)
 
     # execute FITLOOP
-
     execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, specConv,
                     onefit, quiet, logfile=logfile)
 

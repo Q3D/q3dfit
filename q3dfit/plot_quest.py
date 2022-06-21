@@ -108,4 +108,3 @@ def plot_quest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat,
         if 'argscontfit' in initdat:
             if 'outdir' in initdat['argscontfit']:
                 plt.savefig(initdat['argscontfit']['outdir']+initdat['label']+'_decomposition')
-        plt.show()

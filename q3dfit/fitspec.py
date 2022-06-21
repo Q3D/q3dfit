@@ -13,6 +13,7 @@ from q3dfit.airtovac import airtovac
 from q3dfit.masklin import masklin
 from q3dfit.interptemp import interptemp
 from scipy.interpolate import interp1d
+from q3dfit.q3dout import q3dout
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
@@ -707,12 +708,12 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     err = err_out
 
     # need to adjust the output values here...
-    outstr = {'fitran': fitran,
+    outstr = {'q3di_initdat': initdat,
+              'fitran': fitran,
               # Continuum fit parameters
               'ct_method': method,
               'ct_coeff': ct_coeff,
               'ct_ebv': ebv_star,
-              'ct_indx': ct_indx,
               'zstar': zstar,
               'zstar_err': zstar_err,
               'ct_add_poly_weights': add_poly_weights,
@@ -731,7 +732,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               # gd_indx is applied, and then ct_indx
               'gd_indx': gd_indx,  # cuts on various criteria
               'fitran_indx': fitran_indx,  # cuts on various criteria
-              #              'ct_indx': ct_indx,         # where emission is not masked, masking not in yet.
+              'ct_indx': ct_indx,         # where emission is not masked, masking not in yet.
               # Line fit parameters
               'noemlinfit': noemlinfit,  # was emission line fit done?
               'noemlinmask': noemlinmask,  # were emission lines masked?
@@ -750,7 +751,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
     # finish:
 
-    return outstr
+    #return outstr
+    q3dout_ij = q3dout(col, row, outstr)
+    return q3dout_ij, outstr
 
 
 # For diagnosing problems, print value of each parameter every iteration
@@ -759,3 +762,4 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 def per_iteration(pars, iteration, resid, *args, **kws):
     print(" ITER ", iteration, [f"{p.name} = {p.value:.5f}"
                                 for p in pars.values()])
+

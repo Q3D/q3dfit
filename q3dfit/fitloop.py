@@ -208,11 +208,12 @@ logfile : strarr, optional, default=None
 
             if not quiet:
                 print('FITLOOP: First call to FITSPEC')
-            structinit = fitspec(cube.wave, flux, err, dq, zstar, listlines,
+
+            q3dout_ij, structinit = fitspec(cube.wave, flux, err, dq, zstar, listlines,
                                  listlinesz, ncomp, specConv, initdat, quiet=quiet,
                                  siglim_gas=siglim_gas,
                                  siginit_gas=siginit_gas,
-                                 tweakcntfit=tweakcntfit, logfile=logfile)
+                                 tweakcntfit=tweakcntfit, col=i, row=j, logfile=logfile)
             print('FIT STATUS: '+str(structinit['fitstatus']), file=logfile)
             if not quiet:
                 print('FIT STATUS: '+str(structinit['fitstatus']))
@@ -249,13 +250,14 @@ logfile : strarr, optional, default=None
 
                 if not quiet:
                     print('FITLOOP: Second call to FITSPEC')
-                struct = fitspec(cube.wave, flux, err, dq, structinit['zstar'],
+
+                q3dout_ij, struct = fitspec(cube.wave, flux, err, dq, structinit['zstar'],
                                  listlines, listlinesz, ncomp, specConv, initdat,
                                  quiet=quiet, maskwidths=maskwidths_tmp,
                                  peakinit=peakinit_tmp,
                                  siginit_gas=siginit_gas_tmp,
                                  siglim_gas=siglim_gas,
-                                 tweakcntfit=tweakcntfit, logfile=logfile)
+                                 tweakcntfit=tweakcntfit, col=i, row=j, logfile=logfile)
                 print('FIT STATUS: '+str(structinit['fitstatus']), file=logfile)
                 if not quiet:
                     print('FIT STATUS: '+str(structinit['fitstatus']))

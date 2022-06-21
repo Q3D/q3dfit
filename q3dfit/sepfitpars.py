@@ -264,12 +264,14 @@ def sepfitpars(linelist, param, perror, maxncomp, waveran=None,
                         fluxpk[line][i] *= sigma_obs[line][i]/sigma[line][i]
                         fluxpkerr[line][i] *= sigma_obs[line][i]/sigma[line][i]
 
-                    # Compute total Gaussian flux
-                    # sigma and error need to be in wavelength space
-                    gflux = gaussflux(fluxpk_obs[line][i], sigmatmp,
-                                      normerr=fluxpkerr_obs[line][i],
-                                      sigerr=sigmaerr_obs[line][i] /
-                                      (constants.c / 1.e3) * wave[line][i])
+                        # Compute total Gaussian flux
+                        # sigma and error need to be in wavelength space
+                        gflux = gaussflux(fluxpk_obs[line][i], sigmatmp,
+                                          normerr=fluxpkerr_obs[line][i],
+                                          sigerr=sigmaerr_obs[line][i] /
+                                          (constants.c / 1.e3) * wave[line][i])
+                    else:
+                        gflux = {'flux': 0., 'flux_err': 0.}
                     flux[line][i] = gflux['flux']
                     fluxerr[line][i] = gflux['flux_err']
 

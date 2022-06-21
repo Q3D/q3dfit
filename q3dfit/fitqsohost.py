@@ -94,6 +94,11 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
         lmverbose = 2
     fit_kws = {'verbose': lmverbose}
 
+    # Add additional parameter settings for scipy.optimize.least_squares
+    if 'argslmfit' in kwargs:
+        for key, val in kwargs['argslmfit'].items():
+            fit_kws[key] = val
+
     result = ymod.fit(iflux, params, weights=np.sqrt(iweight),
                       qsotemplate=qsoflux[index],
                       wave=iwave, x=iwave, method='least_squares',

@@ -58,32 +58,16 @@
 #
 
 import numpy as np
-import pdb
-from q3dfit.gaussarea import gaussarea
+from math import pi
 
 
 def gaussflux(norm, sigma, normerr=None, sigerr=None):
 
-    a = 0.5 / sigma**2.
-    if sigerr:
-        aerr = sigerr/sigma**3.
-        gint = gaussarea(a, aerr=aerr)
-    else:
-        gint = gaussarea(a)
-    flux = norm*gint['area']
-
-    if sigerr:
-        ginterr = gint['area_err']
-    else:
-        ginterr = 0.
-    if normerr is None:
-        normerr = 0.
-
+    flux = norm * sigma * np.sqrt(2. * pi)
     fluxerr = 0.
 
-    igdn = ((norm > 0) and (gint['area'] > 0))
-    if igdn:
-        fluxerr = flux*np.sqrt((normerr/norm)**2. + (ginterr/gint['area'])**2.)
+    if normerr is not None and sigerr is not None:
+        fluxerr = flux*np.sqrt((normerr/norm)**2. + (sigerr/sigma)**2.)
 
     outstr = {'flux': flux, 'flux_err': fluxerr}
 

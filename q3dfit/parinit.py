@@ -20,7 +20,7 @@ import os
 
 def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, specConv,
             lineratio=None, siglim=None, sigfix=None, blrcomp=None,
-            blrlines=None, specres=None):
+            blrlines=None, specres=None, waves=None):
 
     # Get fixed-ratio doublet pairs for tying intensities
     data_path = os.path.abspath(q3dfit.data.__file__)[:-11]
@@ -30,10 +30,11 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, sp
         if doublets['fixed_ratio'][idx] == 1:
             dblt_pairs[doublets['line2'][idx]] = doublets['line1'][idx]
 
-    if not specres:
-        specres = np.float32(0.)
-    else:
-        specres = np.float32(specres)
+    # pre-SPECRES object
+    #if not specres:
+    #    specres = np.float32(0.)
+    #else:
+    #    specres = np.float32(specres)
     # A reasonable lower limit of 5d for physicality
     if siglim is None:
         siglim = np.array([5., 2000.])
@@ -76,13 +77,18 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, sp
             if i != len(psplit)-3:
                 lmline += '_'
         line = lmlabel(lmline, reverse=True)
+        inrange = True
+        if waves is not None:
+            if linelistz[line.label][0] > max(waves) or \
+                    linelistz[line.label][0] < min(waves):
+                inrange = False
         # ... the final two underscores separate the line label from the comp
         # and gaussian parname
         comp = int(psplit[len(psplit)-2])  # string for line component
         gpar = psplit[len(psplit)-1]  # parameter name in manygauss
         # Process input values
         vary = 'True'
-        if gpar == 'flx':
+        if gpar == 'flx' and inrange:
             value = initflux[line.label][comp]
             limited = np.array([1, 0], dtype='uint8')
             limits = np.array([0., 0.], dtype='float32')
@@ -117,8 +123,10 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, sp
                 tied = f'{linetie_tmp.lmlabel}_{comp}_sig'
             else:
                 tied = ''
+#            if not inrange:
+#                vary = False
         else:
-            value = specres
+            value = 0.  # specres
             limited = None
             limits = None
             vary = False

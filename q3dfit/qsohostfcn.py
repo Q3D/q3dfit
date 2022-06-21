@@ -299,7 +299,7 @@ def qsohostfcn(wave, params_fit=None, qsoflux=None,
             gaussian_model_parameters\
                 [gaussian_name+'sig'].set(value=blrpar[counter + 2],
                                           min=2000., max=6000.)
-            if blronly:
+            if blronly and i == 0:
                 ymod = gaussian_model
                 params = gaussian_model_parameters
             else:

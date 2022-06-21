@@ -318,28 +318,28 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 templateflux_tmp = b'0'
 
             if 'argscontfit' in initdat:
-                argscontfit_use = initdat['argscontfit']
+                argscontfit = initdat['argscontfit']
             else:
-                argscontfit_use = dict()
+                argscontfit = dict()
             if initdat['fcncontfit'] == 'fitqsohost':
-                argscontfit_use['fitran'] = fitran
-            if 'refit' in argscontfit_use.keys():
-                if argscontfit_use['refit'] == 'ppxf':
-                    argscontfit_use['index_log'] = ct_indx_log
-                    argscontfit_use['flux_log'] = gdflux_log
-                    argscontfit_use['err_log'] = gderr_log
+                argscontfit['fitran'] = fitran
+            if 'refit' in argscontfit.keys():
+                if argscontfit['refit'] == 'ppxf':
+                    argscontfit['index_log'] = ct_indx_log
+                    argscontfit['flux_log'] = gdflux_log
+                    argscontfit['err_log'] = gderr_log
                     if 'siginit_stars' in initdat:
-                        argscontfit_use['siginit_stars'] = \
+                        argscontfit['siginit_stars'] = \
                             initdat['siginit_stars']
 
             continuum, ct_coeff, zstar = \
                 fcncontfit(gdlambda, gdflux, gdinvvar,
                            templatelambdaz_tmp,
                            templateflux_tmp, ct_indx, zstar,
-                           quiet=quiet, **argscontfit_use)
+                           quiet=quiet, **argscontfit)
 
-            if 'refit' in argscontfit_use.keys():
-                if argscontfit_use['refit'] == 'ppxf':
+            if 'refit' in argscontfit.keys():
+                if argscontfit['refit'] == 'ppxf':
                     ppxf_sigma = ct_coeff['ppxf_sigma']
                 else:
                     ppxf_sigma = 0.
@@ -528,7 +528,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             argsinitpar = initdat['argsinitpar']
         else:
             argsinitpar = dict()
-        if 'siglim_gas' is not None:
+        if fcninitpar == 'parinit':
+            argsinitpar['waves'] = gdlambda
+        if siglim_gas is not None:
             argsinitpar['siglim'] = siglim_gas
         emlmod, fit_params, siglim_gas = \
             run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,

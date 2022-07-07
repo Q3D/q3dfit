@@ -1,0 +1,16 @@
+|      mode| grat_filt|lamb_min|lamb_max|
+|      char|      char|  double|  double|
+|          |          |  micron|  micron|
+|      null|      null|    null|    null|
+        mrs      ch1_a     4.88     5.75 
+        mrs      ch1_b     5.63     6.63 
+        mrs      ch1_c     6.41     7.52 
+        mrs      ch2_a     7.48     8.76 
+        mrs      ch2_b     8.71    10.23 
+        mrs      ch2_c    10.02    11.75 
+        mrs      ch3_a    11.52    13.49 
+        mrs      ch3_b    13.36    15.65 
+        mrs      ch3_c    15.43    18.08 
+        mrs      ch4_a    17.65    20.94 
+        mrs      ch4_b    20.41    24.22 
+        mrs      ch4_c    23.88    28.34 

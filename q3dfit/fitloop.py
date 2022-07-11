@@ -291,9 +291,11 @@ logfile : strarr, optional, default=None
                     newncomp = \
                         fcncheckcomp(linepars, initdat['linetie'],
                                      ncomp, siglim_gas)
-
                 if len(newncomp) > 0:
                     for line, nc in newncomp.items():
+                        if nc==0:   # CB: is there a meaning to fitting with zero components?
+                            dofit = False
+                            break
                         print(f'FITLOOP: Repeating the fit of {line} with ' +
                               f'{nc} components.', file=logfile)
                         if not quiet:

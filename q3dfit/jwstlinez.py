@@ -68,7 +68,7 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit = 'micron'):
     gf = grat_filt.lower()
     wu = waveunit.lower() #test w/o to see if necessary
     
-    filename = 'lines_' + gal + '_' + inst + '_' + gf + '_jwst.tbl'
+    # filename variable based on instrument configuration
     
     if ((wu!='angstrom') & (wu!='micron')):
         print('Wave unit ',waveunit,' not recognized, proceeding with default, microns\n')
@@ -118,20 +118,54 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit = 'micron'):
     tg = lines.group_by('observed')
     lines_inrange = tg.groups.filter(inrange)
     
-    
-   # unit conversion from program standard microns to angstroms
-   # FIX THIS
+ 
+    # converting table to desired units
     if (wu=='angstrom'):
         print('angstroms unit selected\n')
-        #lines_inrange['lines'] = (lines_inrange['lines']) .to (u.angstrom)
-        #lines_inrange['observed'] = (lines_inrange['observed']) .to (u.angstrom)
-        
+
         lines_inrange['lines'] = (lines_inrange['lines']*1.e4).round(decimals = 7)
         lines_inrange['lines'].unit = 'angstrom'
+        
         lines_inrange['observed'] = (lines_inrange['observed']*1.e4).round(decimals = 7)
         lines_inrange['observed'].unit = 'angstrom'
         
+        # filename variable determined by units
+        filename = 'lines_' + gal + '_' + str(lamb_min * 1.e4) + '_to_' + str(lamb_max * 1.e4) + \
+            '_angstroms_jwst.tbl'
+            
+    else: 
+        # filename for microns default
+        filename = 'lines_' + gal + '_' + str(lamb_min) + '_to_' + str(lamb_max) + \
+            '_microns_jwst.tbl'
+      
+    # var used to determine if a list has >0 entries along with printing length
     list_len = len(lines_inrange['lines'])
+    
+    # Extremely long and tedious comments thread to code in
+    lines_inrange.meta['comments'] = \
+    ['Tables generated from reference tables created by Nadia Zakamska',
+    'All wavelengths are assumed to be in VACUUM',
+    '>LINELIST_TSB:',
+    '   Data Source 1: Storchi-Bergmann et al. 2009, MNRAS, 394, 1148',
+    '   Data Source 2: Glikman et al. 2006, ApJ, 640, 579 (but looked up on NIST)',
+    '>LINELIST_H2:',
+    '   Data Source 1: JWST H_2 lines between 1 and 2.5 microns from this link:', 
+    '   https://github.com/spacetelescope/jdaviz/tree/main/jdaviz/data/linelists',
+    '   H2_alt.csv file; one typo corrected (the line marked as 2-9 Q(1) replaced with 2-0 Q(1))',
+    '   Data Source 2: ISO H_2 lines from 2.5 microns onwards from this link:', 
+    '   https://www.mpe.mpg.de/ir/ISO/linelists, file H2.html',
+    '>LINELIST_FINE_STR',
+    '   Data Source 1: ISO list of fine structure lines at 2-205 micron', 
+    '   https://www.mpe.mpg.de/ir/ISO/linelists/FSlines.html',
+    '>LINELIST_DSNR_MICRON:',
+    '   Data Sources: line lists by David S.N. Rupke created both in vacuum',
+    '   and in air and recomputed on the common vacuum grid using Morton 1991.',
+    '   Morton is only accurate above 2000A, so the six lines with air',
+    '   wavelengths under 2000A are explicitly fixed based on NIST database.',
+    '   A handful of previousy missing Latex labels were added by hand to the',
+    '   original two tables before combining.',
+    '   Original table converted to microns to align with program standard measurements',
+    '',]
     
     if (list_len == 0):
         print('There are no emission lines in the provided sampling range\n')

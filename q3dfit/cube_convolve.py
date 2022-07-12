@@ -12,7 +12,11 @@ def circular_mask(r):
     return mask
 
 
-def convolve_cube(infits, datext=0, varext=1, dqext=2, wavext=None,
+def box_mask(r):
+    '''box mask'''
+    return np.ones((r*2,r*2))
+
+def convolve_cube(infits, method = 'Gaussian', datext=0, varext=1, dqext=2, wavext=None,
                    wmapext=None, plot=True, waveunit_in='micron',
                    waveunit_out='micron',wavelength_segments=[],outfits=None):
     
@@ -41,7 +45,7 @@ def convolve_cube(infits, datext=0, varext=1, dqext=2, wavext=None,
 
     cube_convolved = flux.copy()
     sizes = np.linspace(0.5,0,flux.shape[2])
-    method = 'Gaussian'
+    
     for i in np.arange(0,flux.shape[2]):
         if method == 'Gaussian':
            cube_convolved[:,:,i] = gaussian_filter(cube_convolved[:,:,i],1+sizes[i])
@@ -49,6 +53,8 @@ def convolve_cube(infits, datext=0, varext=1, dqext=2, wavext=None,
             cube_convolved[:,:,i] = median_filter(cube_convolved[:,:,i],footprint=circular_mask(10))
         if method == 'circular':
             cube_convolved[:,:,i] = convolve(cube_convolved[:,:,i],circular_mask(2+np.int(sizes[i])))
+        if method == 'boxcar':
+            cube_convolved[:,:,i] = convolve(cube_convolved[:,:,i],box_mask(2+np.int(sizes[i])))
 
 #    plt.plot(np.log10(flux[15,15]),label='original')
 #    plt.plot(np.log10(cube_convolved[15,15]),label='convolved')

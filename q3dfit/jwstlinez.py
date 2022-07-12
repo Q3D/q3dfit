@@ -54,7 +54,8 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit = 'micron'):
     lines : astropy table
         An astropy table of emission lines with keywords 'name', 'lines', q'linelab', 'observed'
         Example Row: H2_43_Q6, 2.98412, H$_2$(4-3) Q(6), 4.282212 
-        
+        Interanlly, everything is processed in microns, so filename inclues range values in microns. 
+        The units of the table can be angstroms or microns, depending on the entered value of waveunit.
     
     
     """
@@ -139,7 +140,7 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit = 'micron'):
         print('There are ' + str(list_len) + ' emission lines visible with this instrument configuration.\n')
         
         ascii.write(lines_inrange, filename, format = 'ipac', overwrite=True)
-        shutil.move((home + '/q3dfit/'+ filename), (home + '/q3dfit/data/linelists'))
+        shutil.move((home + '/q3dfit/q3dfit/'+ filename), (home + '/q3dfit/q3dfit/data/linelists'))
 
         print('File written as ' + filename, sep='')        
         print('Under the directory : ' + home + '/q3dfit/data/linelists')

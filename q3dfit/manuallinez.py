@@ -35,9 +35,9 @@ def manualline(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     gal : str, required
         Galaxy name for filenaming
     lamb_min : flt, required
-        minimum wavelength value of instrument, units determined by waveunit value
+        minimum OBSERVED wavelength value of instrument, units determined by waveunit value
     lamb_max : flt, required
-        maximum wavelength of instrument, units determined by waveunit value
+        maximum OBSERVED wavelength of instrument, units determined by waveunit value
     vacuum : bool, optional, default = True
         if false, enables conversion to air wavelengths
     waveunit : str, optional, default = 'micron'
@@ -51,6 +51,7 @@ def manualline(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
         An astropy table of emission lines with keywords 'name', 'lines', 'linelab', 'observed'
         Example Row: H2_43_Q6, 2.98412, H$_2$(4-3) Q(6), 4.282212 
         Interanlly, everything is processed in microns, so filename inclues range values in microns. 
+        The units of the table can be angstroms or microns, depending on the entered value of waveunit.
             
     """
  
@@ -139,7 +140,7 @@ def manualline(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
         
         # writing and moving the table to the linelists folder
         ascii.write(lines_inrange, filename, format = 'ipac', overwrite=True)
-        shutil.move((home + '/q3dfit/'+ filename), (home + '/q3dfit/data/linelists'))
+        shutil.move((home + '/q3dfit/q3dfit/'+ filename), (home + '/q3dfit/q3dfit/data/linelists'))
         
 
         print('File written as: ' + filename, sep='')

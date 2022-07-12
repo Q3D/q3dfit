@@ -12,11 +12,11 @@ from astropy import units as u
 from pathlib import Path
 import shutil
 
-def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
+def restline(gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     """
-    Similar to jwstline(), manuallines() produces a table with emission lines in the provided range. 
-    Unlike jwstline(), this function can solve for a user-specified range of wavelengths and can account for 
-    air wavelength conversions.     Creates a table of emission lines expected to be found in a given instrument configuration for JWST. 
+    Similar to jwstline()and  manuallines(), restline() produces a table with emission lines in the provided range. 
+    Unlike the other 2 functions, this function has lamb_min and lamb_max inputs of REST wavelengths. 
+    Creates a table of emission lines expected to be found in a given instrument configuration for JWST. 
     References stored under q3dfit/linelists are .tbl of filenames:
             
         lines_H2
@@ -30,14 +30,13 @@ def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     Parameters
     ----------
     
-    z : flt, required
-        Galaxy redshift
+
     gal : str, required
         Galaxy name for filenaming
     lamb_min : flt, required
-        minimum OBSERVED wavelength value of instrument, units determined by waveunit value
+        minimum REST wavelength value of instrument, units determined by waveunit value
     lamb_max : flt, required
-        maximum OBSERVED wavelength of instrument, units determined by waveunit value
+        maximum REST wavelength of instrument, units determined by waveunit value
     vacuum : bool, optional, default = True
         if false, enables conversion to air wavelengths
     waveunit : str, optional, default = 'micron'
@@ -92,26 +91,24 @@ def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
 
     elif (vacuum == False):
         if (wu == 'angstrom'):
-            temp=1.e4/(tcol*(z+1))
+            temp=1.e4/tcol
             lines_air_z=lines['lines']/(1.+6.4328e-5 + 2.94981e-2/(146.-temp**2)+2.5540e-4/(41.-temp**2))
 
         else: 
-            temp = 1/(tcol*(z+1))
+            temp = 1/tcol
             lines_air_z=lines['lines']/(1.+6.4328e-5 + 2.94981e-2/(146.-temp**2)+2.5540e-4/(41.-temp**2))
 
-        #
+        
     elif (vacuum == True):
-        lines_air_z = np.multiply(tcol,z+1)
-            
-
-    #redshifts the table
-    #rounds the floats in list CHANGE IF MORE PRECISION NEEDED
+        lines_air_z = tcol
+    
+        #rounds the floats in list CHANGE IF MORE PRECISION NEEDED
     round_lines = lines_air_z.round(decimals = sig)
-    #adds column to lines table corresponding w/ redshifted wavelengths
+        #adds column to lines table corresponding w/ redshifted wavelengths
     lines['observed'] = round_lines
  
  
-    #helper function to identify lines in instrument range
+     #helper function to identify lines in instrument range
     def inrange(table, key_colnames):
          colnames = [name for name in table.colnames if name  in key_colnames]
          for colname in colnames:

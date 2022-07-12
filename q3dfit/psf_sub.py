@@ -24,24 +24,58 @@ def make_PSF(datacube,cube,wavelength):
     psf = np.mean(slices,axis=0)
     return psf
                       
-def subtract_psf(datacube,psf):
+def subtract_psf(infits,psf,datext=0, varext=1, dqext=2, wavext=None,
+                 wmapext=None, waveunit_in='micron',
+                 waveunit_out='micron', outfits = None):
     '''Subtracts the PSF from the image at each wavelength slice and returns a PSF subtracted cube'''
-    temp_cube=datacube.copy()
+
+    cube = Cube(infits, datext=datext, dqext=dqext,
+                varext=varext, wavext=wavext, wmapext=wmapext,
+                waveunit_in=waveunit_in, waveunit_out=waveunit_out)
+
+    flux = cube.dat
+    err = cube.var
+    dq = cube.dq
+    
+    indx_bd = np.where((flux == np.inf) | (err == np.inf))
+    flux[indx_bd] = 0.
+    err[indx_bd] = 0.
+    
+    #check for nan values
+    indx_bd = np.where((flux == np.nan) | (err == np.nan))
+    flux[indx_bd] = 0.
+    err[indx_bd] = 0.
+    
+    #checking bad data quality flag
+    indx_bd = np.where(dq!=0)
+    flux[indx_bd] = 0.
+    err[indx_bd] = 0.
+    
+    temp_cube=flux.copy()
     
     if len(psf.shape) == 2:#checking if PSF is a 2D or 3D array
         psf = psf/psf.max() #normalize PSF
         loc_psf_max = np.where(psf == psf.max())
-        for num in np.arange(0,datacube.shape[2]):
-            scale=datacube[loc_psf_max[0][0],loc_psf_max[1][0],num]
+        for num in np.arange(0,flux.shape[2]):
+            scale=flux[loc_psf_max[0][0],loc_psf_max[1][0],num]
             temp_cube[:,:,num]+=-psf*scale
 
     if len(psf.shape) == 3:#checking if PSF is a 2D or 3D array
         for num in np.arange(0,datacube.shape[2]):
             psf_num = psf[:,:,num]/psf[:,:,num].max() #normalize PSF at a specific wavelength location
             loc_psf_max = np.where(psf_num == psf_num.max) #location of maximum PSF
-            scale=datacube[loc_psf_max[0][0],loc_psf_max[1][0],num]
+            scale=flux[loc_psf_max[0][0],loc_psf_max[1][0],num]
             temp_cube[:,:,num]+=-psf_num*scale
     
+    if outfits != None:
+        hdu = fits.open(infits)
+        if 'SCI' in hdu:
+            hdu['SCI'].data = temp_cube
+        else:
+            hdu[datext].data = temp_cube
+            hdu.writeto(outfits,overwrite=True)
+
+
     return temp_cube
 
 
@@ -50,6 +84,7 @@ if __name__ == "__main__":
     
     wavelength_segments = [[10,100],[200,250]]
     infits = '../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2.fits'
+    outfits = '../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2_psf_sub.fits'
     #    infits = '../NIRspec_sim/NRS00001-QG-F100LP-G140H_comb_1234_g140h-f100lp_s3d.fits'
     smoothed = convolve_cube(infits, datext=0, varext=1, dqext=2, wavext=None,
                              wmapext=None, plot=True,
@@ -57,10 +92,12 @@ if __name__ == "__main__":
 
 
     cube = Cube(infits,datext=0, varext=1, dqext=2,wmapext=None,)
-    psf = make_PSF(smoothed,cube,[[1.637,1.639]])
+    psf = make_PSF(cube.dat,cube,[[1.637,1.639]])
 
-    psf_sub_data = subtract_psf(smoothed,psf)
-    HDU= fits.PrimaryHDU(psf_sub_data)
-    HDU.writeto('../NIRspec_sim/NRS00001-QG-F100LP-G140H_comb_1234_g140h-f100lp_s3d_psfsub.fits',overwrite=True)
+    psf_sub_data = subtract_psf(infits,psf,datext=0, varext=1, dqext=2, wavext=None,
+                            wmapext=None, waveunit_in='micron',
+                            waveunit_out='micron', outfits = outfits)
+#    HDU= fits.PrimaryHDU(psf_sub_data)
+#    HDU.writeto('../NIRspec_sim/NRS00001-QG-F100LP-G140H_comb_1234_g140h-f100lp_s3d_psfsub.fits',overwrite=True)
 
 

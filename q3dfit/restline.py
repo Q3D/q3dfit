@@ -57,6 +57,8 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
             range values in microns. 
         The units of the table can be angstroms or microns, depending on the 
             entered value of waveunit.
+        Output table contains comments descring data sources
+
             
     """
  
@@ -83,8 +85,10 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
     lines_DSNR = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_DSNR_micron.tbl',format='ipac')
     lines_fine_str = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_fine_str.tbl',format='ipac')
     lines_TSB = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_TSB.tbl',format='ipac')     
+    lines_PAH = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_PAH.tbl',format='ipac')     
 
-    lines = vstack([lines_H2, lines_DSNR, lines_fine_str, lines_TSB])    
+    #add table name here for vstack
+    lines = vstack([lines_H2, lines_DSNR, lines_fine_str, lines_TSB, lines_PAH])    
     #--------------------------------------------------------------------------
 
     lines_air_z = lines.columns[1]
@@ -125,10 +129,10 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
     
     # var used to determine if a list has >0 entries along with printing length
     list_len = len(lines_inrange['lines'])
-    
-    # Extremely long and tedious comments thread to code in
+
+    #comments for each generated table    
     lines_inrange.meta['comments'] = \
-    ['Tables generated from reference tables created by Nadia Zakamska',
+    ['Tables generated from reference tables created by Nadia Zakamska and Ryan McCrory',
     'All wavelengths are assumed to be in VACUUM',
     '>LINELIST_TSB:',
     '   Data Source 1: Storchi-Bergmann et al. 2009, MNRAS, 394, 1148',
@@ -150,6 +154,9 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
     '   A handful of previousy missing Latex labels were added by hand to the',
     '   original two tables before combining.',
     '   Original table converted to microns to align with program standard measurements',
+    '>LINELIST_PAH:',
+    '   Data Source 1: data from the link',
+    '   https://github.com/spacetelescope/jdaviz/blob/main/jdaviz/data/linelists',
     '',]
 
  

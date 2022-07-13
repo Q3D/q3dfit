@@ -40,9 +40,11 @@ def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     gal : str, required
         Galaxy name for filenaming
     lamb_min : flt, required
-        minimum OBSERVED wavelength value of instrument, units determined by waveunit value
+        minimum OBSERVED wavelength value of instrument, units determined by 
+        waveunit value
     lamb_max : flt, required
-        maximum OBSERVED wavelength of instrument, units determined by waveunit value
+        maximum OBSERVED wavelength of instrument, units determined by waveunit
+        value
     vacuum : bool, optional, default = True
         if false, enables conversion to air wavelengths
     waveunit : str, optional, default = 'micron'
@@ -53,10 +55,15 @@ def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     --------
         
     lines : astropy table
-        An astropy table of emission lines with keywords 'name', 'lines', 'linelab', 'observed'
+        An astropy table of emission lines with keywords 'name', 'lines', 
+            'linelab', 'observed'
         Example Row: H2_43_Q6, 2.98412, H$_2$(4-3) Q(6), 4.282212 
-        Interanlly, everything is processed in microns, so filename inclues range values in microns. 
-        The units of the table can be angstroms or microns, depending on the entered value of waveunit.
+        Interanlly, everything is processed in microns, so filename inclues 
+            range values in microns. 
+        The units of the table can be angstroms or microns, depending on the 
+            entered value of waveunit.
+        Output table contains comments descring data sources
+
             
     """
  
@@ -83,8 +90,10 @@ def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     lines_DSNR = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_DSNR_micron.tbl',format='ipac')
     lines_fine_str = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_fine_str.tbl',format='ipac')
     lines_TSB = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_TSB.tbl',format='ipac')     
+    lines_PAH = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_PAH.tbl',format='ipac')     
 
-    lines = vstack([lines_H2, lines_DSNR, lines_fine_str, lines_TSB])    
+
+    lines = vstack([lines_H2, lines_DSNR, lines_fine_str, lines_TSB, lines_PAH])    
     #--------------------------------------------------------------------------
 
     
@@ -148,10 +157,10 @@ def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     
     # var used to determine if a list has >0 entries along with printing length
     list_len = len(lines_inrange['lines'])
-    
-    # Extremely long and tedious comments thread to code in
+
+    #comments for each generated table    
     lines_inrange.meta['comments'] = \
-    ['Tables generated from reference tables created by Nadia Zakamska',
+    ['Tables generated from reference tables created by Nadia Zakamska and Ryan McCrory',
     'All wavelengths are assumed to be in VACUUM',
     '>LINELIST_TSB:',
     '   Data Source 1: Storchi-Bergmann et al. 2009, MNRAS, 394, 1148',
@@ -173,8 +182,10 @@ def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     '   A handful of previousy missing Latex labels were added by hand to the',
     '   original two tables before combining.',
     '   Original table converted to microns to align with program standard measurements',
-    '',]
-    
+    '>LINELIST_PAH:',
+    '   Data Source 1: data from the link',
+    '   https://github.com/spacetelescope/jdaviz/blob/main/jdaviz/data/linelists',
+    '',]    
     
     if (list_len == 0):
 

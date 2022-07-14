@@ -15,11 +15,11 @@ import shutil
 def restline(gal, lamb_min, lamb_max, waveunit='micron'):
     """
     Similar to jwstlinez() and  observedlinez(), restline() produces a table 
-        with emission lines in the provided range. 
+    with emission lines in the provided range. 
     Unlike the other 2 linelist functions, this function has REST wavelength
-        lamb_min and lamb_max inputs. 
+    lamb_min and lamb_max inputs. 
     This function is useful for identifying various emissions in a rest
-        spectrum for fitting and analysis.
+    spectrum for fitting and analysis.
     In this way, the funtion operates a lot like a search function.  
     
     All input wavelengths are assumed to be in the REST FRAME!
@@ -55,12 +55,12 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
         
     lines_...tbl : astropy table
         An astropy table of emission lines with keywords 'name', 'lines', 
-            'linelab'
+        'linelab'
         Example Row: H2_43_Q6, 2.98412, H$_2$(4-3) Q(6), 4.282212 
         Interanlly, everything is processed in microns, so filename inclues 
-            range values in microns. 
+        range values in microns. 
         The units of the table can be angstroms or microns, depending on the 
-            entered value of waveunit.
+        entered value of waveunit.
         Output table contains comments descring data sources
 
             

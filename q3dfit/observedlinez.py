@@ -20,7 +20,7 @@ def observedlinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     wavelengths and can account for air wavelength conversions.
     The column 'observed' accounts for both redshifting and air refraction. 
     It reports an expected center for an emission distribution and can be used
-        to identify unknown emission lines for fitting. 
+    to identify unknown emission lines for fitting. 
     
     All input wavelengths are assumed to be REDSHIFTED!
     
@@ -61,12 +61,13 @@ def observedlinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
         
     lines : astropy table
         An astropy table of emission lines with keywords 'name', 'lines', 
-            'linelab', 'observed'
+        'linelab', 'observed'
         Example Row: H2_43_Q6, 2.98412, H$_2$(4-3) Q(6), 4.282212 
         Interanlly, everything is processed in microns, so filename inclues 
-            range values in microns. 
+        range values in microns. 
         The units of the table can be angstroms or microns, depending on the 
-            entered value of waveunit.
+        entered value of waveunit.
+        
         Output table contains comments descring data sources
 
             
@@ -219,6 +220,4 @@ def observedlinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
         
 
         print('File written as: ' + filename, sep='')
-        print('under the directory : '+ home + '/q3dfit/data/linelists\n')
-      
-            
+        print('under the directory : '+ home + '/q3dfit/data/linelists\n')            

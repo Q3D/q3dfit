@@ -16,10 +16,10 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit = 'micron'):
     
     """
     Creates a table of emission lines expected to be found in a given 
-        instrument configuration for JWST. 
+    instrument configuration for JWST. 
     The 'observed' column displays a redshifted emission line center calculated
-        using the input z value. Therefore, it is only as precise as the 
-        known z value. 
+    using the input z value. Therefore, it is only as precise as the 
+    known z value. 
         
     References stored under q3dfit/data/linelists are .tbl of filenames:
     
@@ -30,13 +30,13 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit = 'micron'):
     lines_PAH.tbl
     
     Data for instrument configurations in microns can be found in 
-        q3dfit/data/jwst_tables in the files:
+    q3dfit/data/jwst_tables in the files:
             
     miri.tbl
     nirspec.tbl
     
     String inputs are not case sensitive, but must be entered with exact 
-        spelling. 
+    spelling. 
     Otherwise, the function will return errors. 
     
     
@@ -57,10 +57,12 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit = 'micron'):
         NIRSpec Inputs: IFU, MOS, FSs, BOTS
         MIRI Inputs: MRS
     grat_filt : grating and filter combination for NIRSpec or channel for MIRI
-        NIRSpec Inputs: G140M_F0701P, G140M_F1001P, G235M_F1701P, G395M_F2901P,
+        NIRSpec Inputs: 
+            G140M_F0701P, G140M_F1001P, G235M_F1701P, G395M_F2901P, 
             G140H_F0701P, G140H_F1001P, G235H_F1701P, G395H_F2901P, Prism_Clear
-        MIRI Inputs: Ch1_A, Ch1_B, Ch1_C, Ch2_A, Ch2_B, Ch2_C, Ch3_A, Ch3_B, 
-            Ch3_C, Ch4_A, Ch4_B, Ch4_C
+        MIRI Inputs: 
+            Ch1_A, Ch1_B, Ch1_C, Ch2_A, Ch2_B, Ch2_C, Ch3_A, Ch3_B, Ch3_C, 
+            Ch4_A, Ch4_B, Ch4_C
     waveunit : str, default='micron'
         Units desired for output tables. 
         Inputs are 'micron' or 'angstrom'
@@ -70,12 +72,13 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit = 'micron'):
     
     lines : astropy table
         An astropy table of emission lines with keywords 'name', 'lines', 
-            q'linelab', 'observed'
+        'linelab', 'observed'
         Example Row: H2_43_Q6, 2.98412, H$_2$(4-3) Q(6), 4.282212 
+        
         Interanlly, everything is processed in microns, so filename inclues 
-            range values in microns. 
+        range values in microns. 
         The units of the table can be angstroms or microns, depending on the 
-            entered value of waveunit.
+        entered value of waveunit.
         Output table contains comments descring data sources
     
     
@@ -207,4 +210,4 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit = 'micron'):
         print('File written as ' + filename, sep='')        
         print('Under the directory : ' + home + '/q3dfit/data/linelists')
                 
-    
+jwst

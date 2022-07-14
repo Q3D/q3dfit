@@ -1,3 +1,5 @@
+/ This table was generated from data from this link:
+/ https://jwst-docs.stsci.edu/jwst-mid-infrared-instrument/miri-observing-modes/miri-medium-resolution-spectroscopy
 |      mode| grat_filt|lamb_min|lamb_max|
 |      char|      char|  double|  double|
 |          |          |  micron|  micron|

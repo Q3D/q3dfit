@@ -14,19 +14,22 @@ import shutil
 
 def restline(gal, lamb_min, lamb_max, waveunit='micron'):
     """
-    Similar to jwstline()and  manuallines(), restline() produces a table with 
-        emission lines in the provided range. 
+    Similar to jwstlinez() and  observedlinez(), restline() produces a table 
+        with emission lines in the provided range. 
     Unlike the other 2 linelist functions, this function has REST wavelength
         lamb_min and lamb_max inputs. 
+    This function is useful for identifying various emissions in a rest
+        spectrum for fitting and analysis.
+    In this way, the funtion operates a lot like a search function.  
     
     All input wavelengths are assumed to be in the REST FRAME!
     
     References stored under q3dfit/linelists are .tbl of filenames:
             
-        lines_H2
-        lines_DSNR_micron   
-        lines_TSB
-        lines_ref
+        lines_H2.tbl
+        lines_DSNR_micron.tbl   
+        lines_TSB.tbl
+        lines_ref.tbl
         
     More tables can be added manually if saved in the linelists folder and 
     called in this function definition.
@@ -36,12 +39,13 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
     ----------
     
     gal : str, required
-        Galaxy name for filenaming
+        Galaxy name for filenaming. 
+        Can also be customized for any other desired filename designations
     lamb_min : flt, required
-        minimum REST wavelength value of instrument, units determined by 
+        minimum <REST> wavelength value of instrument, units determined by 
             waveunit value
     lamb_max : flt, required
-        maximum REST wavelength of instrument, units determined by waveunit value
+        maximum <REST> wavelength of instrument, units determined by waveunit value
     waveunit : str, optional, default = 'micron'
         determines the unit of input wavelengths and output table
         acceptable inputs are 'micron' and 'angstrom'

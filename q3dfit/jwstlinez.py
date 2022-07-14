@@ -15,24 +15,40 @@ Created on Tue Jun 14 15:51:39 2022
 def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit = 'micron'):
     
     """
-    Creates a table of emission lines expected to be found in a given instrument configuration for JWST. 
-    References stored under linelists are .tbl of filenames:
+    Creates a table of emission lines expected to be found in a given 
+        instrument configuration for JWST. 
+    The 'observed' column displays a redshifted emission line center calculated
+        using the input z value. Therefore, it is only as precise as the 
+        known z value. 
+        
+    References stored under q3dfit/data/linelists are .tbl of filenames:
     
-    lines_H2
-    lines_DSNR_micron   
-    lines_TSB
-    lines_ref
+    lines_H2.tbl
+    lines_DSNR_micron.tbl   
+    lines_TSB.tbl
+    lines_ref.tbl
+    lines_PAH.tbl
     
-    ADD MORE ONCE PAH COMES OUT
-    String inputs are not case sensitive, but must be entered with exact spelling
+    Data for instrument configurations in microns can be found in 
+        q3dfit/data/jwst_tables in the files:
+            
+    miri.tbl
+    nirspec.tbl
+    
+    String inputs are not case sensitive, but must be entered with exact 
+        spelling. 
+    Otherwise, the function will return errors. 
+    
     
     Parameters
     ----------
     
     z : flt, required
-        Galaxy redshift
+        Galaxy, systemic redshift. 
+        Used for redshifting emission lines for 'observed' column.
     gal : str, required
-        Galaxy name for filenaming
+        Galaxy name for filenaming. 
+        Can also be customized for any other desired filename designations
     instrument : str, required
         JWST instrumnent. Inputs: NIRSpec, MIRI
         Used to grab the right table for each instrument. 
@@ -43,7 +59,8 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit = 'micron'):
     grat_filt : grating and filter combination for NIRSpec or channel for MIRI
         NIRSpec Inputs: G140M_F0701P, G140M_F1001P, G235M_F1701P, G395M_F2901P,
             G140H_F0701P, G140H_F1001P, G235H_F1701P, G395H_F2901P, Prism_Clear
-        MIRI Inputs: Ch1_A, Ch1_B, Ch1_C, Ch2_A, Ch2_B, Ch2_C, Ch3_A, Ch3_B, Ch3_C, Ch4_A, Ch4_B, Ch4_C
+        MIRI Inputs: Ch1_A, Ch1_B, Ch1_C, Ch2_A, Ch2_B, Ch2_C, Ch3_A, Ch3_B, 
+            Ch3_C, Ch4_A, Ch4_B, Ch4_C
     waveunit : str, default='micron'
         Units desired for output tables. 
         Inputs are 'micron' or 'angstrom'

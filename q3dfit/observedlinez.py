@@ -12,21 +12,25 @@ from astropy import units as u
 from pathlib import Path
 import shutil
 
-def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
+def observedlinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     """
-    Similar to jwstline(), manuallines() produces a table with emission lines 
+    Similar to jwstline(), observedlinez() produces a table with emission lines 
     in the provided range. 
     Unlike jwstline(), this function can solve for a user-specified range of 
     wavelengths and can account for air wavelength conversions.
+    The column 'observed' accounts for both redshifting and air refraction. 
+    It reports an expected center for an emission distribution and can be used
+        to identify unknown emission lines for fitting. 
     
     All input wavelengths are assumed to be REDSHIFTED!
     
-    References stored under q3dfit/linelists are .tbl of filenames:
+    References stored under q3dfit/data/linelists are .tbl of filenames:
             
-        lines_H2
-        lines_DSNR_micron   
-        lines_TSB
-        lines_ref
+        lines_H2.tbl
+        lines_DSNR_micron.tbl   
+        lines_TSB.tbl
+        lines_ref.tbl
+        lines_PAH.tbl
         
     More tables can be added manually if saved in the linelists folder and 
     called in this function definition.
@@ -38,12 +42,13 @@ def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     z : flt, required
         Galaxy redshift
     gal : str, required
-        Galaxy name for filenaming
+        Galaxy name for filenaming. 
+        Can also be customized for any other desired filename designations
     lamb_min : flt, required
-        minimum OBSERVED wavelength value of instrument, units determined by 
+        minimum <OBSERVED> wavelength value of instrument, units determined by 
         waveunit value
     lamb_max : flt, required
-        maximum OBSERVED wavelength of instrument, units determined by waveunit
+        maximum <OBSERVED> wavelength of instrument, units determined by waveunit
         value
     vacuum : bool, optional, default = True
         if false, enables conversion to air wavelengths

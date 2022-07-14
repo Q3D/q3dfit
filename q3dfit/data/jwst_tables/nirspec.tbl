@@ -1,3 +1,6 @@
+/ This table was generated from the data of various NIRSpec modes
+/ at this link:
+/ https://jwst-docs.stsci.edu/jwst-near-infrared-spectrograph/nirspec-observing-modes
 |      mode|   grat_filt|lamb_min|lamb_max|
 |      char|        char|  double|  double|
 |          |            |  micron|  micron|

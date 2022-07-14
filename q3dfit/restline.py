@@ -49,7 +49,7 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
     Returns
     --------
         
-    lines : astropy table
+    lines_...tbl : astropy table
         An astropy table of emission lines with keywords 'name', 'lines', 
             'linelab'
         Example Row: H2_43_Q6, 2.98412, H$_2$(4-3) Q(6), 4.282212 
@@ -132,7 +132,8 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
 
     #comments for each generated table    
     lines_inrange.meta['comments'] = \
-    ['Tables generated from reference tables created by Nadia Zakamska and Ryan McCrory',
+    ['Tables generated from reference tables created by Nadia Zakamska and Ryan',
+    ' McCrory',
     'All wavelengths are assumed to be in VACUUM',
     '>LINELIST_TSB:',
     '   Data Source 1: Storchi-Bergmann et al. 2009, MNRAS, 394, 1148',
@@ -140,7 +141,8 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
     '>LINELIST_H2:',
     '   Data Source 1: JWST H_2 lines between 1 and 2.5 microns from this link:', 
     '   https://github.com/spacetelescope/jdaviz/tree/main/jdaviz/data/linelists',
-    '   H2_alt.csv file; one typo corrected (the line marked as 2-9 Q(1) replaced with 2-0 Q(1))',
+    '   H2_alt.csv file; one typo corrected (the line marked as 2-9 Q(1)',
+    '   replaced with 2-0 Q(1))',
     '   Data Source 2: ISO H_2 lines from 2.5 microns onwards from this link:', 
     '   https://www.mpe.mpg.de/ir/ISO/linelists, file H2.html',
     '>LINELIST_FINE_STR',
@@ -153,7 +155,8 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
     '   wavelengths under 2000A are explicitly fixed based on NIST database.',
     '   A handful of previousy missing Latex labels were added by hand to the',
     '   original two tables before combining.',
-    '   Original table converted to microns to align with program standard measurements',
+    '   Original table converted to microns to align with program standard',
+    '   measurements',
     '>LINELIST_PAH:',
     '   Data Source 1: data from the link',
     '   https://github.com/spacetelescope/jdaviz/blob/main/jdaviz/data/linelists',

@@ -41,8 +41,8 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit = 'micron'):
         NIRSpec Inputs: IFU, MOS, FSs, BOTS
         MIRI Inputs: MRS
     grat_filt : grating and filter combination for NIRSpec or channel for MIRI
-        NIRSpec Inputs: G140M_F0701P, G140M_F1001P, G235M_F1701P, G395M_F2901P, G140H_F0701P, G140H_F1001P, 
-            G235H_F1701P, G395H_F2901P, Prism_Clear
+        NIRSpec Inputs: G140M_F0701P, G140M_F1001P, G235M_F1701P, G395M_F2901P,
+            G140H_F0701P, G140H_F1001P, G235H_F1701P, G395H_F2901P, Prism_Clear
         MIRI Inputs: Ch1_A, Ch1_B, Ch1_C, Ch2_A, Ch2_B, Ch2_C, Ch3_A, Ch3_B, Ch3_C, Ch4_A, Ch4_B, Ch4_C
     waveunit : str, default='micron'
         Units desired for output tables. 
@@ -183,6 +183,7 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit = 'micron'):
     else:
         print('There are ' + str(list_len) + ' emission lines visible with this instrument configuration.\n')
         
+        # writing and moving the table to the linelists folder
         ascii.write(lines_inrange, filename, format = 'ipac', overwrite=True)
         shutil.move((home + '/q3dfit/q3dfit/'+ filename), (home + '/q3dfit/q3dfit/data/linelists'))
 

@@ -7,7 +7,7 @@ Created on Wed Jun 15 12:07:16 2022
 
 import numpy as np
 from astropy.io import ascii
-from astropy.table import Table, vstack    
+from astropy.table import Table, vstack
 from astropy import units as u
 from pathlib import Path
 import shutil
@@ -48,8 +48,8 @@ def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     vacuum : bool, optional, default = True
         if false, enables conversion to air wavelengths
     waveunit : str, optional, default = 'micron'
-        determines the unit of input wavelengths and output table\
-        acceptable inputs are 'micron' and 'angstrom'
+        determines the unit of input wavelengths and output table
+        acceptable inputs are 'micron' and 'Angstrom'
         
     Returns
     --------
@@ -67,19 +67,22 @@ def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
             
     """
  
-    wu = waveunit.lower()
+    wu = waveunit.capitalize()
     home = str(Path.home())
  
-    if ((wu!='angstrom') & (wu!='micron')):
+    # sig is a rounding variable, so it must be dependent on unit
+    if ((wu!='Angstrom') & (wu!='micron')):
         print("possible waveunit inputs are 'micron' or 'angstrom'")
         print ('Wave unit ',waveunit,' not recognized, returning microns\n')
         sig = 7
-    elif (wu == 'angstrom'):
-        # converting A input to microns
+        
+    elif (wu == 'Angstrom'):
+        # converting A input to microns b/c inrange() relies on micron input
         lamb_max = lamb_max / 1.e4
         lamb_min = lamb_min / 1.e4
         sig = 3
         print('Angstroms unit selected\n')
+        
     else:
         sig = 7
      
@@ -97,31 +100,36 @@ def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     #--------------------------------------------------------------------------
 
     
-    tcol = lines.columns[1]    
+    tcol = lines.columns[1]  
+    # Redshifting each entry in tcol (REST wavelengths)
+    tcolz = np.multiply(tcol, z+1)
 
-    # air conversion logic
+    # air conversion logic and redshifting of tablie columns
+    
     if ((vacuum!=True) & (vacuum!=False)):
         #sets vacuum default to True (does nothing)
         print('Incorrect input for vacuum vs air. "' + vacuum + '" not recognized.') 
         print('proceeding with default vacuum = True\n')
+        lines_air_z = np.multiply(tcol, z+1)
 
+    # Vacuumn to air conversion from eq. 3 from Morton et al. 1991 ApJSS 77 119
+    # Uses same equation as q3dfit/airtovac.py
     elif (vacuum == False):
-        if (wu == 'angstrom'):
-            temp=1.e4/(tcol*(z+1))
-            lines_air_z=lines['lines']/(1.+6.4328e-5 + 2.94981e-2/(146.-temp**2)+2.5540e-4/(41.-temp**2))
+        # meaning observations need air to vac conversion
+        tmp = 1/tcolz
+        
+        # Air transformation for tcolz (REDSHIFTED wavelengths ONLY)
+        lines_air_z = tcolz/(1.+6.4328e-5 + 2.94981e-2/(146.-tmp**2)\
+                                        + 2.5540e-4/(41.-tmp**2))
 
-        else: 
-            temp = 1/(tcol*(z+1))
-            lines_air_z=lines['lines']/(1.+6.4328e-5 + 2.94981e-2/(146.-temp**2)+2.5540e-4/(41.-temp**2))
-
-        #
+        
     elif (vacuum == True):
-        lines_air_z = np.multiply(tcol,z+1)
+        lines_air_z = tcolz
             
 
     #redshifts the table
     #rounds the floats in list CHANGE IF MORE PRECISION NEEDED
-    round_lines = lines_air_z.round(decimals = sig)
+    round_lines = lines_air_z.round(decimals = 8)
     #adds column to lines table corresponding w/ redshifted wavelengths
     lines['observed'] = round_lines
  
@@ -140,7 +148,7 @@ def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     lines_inrange = tg.groups.filter(inrange)
     
     # converting table to desired units
-    if (wu == 'angstrom'):
+    if (wu == 'Angstrom'):
         lines_inrange['lines'] = (lines_inrange['lines']*1.e4).round(decimals = sig)
         lines_inrange['lines'].unit = 'angstrom'     
         
@@ -158,17 +166,22 @@ def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     # var used to determine if a list has >0 entries along with printing length
     list_len = len(lines_inrange['lines'])
 
-    #comments for each generated table    
+    # comments for each generated table    
     lines_inrange.meta['comments'] = \
-    ['Tables generated from reference tables created by Nadia Zakamska and Ryan McCrory',
+    ['Tables generated from reference tables created by Nadia Zakamska and Ryan',
+    ' McCrory',
     'All wavelengths are assumed to be in VACUUM',
+    'Air wavelength conversion is taken from eq. 3 from Morton et al. 1991 ',
+    'ApJSS 77 119',
+    '-----------------------',
     '>LINELIST_TSB:',
     '   Data Source 1: Storchi-Bergmann et al. 2009, MNRAS, 394, 1148',
     '   Data Source 2: Glikman et al. 2006, ApJ, 640, 579 (but looked up on NIST)',
     '>LINELIST_H2:',
     '   Data Source 1: JWST H_2 lines between 1 and 2.5 microns from this link:', 
     '   https://github.com/spacetelescope/jdaviz/tree/main/jdaviz/data/linelists',
-    '   H2_alt.csv file; one typo corrected (the line marked as 2-9 Q(1) replaced with 2-0 Q(1))',
+    '   H2_alt.csv file; one typo corrected (the line marked as 2-9 Q(1) replaced',
+    '   with 2-0 Q(1))',
     '   Data Source 2: ISO H_2 lines from 2.5 microns onwards from this link:', 
     '   https://www.mpe.mpg.de/ir/ISO/linelists, file H2.html',
     '>LINELIST_FINE_STR',
@@ -181,7 +194,8 @@ def manuallinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     '   wavelengths under 2000A are explicitly fixed based on NIST database.',
     '   A handful of previousy missing Latex labels were added by hand to the',
     '   original two tables before combining.',
-    '   Original table converted to microns to align with program standard measurements',
+    '   Original table converted to microns to align with program standard',
+    '   measurements',
     '>LINELIST_PAH:',
     '   Data Source 1: data from the link',
     '   https://github.com/spacetelescope/jdaviz/blob/main/jdaviz/data/linelists',

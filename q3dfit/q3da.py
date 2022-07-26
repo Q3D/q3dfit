@@ -827,8 +827,11 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                         qsomod_polynorm
                     contcube['host_mod'][i, j, struct['fitran_indx']] = \
                         hostmod.copy()
-                    contcube['poly_mod'][i, j, struct['fitran_indx']] = \
-                        polymod_refit.copy()
+                    if isinstance(polymod_refit, float):
+                        contcube['poly_mod'][i, j, struct['fitran_indx']] = 0.
+                    else:
+                        contcube['poly_mod'][i, j, struct['fitran_indx']] = \
+                            polymod_refit.copy()
                     contcube['npts'][i, j] = len(struct['fitran_indx'])
 
                     if 'remove_scattered' in initdat:

@@ -4,6 +4,7 @@ This module contains the Cube class for reading in and containing a data cube
 
 import copy
 import numpy as np
+import pdb
 import re
 import warnings
 
@@ -98,7 +99,7 @@ class Cube:
 
     def __init__(self, infile, datext=1, varext=2, dqext=3, wmapext=4,
                  error=False, fluxunit_in='MJy/sr',
-                 fluxunit_out='erg/s/cm2/micron/sr',
+                 fluxnorm=None, fluxunit_out='erg/s/cm2/micron/sr',
                  invvar=False, linearize=False, logfile=stdout, quiet=True,
                  vormap=None, waveunit_in='micron', waveunit_out='micron',
                  wavext=None, zerodq=False):
@@ -355,9 +356,14 @@ class Cube:
                 u.Unit('erg/s/cm2/Angstrom/arcsec2'):
             convert_flux /= np.float32(1e4)
 
-        # self.dat = self.dat * convert_flux
-        # self.var = self.var * convert_flux**2
-        # self.err = self.err * convert_flux
+        self.dat = self.dat * convert_flux
+        self.var = self.var * convert_flux**2
+        self.err = self.err * convert_flux
+
+        if fluxnorm is not None:
+            self.dat = self.dat * fluxnorm
+            self.var = self.var * fluxnorm**2
+            self.err = self.err * fluxnorm
 
         # linearize in the wavelength direction
         if linearize:

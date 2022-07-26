@@ -33,6 +33,7 @@ def makeqsotemplate(infits, outpy, datext=1, dqext=2, varext=3, wavext=None,
                 waveunit_in=waveunit_in, waveunit_out=waveunit_out)
 
     white_light_image = np.median(cube.dat, axis=2)
+    white_light_image[np.where( np.isnan(white_light_image))] = 0
 
     loc_max = np.where(white_light_image == white_light_image.max())
 

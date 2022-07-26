@@ -24,6 +24,9 @@ from q3dfit.qsohostfcn import qsohostfcn
 from q3dfit.exceptions import InitializationError
 from numpy.polynomial import legendre
 from scipy import interpolate
+from astropy.io import fits
+
+
 import q3dfit.data
 
 from matplotlib import pyplot as plt
@@ -39,17 +42,17 @@ from matplotlib.ticker import MaxNLocator,LinearLocator,FixedLocator
 from scipy.spatial import distance
 from plotbin.sauron_colormap import register_sauron_colormap
 import matplotlib.gridspec as gridspec
+from matplotlib.colors import LogNorm
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 plt.rcParams['figure.constrained_layout.use'] = False
 
-
 class Q3Dpro:
     # =============================================================================================
     # instantiate the q3dpro object
     # =============================================================================================
-    def __init__(self,initproc,SILENT=True):
+    def __init__(self,initproc,SILENT=True,NOCONT=False,NOLINE=False,PLATESCALE=0.15):
         # read in the q3d initproc file and unpack 
         self.q3dinit = initproc
         # unpack initproc
@@ -59,12 +62,14 @@ class Q3Dpro:
             print('processing outputs...')
             print('Target name:',self.target_name)
             
-        self.pix = 0.15 # pixel size
+        self.pix = PLATESCALE # pixel size
         self.bad = 1e99
         self.dataDIR = initproc['outdir']
         # instantiate the Continuum (npy) and Emission Line (npz) objects
-        self.contdat = ContData(initproc,self.dataDIR)
-        self.linedat = LineData(initproc,self.dataDIR)
+        if NOCONT == False:
+            self.contdat = ContData(initproc,self.dataDIR)
+        if NOLINE == False:
+            self.linedat = LineData(initproc,self.dataDIR)
         
         return
     
@@ -83,13 +88,12 @@ class Q3Dpro:
         # output in MICRON
         return linewave,linename
     
-    def make_linemap(self,LINESELECT,
-                     xyCenter=None,VMINMAX=None,KPC=False,LINEVAC=True,PLTNUM=1,
-                     qsoCenter=None,SNRCUT=None,
-                     CMAP='YlOrBr_r',
+    def make_linemap(self,LINESELECT,SNRCUT=None,LINEVAC=True,
+                     xyCenter=None,VMINMAX=None,
+                     XYSTYLE=None,PLTNUM=1,CMAP=None,
                      SAVEDATA=False,SILENT=None):
         print('Plotting emission line maps')
-        c = 2.99792458e5
+        c_kms = 2.99792458e5
         # breakpoint()
         if SILENT == None :
             SILENT = self.silent
@@ -97,54 +101,70 @@ class Q3Dpro:
         if SILENT != True: 
             print('create linemap:',LINESELECT)
         
-        na = self.target_name
+        
         redshift = self.q3dinit['zinit_gas'][LINESELECT]
+        ncomp = self.q3dinit['ncomp'][LINESELECT][0,0]
+        
         matrix_size = redshift.shape
-        redshift = redshift.reshape(matrix_size[0],matrix_size[1])
-        arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
+        # if len(matrix_size) > 2:
+        #     if matrix_size[2] > 1:
+        #         redshift = redshift[:,:,0]
+        #     else:
+        #         redshift = redshift.reshape(matrix_size[0],matrix_size[1])
         
-        argscheckcomp = self.q3dinit['argscheckcomp']
-        
+        kpc_arcsec = cosmo.kpc_proper_per_arcmin(redshift).value/60.
+        # arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
+        # argscheckcomp = self.q3dinit['argscheckcomp']
         # xycen = xyCenter # (nx,ny) of the center
-        if xyCenter == None :
-            xyCenter = [int(np.ceil(matrix_size[0]/2)),int(np.ceil(matrix_size[1]/2))]
-
-        namecolor = 'black' # color of the target name in the plot
         
+
         if SNRCUT == None :
             SNRCUT = 5 # S/N threshold for the map
             
-            
-        cid = -1 # index of the component to plot, -1 is the broadest component
-        
+        # cid = -1 # index of the component to plot, -1 is the broadest component
         # central wavelength --> need to get from linereader 
         wave0,linetext = self.get_lineprop(LINESELECT,LINEVAC=LINEVAC)
-        
-        
-        
-        ncomp = self.q3dinit['ncomp'][LINESELECT]
-        
-        # ('ftot', 'fc1', 'fc1pk')
-        flux        = self.linedat.get_flux(LINESELECT,FLUXSEL='fc1')['flux']
-        fluxerr     = self.linedat.get_flux(LINESELECT,FLUXSEL='fc1')['fluxerr']
+
+        # --------------------------
+        # EXTRACT THE DATA HERE
+        # --------------------------
+        # EXTRACT TOTAL FLUX
         fluxsum     = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['flux']
         fluxsum_err = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['fluxerr']
-        sigdat      = self.linedat.get_sigma(LINESELECT)
-        sigma       = sigdat['sig']
-        sigma_err   = sigdat['sigerr']
-        wavcent     = self.linedat.get_wave(LINESELECT)
-        
-        fmask = clean_mask(flux,BAD=self.bad)
         fsmsk = clean_mask(fluxsum,BAD=self.bad)
-        sgmsk = clean_mask(sigma,BAD=self.bad)
-        wvmsk = clean_mask(wavcent['wav'],BAD=self.bad)
         
-        flux    *= fmask
-        fluxsum *= fsmsk
-        sigma   *= sgmsk
-        
-        v50 = ((wavcent['wav']-wave0)/wave0 - redshift) * c * wvmsk
-        # print(v50)
+        dataOUT = {'Ftot':{'data':fluxsum*fsmsk,'err':fluxsum_err*fsmsk,'name':['F$_{tot}$']},
+                   'Fci' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[]},
+                   'Sig' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[]},
+                   'v50' :{'data':np.zeros(matrix_size),'err':None,'name':[]}} 
+        # EXTRACT COMPONENTS
+        for ci in range(0,ncomp) :
+            ici = ci+1
+            fcl = 'fc'+str(ici)
+            iflux = self.linedat.get_flux(LINESELECT,FLUXSEL=fcl)['flux']
+            ifler = self.linedat.get_flux(LINESELECT,FLUXSEL=fcl)['fluxerr']
+            isigm = self.linedat.get_sigma(LINESELECT,COMPSEL=ici)['sig']
+            isger = self.linedat.get_sigma(LINESELECT,COMPSEL=ici)['sigerr']
+            iwvcn = self.linedat.get_wave(LINESELECT,COMPSEL=ici)['wav']
+            ireds = redshift[:,:,ci]
+
+            # now process them
+            iv50 = ((iwvcn-wave0)/wave0 - ireds) * c_kms
+            # mask out the bad values
+            ifmask = clean_mask(iflux,BAD=self.bad)
+            isgmsk = clean_mask(isigm,BAD=self.bad)
+            iwvmsk = clean_mask(iwvcn,BAD=self.bad)
+            
+            # save to the processed matrices
+            dataOUT['Fci']['data'][:,:,ci] = iflux*ifmask
+            dataOUT['Sig']['data'][:,:,ci] = isigm*isgmsk
+            dataOUT['v50']['data'][:,:,ci] = iv50*iwvmsk
+            dataOUT['Fci']['err'][:,:,ci]  = ifler*ifmask
+            dataOUT['Sig']['err'][:,:,ci]  = isger*isgmsk
+            
+            dataOUT['Fci']['name'].append('F$_{c'+str(ici)+'}$')
+            dataOUT['Sig']['name'].append('$\sigma_{c'+str(ici)+'}$')
+            dataOUT['v50']['name'].append('v$_{50,c'+str(ici)+'}$')
 
         #read in the information
         # for i in range(nspec):
@@ -170,11 +190,9 @@ class Q3Dpro:
         #             fluxsum[i] = np.sum(flux[i,:])
         #             fluxsum_err[i] = (np.sum(fluxerr[i,:]**2))**0.5
 
-        sn_tot = fluxsum/fluxsum_err
-        w80 = sigma*2.563   # w80 linewidth from the velocity dispersion
-        sn = flux/fluxerr
-        
-
+        # sn_tot = fluxsum/fluxsum_err
+        # w80 = sigma*2.563   # w80 linewidth from the velocity dispersion
+        # sn = flux/flux_err
         fluxsum_snc,gdindx,bdindx = snr_cut(fluxsum,fluxsum_err,SNRCUT=SNRCUT)
         
         # nnpix = 30
@@ -192,13 +210,7 @@ class Q3Dpro:
         #         ouid = np.append(ouid,i)
         # ouid = np.array(ouid,dtype=int)
         
-        pixkpc = self.pix*arckpc
-        xgrid = np.arange(0, matrix_size[1])
-        ygrid = np.arange(0, matrix_size[0])
-        xcol = (xgrid-xyCenter[1]) 
-        ycol = (ygrid-xyCenter[0]) 
-        xcolkpc = xcol*np.median(arckpc)* self.pix
-        ycolkpc = ycol*np.median(arckpc)* self.pix
+        
         
         # nadd = np.size(ouid)
         # zarr = np.zeros(nadd)+np.nan
@@ -226,73 +238,119 @@ class Q3Dpro:
         # except (IndexError or KeyError):
         #     print('x, y ranges or S/N threshold not properly set')
         
+        FLUXLOG = False
+        
         # --------------------------
         # Do the plotting here
         # --------------------------
-        plotlist = {'F$_{tot}$':fluxsum,'F$_{c1}$':flux,'$\sigma_{c1}$':sigma,'v$_{50}$':v50}
+        # pixkpc = self.pix*arckpc
+        # Here, we determine the plot axis 
+        xgrid = np.arange(0, matrix_size[1])
+        ygrid = np.arange(0, matrix_size[0])
+        xcol = xgrid
+        ycol = ygrid
+        
+        qsoCenter = xyCenter
+        if xyCenter == None :
+            qsoCenter = [int(np.ceil(matrix_size[0]/2)),int(np.ceil(matrix_size[1]/2))]
+    
+        XYtitle = 'Spaxel'
+        if XYSTYLE != None and XYSTYLE != False:
+            #if XYSTYLE.lower() == 'center':
+            xcol = (xgrid-xyCenter[1]) 
+            ycol = (ygrid-xyCenter[0])
+            if xyCenter != None :
+                qsoCenter = [0,0]
+            if XYSTYLE.lower() == 'kpc':
+                kpc_pix = np.median(kpc_arcsec)* self.pix
+                xcolkpc = xcol*kpc_pix
+                ycolkpc = ycol*kpc_pix
+                xcol,ycol = xcolkpc,ycolkpc
+                XYtitle = 'Relative distance [kpc]'
         plt.close(PLTNUM)
-        fig,ax = plt.subplots(2,2,figsize=(7,10),num=PLTNUM)#, gridspec_kw={'height_ratios': [1, 2]})
+        figDIM = [ncomp,4]
+        figOUT = set_figSize(figDIM,matrix_size)
+        fig,ax = plt.subplots(figDIM[0],figDIM[1])
+        fig.set_figheight(figOUT[1])
+        fig.set_figwidth(figOUT[0])
+        if CMAP == None :
+            CMAP = 'YlOrBr_r'
+        ici = ''
         i,j=0,0
-        for ipname,ipdat in plotlist.items():
-            pixVals = ipdat
-            SKIP = False
-            if ipname == 'F$_{tot}$' :
-                vminmax = [0,1e-4]
+        for icomp,ipdat in dataOUT.items():
+            pixVals = ipdat['data']
+            ipshape = pixVals.shape
+            if VMINMAX != None :
+                vminmax = VMINMAX[icomp]
+            if icomp == 'Ftot':
+                doPLT = True
                 NTICKS = 4
+                ici=''
                 vticks = None
-                # vminmax = [-20,4]
-                # pixVals = np.log10(pixVals)
-                i,j=0,0
-            elif ipname == 'F$_{c1}$' :
-                # SKIP = True
-                vminmax = [1e-19,1e-4]
-                NTICKS = 4
-                vticks = None
-                i,j=0,1
-            elif ipname == '$\sigma_{c1}$' :
-                vminmax = [5,270]
-                NTICKS = 4
-                vticks = None
-                i,j=1,0
-            elif ipname == 'v$_{50}$' :
-                vminmax = [-300,300]
-                vticks = [-300,0,300]
-                i,j=1,1
-                CMAP = 'RdYlBu'
-                CMAP += '_r'
-                # pixVals
-            cmap_r = cm.get_cmap(CMAP)
-            cmap_r.set_bad(color='black')
-            if not SKIP == True:
-                xx, yy = xcol,ycol
-                if KPC == True :
-                    xx, yy = xcolkpc,ycolkpc
-                display_pixels_wz(xx, yy,pixVals,CMAP=CMAP,AX=ax[i,j],
-                                  # PIXELSIZE=pix*arckpc,
-                                  COLORBAR=True,
-                                  VMIN=vminmax[0],VMAX=vminmax[1],TICKS=vticks,NTICKS=NTICKS)
-                ax[i,j].errorbar(0,0,color='black',mew=1,mfc='red',fmt='*',markersize=15,zorder=2)
-                ax[i,j].set_xlabel('spaxel',fontsize=13)
-                ax[i,j].set_ylabel('spaxel',fontsize=13)
-                if KPC == True:
-                    ax[i,j].set_xlabel('Relative distance [kpc]',fontsize=13)
-                    ax[i,j].set_ylabel('Relative distance [kpc]',fontsize=13)
-                ax[i,j].set_title(ipname,fontsize=16,pad=45)
-                ax[i,j].set_ylim([max(xx),np.ceil(min(xx))])
-                ax[i,j].set_xlim([min(yy),np.ceil(max(yy))])
-                if SAVEDATA == True:
-                    linesave_name = ''
-                    print('Saving line map:',linesave_name)
-                    
-        fig.suptitle(na+' : '+linetext+' maps',fontsize=16)
-        fig.tight_layout()#pad=1.5)
+                if 'fluxlog' in VMINMAX :
+                    FLUXLOG = VMINMAX['fluxlog']
+            else:
+                i=0
+                if icomp.lower() == 'fci' :
+                    NTICKS = 4
+                    vticks = None
+                    if 'fluxlog' in VMINMAX :
+                        FLUXLOG = VMINMAX['fluxlog']
+                elif icomp.lower() == 'sig':
+                    CMAP = 'YlOrBr_r'
+                    NTICKS = 5
+                    vticks = None
+                    FLUXLOG = False
+                elif icomp.lower() == 'v50' :
+                    vticks = [vminmax[0],vminmax[0]/2,0,vminmax[1]/2,vminmax[1]]
+                    CMAP = 'RdYlBu'
+                    CMAP += '_r'
+                    FLUXLOG = False
+            for ci in range(0,ncomp) :
+                i = ci
+                if len(ipshape) > 2:
+                    pixVals = ipdat['data'][:,:,ci]
+                    doPLT = True
+                    ici = '_c'+str(ci+1)
+                if j == 0 and ci > 0:
+                    fig.delaxes(ax[i,j])
+                    doPLT = False
+                if doPLT == True:
+                    cmap_r = cm.get_cmap(CMAP)
+                    cmap_r.set_bad(color='black')
+                    xx, yy = xcol,ycol
+                    axi = []
+                    if ncomp < 2:
+                        axi = ax[j]
+                    else:
+                        axi = ax[i,j]
+                    display_pixels_wz(yy, xx,pixVals,CMAP=CMAP,AX=axi,COLORBAR=True,PLOTLOG=FLUXLOG,
+                                      VMIN=vminmax[0],VMAX=vminmax[1],TICKS=vticks,NTICKS=NTICKS)
+                    if xyCenter != None :
+                        axi.errorbar(qsoCenter[0],qsoCenter[1],color='black',mew=1,mfc='red',fmt='*',markersize=15,zorder=2)
+                    axi.set_xlabel(XYtitle,fontsize=16)
+                    axi.set_ylabel(XYtitle,fontsize=16)
+                    axi.set_title(ipdat['name'][ci],fontsize=20,pad=45)
+                    # axi.set_ylim([max(xx),np.ceil(min(xx))])
+                    # axi.set_xlim([min(yy),np.ceil(max(yy))])
+                    if SAVEDATA == True:
+                        linesave_name = self.target_name+'_'+LINESELECT+'_'+icomp+ici+'_map.fits'
+                        print('Saving line map:',linesave_name)
+                        savepath = os.path.join(self.dataDIR,linesave_name)
+                        save_to_fits(pixVals,[],savepath)
+            j+=1
+        fig.suptitle(self.target_name+' : '+linetext+' maps',fontsize=20,snap=True,
+                     horizontalalignment='right')
+                     # verticalalignment='center',
+                     # fontweight='semibold')
+        fig.tight_layout(pad=0.15,h_pad=0.1)
         if SAVEDATA == True:
-            pltsave_name = LINESELECT+'_emlin_map.png'
+            pltsave_name = LINESELECT+'_emlin_map'
             print('Saving figure:',pltsave_name)
-            plt.savefig(os.path.join(self.dataDIR,pltsave_name))
+            plt.savefig(os.path.join(self.dataDIR,pltsave_name+'.png'),format='png')
+            plt.savefig(os.path.join(self.dataDIR,pltsave_name+'.pdf'),format='pdf')
         # fig.subplots_adjust(top=0.88)
         plt.show()
-        
         return
     
     def make_contmap(self):
@@ -301,7 +359,8 @@ class Q3Dpro:
     
     def make_BPT(self,SNRCUT=3,
                  SAVEDATA=False,PLTNUM=5,KPC=False):
-        print('Plotting line ratio diagnostics: BPT diagram')
+        
+        
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # first identify the lines, extract fluxes, and apply the SNR cuts
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -456,7 +515,12 @@ class Q3Dpro:
             # Plot ine ratio map
             # --------------------------
             plt.close(PLTNUM)
-            fig,ax = plt.subplots(1,cntr,figsize=(12,5),num=PLTNUM,constrained_layout=True)#, gridspec_kw={'height_ratios': [1, 2]})
+            figDIM = [1,cntr]
+            figOUT = set_figSize(figDIM,matrix_size)
+            fig,ax = plt.subplots(1,cntr,num=PLTNUM,constrained_layout=True)#, gridspec_kw={'height_ratios': [1, 2]})
+            fig.set_figheight(figOUT[1])
+            fig.set_figwidth(figOUT[0])
+            
             CMAP='inferno'
             cmap_r = cm.get_cmap(CMAP)
             cmap_r.set_bad(color='black')
@@ -466,7 +530,7 @@ class Q3Dpro:
                     xx,yy = xcol,ycol
                     iax = ax[cf]
                     frat10,frat10err,pltname,pltrange = lineratios[linrat]
-                    display_pixels_wz(xx,yy,frat10,CMAP=CMAP,AX=iax,
+                    display_pixels_wz(yy,xx,frat10,CMAP=CMAP,AX=iax,
                                       VMIN=-1,VMAX=1,
                                       NTICKS=5,COLORBAR=True)
                     # iax.errorbar(0,0,color='black',fmt='*',markersize=10,zorder=2)
@@ -476,24 +540,23 @@ class Q3Dpro:
                         iax.set_xlabel('Relative distance [kpc]',fontsize=13)
                         iax.set_ylabel('Relative distance [kpc]',fontsize=13)
                     iax.set_title('log$_{10}$ '+pltname,fontsize=15,pad=45)
-                    iax.set_ylim([max(xx),np.ceil(min(xx))])
-                    iax.set_xlim([min(yy),np.ceil(max(yy))])
+                    # iax.set_ylim([max(xx),np.ceil(min(xx))])
+                    # iax.set_xlim([min(yy),np.ceil(max(yy))])
                     cf += 1
-            plt.tight_layout()#h_pad=0.1)
+            plt.tight_layout(pad=1.5,h_pad=0.1)
             if SAVEDATA == True:
                 pltsave_name = 'emlin_ratio_map.png'
                 print('Saving figure:',pltsave_name)
                 plt.savefig(os.path.join(self.dataDIR,pltsave_name))
             plt.show()
-            
             # --------------------------
             # Plot BPT here
             # --------------------------
             PLTNUM += 1
             plt.close(PLTNUM)
-            fig,ax = plt.subplots(1,bptc,figsize=(12,4),num=PLTNUM,constrained_layout=True)
+            fig,ax = plt.subplots(1,bptc,figsize=(bptc*5,5),num=PLTNUM,constrained_layout=True)
             cf=0
-            
+            # breakpoint()
             pixkpc = self.pix*arckpc
             xgrid = np.arange(0, matrix_size[1])
             ygrid = np.arange(0, matrix_size[0])
@@ -513,6 +576,8 @@ class Q3Dpro:
                     fnames = bpt.split('/')
                     frat1,frat1err,fratnam1,pltrng1 = lineratios[fnames[0]]
                     frat2,frat2err,fratnam2,pltrng2 = lineratios[fnames[1]]
+                    
+                    # print(fratnam1,fratnam2)
                     
                     gg = np.where(~np.isnan(frat1) & ~np.isnan(frat2))
                     xfrat,xfraterr = [],[[],[]]
@@ -553,7 +618,7 @@ class Q3Dpro:
                     cf+=1
                     # breakpoint()
     
-            plt.tight_layout()#pad=1.5,h_pad=0.1)
+            plt.tight_layout(pad=1.5,h_pad=0.1)
             if SAVEDATA == True:
                 pltsave_name = 'BPT_map.png'
                 print('Saving figure:',pltsave_name)
@@ -601,24 +666,26 @@ class LineData:
         dataout = {'flux':emlflx[FLUXSEL][lineselect],'fluxerr':emlflxerr[FLUXSEL][lineselect]}
         return dataout
     
-    def get_sigma(self,lineselect):
+    def get_sigma(self,lineselect,COMPSEL=1):
         if lineselect not in self.lines:
             print('ERROR: line does not exist')
             return None
         # 'c1'
         emlsig     = self.data['emlsig'].item()
         emlsigerr  = self.data['emlsigerr'].item()
-        dataout = {'sig':emlsig['c1'][lineselect],'sigerr':emlsigerr['c1'][lineselect]} 
+        csel = 'c'+str(COMPSEL)
+        dataout = {'sig':emlsig[csel][lineselect],'sigerr':emlsigerr[csel][lineselect]} 
         return dataout
     
-    def get_wave(self,lineselect):
+    def get_wave(self,lineselect,COMPSEL=1):
         if lineselect not in self.lines:
             print('ERROR: line does not exist')
             return None
         # 'c1'
         emlwav     = self.data['emlwav'].item()
         emlwaverr  = self.data['emlwaverr'].item()
-        dataout = {'wav':emlwav['c1'][lineselect],'waverr':emlwaverr['c1'][lineselect]}
+        csel = 'c'+str(COMPSEL)
+        dataout = {'wav':emlwav[csel][lineselect],'waverr':emlwaverr[csel][lineselect]}
         return dataout
     
     def get_weq(self,lineselect,FLUXSEL='ftot'):
@@ -661,9 +728,6 @@ class ContData:
         dataout = np.load(datafile,allow_pickle=True).item()
         self.colname = dataout.keys()
         return dataout
-    
-    
-
 
 ##############################################################################
 # code from W.Liu  - adapted from PPXF
@@ -709,7 +773,7 @@ MODIFICATION HISTORY:
     
 """
 
-def display_pixels_wz(x, y, datIN, PIXELSIZE=None, VMIN=None, VMAX=None,TICKS=None,
+def display_pixels_wz(y, x, datIN, PIXELSIZE=None, VMIN=None, VMAX=None,TICKS=None,PLOTLOG=False,
                    ANGLE=None, COLORBAR=False, AUTOCBAR=False,LABEL=None, NTICKS=3,
                    CMAP='RdYlBu',SKIPTICK=False, **kwargs):
     """
@@ -731,17 +795,30 @@ def display_pixels_wz(x, y, datIN, PIXELSIZE=None, VMIN=None, VMAX=None,TICKS=No
         VMAX = np.max(datIN[datIN != np.nan])
 
     # print(VMIN,VMAX)
-    xmin, xmax = np.min(x), np.max(x)
-    ymin, ymax = np.min(y), np.max(y)
+    xmin, xmax = np.ceil(np.min(x)), np.ceil(np.max(x))
+    ymin, ymax = np.ceil(np.min(y)), np.ceil(np.max(y))
+    xmax = 5*np.round(np.array(xmax)/5)
+    ymax = 5*np.round(np.array(ymax)/5)
 
     ax = kwargs.get('AX',None)
-    imgPLT = ax.imshow(np.rot90(datIN) , interpolation='nearest',
-                       origin='lower', 
-                       cmap=CMAP,
-                       vmin=VMIN, vmax=VMAX,
-                       extent=[ymin, ymax,xmin, xmax])
-    current_cmap = cm.get_cmap()
-    current_cmap.set_bad(color='white')
+    imgPLT = None
+    if PLOTLOG == False :
+        imgPLT = ax.imshow(np.rot90(datIN,1) ,
+                           # origin='lower', 
+                            cmap=CMAP,
+                            extent=[ymin, ymax,xmin, xmax],
+                           vmin=VMIN, vmax=VMAX,
+                           interpolation='none')
+    else :
+        imgPLT = ax.imshow(np.rot90(datIN,1) ,
+                           # origin='lower', 
+                           cmap=CMAP,
+                            extent=[ymin, ymax,xmin, xmax],
+                           norm=LogNorm(vmin=VMIN, vmax=VMAX),
+                           interpolation='none')
+    
+    # current_cmap = cm.get_cmap()
+    # current_cmap.set_bad(color='white')
 
     if COLORBAR != False:
         divider = make_axes_locatable(ax)
@@ -753,6 +830,7 @@ def display_pixels_wz(x, y, datIN, PIXELSIZE=None, VMIN=None, VMAX=None,TICKS=No
             else:    
                 TICKS = LinearLocator(NTICKS).tick_values(VMIN, VMAX)
         cax.tick_params(labelsize=10)
+        plt.colorbar(imgPLT, cax=cax,ticks=TICKS, orientation='horizontal',ticklocation='top')
         if np.abs(VMIN) >= 1:
             plt.colorbar(imgPLT, cax=cax,ticks=TICKS, orientation='horizontal',ticklocation='top')
         if np.abs(VMIN) <= 0.1:
@@ -798,3 +876,48 @@ def snr_cut(dataIN,errIN,SNRCUT=2):
     dataOUT = copy.deepcopy(dataIN)
     dataOUT[snr < SNRCUT] = np.nan 
     return dataOUT,gud_indx,bad_indx
+
+def save_to_fits(dataIN,hdrIN,savepath):
+    # if not os.path.isfile(savepath):
+        # shutil.copy(datpath1,savepath)
+    if hdrIN == None or hdrIN == []:
+        hdu_0 = fits.PrimaryHDU(dataIN)
+    else:
+        hdu_0 = fits.PrimaryHDU(dataIN,header=hdrIN)
+    hdul = fits.HDUList([hdu_0])
+    hdul.writeto(savepath,overwrite=True)
+    return
+
+def set_figSize(dim,plotsize):
+    # breakpoint()
+    dim = np.array(dim)
+    xy = [12,14]
+    # print(dim,plotsize)
+    figSIZE = 5*np.round(np.array(plotsize)/5)[0:2]#*dim
+    # figSIZE = [figSIZE[0],figSIZE[0]]
+    # print(figSIZE)
+    figSIZE = figSIZE/np.min(figSIZE)#*dim
+    # print(figSIZE)  
+    if dim[0] == dim[1]:
+        if figSIZE[0] == figSIZE[1]:
+            figSIZE = figSIZE*max(xy)
+        if figSIZE[0] < figSIZE[1]:
+            figSIZE = figSIZE*min(xy)
+        # print(figSIZE)
+    elif dim[0] < dim[1]:
+        figSIZE = np.ceil(figSIZE*min(xy))
+        # print(figSIZE)
+        # figSIZE = [figSIZE[1],figSIZE[0]]
+        figSIZE = [np.max(figSIZE),np.min(figSIZE)]
+        if dim[0] == 1:
+            figSIZE[1] = np.ceil(figSIZE[1]/2)
+    elif dim[0] > dim[1]:
+        figSIZE = np.ceil(figSIZE*max(xy))
+        # print(figSIZE)
+        # figSIZE = [figSIZE[0],figSIZE[1]]
+        figSIZE = [np.min(figSIZE),np.max(figSIZE)]
+    figSIZE = np.array(figSIZE).astype(int)
+    # print(figSIZE)
+    return figSIZE
+
+

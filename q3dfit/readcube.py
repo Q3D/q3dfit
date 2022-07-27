@@ -38,6 +38,8 @@ class Cube:
     wavext : int, optional
         Extension number of wavelength data.
     error : bool, optional
+    fluxnorm : float, optional
+        Factor by which to divide the data.
     fluxunit_in : str, optional
     fluxunit_out : str, optional
         Flux unit of input data cube and unit carried by object.
@@ -50,6 +52,10 @@ class Cube:
         Resample the input wavelength scale so it is linearized.
     logfile : str, optional
         File for progress messages.
+    pixarea_sqas : float, optional
+        Pixel (spaxel) area in square arcseconds. If present and flux units are
+        per sr or per square arcseconds, will convert surface brightness
+        units to flux per voxel.
     quiet : bool, optional
         Suppress progress messages.
     vormap : array_like, optional
@@ -101,6 +107,7 @@ class Cube:
                  error=False, fluxunit_in='MJy/sr',
                  fluxnorm=None, fluxunit_out='erg/s/cm2/micron/sr',
                  invvar=False, linearize=False, logfile=stdout, quiet=True,
+                 pixarea_sqas=None,
                  vormap=None, waveunit_in='micron', waveunit_out='micron',
                  wavext=None, zerodq=False):
 
@@ -254,6 +261,16 @@ class Cube:
         self.waveunit_in.strip()
         self.fluxunit_in.strip()
 
+        # Look for pixel area in square arcseconds
+        try:
+            self.pixarea_sqas = header['PIXAR_A2']
+        except:
+            self.pixarea_sqas = pixarea_sqas
+            if not quiet and pixarea_sqas is None:
+                print('Cube: No pixel area in header or specified in call;' +
+                      'no correction for surface brightness flux units.',
+                      file=logfile)
+
         # cases of weirdo flux units
         # remove string literal '/A/'
         if self.fluxunit_in.find('/A/') != -1:
@@ -332,28 +349,27 @@ class Cube:
             # default input flux unit is MJy/sr
             # 1 Jy = 10^-26 W/m^2/Hz
             # first fac: MJy to Jy
-            # second fac: 10^-26 W/m^2/Hz / Jy * 10^-4 m^2/cm^-2 * 10^7 erg/W
+            # second fac: 10^-26 W/m^2/Hz / Jy * 10^-4 m^2/cm^-2 * 10^7 erg/s/W
             # third fac: c/lambda**2 Hz/micron, with lambda^2 in m*micron
             wave_out = self.wave * u.Unit(self.waveunit_out)
             convert_flux = 1e6 * 1e-23 * c.value / wave_out.to('m').value / \
                 wave_out.to('micron').value
+            if u.Unit(self.fluxunit_in) == u.Unit('MJy/sr') and \
+                self.pixarea_sqas is not None:
+                convert_flux *= 1./(206265.*206265.)*self.pixarea_sqas
 
-        # case of input flux units: erg/s/cm^2/Anstrom (/arcsec2/sr)
-        elif u.Unit(self.fluxunit_in) == u.Unit('erg/s/cm2/Angstrom/sr') or \
-            u.Unit(self.fluxunit_in) == u.Unit('erg/s/cm2/Angstrom') or \
-            u.Unit(self.fluxunit_in) == \
-                u.Unit('erg/s/cm2/Angstrom/arcsec2/sr') or \
+        # case of input flux units: erg/s/cm^2/Anstrom (/arcsec2)
+        elif u.Unit(self.fluxunit_in) == u.Unit('erg/s/cm2/Angstrom') or \
             u.Unit(self.fluxunit_in) == \
                 u.Unit('erg/s/cm2/Angstrom/arcsec2'):
             convert_flux = np.float32(1e4)
+            if u.Unit(self.fluxunit_in) == \
+                u.Unit('erg/s/cm2/Angstrom/arcsec2') and \
+                self.pixarea_sqas is not None:
+                convert_flux *= self.pixarea_sqas
 
-        # case of output flux units: erg/s/cm^2/Anstrom (/arcsec2/sr)
-        if u.Unit(self.fluxunit_out) == u.Unit('erg/s/cm2/Angstrom/sr') or \
-            u.Unit(self.fluxunit_out) == u.Unit('erg/s/cm2/Angstrom') or \
-            u.Unit(self.fluxunit_out) == \
-                u.Unit('erg/s/cm2/Angstrom/arcsec2/sr') or \
-            u.Unit(self.fluxunit_out) == \
-                u.Unit('erg/s/cm2/Angstrom/arcsec2'):
+        # case of output flux units: erg/s/cm^2/Anstrom
+        if u.Unit(self.fluxunit_out) == u.Unit('erg/s/cm2/Angstrom'):
             convert_flux /= np.float32(1e4)
 
         self.dat = self.dat * convert_flux
@@ -361,9 +377,9 @@ class Cube:
         self.err = self.err * convert_flux
 
         if fluxnorm is not None:
-            self.dat = self.dat * fluxnorm
-            self.var = self.var * fluxnorm**2
-            self.err = self.err * fluxnorm
+            self.dat = self.dat / fluxnorm
+            self.var = self.var / fluxnorm**2
+            self.err = self.err / fluxnorm
 
         # linearize in the wavelength direction
         if linearize:

@@ -24,13 +24,12 @@ from .readcube import Cube
 '''
 
 
-def makeqsotemplate(infits, outpy, datext=1, dqext=2, varext=3, wavext=None,
-                    wmapext=4, plot=True, waveunit_in='micron',
-                    waveunit_out='micron', radius=0.):
+def makeqsotemplate(infits, outpy, plot=True, radius=0., argscube=None):
 
-    cube = Cube(infits, datext=datext, dqext=dqext,
-                varext=varext, wavext=wavext, wmapext=wmapext,
-                waveunit_in=waveunit_in, waveunit_out=waveunit_out)
+    if argscube is not None:
+        cube = Cube(infits, **argscube)
+    else:
+        cube = Cube(infits)
 
     white_light_image = np.median(cube.dat, axis=2)
     white_light_image[np.where( np.isnan(white_light_image))] = 0
@@ -44,7 +43,7 @@ def makeqsotemplate(infits, outpy, datext=1, dqext=2, varext=3, wavext=None,
 
     qsotemplate = {'wave': cube.wave}
     if cube.dat is not None:
-        norm = 1#np.median(cube.dat[loc_max[0][0], loc_max[1][0]])
+        norm = 1. #np.median(cube.dat[loc_max[0][0], loc_max[1][0]])
         qsotemplate['flux'] = cube.dat[iap[0][:], iap[1][:], :].sum(0) / norm
         if plot:
             plt.plot(cube.wave, qsotemplate['flux'])

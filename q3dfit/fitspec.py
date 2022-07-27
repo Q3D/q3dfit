@@ -506,7 +506,15 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                             ilamwin = [np.where(gdlambda == lamwin[0])[0][0],
                                        np.where(gdlambda == lamwin[1])[0][0]]
                             peakinit[line][icomp] = \
-                                max(gdflux_nocnt_sm[ilamwin[0]:ilamwin[1]])
+                                np.nanmax(gdflux_nocnt_sm[ilamwin[0]:ilamwin[1]])
+                            # If the smoothed version gives all nans, try
+                            # unsmoothed
+                            if np.isnan(peakinit[line][icomp]):
+                                peakinit[line][icomp] = \
+                                np.nanmax(gdflux_nocnt[ilamwin[0]:ilamwin[1]])
+                            # if it's still all nans, just set to 0.
+                            if np.isnan(peakinit[line][icomp]):
+                                peakinit[line][icomp] = 0.
                         # If initial guess is negative, set to 0 to prevent
                         # fitter from choking (since we limit peak to be >= 0)
                         peakinit[line] = \

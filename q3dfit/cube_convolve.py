@@ -33,7 +33,7 @@ def convolve_cube(infits, method = 'Gaussian', datext=0, varext=1, dqext=2, wave
     err[indx_bd] = 0.
     
     #check for nan values
-    indx_bd = np.where((flux == np.nan) | (err == np.nan))
+    indx_bd = np.where((np.isnan(flux) == True) | (np.isnan(err) == True))
     flux[indx_bd] = 0.
     err[indx_bd] = 0.
     
@@ -63,9 +63,9 @@ def convolve_cube(infits, method = 'Gaussian', datext=0, varext=1, dqext=2, wave
     if outfits != None:
         hdu = fits.open(infits)
         if 'SCI' in hdu:
-            hdu['SCI'].data = cube_convolved
+            hdu['SCI'].data = cube_convolved.T
         else:
-            hdu[datext].data = cube_convolved
+            hdu[datext].data = cube_convolved.T
         hdu.writeto(outfits,overwrite=True)
     return cube_convolved
 
@@ -103,13 +103,13 @@ def bin_cube(infits,bin_value=[2,2,1], datext=0, varext=1, dqext=2, wavext=None,
     if outfits != None:
         hdu = fits.open(infits)
         if 'SCI' and 'ERR' and 'DQ' in hdu:
-            hdu['SCI'].data = flux_binned
-            hdu['ERR'].data = var_binned
-            hdu['DQ'].data = dq_binned
+            hdu['SCI'].data = flux_binned.T
+            hdu['ERR'].data = var_binned.T
+            hdu['DQ'].data = dq_binned.T
         else:
-            hdu[datext].data = flux_binned
-            hdu[varext].data = var_binned
-            hdu[dqext].data = dq_binned
+            hdu[datext].data = flux_binned.T
+            hdu[varext].data = var_binned.T
+            hdu[dqext].data = dq_binned.T
         
         hdu.writeto(outfits,overwrite=True)
 

@@ -194,14 +194,6 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
     # If it's a dictionary, assume all is well
     elif isinstance(initproc, dict):
         initdat = initproc
-
-    # If it's an ndarray, assume the file's been loaded but not stripped
-    # to dict{}
-    elif isinstance(initproc, np.ndarray):
-        initdat = initproc[()]
-    # If it's a dictionary, assume all is well
-    elif isinstance(initproc, dict):
-        initdat = initproc
     else:
         raise InitializationError('initproc not in expected format')
     linelist = __get_linelist(initdat)

@@ -161,7 +161,8 @@ def __get_spaxels(cube, cols=None, rows=None):
         colarr = colarr.flatten()
         rowarr = rowarr.flatten()
         nspax = ncols * nrows
-    if len(cols) or len(rows) >2:
+
+    if len(cols)>2 or len(rows) >2:
         colarr = cols
         rowarr = rows
         nspax = len(cols)*len(rows)
@@ -213,6 +214,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
 
     cube, vormap = __get_Cube(initdat, quiet, logfile=logfile)
     specConv = __get_dispersion(initdat, cube, quiet=quiet)
+
     if cols and rows and vormap:
         cols = __get_voronoi(cols, rows, vormap)
         rows = 1
@@ -233,6 +235,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
           file=logtmp)
     if logfile is not None:
         logfile.close()
+
 
 
 # q3df setup for multi-threaded execution

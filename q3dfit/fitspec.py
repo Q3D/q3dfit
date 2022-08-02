@@ -69,7 +69,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
     """
 
-    bad = 1e99
+    bad = 1e30 #1e99  ## CB: Decreased to 1e30 due to overflow issue
 
     flux = copy.deepcopy(flux)
     err = copy.deepcopy(err)
@@ -250,6 +250,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                   format('FITLOOP: Setting ', ctzerinf,
                          ' points from zero/inf flux or ' +
                          'neg/zero/inf error to np.nan'))
+
     if ctzerinf_log > 0:
         gdflux_log[zerinf_indx_log] = bad
         gderr_log[zerinf_indx_log] = bad
@@ -505,8 +506,19 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                                      abs(x - listlinesz[line][icomp]*1.001))]
                             ilamwin = [np.where(gdlambda == lamwin[0])[0][0],
                                        np.where(gdlambda == lamwin[1])[0][0]]
+                            if ilamwin[1]-ilamwin[0]<10:       # e.g. in the MIR, the wavelength range spanned by (listlinesz[line][icomp]*0.999,listlinesz[line][icomp]*1.001) can be smaller than one spectral element
+                                dlam = gdlambda[ int(0.5*(ilamwin[0]+ilamwin[1])) ] - gdlambda[ int(0.5*(ilamwin[0]+ilamwin[1])) - 1]
+                                lamwin = \
+                                    [min(gdlambda, key=lambda x:
+                                        abs(x - (listlinesz[line][icomp]-5.*dlam) )),
+                                     min(gdlambda, key=lambda x:
+                                         abs(x - (listlinesz[line][icomp]+5.*dlam) ))]
+                                ilamwin = [np.where(gdlambda == lamwin[0])[0][0],
+                                           np.where(gdlambda == lamwin[1])[0][0]]
+
                             peakinit[line][icomp] = \
                                 np.nanmax(gdflux_nocnt_sm[ilamwin[0]:ilamwin[1]])
+
                             # If the smoothed version gives all nans, try
                             # unsmoothed
                             if np.isnan(peakinit[line][icomp]):
@@ -619,6 +631,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         else:
             status = lmout.status
 
+
         # Errors from covariance matrix and from fit residual.
         # resid = gdflux - continuum - specfit
         perror = dict()
@@ -729,6 +742,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               'siglim': siglim_gas}
 
     # finish:
+
     return outstr
 
 

@@ -50,7 +50,6 @@ logfile : strarr, optional, default=None
     masksig_secondfit_def = 2.
     # colind = ispax % cube.ncols
     # rowind = int(ispax / cube.ncols)
-    # pdb.set_trace()
     i = colarr[ispax]  # colind, rowind]
     j = rowarr[ispax]  # colind, rowind]
 

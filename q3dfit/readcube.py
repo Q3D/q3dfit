@@ -34,7 +34,7 @@ class Cube:
     dqext : int, optional
     wmapext : int, optional
         Extension numbers of data, variance, data quality, and weight. Set to
-        None if not present. Deafults are 1, 2, 3, and 4.
+        None if not present. Defaults are 1, 2, 3, and 4.
     wavext : int, optional
         Extension number of wavelength data.
     error : bool, optional
@@ -62,7 +62,7 @@ class Cube:
         2D array specifying a Voronoi bin to which each spaxel belongs.
     waveunit_in : str, optional
     waveunit_out : str, optional
-        Wavelength unit of input data cube and unit carrid by object.
+        Wavelength unit of input data cube and unit carried by object.
         Default is micron; other option is Angstrom.
     zerodq : bool, optional
         Zero out the DQ array.
@@ -96,8 +96,10 @@ class Cube:
 
     Examples
     --------
-    >>> imnport readcube
-    >>> cube = Cube('datafits')
+    >>> from q3dfit import readcube
+    >>> cube = readcube.Cube('infile.fits')
+    >>> cube.convolve(2.5)
+    >>> cube.writefits('outfile.fits')
 
     Notes
     -----
@@ -354,6 +356,7 @@ class Cube:
             wave_out = self.wave * u.Unit(self.waveunit_out)
             convert_flux = 1e6 * 1e-23 * c.value / wave_out.to('m').value / \
                 wave_out.to('micron').value
+            # This converts to erg/s/cm^-2/um
             if u.Unit(self.fluxunit_in) == u.Unit('MJy/sr') and \
                 self.pixarea_sqas is not None:
                 convert_flux *= 1./(206265.*206265.)*self.pixarea_sqas
@@ -412,6 +415,97 @@ class Cube:
               self.nwave, "]")
         print("Wavelength range: [", self.wave[0], ",",
               self.wave[self.nwave-1], "] ", self.waveunit_out)
+
+    def convolve(self, refsize, wavescale='none', method='circle'):
+
+        import photutils
+        from scipy.ndimage import convolve  # gaussian_filter, median_filter
+
+        '''
+        Spatially smooth a cube.
+
+        Parameters
+        ----------
+        refsize : float
+            Pixel size for smoothing algorithm.
+        wavescale : str, optional
+            Option to scale smoothing size with wavelength
+        method : str, optional
+            Smoothing method.
+
+        Returns
+        -------
+        obj
+            A modified cube object.
+        '''
+
+        # check for flux/err = inf/nan or bad dq
+        indx_bd = (np.isnan(self.dat) | np.isinf(self.dat) |
+                   np.isnan(self.var) | np.isinf(self.var) |
+                   (self.dq != 0)).nonzero()
+        self.dat[indx_bd] = 0.
+        self.err[indx_bd] = 0.
+        self.var[indx_bd] = 0.
+        self.dq[indx_bd] = 1
+
+        # decreasing convolution size with increasing wavelength
+        if wavescale == 'diff':
+            cscale = refsize/max(self.wave)
+            sizes = cscale/self.wave
+        elif wavescale == 'none':
+            sizes = np.ndarray(self.nwave)
+            sizes[:] = np.float(refsize)
+
+        for i in np.arange(0, self.nwave):
+            # 2D Gaussian with sigma = 1.5 at long wavelength, 1 at short
+            #if method == 'Gaussian':
+            #   cube_convolved[:,:,i] = gaussian_filter(cube_convolved[:,:,i],
+            #                                           1+sizes[i])
+            #if method == 'median-circular':
+            #    cube_convolved[:,:,i] = median_filter(cube_convolved[:,:,i],
+            #                                          footprint=circular_mask(10))
+            if method == 'circle':
+                # mask = circular_mask(np.int(sizes[i]))
+                mask = \
+                    ((photutils.aperture.CircularAperture(
+                        (0., 0.), sizes[i])).to_mask()).data
+                self.dat[:, :, i] = convolve(self.dat[:, :, i], mask)
+                self.var[:, :, i] = convolve(self.var[:, :, i], mask)
+        #if method == 'boxcar':
+        #    cube_convolved[:,:,i] = convolve(cube_convolved[:,:,i],box_mask(2+np.int(sizes[i])))
+
+        # re-compute error
+        self.err = np.sqrt(self.var)
+
+
+    def writefits(self, outfile):
+        '''
+        Write cube to file outfile. Assumes extension order empty phu (if
+        present in original fits file), datext, varext, dqext, and wmapext.
+        '''
+
+        if self.datext != 0:
+            # create empty PHU
+            hdu1 = fits.PrimaryHDU(header=self.header_phu)
+            # create HDUList
+            hdul = fits.HDUList([hdu1])
+            # add data
+            hdul.append(fits.ImageHDU(self.dat.T, header=self.header_dat))
+        else:
+            # create PHU with data
+            hdu1 = fits.PrimaryHDU(self.dat.T, header=self.header_dat)
+            # create HDUList
+            hdul = fits.HDUList([hdu1])
+
+        # add variance, DQ, and wmap if present
+        if self.varext is not None:
+            hdul.append(fits.ImageHDU(self.var.T, header=self.header_var))
+        if self.dqext is not None:
+            hdul.append(fits.ImageHDU(self.dq.T, header=self.header_dq))
+        if self.wmapext is not None:
+            hdul.append(fits.ImageHDU(self.wmap.T, header=self.header_wmap))
+
+        hdul.writeto(outfile, overwrite=True)
 
 
 if __name__ == "__main__":

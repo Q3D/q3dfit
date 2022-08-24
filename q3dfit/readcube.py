@@ -288,6 +288,7 @@ class Cube:
         self.fluxunit_in = re.sub(match_number, '', self.fluxunit_in)
 
         # reading wavelength from wavelength extention
+        self.wavext = wavext
         if wavext is not None:
             try:
                 self.wave = hdu[wavext].data
@@ -477,7 +478,7 @@ class Cube:
         # re-compute error
         self.err = np.sqrt(self.var)
 
-    def makeqsotemplate(self, outpy, norm=1., plot=True, radius=0.):
+    def makeqsotemplate(self, outpy, norm=1., plot=True, radius=1.):
 
         import matplotlib.pyplot as plt
 
@@ -485,11 +486,14 @@ class Cube:
 
         Parameters
         ----------
-        infits : string
-                Name of the fits file to load in.
-
         outpy : string
                 Name of the numpy save file for the resulting qso spectrum
+        norm : float, optional
+            Factor by which to divide output spectrum.
+        plot : bool, optional
+            Plot extracted spectrum.
+        radius : float, optional
+            Radius for circular extraction. Must be > 0.
 
         Returns
         -------
@@ -517,11 +521,78 @@ class Cube:
             plt.show()
         if self.var is not None:
             qsotemplate['var'] = self.var[iap[0][:], iap[1][:], :].sum(0) \
-                / norm
+                / norm / norm
         if self.dq is not None:
             qsotemplate['dq'] = self.dq[iap[0][:], iap[1][:], :].sum(0)
 
         np.save(outpy, qsotemplate)
+
+    def specextract(self, cent, method='circle', norm=1., plot=True,
+                    radius=1.):
+
+        import matplotlib.pyplot as plt
+        import photutils
+
+        '''
+        Extract a spectrum
+
+        Parameters
+        ----------
+        cent : ndarray
+            x, y pixel coordinates of aperture center
+        method : string, optional
+            Method of extraction. Default is circular aperture of radius r.
+        radius : float, optional
+            Radius for circular extraction. Must be > 0.
+        norm : float, optional
+            Factor by which to divide output spectrum.
+        plot : bool, optional
+            Plot extracted spectrum.
+
+        Returns
+        -------
+        spec : ndarray
+            Array of size nwave x (1-3), including data and var and/or dq if
+            present.
+
+        '''
+
+        # create circular mask
+        if method == 'circle':
+            aper = photutils.aperture.CircularAperture(cent, radius)
+
+        # second dimension of output array
+        next = 1
+        if self.var is not None:
+            next += 1
+        if self.dq is not None:
+            next += 1
+
+        # create output array
+        spec = np.ndarray((self.nwave, next))
+        # loop through wavelengths
+        for i in np.arange(0, self.nwave):
+            specdat = \
+                photutils.aperture.aperture_photometry(self.dat[:, :, i], aper)
+            spec[i, 0] = specdat['aperture_sum'].data[0] / norm
+            # for now simply sum var as well
+            if self.var is not None:
+                specvar = \
+                    photutils.aperture.aperture_photometry(self.var[:, :, i],
+                                                           aper)
+                spec[i, 1] = specvar['aperture_sum'].data[0] / norm / norm
+            # for now simply sum dq
+            if self.dq is not None:
+                specdq = \
+                    photutils.aperture.aperture_photometry(self.dq[:, :, i],
+                                                           aper)
+                spec[i, 2] = specdq['aperture_sum'].data[0]
+
+        if plot:
+            plt.plot(self.wave, spec[:, 0])
+            plt.show()
+
+        return spec
 
     def writefits(self, outfile):
         '''
@@ -549,6 +620,44 @@ class Cube:
             hdul.append(fits.ImageHDU(self.dq.T, header=self.header_dq))
         if self.wmapext is not None:
             hdul.append(fits.ImageHDU(self.wmap.T, header=self.header_wmap))
+
+        hdul.writeto(outfile, overwrite=True)
+
+    def writespec(self, spec, outfile):
+        '''
+        Write extracted spectrum to disk. Assumes extension order empty phu (if
+        present in original fits file), datext, varext, dqext, and wmapext.
+        '''
+
+        # deal with simplest case for now
+        if self.wavext is None:
+            hdr = fits.Header({'CUNIT1': self.waveunit_out,
+                               'CRPIX1': self.crpix,
+                               'CDELT1': self.cdelt,
+                               'CRVAL1': self.crval,
+                               'CTYPE1': 'WAVE',
+                               'BUNIT': self.fluxunit_out})
+
+        if self.datext != 0:
+            # create empty PHU
+            hdu1 = fits.PrimaryHDU(header=self.header_phu)
+            # create HDUList
+            hdul = fits.HDUList([hdu1])
+            # add data
+            hdul.append(fits.ImageHDU(spec[:, 0], header=hdr))
+        else:
+            # create PHU with data
+            hdu1 = fits.PrimaryHDU(spec[:, 0], header=hdr)
+            # create HDUList
+            hdul = fits.HDUList([hdu1])
+
+        # add variance, DQ, and wmap if present
+        if self.varext is not None:
+            hdul.append(fits.ImageHDU(spec[:, 1], header=hdr))
+        if self.dqext is not None:
+            hdul.append(fits.ImageHDU(spec[:, 2], header=hdr))
+        # if self.wmapext is not None:
+        #     hdul.append(fits.ImageHDU(self.wmap.T, header=self.header_wmap))
 
         hdul.writeto(outfile, overwrite=True)
 

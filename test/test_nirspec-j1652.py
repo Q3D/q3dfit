@@ -11,16 +11,15 @@ from q3dfit.q3df import q3df
 from q3dfit.q3da import q3da
 
 chdir('../jnb/')
-q3di = 'nirspec-j1652/q3di.npy'
+q3di = 'nirspec-j1652-conv/q3di.npy'
 
 # Single spaxel
-q3df(q3di, cols=51, rows=43, quiet=False)
-q3da(q3di, cols=51, rows=43, quiet=False)
+q3df(q3di, cols=50, rows=40, quiet=False)
+q3da(q3di, cols=50, rows=40, quiet=False)
 
 # Most of cube
 #q3df(q3di, cols=[20,75], rows=[15,70], ncores=10)
 #q3da(q3di, cols=[20,75], rows=[15,70], noplots=True)
-
 
 # Make maps
 #
@@ -29,7 +28,7 @@ q3da(q3di, cols=51, rows=43, quiet=False)
 
 # do_kpc = False
 # saveFile = False
-# flx = [1e-4,1.]
+# flx = [1e-5,2e-2]
 # qsocenter = None
 # pltarg = {'Ftot':flx,
 #           'Fci':flx,

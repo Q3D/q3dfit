@@ -40,6 +40,7 @@ from ppxf.ppxf_util import log_rebin
 from q3dfit.linelist import linelist
 from q3dfit.readcube import Cube
 from q3dfit.sepfitpars import sepfitpars
+from q3dfit.q3df_helperFunctions import __get_Cube
 from q3dfit.qsohostfcn import qsohostfcn
 from q3dfit.exceptions import InitializationError
 from numpy.polynomial import legendre
@@ -112,39 +113,15 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
 
     # READ DATA
 
-    if not ('datext' in initdat):
-        datext = 1
-    else:
-        datext = initdat['datext']
+    cube, vormap = __get_Cube(initdat, quiet)
 
-    if not ('varext' in initdat):
-        varext = 2
-    else:
-        varext = initdat['varext']
-
-    if not ('dqext' in initdat):
-        dqext = 3
-    else:
-        dqext = initdat['dqext']
-
-    header = bytes(1)
-
-    if 'argsreadcube' in initdat:
-
-        cube = Cube(initdat['infile'], datext=datext, dqext=dqext,
-                    quiet=quiet, varext=varext, **initdat['argsreadcube'])
-    else:
-        cube = Cube(initdat['infile'], quiet=quiet,
-                    datext=datext, varext=varext,
-                    dqext=dqext)
-
-    if 'vormap' in initdat:
-        vormap = initdat['vormap']
-        nvorcols = max(vormap)
-        vorcoords = np.zeros(nvorcols, 2)
-        for i in range(0, nvorcols):
-            xyvor = np.where(vormap == i).nonzero()
-            vorcoords[:, i] = xyvor  # TODO
+    # if 'vormap' in initdat:
+    #     vormap = initdat['vormap']
+    #     nvorcols = max(vormap)
+    #     vorcoords = np.zeros(nvorcols, 2)
+    #     for i in range(0, nvorcols):
+    #         xyvor = np.where(vormap == i).nonzero()
+    #         vorcoords[:, i] = xyvor  # TODO
 
 
 # INITIALIZE OUTPUT FILES, need to write helper functions (printlinpar,

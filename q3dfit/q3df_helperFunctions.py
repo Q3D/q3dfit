@@ -97,13 +97,23 @@ def __get_Cube(initdat, quiet, logfile=None):
         from sys import stdout
         logfile = stdout
     if initdat.__contains__('argsreadcube'):
-        cube = Cube(initdat['infile'], datext=datext, dqext=dqext,
-                    quiet=quiet, varext=varext, vormap=vormap,
-                    logfile=logfile, **initdat['argsreadcube'])
+        # datext, varext, and dqext can be specified through
+        # argsreadcube or through initdat directly. Default to the value
+        # in argsreadcube. Else set the value based on the default or from
+        # initdat
+        argsreadcubeuse = initdat['argsreadcube'].copy()
+        if not argsreadcubeuse.__contains__('datext'):
+            argsreadcubeuse['datext'] = datext
+        if not argsreadcubeuse.__contains__('varext'):
+            argsreadcubeuse['varext'] = varext
+        if not argsreadcubeuse.__contains__('dqext'):
+            argsreadcubeuse['dqext'] = dqext
     else:
-        cube = Cube(initdat['infile'], datext=datext, dqext=dqext,
-                    quiet=quiet, varext=varext, vormap=vormap,
-                    logfile=logfile)
+        argsreadcubeuse = {'datext': datext, 'varext': varext, 'dqext': dqext}
+
+    cube = Cube(initdat['infile'], quiet=quiet, vormap=vormap,
+                logfile=logfile, **argsreadcubeuse)
+
     return cube, vormap
 
 

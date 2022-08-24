@@ -477,6 +477,51 @@ class Cube:
         # re-compute error
         self.err = np.sqrt(self.var)
 
+    def makeqsotemplate(self, outpy, norm=1., plot=True, radius=0.):
+
+        import matplotlib.pyplot as plt
+
+        '''Extract the quasar spectrum
+
+        Parameters
+        ----------
+        infits : string
+                Name of the fits file to load in.
+
+        outpy : string
+                Name of the numpy save file for the resulting qso spectrum
+
+        Returns
+        -------
+        dictionary
+            {wave,flux,dq}
+        '''
+
+        white_light_image = np.median(self.dat, axis=2)
+        white_light_image[np.where(np.isnan(white_light_image))] = 0
+
+        loc_max = np.where(white_light_image == white_light_image.max())
+        map_x = np.tile(np.indices((self.ncols, 1))[0], (1, self.nrows))
+        map_y = np.tile(np.indices((self.nrows, 1))[0].T[0], (self.ncols, 1))
+        map_r = np.sqrt((map_x - loc_max[0][0])**2 +
+                        (map_y - loc_max[1][0])**2)
+        iap = np.where(map_r <= radius)
+
+        qsotemplate = {'wave': self.wave}
+        if self.dat is not None:
+            # norm = np.median(self.dat[loc_max[0][0], loc_max[1][0]])
+            qsotemplate['flux'] = self.dat[iap[0][:], iap[1][:], :].sum(0) \
+                / norm
+        if plot:
+            plt.plot(self.wave, qsotemplate['flux'])
+            plt.show()
+        if self.var is not None:
+            qsotemplate['var'] = self.var[iap[0][:], iap[1][:], :].sum(0) \
+                / norm
+        if self.dq is not None:
+            qsotemplate['dq'] = self.dq[iap[0][:], iap[1][:], :].sum(0)
+
+        np.save(outpy, qsotemplate)
 
     def writefits(self, outfile):
         '''

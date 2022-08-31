@@ -309,14 +309,14 @@ class dispFile:
         if R is None and KMS is None and DLBMDA is None:
             return foo
         import time
-        c1 = fits.Column(name='WAVELENGTH', format='E', array=gwvln)
+        c1 = fits.Column(name='WAVELENGTH', format='E', array=wavelen)
         clist = [c1]
         if R is not None:
-            clist.append(fits.Column(name='R', format='E', array=grsln))
+            clist.append(fits.Column(name='R', format='E', array=R))
         elif DLAMBDA is not None:
-            clist.append(fits.Column(name='DLAM', format='E', array=gdisp))
+            clist.append(fits.Column(name='DLAM', format='E', array=DLAMBDA))
         if KMS is not None:
-            clist.append(fits.Column(name='VELOCITY', format='E', array=vel))
+            clist.append(fits.Column(name='VELOCITY', format='E', array=KMS))
 
         cols = fits.ColDefs(clist)
         tbhdu = fits.BinTableHDU.from_columns(cols)
@@ -327,7 +327,7 @@ class dispFile:
         filepath = os.path.join(self.saveDIR,filename)
         if  (os.path.exists(filepath) == True and OVERWRITE == False):
             pass
-        if saveDIR is not None and (os.path.exists(filepath) != True or OVERWRITE != False):
+        if self.saveDIR is not None and (os.path.exists(filepath) != True or OVERWRITE != False):
             if self.printquiet != True:
                 print('create dispersion to:',filename)
             tbhdu.writeto(filepath,overwrite=OVERWRITE)

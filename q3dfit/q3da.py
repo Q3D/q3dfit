@@ -136,6 +136,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
         emlweq = dict()
         emlflx = dict()
         emlflxerr = dict()
+        emlncomp = dict()
         emlweq['ftot'] = dict()
         emlflx['ftot'] = dict()
         emlflxerr['ftot'] = dict()
@@ -151,6 +152,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
             emlflx['f' + cstr + 'pk'] = dict()
             emlflxerr['f' + cstr + 'pk'] = dict()
         for line in lines_with_doublets:
+            emlncomp[line] = np.zeros((cube.ncols, cube.nrows), dtype=int)
             emlweq['ftot'][line] = np.zeros((cube.ncols, cube.nrows),
                                             dtype=float) + bad
             emlflx['ftot'][line] = np.zeros((cube.ncols, cube.nrows),
@@ -343,6 +345,9 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
     #                        emlweq['ftot', line, j, i] = lineweqs['tot'][line]
                             emlflx['ftot'][line][i, j] = tflux['tflux'][line]
                             emlflxerr['ftot'][line][i, j] = tflux['tfluxerr'][line]
+
+                        # assign to output dictionary
+                        emlncomp[line][i,j] = ctgd
 
                     if thisncomp == 1:
                         isort = [0]
@@ -981,7 +986,8 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                  emlwav=emlwav, emlwaverr=emlwaverr,
                  emlsig=emlsig, emlsigerr=emlsigerr,
                  emlflx=emlflx, emlflxerr=emlflxerr,
-                 emlweq=emlweq)
+                 emlweq=emlweq, emlncomp=emlncomp,
+                 ncols=cube.ncols, nrows=cube.nrows)
         np.save('{[outdir]}{[label]}'.format(initdat, initdat)+'.cont.npy',
                 contcube)
 

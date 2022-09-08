@@ -22,6 +22,7 @@ from astropy.io import fits
 from astropy.table import Table
 
 from ppxf.ppxf_util import log_rebin
+from q3dfit.cmpcvdf import cmpcvdf
 from q3dfit.linelist import linelist
 from q3dfit.readcube import Cube
 from q3dfit.sepfitpars import sepfitpars
@@ -49,11 +50,13 @@ plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 plt.rcParams['figure.constrained_layout.use'] = False
 
+
 class Q3Dpro:
     # =============================================================================================
     # instantiate the q3dpro object
     # =============================================================================================
-    def __init__(self,initproc,SILENT=True,NOCONT=False,NOLINE=False,PLATESCALE=0.15):
+    def __init__(self, initproc, SILENT=True, NOCONT=False, NOLINE=False,
+                 PLATESCALE=0.15):
         # read in the q3d initproc file and unpack
         # If it's a string, assume it's an input .npy file
         if type(initproc) == str:
@@ -99,14 +102,13 @@ class Q3Dpro:
         # output in MICRON
         return linewave,linename
 
-    def make_linemap(self, LINESELECT,SNRCUT=5.,LINEVAC=True,
+    def make_linemap(self, LINESELECT, SNRCUT=5., LINEVAC=True,
                      xyCenter=None,VMINMAX=None,
                      XYSTYLE=None, PLTNUM=1, CMAP=None,
                      SAVEDATA=False):
         print('Plotting emission line maps')
         if self.silent is False:
             print('create linemap:',LINESELECT)
-
 
         redshift = self.q3dinit['zsys_gas']
         ncomp = self.q3dinit['ncomp'][LINESELECT][0,0]
@@ -126,7 +128,7 @@ class Q3Dpro:
         # EXTRACT TOTAL FLUX
         fluxsum     = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['flux']
         fluxsum_err = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['fluxerr']
-        fsmsk = clean_mask(fluxsum,BAD=self.bad)
+        fsmsk = clean_mask(fluxsum, BAD=self.bad)
 
         matrix_size = (fluxsum.shape[0],fluxsum.shape[1],ncomp)
         dataOUT = {'Ftot':{'data':fluxsum*fsmsk,'err':fluxsum_err*fsmsk,'name':['F$_{tot}$']},
@@ -629,61 +631,75 @@ class Q3Dpro:
     # Emission line data
     # ---------------------------------------------------------------------------------------------
 
+
 class LineData:
-    def __init__(self,initproc,dataDIR):
+    def __init__(self, initproc, dataDIR):
         filename = initproc['label']+'.lin.npz'
-        datafile = os.path.join(dataDIR,filename)
+        datafile = os.path.join(dataDIR, filename)
         # print(datafile)
-        if os.path.exists(datafile) != True:
+        if not os.path.exists(datafile):
             print('ERROR: emission line ('+filename+') file does not exist')
             return
-        self.data = self.read_npz(datafile)
         self.lines = initproc['lines']
-        self.zgas  = initproc['zinit_gas']
+        self.zgas = initproc['zinit_gas']
+        self.maxncomp = initproc['maxncomp']
+        self.data = self.read_npz(datafile)
+        self.ncols = self.data['ncols'].item()
+        self.nrows = self.data['nrows'].item()
+        self.bad = 1e99
         # self.flux    = self.get_flux()
         # self.siga    = self.get_sigma()
         # self.wavelen = self.get_wave()
         # self.eq      = self.get_weq()
         return
 
-    def read_npz(self,datafile):
-        dataread = np.load(datafile,allow_pickle=True)
+    def read_npz(self, datafile):
+        dataread = np.load(datafile, allow_pickle=True)
         self.colname = sorted(dataread)
         return dataread
 
-    def get_flux(self,lineselect,FLUXSEL='ftot'):
+    def get_flux(self, lineselect, FLUXSEL='ftot'):
         # FLUXSEL = 'ftot' by default --> select from ('ftot', 'fc1', 'fc1pk')
         if lineselect not in self.lines:
             print('ERROR: line does not exist')
             return None
-        emlflx     = self.data['emlflx'].item()
-        emlflxerr  = self.data['emlflxerr'].item()
-        dataout = {'flux':emlflx[FLUXSEL][lineselect],'fluxerr':emlflxerr[FLUXSEL][lineselect]}
+        emlflx = self.data['emlflx'].item()
+        emlflxerr = self.data['emlflxerr'].item()
+        dataout = {'flux': emlflx[FLUXSEL][lineselect],
+                   'fluxerr': emlflxerr[FLUXSEL][lineselect]}
         return dataout
 
-    def get_sigma(self,lineselect,COMPSEL=1):
+    def get_ncomp(self, lineselect):
+        if lineselect not in self.lines:
+            print('ERROR: line does not exist')
+            return None
+        return (self.data['emlncomp'].item())[lineselect]
+
+    def get_sigma(self, lineselect, COMPSEL=1):
         if lineselect not in self.lines:
             print('ERROR: line does not exist')
             return None
         # 'c1'
-        emlsig     = self.data['emlsig'].item()
-        emlsigerr  = self.data['emlsigerr'].item()
+        emlsig = self.data['emlsig'].item()
+        emlsigerr = self.data['emlsigerr'].item()
         csel = 'c'+str(COMPSEL)
-        dataout = {'sig':emlsig[csel][lineselect],'sigerr':emlsigerr[csel][lineselect]}
+        dataout = {'sig': emlsig[csel][lineselect],
+                   'sigerr': emlsigerr[csel][lineselect]}
         return dataout
 
-    def get_wave(self,lineselect,COMPSEL=1):
+    def get_wave(self, lineselect, COMPSEL=1):
         if lineselect not in self.lines:
             print('ERROR: line does not exist')
             return None
         # 'c1'
-        emlwav     = self.data['emlwav'].item()
-        emlwaverr  = self.data['emlwaverr'].item()
+        emlwav = self.data['emlwav'].item()
+        emlwaverr = self.data['emlwaverr'].item()
         csel = 'c'+str(COMPSEL)
-        dataout = {'wav':emlwav[csel][lineselect],'waverr':emlwaverr[csel][lineselect]}
+        dataout = {'wav': emlwav[csel][lineselect],
+                   'waverr': emlwaverr[csel][lineselect]}
         return dataout
 
-    def get_weq(self,lineselect,FLUXSEL='ftot'):
+    def get_weq(self, lineselect, FLUXSEL='ftot'):
         # FLUXSEL = 'ftot' by default --> select from ('ftot', 'fc1')
         if lineselect not in self.lines:
             print('ERROR: line does not exist')
@@ -692,6 +708,42 @@ class LineData:
         emlweq = self.data['emlweq'].item()
         dataout = emlweq[FLUXSEL][lineselect]
         return dataout
+
+
+class OneLineData:
+    def __init__(self, linedata, lineselect):
+        self.line = lineselect
+        # initialize arrays
+        self.flux = \
+            np.zeros((linedata.ncols, linedata.nrows, linedata.maxncomp),
+                     dtype=float) + linedata.bad
+        self.pkflux = \
+            np.zeros((linedata.ncols, linedata.nrows, linedata.maxncomp),
+                     dtype=float) + linedata.bad
+        self.sig = \
+            np.zeros((linedata.ncols, linedata.nrows, linedata.maxncomp),
+                     dtype=float) + linedata.bad
+        self.wave = \
+            np.zeros((linedata.ncols, linedata.nrows, linedata.maxncomp),
+                     dtype=float) + linedata.bad
+        # cycle through components to get maps
+        for i in range(0, linedata.maxncomp):
+            self.flux[:, :, i] = \
+                (linedata.get_flux(lineselect, FLUXSEL='fc'+str(i+1)))['flux']
+            self.pkflux[:, :, i] = \
+                (linedata.get_flux(lineselect,
+                                   FLUXSEL='fc'+str(i+1)+'pk'))['flux']
+            self.sig[:, :, i] = \
+                (linedata.get_sigma(lineselect, COMPSEL=i+1))['sig']
+            self.wave[:, :, i] = \
+                (linedata.get_wave(lineselect, COMPSEL=i+1))['wav']
+        # No. of components on a spaxel-by-spaxel basis
+        self.ncomp = linedata.get_ncomp(lineselect)
+
+    def calc_cvdf(self, zref, vlimits=[-1e4, 1e4], vstep=1.):
+        self.cvdfvel, self.cvdfflux, self.cvdfcumnormflux = \
+            cmpcvdf(self.wave, self.sig, self.pkflux, self.ncomp,
+                    self.line, zref, vlimits=vlimits, vstep=vstep)
 
 # ---------------------------------------------------------------------------------------------
 # Continuum data

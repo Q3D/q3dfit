@@ -33,7 +33,8 @@ wavelength-dependent JWST PSF.
 * Carlos Anicetti (Johns Hopkins University, contributor)
 * Lillian Whitesell (Rhodes College, contributor)
 * Grace Lim (Rhodes College, contributor)
-
+* Ryan McCrory (Rhodes College, contributor)
+  
 .. warning::
 
    This software has not yet been fully tested due to the limited availability of NIRSpec and MIRI data cubes. You are viewing

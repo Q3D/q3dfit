@@ -33,7 +33,8 @@ wavelength-dependent JWST PSF is currently in development.
 * Carlos Anicetti (Johns Hopkins University, contributor)
 * Lillian Whitesell (Rhodes College, contributor)
 * Grace Lim (Rhodes College, contributor)
-
+* Ryan McCrory (Rhodes College, contributor)
+  
 .. warning::
 
    This software has not yet been officially released. You are viewing

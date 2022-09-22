@@ -10,8 +10,8 @@ from astropy.constants import c
 def cmpcvdf(wave, sigma, pkflux, ncomp, line, zref,
             vlimits=[-1e4, 1e4], vstep=1.):
     """
-    Generates a dictionary of cumulative velocity distribution
-    functions for all emission lines and for all spaxels.
+    Computes cumulative velocity distribution function for a given line, for
+    each spaxel in a data cube.
 
     Parameters
     ----------
@@ -25,10 +25,11 @@ def cmpcvdf(wave, sigma, pkflux, ncomp, line, zref,
     Returns
     -------
     modvel : array(nmod)
-    outflux : array(ncols, nrows, nmod)
-        3D data with two dimensions of imaging plane and third of model
-        points
-    cumfluxnorm :
+    vdf : array(ncols, nrows, nmod)
+        Velocity distribution in flux space. 3D data with two dimensions of
+        imaging plane and third of model points.
+    cvdf : array(ncols, nrows, nmod)
+        Cumulative velocity distribution function.
 
     Notes
     -----
@@ -56,10 +57,10 @@ def cmpcvdf(wave, sigma, pkflux, ncomp, line, zref,
     size_cube = np.shape(pkflux)
     nmod = np.size(modvel)
 
-    outflux = np.zeros((size_cube[0], size_cube[1], nmod))
-    #outfluxerr = np.zeros((size_cube[0], size_cube[1], nmod))
-    cumfluxnorm = np.zeros((size_cube[0], size_cube[1], nmod))
-    #cumfluxnormerr = np.zeros((size_cube[0], size_cube[1], nmod))
+    vdf = np.zeros((size_cube[0], size_cube[1], nmod))
+    #vdferr = np.zeros((size_cube[0], size_cube[1], nmod))
+    cvdf = np.zeros((size_cube[0], size_cube[1], nmod))
+    #cvdferr = np.zeros((size_cube[0], size_cube[1], nmod))
     for i in range(np.max(ncomp)):
         rbpkflux = np.repeat((pkflux[:, :, i])[:, :, np.newaxis], nmod, axis=2)
         rbsigma = np.repeat((sigma[:, :, i])[:, :, np.newaxis], nmod, axis=2)
@@ -78,7 +79,7 @@ def cmpcvdf(wave, sigma, pkflux, ncomp, line, zref,
                            (rbsigma[inz]/c.to('km/s').value))**2. / 2.
             i_no_under = (exparg < -minexp)
             if np.sum(i_no_under) > 0:
-                outflux[i_no_under] += rbpkflux[i_no_under] * \
+                vdf[i_no_under] += rbpkflux[i_no_under] * \
                     np.exp(-exparg[i_no_under])
                 # df_norm = rbpkfluxerrs[i_no_under]*np.exp(-exparg[i_no_under])
                 #term1 = rbpkflux[i_no_under] * \
@@ -109,7 +110,7 @@ def cmpcvdf(wave, sigma, pkflux, ncomp, line, zref,
     # rebin to full cube
     rbdmodwaves = \
         np.broadcast_to(dmodwaves, (size_cube[0], size_cube[1], nmod))
-    fluxnorm = outflux * rbdmodwaves
+    fluxnorm = vdf * rbdmodwaves
     #fluxnormerr = emlcvdf['fluxerr'][line]*dmodwaves
     fluxint = np.repeat((np.sum(fluxnorm, 2))[:, :, np.newaxis], nmod, axis=2)
     inz = fluxint != 0
@@ -117,9 +118,9 @@ def cmpcvdf(wave, sigma, pkflux, ncomp, line, zref,
         fluxnorm[inz] /= fluxint[inz]
         #fluxnormerr[inz] /= fluxint[inz]
 
-    cumfluxnorm[:, :, 0] = fluxnorm[:, :, 0]
+    cvdf[:, :, 0] = fluxnorm[:, :, 0]
     for i in range(1, nmod):
-        cumfluxnorm[:, :, i] = cumfluxnorm[:, :, i-1] + fluxnorm[:, :, i]
-        #emlcvdf['cumfluxnormerr'][line] = fluxnormerr
+        cvdf[:, :, i] = cvdf[:, :, i-1] + fluxnorm[:, :, i]
+        #emlcvdf['cvdferr'][line] = fluxnormerr
 
-    return modvel, outflux, cumfluxnorm
+    return modvel, vdf, cvdf

@@ -165,9 +165,9 @@ class Cube:
                                 'or absent')
         else:
             self.dq = None
-        # put all dq to good (0)
+        # put all dq to good (0), data type bytes
         if zerodq:
-            self.dq = np.zeros(np.shape(self.dat))
+            self.dq = np.zeros(np.shape(self.dat), dtype=bytes)
 
         # Weight
         if wmapext is not None:
@@ -569,6 +569,7 @@ class Cube:
             next += 1
 
         # create output array
+        # Note that all planes have same dtype (float)
         spec = np.ndarray((self.nwave, next))
         # loop through wavelengths
         for i in np.arange(0, self.nwave):

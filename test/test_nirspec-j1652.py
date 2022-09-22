@@ -19,11 +19,11 @@ chdir('../jnb/')
 q3di = 'nirspec-j1652-conv/q3di.npy'
 
 # Single spaxel
-#q3df(q3di, cols=50, rows=40, quiet=False)
-#q3da(q3di, cols=40, rows=50, quiet=False)
+# q3df(q3di, cols=50, rows=40, quiet=False)
+# q3da(q3di, cols=40, rows=50, quiet=False)
 
 # Most of cube
-#q3df(q3di, cols=[20,75], rows=[15,70], ncores=10)
+# q3df(q3di, cols=[20,75], rows=[15,70], ncores=10)
 #q3da(q3di, cols=[20,75], rows=[15,70], noplots=True)
 
 # Make maps
@@ -32,11 +32,25 @@ qpro = Q3Dpro(q3di, PLATESCALE=0.05, NOCONT=True)
 
 o3data = OneLineData(qpro.linedat, '[OIII]5007')
 
+# [OIII] cvdf
 o3data.calc_cvdf(2.9489, [-5e3, 5e3], vstep=5)
 
-import matplotlib.pyplot as plt
-fig, ax = plt.subplots()
-ax.step(o3data.cvdfvel, o3data.cvdfflux[49, 39, :])
+# test plot of CVDF calc
+# import matplotlib.pyplot as plt
+# fig, ax = plt.subplots()
+# ax.step(o3data.cvdf_vel, o3data.vdf[49, 39, :])
+
+# v50 for [OIII] test
+#v50 = o3data.calc_cvdf_vel(68.)
+#import matplotlib.pyplot as plt
+#from matplotlib import cm
+#norm = cm.colors.Normalize(vmax=2e3, vmin=-2e3)
+#fig, ax = plt.subplots()
+#ax.imshow(v50, norm=norm, cmap='RdYlBu')
+#plt.show()
+
+o3data.make_cvdf_map(50., velran=[-1e3, 1e3], markcenter=[47., 46.])
+
 # do_kpc = False
 # saveFile = False
 # flx = [1e-5,2e-2]

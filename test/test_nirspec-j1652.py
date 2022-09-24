@@ -24,7 +24,7 @@ q3di = 'nirspec-j1652-conv/q3di.npy'
 
 # Most of cube
 # q3df(q3di, cols=[20,75], rows=[15,70], ncores=10)
-#q3da(q3di, cols=[20,75], rows=[15,70], noplots=True)
+# q3da(q3di, cols=[20,75], rows=[15,70], noplots=True)
 
 # Make maps
 #
@@ -40,16 +40,21 @@ o3data.calc_cvdf(2.9489, [-5e3, 5e3], vstep=5)
 # fig, ax = plt.subplots()
 # ax.step(o3data.cvdf_vel, o3data.vdf[49, 39, :])
 
-# v50 for [OIII] test
-#v50 = o3data.calc_cvdf_vel(68.)
-#import matplotlib.pyplot as plt
-#from matplotlib import cm
-#norm = cm.colors.Normalize(vmax=2e3, vmin=-2e3)
-#fig, ax = plt.subplots()
-#ax.imshow(v50, norm=norm, cmap='RdYlBu')
-#plt.show()
+# compute v50 for [OIII] test
+# v50 = o3data.calc_cvdf_vel(68.)
+# import matplotlib.pyplot as plt
+# from matplotlib import cm
+# norm = cm.colors.Normalize(vmax=2e3, vmin=-2e3)
+# fig, ax = plt.subplots()
+# ax.imshow(v50, norm=norm, cmap='RdYlBu')
+# plt.show()
 
-o3data.make_cvdf_map(50., velran=[-1e3, 1e3], markcenter=[47., 46.])
+# map of v50 for [OIII] test
+# o3data.make_cvdf_map(50., velran=[-1e3, 1e3], markcenter=[0., 0.],
+#                      center=[47., 47.])
+o3data.make_cvdf_map(50., velran=[-1e3, 1e3], markcenter=[47., 47.],
+                     outfile=True)
+
 
 # do_kpc = False
 # saveFile = False

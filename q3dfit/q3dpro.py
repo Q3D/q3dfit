@@ -43,6 +43,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.ticker import MaxNLocator,LinearLocator,FixedLocator
 from scipy.spatial import distance
 from plotbin.sauron_colormap import register_sauron_colormap
+from plotbin.display_pixels import display_pixels
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import LogNorm
 
@@ -324,8 +325,10 @@ class Q3Dpro:
                         axi = ax[j]
                     else:
                         axi = ax[i,j]
-                    display_pixels_wz(yy, xx,pixVals,CMAP=CMAP,ax=axi,COLORBAR=True,PLOTLOG=FLUXLOG,
-                                      VMIN=vminmax[0],VMAX=vminmax[1],TICKS=vticks,NTICKS=NTICKS)
+                    display_pixels_wz(yy, xx, pixVals, CMAP=CMAP, AX=axi,
+                                      COLORBAR=True, PLOTLOG=FLUXLOG,
+                                      VMIN=vminmax[0], VMAX=vminmax[1],
+                                      TICKS=vticks, NTICKS=NTICKS)
                     if xyCenter != None :
                         axi.errorbar(qsoCenter[0],qsoCenter[1],color='black',mew=1,mfc='red',fmt='*',markersize=15,zorder=2)
                     axi.set_xlabel(XYtitle,fontsize=16)
@@ -527,9 +530,8 @@ class Q3Dpro:
                     xx,yy = xcol,ycol
                     iax = ax[cf]
                     frat10,frat10err,pltname,pltrange = lineratios[linrat]
-                    display_pixels_wz(yy,xx,frat10,CMAP=CMAP,ax=iax,
-                                      VMIN=-1,VMAX=1,
-                                      NTICKS=5,COLORBAR=True)
+                    display_pixels_wz(yy, xx, frat10, CMAP=CMAP, AX=iax,
+                                      VMIN=-1, VMAX=1, NTICKS=5, COLORBAR=True)
                     # iax.errorbar(0,0,color='black',fmt='*',markersize=10,zorder=2)
                     iax.set_xlabel('spaxel',fontsize=13)
                     iax.set_ylabel('spaxel',fontsize=13)
@@ -677,9 +679,12 @@ class LineData:
         self.zgas = initproc['zinit_gas']
         self.maxncomp = initproc['maxncomp']
         self.data = self.read_npz(datafile)
+        # book-keeping inheritance from initproc
         self.ncols = self.data['ncols'].item()
         self.nrows = self.data['nrows'].item()
         self.bad = 1e99
+        self.dataDIR = initproc['outdir']
+        self.target_name = initproc['name']
         # self.flux    = self.get_flux()
         # self.siga    = self.get_sigma()
         # self.wavelen = self.get_wave()
@@ -839,6 +844,8 @@ class OneLineData:
         self.ncols = linedata.ncols
         self.nrows = linedata.nrows
         self.bad = linedata.bad
+        self.dataDIR = linedata.dataDIR
+        self.target_name = linedata.target_name
 
         self.line = lineselect
         # initialize arrays
@@ -931,23 +938,27 @@ class OneLineData:
 
     def make_cvdf_map(self, pct, velran=None, cmap=None,
                       center=None, markcenter=None, axisunit='spaxel',
-                      platescale=None):
+                      platescale=None, outfile=False, outformat='png'):
 
         pixVals = self.calc_cvdf_vel(pct)
 
         kpc_arcsec = cosmo.kpc_proper_per_arcmin(self.cvdf_zref).value/60.
 
-        # zero-offset column and row values
+        # single-offset column and row values
         cols = np.arange(1, self.ncols+1, dtype=float)
         rows = np.arange(1, self.nrows+1, dtype=float)
         if center is None:
             center = [0., 0.]
-#            center = [self.ncols/2., self.nrows/2.] - 1.
         cols_cent = (cols - center[0])
         rows_cent = (rows - center[1])
+        # This makes the axis span the spaxel values, with integer coordinate
+        # being a pixel center. So a range of [1,5] spaxels will have an axis
+        # range of [0.5,5.5]. This is what the extent keyword to imshow expects.
+        # https://matplotlib.org/stable/tutorials/intermediate/imshow_extent.html
         xran = np.array([cols_cent[0], cols_cent[self.ncols-1]+1.]) - 0.5
         yran = np.array([rows_cent[0], rows_cent[self.nrows-1]+1.]) - 0.5
 
+        XYtitle = 'Spaxel'
         #if axisunit == 'kpc' and platescale is not None:
         #    kpc_pix = np.median(kpc_arcsec)*platescale
         #    xcolkpc = xcol*kpc_pix
@@ -963,15 +974,16 @@ class OneLineData:
         nticks = 4
         cmap_r = cm.get_cmap(cmap)
         cmap_r.set_bad(color='black')
-        display_pixels_wz(cols_cent, rows_cent, pixVals, CMAP=cmap, ax=ax,
+        display_pixels_wz(cols_cent, rows_cent, pixVals, CMAP=cmap, AX=ax,
                           COLORBAR=True, VMIN=velran[0], VMAX=velran[1],
-                          TICKS=vticks, NTICKS=nticks, xran=xran, yran=yran,
-                          SKIPTICK=True)
+                          TICKS=vticks, NTICKS=nticks, XRAN=xran, YRAN=yran)
         if markcenter is not None:
             ax.errorbar(markcenter[0], markcenter[1], color='black', mew=1,
-                        mfc='red', fmt='*', markersize=15, zorder=2)
-        #axi.set_xlabel(XYtitle,fontsize=16)
-        #axi.set_ylabel(XYtitle,fontsize=16)
+                        mfc='red', fmt='*', markersize=10, zorder=2)
+        ax.set_xlabel(XYtitle, fontsize=12)
+        ax.set_ylabel(XYtitle, fontsize=12)
+        ax.set_title(self.target_name + ' ' + self.line + ' ' + 'v' +
+                     str(int(pct)) + ' (km/s)', fontsize=16, pad=45)
         #axi.set_title(ipdat['name'][ci],fontsize=20,pad=45)
 
             #if savedata:
@@ -984,12 +996,14 @@ class OneLineData:
         #             # verticalalignment='center',
         #             # fontweight='semibold')
         fig.tight_layout(pad=0.15, h_pad=0.1)
+        fig.set_dpi(300.)
 
-        #if SAVEDATA == True:
-        #    pltsave_name = LINESELECT+'_emlin_map'
-        #    print('Saving figure:',pltsave_name)
-        #    plt.savefig(os.path.join(self.dataDIR,pltsave_name+'.png'),format='png')
-        #    plt.savefig(os.path.join(self.dataDIR,pltsave_name+'.pdf'),format='pdf')
+        if outfile:
+            pltsave_name = self.target_name + '-' + self.line + '-v' + \
+                str(int(pct)) + '-map'
+            print('Saving ', pltsave_name, ' to ', self.dataDIR)
+            plt.savefig(os.path.join(self.dataDIR, pltsave_name + '.' +
+                                     outformat), format=outformat, dpi=300.)
         plt.show()
 
         return
@@ -1070,9 +1084,11 @@ MODIFICATION HISTORY:
 
 """
 
-def display_pixels_wz(y, x, datIN, PIXELSIZE=None, VMIN=None, VMAX=None, TICKS=None, PLOTLOG=False,
-                   ANGLE=None, COLORBAR=False, AUTOCBAR=False, LABEL=None, NTICKS=3,
-                   CMAP='RdYlBu',SKIPTICK=False, ax=None, xran=None, yran=None):
+
+def display_pixels_wz(x, y, datIN, PIXELSIZE=None, VMIN=None, VMAX=None,
+                      TICKS=None, PLOTLOG=False, ANGLE=None, COLORBAR=False,
+                      AUTOCBAR=False, LABEL=None, NTICKS=3, CMAP='RdYlBu',
+                      SKIPTICK=False, AX=None, XRAN=None, YRAN=None):
     """
     Display vectors of square pixels at coordinates (x,y) coloured with "val".
     An optional rotation around the origin can be applied to the whole image.
@@ -1092,62 +1108,70 @@ def display_pixels_wz(y, x, datIN, PIXELSIZE=None, VMIN=None, VMAX=None, TICKS=N
         VMAX = np.max(datIN[datIN != np.nan])
 
     # print(VMIN,VMAX)
-    if yran is not None:
-        xmin, xmax = yran[0], yran[1]
+    if XRAN is not None:
+        xmin, xmax = XRAN[0], XRAN[1]
     else:
         xmin, xmax = np.ceil(np.min(x)), np.ceil(np.max(x))
         xmax = 5*np.round(np.array(xmax)/5)
-    if xran is not None:
-        ymin, ymax = xran[0], xran[1]
+    if YRAN is not None:
+        ymin, ymax = YRAN[0], YRAN[1]
     else:
         ymin, ymax = np.ceil(np.min(y)), np.ceil(np.max(y))
         ymax = 5*np.round(np.array(ymax)/5)
 
     imgPLT = None
     if not PLOTLOG:
-        imgPLT = ax.imshow(np.rot90(datIN, 1),
+        imgPLT = AX.imshow(np.rot90(datIN, 1),
                            # origin='lower',
                            cmap=CMAP,
-                           extent=[ymin, ymax, xmin, xmax],
+                           extent=[xmin, xmax, ymin, ymax],
                            vmin=VMIN, vmax=VMAX,
                            interpolation='none')
     else:
-        imgPLT = ax.imshow(np.rot90(datIN, 1),
+        imgPLT = AX.imshow(np.rot90(datIN, 1),
                            # origin='lower',
                            cmap=CMAP,
-                           extent=[ymin, ymax, xmin, xmax],
+                           extent=[xmin, xmax, ymin, ymax],
                            norm=LogNorm(vmin=VMIN, vmax=VMAX),
                            interpolation='none')
 
-    # current_cmap = cm.get_cmap()
-    # current_cmap.set_bad(color='white')
+    current_cmap = cm.get_cmap()
+    current_cmap.set_bad(color='white')
 
     if COLORBAR:
-        divider = make_axes_locatable(ax)
+        divider = make_axes_locatable(AX)
         cax = divider.append_axes("top", size="5%", pad=0.1)
         cax.xaxis.set_label_position('top')
-        if TICKS is None :
+        if TICKS is None:
             if AUTOCBAR:
                 TICKS = MaxNLocator(NTICKS).tick_values(VMIN, VMAX)
             else:
                 TICKS = LinearLocator(NTICKS).tick_values(VMIN, VMAX)
         cax.tick_params(labelsize=10)
-        plt.colorbar(imgPLT, cax=cax,ticks=TICKS, orientation='horizontal',ticklocation='top')
+        plt.colorbar(imgPLT, cax=cax, ticks=TICKS, orientation='horizontal',
+                     ticklocation='top')
         if np.abs(VMIN) >= 1:
-            plt.colorbar(imgPLT, cax=cax,ticks=TICKS, orientation='horizontal',ticklocation='top')
+            plt.colorbar(imgPLT, cax=cax, ticks=TICKS,
+                         orientation='horizontal', ticklocation='top')
         if np.abs(VMIN) <= 0.1:
-            plt.colorbar(imgPLT, cax=cax,ticks=TICKS, orientation='horizontal',ticklocation='top', format='%.0e')
-        plt.sca(ax)  # Activate main plot before returning
-    ax.set_facecolor('black')
+            plt.colorbar(imgPLT, cax=cax, ticks=TICKS,
+                         orientation='horizontal', ticklocation='top',
+                         format='%.0e')
+        plt.sca(AX)  # Activate main plot before returning
+    AX.set_facecolor('black')
 
     if not SKIPTICK:
-        ax.minorticks_on()
-        ax.tick_params(axis='x',which='major', length=10, width=1, direction='inout',labelsize=11,
-                      bottom=True, top=False, left=True, right=True,color='black')
-        ax.tick_params(axis='y',which='major', length=10, width=1, direction='inout',labelsize=11,
-                      bottom=True, top=False, left=True, right=True,color='black')
-        ax.tick_params(which='minor', length=5, width=1, direction='inout',
-                      bottom=True, top=False, left=True, right=True,color='black')
+        AX.minorticks_on()
+        AX.tick_params(axis='x', which='major', length=10, width=1,
+                       direction='inout', labelsize=11,
+                       bottom=True, top=False, left=True, right=True,
+                       color='black')
+        AX.tick_params(axis='y', which='major', length=10, width=1,
+                       direction='inout', labelsize=11, bottom=True, top=False,
+                       left=True, right=True, color='black')
+        AX.tick_params(which='minor', length=5, width=1, direction='inout',
+                       bottom=True, top=False, left=True, right=True,
+                       color='black')
     return
 
 ##############################################################################

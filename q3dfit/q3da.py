@@ -813,7 +813,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                   str(struct['ct_ppxf_sigma']) + 'km/s')
 
             # Plot QSO and host only continuum fit
-            if 'decompose_qso_fit' in initdat:
+            if initdat['decompose_qso_fit']:
 
                 struct_host = copy.deepcopy(struct)
                 struct_qso = copy.deepcopy(struct)
@@ -897,7 +897,7 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
             # as well as a blank plot!
             if not noplots and sum(struct['cont_fit']) != 0.0:
 
-                if 'decompose_qso_fit' in initdat:
+                if initdat['decompose_qso_fit']:
                     pltcontfcn(struct, outfile + '_cnt',
                                compspec=np.array([qsomod, hostmod]),
                                title='Total', comptitles=['QSO', 'host'],

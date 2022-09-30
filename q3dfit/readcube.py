@@ -519,8 +519,10 @@ class Cube:
             qsotemplate['flux'] = self.dat[iap[0][:], iap[1][:], :].sum(0) \
                 / norm
         if plot:
-            plt.plot(self.wave, qsotemplate['flux'])
-            plt.show()
+            fig, ax = plt.subplots()
+            ax.plot(self.wave, qsotemplate['flux'])
+            #plt.plot(self.wave, qsotemplate['flux'])
+            #plt.show()
         if self.var is not None:
             qsotemplate['var'] = self.var[iap[0][:], iap[1][:], :].sum(0) \
                 / norm / norm

@@ -90,7 +90,7 @@ OR
 
     # I will have more files here, and hopefully the script will be able to
     # handle them through this list, but the default is they are all in vacuum
-    linetables = ['linelist_DSNR.tbl', 'linelist_H2.tbl',
+    linetables = ['linelist_DSNR.tbl', 'linelist_H1.tbl', 'linelist_H2.tbl',
                   'linelist_fine_str.tbl', 'linelist_TSB.tbl']
     all_tables = []
     all_units = []

@@ -346,8 +346,10 @@ class Cube:
         # Flux unit conversions
         # default working flux unit is erg/s/cm^2/um/sr or erg/s/cm^2/um
         convert_flux = np.float32(1.)
-        if u.Unit(self.fluxunit_in) == u.Unit('MJy/sr') or \
-            u.Unit(self.fluxunit_in) == u.Unit('MJy'):
+        if (u.Unit(self.fluxunit_in) == u.Unit('MJy/sr') or
+            u.Unit(self.fluxunit_in) == u.Unit('MJy')) and \
+            (u.Unit(self.fluxunit_out) != u.Unit('MJy/sr') and
+                u.Unit(self.fluxunit_out) != u.Unit('MJy')):
             # IR units: https://coolwiki.ipac.caltech.edu/index.php/Units
             # default input flux unit is MJy/sr
             # 1 Jy = 10^-26 W/m^2/Hz

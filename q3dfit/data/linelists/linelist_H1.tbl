@@ -1,0 +1,45 @@
+\ Created 2022 Sep 30 by David Rupke
+\ Wavelengths are assumed to be in vacuum! 
+\ Data Source 1: 
+\ https://github.com/spacetelescope/jdaviz/tree/main/jdaviz/data/linelists/H-He.csv
+\ Optional Data Source 2: 
+\ https://www.mpe.mpg.de/ir/ISO/linelists/Hydrogenic.html
+\ The original precision for wavelength is maintained. 
+|                    name|          lines|                linelab|
+|                    char|         double|                   char|
+|                        |         micron|                       |
+|                    null|           null|                   null|
+                  HI_11_3       0.8865217                 HI 11-3
+                  HI_10_3       0.9017385                 HI 10-3
+                   HI_9_3       0.9231547                  HI 9-3
+                   HI_8_3       0.9548590                  HI 8-3
+                   HI_7_3       1.0052128                  HI 7-3
+                   HI_6_3       1.0941090                  HI 6-3
+                   HI_5_3        1.282159                  HI 5-3
+                  HI_11_4       1.6811111                 HI 11-4
+                  HI_10_4       1.7366850                 HI 10-4
+                   HI_9_4       1.8179084                  HI 9-4
+                   HI_4_3        1.875613                  HI 4-3
+                   HI_8_4       1.9450871                  HI 8-4
+                   HI_7_4        2.166120                  HI 7-4
+                   HI_6_4        2.625867                  HI 6-4
+                  HI_11_5       2.8729959                 HI 11-5
+                  HI_10_5       3.0392022                 HI 10-5
+                   HI_9_5        3.296992                  HI 9-5
+                   HI_8_5        3.740556                  HI 8-5
+                   HI_5_4        4.052262                  HI 5-4
+                   HI_7_5        4.653778                  HI 7-5
+                  HI_11_6        4.672509                 HI 11-6
+                  HI_10_6        5.128657                 HI 10-6
+                   HI_9_6        5.908213                  HI 9-6
+                   HI_6_5        7.459858                  HI 6-5
+                   HI_8_6        7.502493                  HI 8-6
+                  HI_11_7        7.508105                 HI 11-7
+                  HI_10_7        8.760064                 HI 10-7
+                   HI_9_7       11.308695                  HI 9-7
+                   HI_7_6       12.371898                  HI 7-6
+                  HI_11_8       12.387168                 HI 11-8
+                  HI_10_8       16.209104                 HI 10-8
+                   HI_8_7       19.061898                  HI 8-7
+                  HI_11_9       22.340457                 HI 11-9
+                   HI_9_8       27.803379                  HI 9-8

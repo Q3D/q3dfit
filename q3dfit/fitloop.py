@@ -297,6 +297,7 @@ logfile : strarr, optional, default=None
                         if not quiet:
                             print(f'FITLOOP: Repeating the fit of {line} with ' +
                               f'{nc} components.')
+                        #if nc==0:   dofit = False
                 else:
                     dofit = False
             else:

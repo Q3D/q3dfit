@@ -603,11 +603,15 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 else:
                     fit_kws[key] = val
 
+        # np.savetxt('./output/Spec_in_emlmod__NoSpecConv.txt', np.vstack((gdlambda, gdflux_nocnt)).T)
         lmout = emlmod.fit(gdflux_nocnt, fit_params, x=gdlambda,
                            method='least_squares',
                            weights=np.sqrt(gdinvvar_nocnt),
                            nan_policy='omit', max_nfev=max_nfev,
                            fit_kws=fit_kws, iter_cb=iter_cb)
+
+        if False:
+            res1 = np.load('/Users/caroline/Documents/ARI-Heidelberg/Q3D/QUESTFIT/q3dfit-dev/jnb/22128896/22128896_NOCONVOL.lin.npz', allow_pickle=True)
 
         specfit = emlmod.eval(lmout.params, x=gdlambda)
         if not quiet:
@@ -618,6 +622,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         dof = lmout.nfree
         rchisq = lmout.redchi
         nfev = lmout.nfev
+        breakpoint()
 
         # error messages corresponding to LMFIT, plt
         # documentation was not very helpful with the error messages...

@@ -225,6 +225,7 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
     cube, vormap = __get_Cube(initdat, quiet, logfile=logfile)
     specConv = __get_dispersion(initdat, cube, quiet=quiet)
 
+
     if cols and rows and vormap:
         cols = __get_voronoi(cols, rows, vormap)
         rows = 1

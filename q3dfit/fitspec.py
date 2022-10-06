@@ -622,7 +622,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         dof = lmout.nfree
         rchisq = lmout.redchi
         nfev = lmout.nfev
-        breakpoint()
+#        breakpoint()
 
         # error messages corresponding to LMFIT, plt
         # documentation was not very helpful with the error messages...

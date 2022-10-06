@@ -52,7 +52,7 @@ logfile : strarr, optional, default=None
     # rowind = int(ispax / cube.ncols)
     i = colarr[ispax]  # colind, rowind]
     j = rowarr[ispax]  # colind, rowind]
-
+    print(i,j)
     if cube.dat.ndim == 1:
         print('[spec]=[1] out of [1]', file=logfile)
         if not quiet:
@@ -297,7 +297,6 @@ logfile : strarr, optional, default=None
                         if not quiet:
                             print(f'FITLOOP: Repeating the fit of {line} with ' +
                               f'{nc} components.')
-                        #if nc==0:   dofit = False
                 else:
                     dofit = False
             else:

@@ -175,7 +175,7 @@ def __get_spaxels(cube, cols=None, rows=None):
     if len(cols)>2 or len(rows) >2:
         colarr = cols
         rowarr = rows
-        nspax = len(cols)*len(rows)
+        nspax = len(cols)
 
     return nspax, colarr, rowarr
 
@@ -186,6 +186,7 @@ def __get_spaxels(cube, cols=None, rows=None):
 def execute_fitloop(nspax, colarr, rowarr, cube, initdat, linelist, specConv,
                     onefit, quiet, logfile=None):
     from q3dfit.fitloop import fitloop
+    print(nspax)
     for ispax in range(0, nspax):
         fitloop(ispax, colarr, rowarr, cube, initdat, linelist, specConv,
                 onefit, quiet, logfile=logfile)
@@ -224,7 +225,6 @@ def q3df_oneCore(initproc, cols=None, rows=None, onefit=False,
 
     cube, vormap = __get_Cube(initdat, quiet, logfile=logfile)
     specConv = __get_dispersion(initdat, cube, quiet=quiet)
-
 
     if cols and rows and vormap:
         cols = __get_voronoi(cols, rows, vormap)
@@ -310,7 +310,6 @@ if __name__ == "__main__":
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
     rank = comm.Get_rank()
-
     # helper function: convert a string representing a list of integers
     # of form [1, 2, 3...] or [1,2,3...] to an actual list of integers
     def string_to_intArray(strArray):

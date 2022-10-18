@@ -1,6 +1,7 @@
-import numpy as np
+from astropy.constants import c
 import lmfit
 from lmfit.models import ExpressionModel
+import numpy as np
 from astropy import units as u
 
 def blackbody(wave,a,T, fitFlambda=True):
@@ -10,26 +11,33 @@ def blackbody(wave,a,T, fitFlambda=True):
     Parameters
     -----
     wave: array
-    1-D array of the wavelength to be fit
+        1-D array of the wavelength to be fit
     a: float
-    scale factor for model
+        scale factor for model
     T: float
-    temperature of blackbody
+        temperature of blackbody
 
     returns
     -------
     BB_model: array
     '''
 
-    h=6.6261e-27
+    # Blam = BlackBody(temperature=T*u.K, scale=1.*u.Unit('erg/cm^2/micron/s/sr'))
+    # Blamval = Blam(wave*u.micron).value
 
-    c=3.e10  # cm/s
+    # if not fitFlambda:
+    #     c_scale = c * u.Unit('m').to('micron') /(wave)**2 *1e-23
+    #     BB_model /= c_scale
 
-    k=1.3807e-16
+    # return a*Blamval/Blamval.max()
+
+    h=6.6261e-27 # cm^2 g / s
+    c=2.99792e10 # cm/s
+    k=1.3807e-16 # cm^2 g s-2 K-1
 
     hck = h*c/k
     wave = wave *1e-4   # cm
-    BB_model = wave**-5*(np.exp(h*c/(k*wave*T))-1)**-1
+    BB_model = wave**-5*(np.exp(hck/wave/T)-1)**-1
 
     if not fitFlambda:
         c_scale = c * u.Unit('m').to('micron') /(wave)**2 *1e-23
@@ -60,7 +68,8 @@ def set_up_fit_blackbody_model(p,p_fixfree,name):
     blackbody_model_parameters = blackbody_model.make_params()
     print(p_fixfree[0])
     blackbody_model_parameters[model_name+'a'].set(value=p[0],min=0.,vary=p_fixfree[0])
-    blackbody_model_parameters[model_name+'T'].set(value=p[1],min=50., max=3000.,vary=p_fixfree[1])
+    blackbody_model_parameters[model_name+'T'].set(value=p[1],min=50.,
+                                                   max=3000.,vary=p_fixfree[1])
 
     return blackbody_model,blackbody_model_parameters
 
@@ -106,25 +115,23 @@ def set_up_fit_model_scale_withpoly(p,p_fixfree,model_name,model, minamp=0., max
 
 
 
-def powerlaw(wave,a,b, fitFlambda):
+def powerlaw(wave, a, b, fitFlambda):
 
     '''Function defined for fitting a powerlaw model
 
     Parameters
     -----
     wave: array
-    1-D array of the wavelength to be fit
+        1-D array of the wavelength to be fit
     a: float
-    scale factor for powerlaw
+        scale factor for powerlaw
     b: float
-    exponent for powerlaw
+        exponent for powerlaw
 
     returns
     -------
     powerlaw_model: array
     '''
-
-
 
     powerlaw_model = wave**b
 
@@ -132,7 +139,8 @@ def powerlaw(wave,a,b, fitFlambda):
     #     c_scale = c * u.Unit('m').to('micron') /(wave)**2 *1e-23
     #     powerlaw_model /= c_scale
 
-    return a*powerlaw_model/(powerlaw_model).max()
+    return a*powerlaw_model #/(powerlaw_model).max()
+
 
 def set_up_fit_powerlaw_model(p,p_fixfree,name):
     '''Function defined to set up fitting powerlaw_model within lmfit
@@ -140,9 +148,7 @@ def set_up_fit_powerlaw_model(p,p_fixfree,name):
         Parameters
         -----
         p: list
-        list of initial guess for the powerlaw_model fit
-
-
+            list of initial guess for the powerlaw_model fit
 
         returns
         -------
@@ -150,14 +156,17 @@ def set_up_fit_powerlaw_model(p,p_fixfree,name):
         powerlaw_model_paramters: lmfit model parameters
         '''
 
-
     model_name = name
-    powerlaw_model = lmfit.Model(powerlaw,independent_vars=['wave', 'fitFlambda'],prefix=model_name)
+    powerlaw_model = \
+        lmfit.Model(powerlaw, independent_vars=['wave', 'fitFlambda'],
+                    prefix=model_name)
     powerlaw_model_parameters = powerlaw_model.make_params()
-    powerlaw_model_parameters[model_name+'a'].set(value=p[0],min=0.,vary=p_fixfree[0])
-    powerlaw_model_parameters[model_name+'b'].set(value=p[1],vary=p_fixfree[1])
+    powerlaw_model_parameters[model_name+'a'].\
+        set(value=p[0], min=0., vary=p_fixfree[0])
+    powerlaw_model_parameters[model_name+'b'].\
+        set(value=p[1], vary=p_fixfree[1])
 
-    return powerlaw_model,powerlaw_model_parameters
+    return powerlaw_model, powerlaw_model_parameters
 
 
 def model_scale(model,a):

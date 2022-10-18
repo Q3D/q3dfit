@@ -6,8 +6,8 @@ chdir('../jnb/')
 
 q3di = 'miri-n7469-ch1/q3di.npy'
 
-cols = 23
-rows = 24
+cols = 16
+rows = 31
 
 q3df(q3di, cols=cols, rows=rows, quiet=False)
 q3da(q3di, cols=cols, rows=rows)

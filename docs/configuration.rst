@@ -60,66 +60,66 @@ The .cf file consists of 13 space-separated text columns of any width. The hash 
      - M
    * - source
      - miritest.npy     
-     - 11.55  
-     - 13.45   
-     - dummy     
+     - -1  
+     - -1   
+     - n/a     
      - 0.0  
-     - 0.0   
-     - X
+     - 0   
+     - -
      - 0.0
-     - 0.0 
+     - 0 
      - _
      - _
      - _
    * - template_poly
      - miri_qsotemplate_flex.npy
      - 0.059
-     - 1.   
+     - 1   
      - _
      - _
      - _
      - S
      - 0.0
-     - 0.0 
+     - 0 
      - _
      - _
      - _
    * - template
      - miri_qsotemplate_flex.npy
      - 0.175
-     - 1.   
+     - 1   
      - global
      - 1.5
-     - 1.
+     - 1
      - S
      - 0.0
-     - 0.0 
+     - 0 
      - _
      - _
      - _
    * - blackbody
      - warm
      - 0.1
-     - 1.   
+     - 1   
      - CHIAR06
      - 1.5
-     - 1.
+     - 1
      - S
      - 250.0
-     - 0.0 
+     - 0 
      - _
      - _
      - _
    * - extinction
      - chiar06_i0857.npy
      - 0.0
-     - 0.  
+     - 0  
      - CHIAR06
      - 0.0
-     - 1.
-     - X
+     - 1
+     - -
      - 0.0
-     - 0.0 
+     - 0 
      - _
      - _
      - _
@@ -130,9 +130,9 @@ The .cf file consists of 13 space-separated text columns of any width. The hash 
      - ice_hc
      - 0.0
      - 1.
-     - X
-     - 0.0
-     - 0.0 
+     - -
+     - 0
+     - 0 
      - _
      - _
      - _
@@ -149,9 +149,9 @@ C: For source: lower wavelength limit. "-1" will use the lowest possible common 
 	For extinction: any float; this will be ignored.  
 
 D: For source: upper wavelength limit. "-1" will use the largest possible common wavelength. [Still in development.] 
-	For template, blackbody, powerlaw: fix/free parameter for the normalization. 1=fixed, 0=free.  
+	For template, blackbody, powerlaw: fix/free parameter for the normalization. 0=fixed, 1=free.  
 
-	For absorption: fix/free parameter for tau_peak. 1=fixed, 0=free.  
+	For absorption: fix/free parameter for tau_peak. 1=fixed, 0=free. [Note: not clear this is correct; may do nothing]
 
 E: For extinction: shorthand name for the extinction curve  
 	For absorption:  shorthand name for the ice absorption curve.

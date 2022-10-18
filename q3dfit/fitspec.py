@@ -333,6 +333,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                         argscontfit['siginit_stars'] = \
                             initdat['siginit_stars']
 
+
+
             continuum, ct_coeff, zstar = \
                 fcncontfit(gdlambda, gdflux, gdinvvar,
                            templatelambdaz_tmp,

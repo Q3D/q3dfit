@@ -58,8 +58,10 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
 
     '''
 
+    # models_dictionary holds extinction, absorption models
     if models_dictionary is None:
         models_dictionary = {}
+    # template dictionary holds templates, blackbodies, powerlaws
     if template_dictionary is None:
         template_dictionary = {}
 
@@ -88,45 +90,66 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
                 if 'absorption' in config_file[key]:
                     global_ice_model = key
 
-
         loc_models = q3dfit.__path__[0]+'/data/questfit_templates/'
         n_temp = 0
-        for i in config_file.keys(): #populating the models dictionary and setting up lmfit models
-            if 'blackbody' in i: #starting with the blackbodies
+        #populating the models dictionary and setting up lmfit models
+        for i in config_file.keys():
+            #starting with the blackbodies
+            if 'blackbody' in i:
                 model_parameters = config_file[i]
                 name_model = 'blackbody'+str(int(float(model_parameters[7])))#i
                 extinction_model = config_file[i][3]
 
                 ice_model = config_file[i][9]
 
-                model_temp_BB,param_temp_BB = questfitfcn.set_up_fit_blackbody_model([float(model_parameters[1]),float(model_parameters[7])],[float(model_parameters[2]),float(model_parameters[8])],name_model[:])
+                model_temp_BB, param_temp_BB = \
+                    questfitfcn.\
+                    set_up_fit_blackbody_model([float(model_parameters[1]),
+                                                float(model_parameters[7])],
+                                               [float(model_parameters[2]),
+                                                float(model_parameters[8])],
+                                               name_model[:])
 
-                if global_extinction == False and config_file[i][3] != '_' and config_file[i][3] != '-':
-                        model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],name_model+'_ext',extinction_model,model_parameters[6])
+                if global_extinction is False and \
+                    config_file[i][3] != '_' and \
+                    config_file[i][3] != '-':
+                    model_temp_extinction, param_temp_extinction = \
+                        questfitfcn.\
+                        set_up_fit_extinction([float(model_parameters[4])],
+                                              [float(model_parameters[5])],
+                                              name_model+'_ext',
+                                              extinction_model,
+                                              model_parameters[6])
 
-                        model_temp = model_temp_BB*model_temp_extinction
-                        param_temp = param_temp_BB + param_temp_extinction
+                    model_temp = model_temp_BB*model_temp_extinction
+                    param_temp = param_temp_BB + param_temp_extinction
 
-                        models_dictionary[extinction_model] = \
-                            config_file[extinction_model][0]
+                    models_dictionary[extinction_model] = \
+                        config_file[extinction_model][0]
                 else:
                     model_temp = model_temp_BB
                     param_temp = param_temp_BB
 
-                if 'ice' in i and global_extinction == False: #checking if we need to add ice absorption
-                    model_temp_ice,param_temp_ice = questfitfcn.set_up_absorption([float(model_parameters[10])],[float(model_parameters[11])],name_model+'_abs',model_parameters[9])
+                #checking if we need to add ice absorption
+                if 'ice' in i and global_extinction is False:
+                    model_temp_ice, param_temp_ice = \
+                        questfitfcn.\
+                        set_up_absorption([float(model_parameters[10])],
+                                          [float(model_parameters[11])],
+                                          name_model+'_abs',
+                                          model_parameters[9])
                     model_temp = model_temp*model_temp_ice
                     param_temp += param_temp_ice
                     models_dictionary[model_parameters[9]] = \
                         config_file[model_parameters[9]][0]
                 if 'model' not in vars():
-                    model,param = model_temp, param_temp
-
+                    model, param = model_temp, param_temp
                 else:
                     model += model_temp
                     param += param_temp
 
-            if 'powerlaw' in i: #powerlaw model
+            #powerlaw model
+            if 'powerlaw' in i:
                 model_parameters = config_file[i]
                 name_model = 'powerlaw'+str(int(float(model_parameters[7])))
                 extinction_model = config_file[i][3]
@@ -140,20 +163,33 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
                              float(model_parameters[8])],
                             name_model[:])
 
-                if global_extinction == False and config_file[i][3] != '_' and config_file[i][3] != '-':
-                        model_temp_extinction,param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],'powerlaw'+str(int(float(model_parameters[7])))+'_ext',extinction_model,model_parameters[6])
+                if global_extinction is False and \
+                    config_file[i][3] != '_' and \
+                    config_file[i][3] != '-':
+                    model_temp_extinction, param_temp_extinction = \
+                        questfitfcn.\
+                        set_up_fit_extinction([float(model_parameters[4])],
+                                              [float(model_parameters[5])],
+                                              'powerlaw' +
+                                              str(int(float(model_parameters[7])))
+                                              + '_ext', extinction_model,
+                                              model_parameters[6])
 
-                        model_temp = model_temp_powerlaw*model_temp_extinction
-                        param_temp = param_temp_powerlaw + param_temp_extinction
+                    model_temp = model_temp_powerlaw*model_temp_extinction
+                    param_temp = param_temp_powerlaw + param_temp_extinction
 
-                        models_dictionary[extinction_model] = \
-                            config_file[extinction_model][0]
+                    models_dictionary[extinction_model] = \
+                        config_file[extinction_model][0]
                 else:
                     model_temp = model_temp_powerlaw
                     param_temp = param_temp_powerlaw
 
-                if 'ice' in i and global_extinction == False: #checking if we need to add ice absorption
-                    model_temp_ice,param_temp_ice = questfitfcn.set_up_absorption([float(model_parameters[10])],[float(model_parameters[11])],name_model+'_abs',model_parameters[9])
+                if 'ice' in i and global_extinction is False: #checking if we need to add ice absorption
+                    model_temp_ice, param_temp_ice = \
+                    questfitfcn.\
+                    set_up_absorption([float(model_parameters[10])],
+                                      [float(model_parameters[11])],
+                                      name_model+'_abs', model_parameters[9])
                     model_temp = model_temp*model_temp_ice
                     param_temp += param_temp_ice
                     models_dictionary[model_parameters[9]] = \
@@ -219,20 +255,28 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
                 else:
                     template_dictionary[name_model] = config_file[i][0]
 
-                if global_extinction == False and config_file[i][3] != '_' and config_file[i][3] != '-':
+                if global_extinction is False and \
+                    config_file[i][3] != '_' and \
+                    config_file[i][3] != '-':
 
-                        model_temp_extinction, param_temp_extinction = questfitfcn.set_up_fit_extinction([float(model_parameters[4])],[float(model_parameters[5])],name_model+'_ext',extinction_model,model_parameters[6])
-                        model_temp = model_temp_template*model_temp_extinction
-                        param_temp = param_temp_template + param_temp_extinction
+                    model_temp_extinction, param_temp_extinction = \
+                        questfitfcn.\
+                        set_up_fit_extinction([float(model_parameters[4])],
+                                              [float(model_parameters[5])],
+                                              name_model + '_ext',
+                                              extinction_model,
+                                              model_parameters[6])
+                    model_temp = model_temp_template*model_temp_extinction
+                    param_temp = param_temp_template + param_temp_extinction
 
-                        models_dictionary[extinction_model] = \
-                            config_file[extinction_model][0]
+                    models_dictionary[extinction_model] = \
+                        config_file[extinction_model][0]
 
                 else:
                     model_temp = model_temp_template
                     param_temp = param_temp_template
 
-                if 'ice' in i and global_extinction == False: #checking if we need to add ice absorption
+                if 'ice' in i and global_extinction is False: #checking if we need to add ice absorption
                     model_temp_ice,param_temp_ice = questfitfcn.set_up_absorption([float(model_parameters[10])],[float(model_parameters[11])],name_model+'_abs',model_parameters[9])
                     model_temp = model_temp*model_temp_ice
                     param_temp += param_temp_ice
@@ -254,7 +298,8 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
 
         # Check to see if we are using global extinction, where the total
         # model flux is extincted by the same ice and dust model.
-        if global_extinction is True:
+        if global_extinction:
+
             model_global_ext, param_global_ext = \
                 questfitfcn.set_up_fit_extinction([0], [1], 'global_ext',
                                                   global_ext_model, 'S')
@@ -262,9 +307,10 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
             param += param_global_ext
             models_dictionary[global_ext_model] = \
                 config_file[global_ext_model][0]
-            model_global_ice, param_global_ice = \
-                questfitfcn.set_up_absorption([0], [1], 'global_ice', global_ice_model)
 
+            model_global_ice, param_global_ice = \
+                questfitfcn.set_up_absorption([0], [1], 'global_ice',
+                                              global_ice_model)
             model = model*model_global_ice
             param += param_global_ice
             models_dictionary[global_ice_model] = \
@@ -391,6 +437,12 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
         comp_best_fit = result.eval_components(**models_dictionary)
         # print(result.best_values)
 
+        if global_extinction:
+            for el in comp_best_fit.keys():
+                if el != 'global_ext' and el != 'global_ice':
+                    comp_best_fit[el] *= comp_best_fit['global_ext']
+                    comp_best_fit[el] *= comp_best_fit['global_ice']
+
         # if convert2Flambda:
         #     flux /= c_scale
         #     best_fit /= c_scale
@@ -492,9 +544,6 @@ def quest_extract_QSO_contrib(ct_coeff, initdat):
                         #breakpoint()
 
     return qso_out_ext, host_out_ext, qso_out_intr, host_out_intr
-
-
-
 
 do_test = False
 if do_test:

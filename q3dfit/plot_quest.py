@@ -4,7 +4,9 @@ from matplotlib import pyplot as plt
 from q3dfit import questfit_readcf
 
 
-def plot_quest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat, templ_mask=[], lines=[], linespec=[]):
+def plot_quest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat,
+               templ_mask=[], lines=[], linespec=[]):
+
     comp_best_fit = ct_coeff['comp_best_fit']
 
     plot_noext = False
@@ -45,25 +47,27 @@ def plot_quest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat, templ_ma
         if global_extinction:
             str_global_ext = list(comp_best_fit.keys())[-2]
             str_global_ice = list(comp_best_fit.keys())[-1]
-            if len(comp_best_fit[str_global_ext].shape) > 1:  # global_ext is a multi-dimensional array
+            # global_ext is a multi-dimensional array
+            if len(comp_best_fit[str_global_ext].shape) > 1:
                 comp_best_fit[str_global_ext] = comp_best_fit[str_global_ext] [:,0,0]
-            if len(comp_best_fit[str_global_ice].shape) > 1:  # global_ice is a multi-dimensional array
+            # global_ice is a multi-dimensional array
+            if len(comp_best_fit[str_global_ice].shape) > 1:
                 comp_best_fit[str_global_ice] = comp_best_fit[str_global_ice] [:,0,0]
             count = 0
             for i, el in enumerate(comp_best_fit):
                 if (el != str_global_ext) and (el != str_global_ice):
                     if len(comp_best_fit[el].shape) > 1:              # component is a multi-dimensional array
-                      comp_best_fit[el] = comp_best_fit[el] [:,0,0]
+                        comp_best_fit[el] = comp_best_fit[el] [:,0,0]
                     if plot_noext:
-                      if count>len(colour_list)-1:
-                        ax1.plot(MIRgdlambda_temp, comp_best_fit[el]/comp_best_fit[str_global_ext]/comp_best_fit[str_global_ice], label=el,linestyle='--',alpha=0.5)
-                      else:
-                        ax1.plot(MIRgdlambda_temp, comp_best_fit[el]/comp_best_fit[str_global_ext]/comp_best_fit[str_global_ice], color=colour_list[count], label=el,linestyle='--',alpha=0.5)
+                        if count>len(colour_list)-1:
+                            ax1.plot(MIRgdlambda_temp, comp_best_fit[el]/comp_best_fit[str_global_ext]/comp_best_fit[str_global_ice], label=el,linestyle='--',alpha=0.5)
+                        else:
+                            ax1.plot(MIRgdlambda_temp, comp_best_fit[el]/comp_best_fit[str_global_ext]/comp_best_fit[str_global_ice], color=colour_list[count], label=el,linestyle='--',alpha=0.5)
                     else:
-                      if count>len(colour_list)-1:
-                        ax1.plot(MIRgdlambda_temp, comp_best_fit[el], label=el,linestyle='--',alpha=0.5)
-                      else:
-                        ax1.plot(MIRgdlambda_temp, comp_best_fit[el], color=colour_list[count], label=el,linestyle='--',alpha=0.5)
+                        if count>len(colour_list)-1:
+                            ax1.plot(MIRgdlambda_temp, comp_best_fit[el], label=el,linestyle='--',alpha=0.5)
+                        else:
+                            ax1.plot(MIRgdlambda_temp, comp_best_fit[el], color=colour_list[count], label=el,linestyle='--',alpha=0.5)
                     count += 1
 
         else:

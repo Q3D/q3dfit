@@ -237,8 +237,8 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
         colarr = cols
         rowarr = rows
         nspax = len(cols)
-        
-        
+
+
     for ispax in range(0,nspax):
         i = colarr[ispax]
         j = rowarr[ispax]

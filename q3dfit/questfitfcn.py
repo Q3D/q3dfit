@@ -180,17 +180,12 @@ def model_scale(model,a):
     a: float
     scale factor for model_scale
 
-
     returns
     -------
     powerlaw_model: array
     '''
 
-
-
     model_scale = model*a
-
-
     return model_scale
 
 
@@ -245,15 +240,14 @@ def model_scale(model,a):
 #
 #    return model_extinction
 
-def set_up_fit_extinction(p,p_fixfree,model_name,extinction_model,mixed_or_screen):
+def set_up_fit_extinction(p, p_fixfree, model_name, extinction_model,
+                          mixed_or_screen):
     '''Function defined to set up fitting model_scale within lmfit
 
         Parameters
         -----
         p: list
         list of initial guess for the model_scale fit
-
-
 
         returns
         -------
@@ -263,22 +257,28 @@ def set_up_fit_extinction(p,p_fixfree,model_name,extinction_model,mixed_or_scree
 
     model_name = model_name
     if mixed_or_screen == 'M':
-        exp = "1 - exp(-0.4*%s_Av*log10(%s))/(0.4*%s_Av*log10(%s))" % (model_name,extinction_model,model_name,extinction_model)
+        exp = "1 - exp(-0.4*%s_Av*log10(%s))/(0.4*%s_Av*log10(%s))" \
+            % (model_name, extinction_model, model_name, extinction_model)
 
     if mixed_or_screen == 'S':
-        exp = "power(10,(-0.4*%s_Av*log10(%s)))" % (model_name,extinction_model)
+        exp = "power(10,(-0.4*%s_Av*log10(%s)))" \
+            % (model_name, extinction_model)
         #exp = "power(10,(-0.4*%s_Av*(%s)))" % (model_name,extinction_model)
 
-    model_extinction = ExpressionModel(exp,independent_vars=[extinction_model],name = model_name)
+    model_extinction = \
+        ExpressionModel(exp, independent_vars=[extinction_model],
+                        name = model_name)
 
     #model_scale_model = lmfit.Model(powerlaw,independent_vars=['extinction_curve'],prefix=model_name)
     model_extinction_parameters = model_extinction.make_params()
     print(p_fixfree[0])
     if mixed_or_screen == 'M':
-        model_extinction_parameters[model_name+'_Av'].set(value=p[0],min=1.,max=100.,vary=p_fixfree[0])
+        model_extinction_parameters[model_name+'_Av'].\
+            set(value=p[0], min=1., max=100., vary=p_fixfree[0])
     if mixed_or_screen == 'S':
-        model_extinction_parameters[model_name+'_Av'].set(value=p[0],min=0.,max=100.,vary=p_fixfree[0])
-    return model_extinction,model_extinction_parameters
+        model_extinction_parameters[model_name+'_Av'].\
+            set(value=p[0], min=0., max=100., vary=p_fixfree[0])
+    return model_extinction, model_extinction_parameters
 
 
 def set_up_fit_model_scale(p,p_fixfree,model_name,model, fitFlambda=True, maxamp=None):

@@ -102,7 +102,7 @@ class Q3Dpro:
         linename = listlines['linelab'][ww].value[0]
         # output in MICRON
         return linewave, linename
-
+    
     def get_linemap(self,LINESELECT,LINEVAC=True,APPLYMASK=True):
         print('getting line data...',LINESELECT)
         
@@ -559,73 +559,87 @@ class Q3Dpro:
             print('Saving figure:',pltsave_name)
             plt.savefig(os.path.join(self.dataDIR,pltsave_name))
         plt.show()
-        return
+    
         # --------------------------
         # Plot BPT here
         # --------------------------
         PLTNUM += 1
         plt.close(PLTNUM)
-        fig,ax = plt.subplots(1,bptc,figsize=(bptc*5,5),num=PLTNUM,constrained_layout=True)
+        figDIM = [nps,cntr-1]
+        figOUT = set_figSize(figDIM,mshaps[1],SQUARE=True)
+        fig,ax = plt.subplots(nps,cntr-1,figsize=((cntr-1)*5,5),num=PLTNUM,constrained_layout=True)
+        fig.set_figheight(int(figOUT[1]/2))
+        fig.set_figwidth(figOUT[0])
         cf=0
         # breakpoint()
         pixkpc = self.pix*arckpc
-        xgrid = np.arange(0, matrix_size[1])
-        ygrid = np.arange(0, matrix_size[0])
+        xgrid = np.arange(0, mshaps[1][1])
+        ygrid = np.arange(0, mshaps[1][0])
         xcol = (xgrid-xyCenter[1])
         ycol = (ygrid-xyCenter[0])
         xcolkpc = xcol*np.median(arckpc)* self.pix
         ycolkpc = ycol*np.median(arckpc)* self.pix
+        # return
         for bpt in BPTmod:
             if bpt != None :
-                iax = ax[cf]
-                # first plot the theoretical curves
-                iBPTmod = BPTmod[bpt]
-                iax.plot(iBPTmod[0][0],iBPTmod[0][1],'k-',zorder=1,linewidth=1.5)
-                iax.plot(iBPTmod[1][0],iBPTmod[1][1],'k--',zorder=1,linewidth=1.5)
-
-                iax.minorticks_on()
-                fnames = bpt.split('/')
-                frat1,frat1err,fratnam1,pltrng1 = lineratios[fnames[0]]
-                frat2,frat2err,fratnam2,pltrng2 = lineratios[fnames[1]]
-
-                # print(fratnam1,fratnam2)
-
-                gg = np.where(~np.isnan(frat1) & ~np.isnan(frat2))
-                xfrat,xfraterr = [],[[],[]]
-                yfrat,yfraterr = [],[[],[]]
-                for pi in range(len(gg[0])):
-                    yfrat.append(frat1[gg[0][pi],gg[1][pi]])
-                    yfraterr[0].append(frat1err[0][gg[0][pi],gg[1][pi]])
-                    yfraterr[1].append(frat1err[1][gg[0][pi],gg[1][pi]])
-                    xfrat.append(frat2[gg[0][pi],gg[1][pi]])
-                    xfraterr[0].append(frat2err[0][gg[0][pi],gg[1][pi]])
-                    xfraterr[1].append(frat2err[1][gg[0][pi],gg[1][pi]])
-                iax.errorbar(xfrat,yfrat,fmt='.',
-                             # xerr=xfraterr,yerr=yfraterr,
-                             color='black',markersize=5,zorder=2)
-                iax.errorbar(xfrat,yfrat,fmt='.',
-                             xerr=xfraterr,yerr=yfraterr,
-                             color='black',markersize=0,
-                             elinewidth=1.5,ecolor='blue',alpha=0.5,zorder=3)
-                              # color=cmap(norm(r_kpc[kk])),ms=1)
-                iax.errorbar(np.median(xfrat),np.median(yfrat),
-                             fillstyle='none',color='red',fmt='*',markersize=17,mew=2.5,zorder=3)
-                iax.set_ylim(pltrng1)
-                # iax.set_xlim(pltrng2)
-                iax.set_xlim([-2.1,0.7])
-                if cf == 0:
-                    iax.set_ylabel(fratnam1,fontsize=16)
-                    iax.tick_params(axis='y',which='major', length=10, width=1, direction='in',labelsize=13,
+                for li,lratF in enumerate(['Ftot','Fci']):
+                    # print(bpt,lratF)
+                    fnames = bpt.split('/')
+                    # pltname,pltrange = lineratios[linrat]['pltname'],lineratios[fnames[0]]['pltrange']
+                    pltname1,pltrange1 = lineratios[fnames[0]]['pltname'],lineratios[fnames[0]]['pltrange']
+                    pltname2,pltrange2 = lineratios[fnames[1]]['pltname'],lineratios[fnames[1]]['pltrange']
+                    
+                    if lratF == 'Fci':
+                        frat10_A,frat10errA = lineratios[fnames[0]]['lrat'][lratF][0],lineratios[fnames[0]]['lrat'][lratF][1]
+                        frat10_B,frat10errB = lineratios[fnames[1]]['lrat'][lratF][0],lineratios[fnames[1]]['lrat'][lratF][1]
+                        for ci in range(0,ncomp): 
+                            gg = np.where(~np.isnan(frat10_A[:,:,ci]) & ~np.isnan(frat10_B[:,:,ci]))
+                            xfract,yfract = frat10_B[gg],frat10_A[gg]
+                            ax[li+ci,cf].errorbar(frat10_B[:,:,ci].flatten(),frat10_A[:,:,ci].flatten(),fmt='.',alpha=0.7,
+                                           # xerr=frat10errB[:,:,ci].flatten(),yerr=frat10errA[:,:,ci].flatten(),elinewidth=1.5,ecolor='blue',
+                                          color='black',markersize=5,zorder=2)
+                            ax[li+ci,cf].errorbar(np.median(frat10_B[gg[0],gg[1],ci].flatten()),np.median(frat10_A[gg[0],gg[1],ci].flatten()),
+                                                  fillstyle='none',color='red',fmt='*',markersize=17,mew=2.5,zorder=3)
+                    else:
+                        frat10_A,frat10errA = lineratios[fnames[0]]['lrat'][lratF][0],lineratios[fnames[0]]['lrat'][lratF][1]
+                        frat10_B,frat10errB = lineratios[fnames[1]]['lrat'][lratF][0],lineratios[fnames[1]]['lrat'][lratF][1]
+                        gg = np.where(~np.isnan(frat10_A) & ~np.isnan(frat10_B))
+                        xfract,yfract       = frat10_B[gg],frat10_A[gg]
+                        # xfracterr,yfracterr = frat10errB[gg],frat10errA[gg]
+                        ax[li,cf].errorbar(xfract.flatten(),yfract.flatten(),fmt='.',alpha=0.7,
+                                           # xerr=xfracterr.flatten(),yerr=yfracterr.flatten(), elinewidth=1.5,ecolor='blue',
+                                           color='black',markersize=5,zorder=2)
+                        ax[li,cf].errorbar(np.median(xfract.flatten()),np.median(yfract.flatten()),
+                                            fillstyle='none',color='red',fmt='*',markersize=17,mew=2.5,zorder=3)
+                    
+                
+                for ni in range(0,nps):
+                    ax[ni,cf].set_xlim([-2.1,0.7])
+                    ax[ni,cf].set_ylim(pltrange1)
+                    # first plot the theoretical curves
+                    iBPTmod = BPTmod[bpt]
+                    ax[ni,cf].plot(iBPTmod[0][0],iBPTmod[0][1],'k-',zorder=1,linewidth=1.5)
+                    ax[ni,cf].plot(iBPTmod[1][0],iBPTmod[1][1],'k--',zorder=1,linewidth=1.5)
+                    
+                    compName = ''
+                    if ni == 0:
+                        compName = 'Ftot'
+                    else:
+                        compName = 'Fc'+str(ni)
+                    
+                    ax[ni,cf].minorticks_on()
+                    if cf == 0:
+                        ax[ni,cf].set_ylabel(pltname1+', '+compName,fontsize=16)
+                        ax[ni,cf].tick_params(axis='y',which='major', length=10, width=1, direction='in',labelsize=13,
+                                      bottom=True, top=True, left=True, right=True,color='black')
+                    else:
+                        ax[ni,cf].tick_params(axis='y',which='major', length=10, width=1, direction='in',labelsize=0,
+                                      bottom=True, top=True, left=True, right=True,color='black')
+                    ax[ni,cf].set_xlabel(pltname2,fontsize=16)
+                    ax[ni,cf].tick_params(axis='x',which='major', length=10, width=1, direction='in',labelsize=13,
                                   bottom=True, top=True, left=True, right=True,color='black')
-                else:
-                    iax.tick_params(axis='y',which='major', length=10, width=1, direction='in',labelsize=0,
+                    ax[ni,cf].tick_params(which='minor', length=5, width=1, direction='in',
                                   bottom=True, top=True, left=True, right=True,color='black')
-                iax.set_xlabel(fratnam2,fontsize=16)
-
-                iax.tick_params(axis='x',which='major', length=10, width=1, direction='in',labelsize=13,
-                              bottom=True, top=True, left=True, right=True,color='black')
-                iax.tick_params(which='minor', length=5, width=1, direction='in',
-                              bottom=True, top=True, left=True, right=True,color='black')
                 cf+=1
                 # breakpoint()
 
@@ -636,7 +650,7 @@ class Q3Dpro:
             plt.savefig(os.path.join(self.dataDIR,pltsave_name))
         # plt.savefig(tname+'_c'+str(int(ic+1))+'_bpt.pdf')
         plt.show()
-        # breakpoint()
+            # breakpoint()
         return
 
 
@@ -1192,6 +1206,7 @@ def display_pixels_wz(x, y, datIN, PIXELSIZE=None, VMIN=None, VMAX=None,
 
 # estimate the errors in logarithm from linear errors
 def lgerr(x1,x2,x1err,x2err,):
+    x1,x2,x1err,x2err = np.array(x1),np.array(x2),np.array(x1err),np.array(x2err)
     yd0 = x1/x2
     yd = np.log10(yd0)
     yderr0 = ((x1err/x2)**2+(x2err*x1/x2**2)**2)**0.5
@@ -1226,7 +1241,7 @@ def save_to_fits(dataIN,hdrIN,savepath):
     hdul.writeto(savepath,overwrite=True)
     return
 
-def set_figSize(dim,plotsize):
+def set_figSize(dim,plotsize,SQUARE=False):
     # breakpoint()
     dim = np.array(dim)
     xy = [12,14]
@@ -1236,7 +1251,7 @@ def set_figSize(dim,plotsize):
     # print(figSIZE)
     figSIZE = figSIZE/np.min(figSIZE)#*dim
     # print(figSIZE)
-    if dim[0] == dim[1]:
+    if dim[0] == dim[1] :
         if figSIZE[0] == figSIZE[1]:
             figSIZE = figSIZE*max(xy)
         if figSIZE[0] < figSIZE[1]:
@@ -1255,7 +1270,6 @@ def set_figSize(dim,plotsize):
         # figSIZE = [figSIZE[0],figSIZE[1]]
         figSIZE = [np.min(figSIZE),np.max(figSIZE)]
     figSIZE = np.array(figSIZE).astype(int)
-    # print(figSIZE)
     return figSIZE
 
 

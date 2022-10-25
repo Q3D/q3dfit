@@ -559,6 +559,7 @@ class Q3Dpro:
             print('Saving figure:',pltsave_name)
             plt.savefig(os.path.join(self.dataDIR,pltsave_name))
         plt.show()
+        return
         # --------------------------
         # Plot BPT here
         # --------------------------

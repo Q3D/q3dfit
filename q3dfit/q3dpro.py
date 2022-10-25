@@ -103,6 +103,89 @@ class Q3Dpro:
         # output in MICRON
         return linewave, linename
 
+    def get_linemap(self,LINESELECT,LINEVAC=True,APPLYMASK=True):
+        print('getting line data...',LINESELECT)
+        
+        redshift = self.q3dinit['zsys_gas']
+        ncomp = self.q3dinit['ncomp'][LINESELECT][0,0]
+
+        # kpc_arcsec = cosmo.kpc_proper_per_arcmin(redshift).value/60.
+        # arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
+        # argscheckcomp = self.q3dinit['argscheckcomp']
+        # xycen = xyCenter # (nx,ny) of the center
+
+        # cid = -1 # index of the component to plot, -1 is the broadest component
+        # central wavelength --> need to get from linereader
+        wave0,linetext = self.get_lineprop(LINESELECT,LINEVAC=LINEVAC)
+        
+        ncomp = self.q3dinit['ncomp'][LINESELECT][0,0]
+        
+        fluxsum     = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['flux']
+        fluxsum_err = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['fluxerr']
+        fsmsk = clean_mask(fluxsum, BAD=self.bad)
+
+        matrix_size = (fluxsum.shape[0],fluxsum.shape[1],ncomp)
+        
+        dataOUT = {'Ftot':{'data':fluxsum,
+                           'err':fluxsum_err,
+                           'name':['F$_{tot}$'],'mask':fsmsk},
+                   'Fci' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[],'mask':np.zeros(matrix_size)},
+                   'Sig' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[],'mask':np.zeros(matrix_size)},
+                   'v50' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[],'mask':np.zeros(matrix_size)},
+                   'w80' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[],'mask':np.zeros(matrix_size)}}
+        # EXTRACT COMPONENTS
+        for ci in range(0,ncomp) :
+            ici = ci+1
+            fcl = 'fc'+str(ici)
+            iflux = self.linedat.get_flux(LINESELECT,FLUXSEL=fcl)['flux']
+            ifler = self.linedat.get_flux(LINESELECT,FLUXSEL=fcl)['fluxerr']
+            isigm = self.linedat.get_sigma(LINESELECT,COMPSEL=ici)['sig']
+            isger = self.linedat.get_sigma(LINESELECT,COMPSEL=ici)['sigerr']
+            iwvcn = self.linedat.get_wave(LINESELECT,COMPSEL=ici)['wav']
+            iwver = self.linedat.get_wave(LINESELECT,COMPSEL=ici)['waverr']
+            #ireds = redshift[:,:,ci]
+
+            # now process them
+            iv50 = ((iwvcn - wave0)/wave0 - redshift)/(1.+redshift)*c.to('km/s').value
+            iw80  = isigm*2.563 #w80 linewidth from the velocity dispersion
+            # mask out the bad values
+            ifmask = np.array(clean_mask(iflux,BAD=self.bad))
+            isgmsk = np.array(clean_mask(isigm,BAD=self.bad))
+            iwvmsk = np.array(clean_mask(iwvcn,BAD=self.bad))
+
+            # save to the processed matrices
+            dataOUT['Fci']['data'][:,:,ci] = iflux#*ifmask
+            dataOUT['Sig']['data'][:,:,ci] = isigm#*isgmsk
+            dataOUT['v50']['data'][:,:,ci] = iv50#*iwvmsk
+            dataOUT['w80']['data'][:,:,ci] = iw80#*isgmsk
+            
+            dataOUT['Fci']['err'][:,:,ci]  = ifler#*ifmask
+            dataOUT['Sig']['err'][:,:,ci]  = isger#*isgmsk
+            dataOUT['v50']['err'][:,:,ci]  = iwver#*ifmask
+            dataOUT['w80']['err'][:,:,ci]  = isger#*isgmsk
+
+            dataOUT['Fci']['name'].append('F$_{c'+str(ici)+'}$')
+            dataOUT['Sig']['name'].append('$\sigma_{c'+str(ici)+'}$')
+            dataOUT['v50']['name'].append('v$_{50,c'+str(ici)+'}$')
+            dataOUT['w80']['name'].append('w$_{80,c'+str(ici)+'}$')
+            
+            dataOUT['Fci']['mask'][:,:,ci] = ifmask
+            dataOUT['Sig']['mask'][:,:,ci] = isgmsk
+            dataOUT['v50']['mask'][:,:,ci] = iwvmsk
+            dataOUT['w80']['mask'][:,:,ci] = isgmsk
+            
+        if APPLYMASK == True:
+            for ditem in dataOUT:
+                if len(dataOUT[ditem]['data'].shape) > 2:
+                    for ci in range(0,ncomp):
+                        dataOUT[ditem]['data'][:,:,ci] = dataOUT[ditem]['data'][:,:,ci]*dataOUT[ditem]['mask'][:,:,ci]
+                        dataOUT[ditem]['err'][:,:,ci]  = dataOUT[ditem]['data'][:,:,ci]*dataOUT[ditem]['mask'][:,:,ci]
+                else:
+                    dataOUT[ditem]['data'] = dataOUT[ditem]['data']*dataOUT[ditem]['mask']
+                    dataOUT[ditem]['err']  = dataOUT[ditem]['data']*dataOUT[ditem]['mask']
+        
+        return wave0,linetext,dataOUT
+
     def make_linemap(self, LINESELECT, SNRCUT=5., LINEVAC=True,
                      xyCenter=None, VMINMAX=None,
                      XYSTYLE=None, PLTNUM=1, CMAP=None,
@@ -122,123 +205,22 @@ class Q3Dpro:
 
         # cid = -1 # index of the component to plot, -1 is the broadest component
         # central wavelength --> need to get from linereader
-        wave0,linetext = self.get_lineprop(LINESELECT,LINEVAC=LINEVAC)
-
+        # wave0,linetext = self.get_lineprop(LINESELECT,LINEVAC=LINEVAC)
+        
         # --------------------------
         # EXTRACT THE DATA HERE
         # --------------------------
+        wave0,linetext,dataOUT = self.get_linemap(LINESELECT,LINEVAC=LINEVAC,APPLYMASK=True)
+        
         # EXTRACT TOTAL FLUX
-        fluxsum     = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['flux']
-        fluxsum_err = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['fluxerr']
-        fsmsk = clean_mask(fluxsum, BAD=self.bad)
-
-        matrix_size = (fluxsum.shape[0],fluxsum.shape[1],ncomp)
-        dataOUT = {'Ftot':{'data':fluxsum*fsmsk,'err':fluxsum_err*fsmsk,'name':['F$_{tot}$']},
-                   'Fci' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[]},
-                   'Sig' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[]},
-                   'v50' :{'data':np.zeros(matrix_size),'err':None,'name':[]}}
-        # EXTRACT COMPONENTS
-        for ci in range(0,ncomp) :
-            ici = ci+1
-            fcl = 'fc'+str(ici)
-            iflux = self.linedat.get_flux(LINESELECT,FLUXSEL=fcl)['flux']
-            ifler = self.linedat.get_flux(LINESELECT,FLUXSEL=fcl)['fluxerr']
-            isigm = self.linedat.get_sigma(LINESELECT,COMPSEL=ici)['sig']
-            isger = self.linedat.get_sigma(LINESELECT,COMPSEL=ici)['sigerr']
-            iwvcn = self.linedat.get_wave(LINESELECT,COMPSEL=ici)['wav']
-            #ireds = redshift[:,:,ci]
-
-            # now process them
-            iv50 = ((iwvcn - wave0)/wave0 - redshift)/(1.+redshift) * \
-                c.to('km/s').value
-            # mask out the bad values
-            ifmask = clean_mask(iflux,BAD=self.bad)
-            isgmsk = clean_mask(isigm,BAD=self.bad)
-            iwvmsk = clean_mask(iwvcn,BAD=self.bad)
-
-            # save to the processed matrices
-            dataOUT['Fci']['data'][:,:,ci] = iflux*ifmask
-            dataOUT['Sig']['data'][:,:,ci] = isigm*isgmsk
-            dataOUT['v50']['data'][:,:,ci] = iv50*iwvmsk
-            dataOUT['Fci']['err'][:,:,ci]  = ifler*ifmask
-            dataOUT['Sig']['err'][:,:,ci]  = isger*isgmsk
-
-            dataOUT['Fci']['name'].append('F$_{c'+str(ici)+'}$')
-            dataOUT['Sig']['name'].append('$\sigma_{c'+str(ici)+'}$')
-            dataOUT['v50']['name'].append('v$_{50,c'+str(ici)+'}$')
-
-        #read in the information
-        # for i in range(nspec):
-        #     wav[i,:] = w[i*ncomp:(i+1)*ncomp]
-        #     v50[i,:] = ((wav[i,:]-wav0)/wav0 - redshift) * c
-        #     s[i,:] = sigma[i*ncomp:(i+1)*ncomp]
-        #     colnew[i] = Col[i*ncomp]
-        #     rownew[i] = Row[i*ncomp]
-        #     flux[i,:] = flux0[i*ncomp:(i+1)*ncomp]
-        #     fluxerr[i,:] = flux0err[i*ncomp:(i+1)*ncomp]
-        #     tgid = np.where(flux[i,:] > 0)
-        #     fluxsum[i] = np.sum(flux[i,tgid])
-        #     fluxsum_err[i] = (np.sum(fluxerr[i,tgid]**2))**0.5
-        #     if ncomp > 1:
-        #         goodcomp = np.where((s[i,:]>0) & (s[i,:]<bad) & (flux[i,:]>0) & (flux[i,:]<bad))
-        #         if np.size(goodcomp) > 1:
-        #             sindex = np.argsort(s[i,goodcomp])
-        #             wav[i,goodcomp] = wav[i,goodcomp][0][sindex]
-        #             v50[i,goodcomp] = v50[i,goodcomp][0][sindex]
-        #             s[i,goodcomp] = s[i,goodcomp][0][sindex]
-        #             flux[i,goodcomp] = flux[i,goodcomp][0][sindex]
-        #             fluxerr[i,goodcomp] = fluxerr[i,goodcomp][0][sindex]
-        #             fluxsum[i] = np.sum(flux[i,:])
-        #             fluxsum_err[i] = (np.sum(fluxerr[i,:]**2))**0.5
-
         # sn_tot = fluxsum/fluxsum_err
         # w80 = sigma*2.563   # w80 linewidth from the velocity dispersion
         # sn = flux/flux_err
+        fluxsum     = dataOUT['Ftot']['data']
+        fluxsum_err = dataOUT['Ftot']['err']
+        
         fluxsum_snc,gdindx,bdindx = snr_cut(fluxsum,fluxsum_err,SNRCUT=SNRCUT)
-
-        # nnpix = 30
-
-        # #pad the outer region of the cubes with nan, for those smaller cubes
-        # xarr0 = np.arange(np.min(xcol)-nnpix*pix,np.max(xcol)+nnpix*pix,pix)
-        # yarr0 = np.arange(np.min(xcol)-nnpix*pix,np.max(xcol)+nnpix*pix,pix)
-        # xarr,yarr = np.meshgrid(xarr0,yarr0)
-        # xarr00 =np.reshape(xarr,-1)
-        # yarr00 =np.reshape(yarr,-1)
-        # inid = np.where((xarr00 >= np.min(xcol)) & (xarr00 <= np.max(xcol)+1) & (yarr00 >= np.min(ycol)) & (yarr00 <= np.max(ycol)))
-        # ouid = np.array([])
-        # for  i in np.arange(np.size(xarr)):
-        #     if np.size(np.where(i == inid)) == 0:
-        #         ouid = np.append(ouid,i)
-        # ouid = np.array(ouid,dtype=int)
-
-
-
-        # nadd = np.size(ouid)
-        # zarr = np.zeros(nadd)+np.nan
-
-        # w80c3 = w80[:,cid]
-        # v50c3 = v50[:,cid]
-        # sn_c3 = sn[:,cid]
-        # fluxc3 = flux[:,cid]
-        # wavc3 = wav[:,cid]
-
-        # if SNRCUT != None1
-        # # trim the X Y range (default is 3 arcsec) of the map and set an S/N threshold
-        # try:
-        #     xb = argscheckcomp['sigcut']*arckpc
-        #     yb = argscheckcomp['sigcut']*arckpc
-        #     gid = np.where(((xcolkpc < 1.15*xb) & (xcolkpc > -1.1*xb) & (ycolkpc < 1.2*yb) & (ycolkpc > -1.2*yb)))
-
-        #     bid = np.where((w80c3 < 1e-5) | (w80c3 > 5e98) | (np.isfinite(w80c3) == False) | (sn_tot < sncut) | (np.isfinite(sn_tot) == False) | \
-        #         (v50c3 > 5e98) | (wavc3 > 5e98) | (np.isfinite(wavc3) == False) | (fluxc3 <= 1e-10) | (fluxc3 > 5e98) | (np.isfinite(fluxc3) == False)) # |
-
-
-        #     w80c3[bid] = np.nan
-        #     v50c3[bid] = np.nan
-
-        # except (IndexError or KeyError):
-        #     print('x, y ranges or S/N threshold not properly set')
-
+        matrix_size = (fluxsum.shape[0],fluxsum.shape[1],ncomp)
         FLUXLOG = False
 
         # --------------------------
@@ -269,7 +251,7 @@ class Q3Dpro:
                 xcol,ycol = xcolkpc,ycolkpc
                 XYtitle = 'Relative distance [kpc]'
         plt.close(PLTNUM)
-        figDIM = [ncomp,4]
+        figDIM = [ncomp,5]
         figOUT = set_figSize(figDIM,matrix_size)
         fig,ax = plt.subplots(figDIM[0],figDIM[1])
         fig.set_figheight(figOUT[1])

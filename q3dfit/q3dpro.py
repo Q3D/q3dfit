@@ -342,9 +342,7 @@ class Q3Dpro:
 
         return
 
-    def make_BPT(self, SNRCUT=3, SAVEDATA=False, PLTNUM=5, KPC=False):
-
-
+    def make_BPT(self, SNRCUT=3, LINEVAC=True, SAVEDATA=False, PLTNUM=5, KPC=False):
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # first identify the lines, extract fluxes, and apply the SNR cuts
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -358,23 +356,52 @@ class Q3Dpro:
                     '[SII]6731':None}
 
         redshift = self.q3dinit['zsys_gas']
+        
         arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
+        mshaps = [None,None]
+        li = 0
         for lin in self.linedat.lines:
             if lin in BPTlines:
-               fluxsum     = self.linedat.get_flux(lin,FLUXSEL='ftot')['flux']
-               fluxsum_err = self.linedat.get_flux(lin,FLUXSEL='ftot')['fluxerr']
-               fmask       = clean_mask(fluxsum,BAD=self.bad)
-               flux_snc,gud_indx,bad_indx = snr_cut(fluxsum,fluxsum_err,SNRCUT=SNRCUT)
+                ncomp = self.q3dinit['ncomp'][lin][0,0]
+                # fluxsum     = self.linedat.get_flux(lin,FLUXSEL='ftot')['flux']
+                # fluxsum_err = self.linedat.get_flux(lin,FLUXSEL='ftot')['fluxerr']
+                wave0,linetext,dataOUT = self.get_linemap(lin,LINEVAC=LINEVAC,APPLYMASK={})
+                istruct = {'wavcen':wave0,'wname':linetext,'data':dataOUT,'snr':{}}
+                for ditem in dataOUT:
+                    if len(dataOUT[ditem]['data'].shape) > 2:
+                        istruct['snr'][ditem] = [[],[],[]]
+                        if li == 0:
+                            mshaps[1] = dataOUT[ditem]['data'].shape
+                            istruct['snr'][ditem][0] = np.zeros(mshaps[1])
+                        for ci in range(0,ncomp):
+                            i_snc,i_gindx,i_bindx = snr_cut(dataOUT[ditem]['data'][:,:,ci],dataOUT[ditem]['err'][:,:,ci],SNRCUT=SNRCUT)
+                            istruct['snr'][ditem][0][:,:,ci] = i_snc
+                            istruct['snr'][ditem][1].append(i_gindx)
+                            istruct['snr'][ditem][2].append(i_bindx)
+                        li+=0
+                    else:
+                        if li == 0:
+                            mshaps[0] = dataOUT[ditem]['data'].shape
+                        i_snc,i_gindx,i_bindx = snr_cut(dataOUT[ditem]['data'],dataOUT[ditem]['err'],SNRCUT=SNRCUT)
+                        istruct['snr'][ditem] = [i_snc,i_gindx,i_bindx]
+                BPTlines[lin] = istruct
+                
                #redshift = self.q3dinit['zinit_gas'][lin]
                #matrix_size = redshift.shape
                #redshift = redshift.reshape(matrix_size[0],matrix_size[1])
                #arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
-               BPTlines[lin] = [fluxsum,fluxsum_err,flux_snc,fmask,gud_indx]
-
-        lineratios = {'OiiiHb':None,
-                      'SiiHa':None,
-                      'OiHa':None,
-                      'NiiHa':None,}
+               # BPTlines[lin] = [fluxsum,fluxsum_err,flux_snc,fmask,gud_indx]
+        
+        lineratios = {'OiiiHb':{'lines':['[OIII]5007','Hbeta'],'pltname':'[OIII]/H$\\beta$','pltrange':[-1,1.5],
+                                'lrat':{'Ftot':None,'Fci':None}},
+                        'SiiHa' :{'lines':[['[SII]6716','[SII]6731'],'Halpha'],'pltname':'[SII]/H$\\alpha$','pltrange':[-1.8,0.9],
+                                  'lrat':{'Ftot':None,'Fci':None}},
+                        'OiHa'  :{'lines':['[OIII]5007','Halpha'],'pltname':'[OI]/H$\\alpha$','pltrange':[-1.8,0.1],
+                                  'lrat':{'Ftot':None,'Fci':None}},
+                       'NiiHa' :{'lines':[['[NII]6548','[NII]6583'],'Halpha'],'pltname':'[NII]/H$\\alpha$','pltrange':[-1.8,0.1],
+                                 'lrat':{'Ftot':None,'Fci':None}},
+                      }
+        
         BPTmod = {'OiiiHb/NiiHa':None,
                     'OiiiHb/SiiHa':None,
                     'OiiiHb/OiHa':None}
@@ -404,209 +431,211 @@ class Q3Dpro:
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # Calculate the line ratios
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        print('calculating line ratios...')
         cntr = 0
         bptc = 0
-        # ++++++++++++++++++
-        # [OIII]/Hbeta
-        # ++++++++++++++++++
-        if BPTlines['[OIII]5007'] != None and BPTlines['Hbeta'] != None :
-            f1,f1_err,f1_snc,m1,g1_gindx = BPTlines['[OIII]5007']
-            f2,f2_err,f2_snc,m2,g2_gindx = BPTlines['Hbeta']
-            mm = m1*m2
-            frat = f1/f2
-            # gdindx = np.intersect1d(g1_gindx, g2_gindx)
-            # cc = list(set.intersection(*map(set,[g1_gindx, g2_gindx])))
-            frat10 = np.log10(frat)
-            frat10err = lgerr(f1_snc,f2_snc,f1_err,f2_err)
-            pltrange = [-1,1.5]
-            lineratios['OiiiHb'] = [frat10*mm,frat10err,'[OIII]/H$\\beta$',pltrange]
-            cntr += 1
-        # ++++++++++++++++++
-        # [SII]/Halpha
-        # ++++++++++++++++++
-        if (BPTlines['[SII]6716'] != None or BPTlines['[SII]6731'] != None) and BPTlines['Halpha'] != None :
-            f2,f2_err,f2_snc,m2,g2_gindx = BPTlines['Halpha']
-            f1,f1a,f1b = [],[],[]
-            f1_err,f1a_err,f1b_err = [],[],[]
-            if BPTlines['[SII]6716'] != None :
-                f1a,f1a_err,f1a_snc,m1a,g1a_gindx = BPTlines['[SII]6716']
-            else:
-                f1a,f1a_err,f1a_snc = np.zeros(f1.shape),np.zeros(f2.shape),np.zeros(f2.shape)
-                m1a,g1a_gindx = np.zeros(f2.shape)+1,[]
-            if BPTlines['[SII]6731'] != None :
-                f1b,f1b_err,f1b_snc,m1b,g1b_gindx = BPTlines['[SII]6731']
-            else:
-                f1b,f1b_err,f1b_snc = np.zeros(f1.shape),np.zeros(f1.shape),np.zeros(f1.shape)
-                m1b,g1b_gindx = np.zeros(f1.shape)+1,[]
-            f1     = f1a+f1b
-            f1_snc = f1a_snc+f1b_snc
-            f1_err = np.sqrt(np.array(f1a_err)**2+np.array(f1b_err)**2)
-            mm = m2*m1a*m1b
-            frat = f1/f2
-            frat10 = np.log10(frat)
-            frat10err = lgerr(f1_snc,f2_snc,f1_err,f2_err)
-            pltrange = [-1.8,0.1]
-            pltrange = [-1.8,0.9]
-            lineratios['SiiHa'] = [frat10,frat10err,'[SII]/H$\\alpha$',pltrange]
-            cntr += 1
-            bptc += 1
-        # ++++++++++++++++++
-        # [OI]/Halpha
-        # ++++++++++++++++++
-        if BPTlines['[OI]6300'] != None and BPTlines['Halpha'] != None :
-            f1,f1_err,f1_snc,m1,g1_gindx = BPTlines['[OI]6300']
-            f2,f2_err,f2_snc,m2,g2_gindx = BPTlines['Halpha']
-            mm = m1*m2
-            frat = f1/f2
-            frat10 = np.log10(frat)
-            frat10err = lgerr(f1_snc,f2_snc,f1_err,f2_err)
-            pltrange = [-2.1,0]
-            lineratios['OiHa'] = [frat10*mm,frat10err,'[OI]/H$\\alpha$',[-1.8,0.1]]
-            cntr += 1
-            bptc += 1
-        # ++++++++++++++++++
-        # [NII]/Halpha
-        # ++++++++++++++++++
-        if BPTlines['[NII]6583'] != None and BPTlines['Halpha'] != None :
-            f1,f1_err,f1_snc,m1,g1_gindx = BPTlines['[OIII]5007']
-            f2,f2_err,f2_snc,m2,g2_gindx = BPTlines['Halpha']
-            mm = m1*m2
-            frat = f1/f2
-            frat10 = np.log10(frat)
-            frat10err = lgerr(f1_snc,f2_snc,f1_err,f2_err)
-            pltrange = [-1.8,0.3]
-            lineratios['NiiHa'] = [frat10*mm,frat10err,'[NII]/H$\\alpha$',[-1.8,0.1]]
-            cntr += 1
-            bptc += 1
-
-        # breakpoint()
+        for lrat,lratdat in lineratios.items():
+            f1tot,f1tot_err,m1tot,f1scntot,f1ci,f1ci_err,m1ci,f1scnci = [],[],[],[],[],[],[],[]#np.zeros(mshaps[1]),np.zeros(mshaps[1]),np.zeros(mshaps[1])
+            f2tot,f2tot_err,m2tot,f2scntot,f2ci,f2ci_err,m2ci,f2scnci = [],[],[],[],[],[],[],[]#np.zeros(mshaps[1]),np.zeros(mshaps[1]),np.zeros(mshaps[1])
+            fratdat = [{'Ftot':[f1tot,f1tot_err,m1tot,f1scntot],'Fci':[f1ci,f1ci_err,m1ci,f1scnci]},
+                       {'Ftot':[f2tot,f2tot_err,m2tot,f2scntot],'Fci':[f2ci,f2ci_err,m2ci,f2scnci]}]
+            for li,lin in enumerate(lratdat['lines']):
+                if isinstance(lin,list):
+                    nogood = 0
+                    for pp in range(0,4):
+                        fratdat[li]['Ftot'][pp] = np.zeros(mshaps[0])
+                        fratdat[li]['Fci'][pp]  = np.zeros(mshaps[1])
+                    fratdat[li]['Ftot'][2] +=1
+                    fratdat[li]['Fci'][2] +=1
+                    for jlin in lin :
+                        if BPTlines[jlin] == None:
+                            nogood+=1
+                        else:
+                            lij_datOUT = BPTlines[jlin]['data']
+                            lij_snrOUT = BPTlines[jlin]['snr']
+                            lij_ftot,lij_ftotER,lij_ftotMASK = lij_datOUT['Ftot']['data'],lij_datOUT['Ftot']['err'],lij_datOUT['Ftot']['mask']
+                            lij_fci,lij_fciER,lij_fciMASK    = lij_datOUT['Fci']['data'],lij_datOUT['Fci']['err'],lij_datOUT['Fci']['mask']
+                            fratdat[li]['Ftot'][0] += lij_ftot
+                            fratdat[li]['Ftot'][1] += lij_ftotER
+                            fratdat[li]['Ftot'][2] *= lij_ftotMASK
+                            fratdat[li]['Ftot'][3] += lij_snrOUT['Ftot'][0]
+                            fratdat[li]['Fci'][0] += lij_fci
+                            fratdat[li]['Fci'][1] += lij_fciER
+                            fratdat[li]['Fci'][2] *= lij_fciMASK
+                            fratdat[li]['Fci'][3] += lij_snrOUT['Fci'][0]
+                    if nogood == len(lin):
+                        lineratios[lrat] = None
+                        break
+                elif BPTlines[lin] == None:
+                    lineratios[lrat] = None
+                    break
+                else:
+                    li_datOUT = BPTlines[lin]['data']
+                    li_snrOUT = BPTlines[lin]['snr']
+                    li_ftot,li_ftotER,li_ftotMASK = li_datOUT['Ftot']['data'],li_datOUT['Ftot']['err'],li_datOUT['Ftot']['mask']
+                    li_fci,li_fciER,li_fciMASK    = li_datOUT['Fci']['data'],li_datOUT['Fci']['err'],li_datOUT['Fci']['mask']
+                    fratdat[li]['Ftot'][0] = li_ftot
+                    fratdat[li]['Ftot'][1] = li_ftotER
+                    fratdat[li]['Ftot'][2] = li_ftotMASK
+                    fratdat[li]['Ftot'][3] = li_snrOUT['Ftot'][0]
+                    fratdat[li]['Fci'][0] = li_fci
+                    fratdat[li]['Fci'][1] = li_fciER
+                    fratdat[li]['Fci'][2] = li_fciMASK
+                    fratdat[li]['Fci'][3] = li_snrOUT['Fci'][0]
+            if lineratios[lrat] != None:
+                cntr +=1
+                for fi,lratF in enumerate(lratdat['lrat'] ):
+                    # print(fratdat[0])
+                    fi_mask = fratdat[0][lratF][2]*fratdat[1][lratF][2]
+                    fi_frat = fratdat[0][lratF][0]/fratdat[1][lratF][0]
+                    frat10 = np.log10(fi_frat)*fi_mask
+                    frat10err = lgerr(fratdat[0][lratF][3],fratdat[1][lratF][3],
+                                      fratdat[0][lratF][1],fratdat[1][lratF][1])
+                    lineratios[lrat]['lrat'][lratF]=[frat10,frat10err]
+                    
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # Do the plotting here
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        if cntr != 0 and bptc != 0:
-            matrix_size = BPTlines['[OIII]5007'][0].shape
-            xyCenter = [int(np.ceil(matrix_size[0]/2)),int(np.ceil(matrix_size[1]/2))]
-            xgrid = np.arange(0, matrix_size[1])
-            ygrid = np.arange(0, matrix_size[0])
-            xcol = xgrid
-            ycol = ygrid
-            if KPC == True :
-                xcol = (xgrid-xyCenter[1])
-                ycol = (ygrid-xyCenter[0])
-            # --------------------------
-            # Plot ine ratio map
-            # --------------------------
-            plt.close(PLTNUM)
-            figDIM = [1,cntr]
-            figOUT = set_figSize(figDIM,matrix_size)
-            fig,ax = plt.subplots(1,cntr,num=PLTNUM,constrained_layout=True)#, gridspec_kw={'height_ratios': [1, 2]})
-            fig.set_figheight(figOUT[1])
-            fig.set_figwidth(figOUT[0])
-
-            CMAP='inferno'
-            cmap_r = cm.get_cmap(CMAP)
-            cmap_r.set_bad(color='black')
-            cf = 0
-            for linrat in lineratios:
-                if linrat != None :
-                    xx,yy = xcol,ycol
-                    iax = ax[cf]
-                    frat10,frat10err,pltname,pltrange = lineratios[linrat]
-                    display_pixels_wz(yy, xx, frat10, CMAP=CMAP, AX=iax,
-                                      VMIN=-1, VMAX=1, NTICKS=5, COLORBAR=True)
-                    # iax.errorbar(0,0,color='black',fmt='*',markersize=10,zorder=2)
-                    iax.set_xlabel('spaxel',fontsize=13)
-                    iax.set_ylabel('spaxel',fontsize=13)
-                    if KPC == True:
-                        iax.set_xlabel('Relative distance [kpc]',fontsize=13)
-                        iax.set_ylabel('Relative distance [kpc]',fontsize=13)
-                    iax.set_title('log$_{10}$ '+pltname,fontsize=15,pad=45)
-                    # iax.set_ylim([max(xx),np.ceil(min(xx))])
-                    # iax.set_xlim([min(yy),np.ceil(max(yy))])
-                    cf += 1
-            plt.tight_layout(pad=1.5,h_pad=0.1)
-            if SAVEDATA == True:
-                pltsave_name = 'emlin_ratio_map.png'
-                print('Saving figure:',pltsave_name)
-                plt.savefig(os.path.join(self.dataDIR,pltsave_name))
-            plt.show()
-            # --------------------------
-            # Plot BPT here
-            # --------------------------
-            PLTNUM += 1
-            plt.close(PLTNUM)
-            fig,ax = plt.subplots(1,bptc,figsize=(bptc*5,5),num=PLTNUM,constrained_layout=True)
-            cf=0
-            # breakpoint()
-            pixkpc = self.pix*arckpc
-            xgrid = np.arange(0, matrix_size[1])
-            ygrid = np.arange(0, matrix_size[0])
+        # if cntr != 0 and bptc != 0:
+        nps = mshaps[1][2]+1
+        xyCenter = [int(np.ceil(mshaps[1][0]/2)),int(np.ceil(mshaps[1][1]/2))]
+        xgrid = np.arange(0, mshaps[1][1])
+        ygrid = np.arange(0, mshaps[1][0])
+        xcol = xgrid
+        ycol = ygrid
+        if KPC == True :
             xcol = (xgrid-xyCenter[1])
             ycol = (ygrid-xyCenter[0])
-            xcolkpc = xcol*np.median(arckpc)* self.pix
-            ycolkpc = ycol*np.median(arckpc)* self.pix
-            for bpt in BPTmod:
-                if bpt != None :
-                    iax = ax[cf]
-                    # first plot the theoretical curves
-                    iBPTmod = BPTmod[bpt]
-                    iax.plot(iBPTmod[0][0],iBPTmod[0][1],'k-',zorder=1,linewidth=1.5)
-                    iax.plot(iBPTmod[1][0],iBPTmod[1][1],'k--',zorder=1,linewidth=1.5)
-
-                    iax.minorticks_on()
-                    fnames = bpt.split('/')
-                    frat1,frat1err,fratnam1,pltrng1 = lineratios[fnames[0]]
-                    frat2,frat2err,fratnam2,pltrng2 = lineratios[fnames[1]]
-
-                    # print(fratnam1,fratnam2)
-
-                    gg = np.where(~np.isnan(frat1) & ~np.isnan(frat2))
-                    xfrat,xfraterr = [],[[],[]]
-                    yfrat,yfraterr = [],[[],[]]
-                    for pi in range(len(gg[0])):
-                        yfrat.append(frat1[gg[0][pi],gg[1][pi]])
-                        yfraterr[0].append(frat1err[0][gg[0][pi],gg[1][pi]])
-                        yfraterr[1].append(frat1err[1][gg[0][pi],gg[1][pi]])
-                        xfrat.append(frat2[gg[0][pi],gg[1][pi]])
-                        xfraterr[0].append(frat2err[0][gg[0][pi],gg[1][pi]])
-                        xfraterr[1].append(frat2err[1][gg[0][pi],gg[1][pi]])
-                    iax.errorbar(xfrat,yfrat,fmt='.',
-                                 # xerr=xfraterr,yerr=yfraterr,
-                                 color='black',markersize=5,zorder=2)
-                    iax.errorbar(xfrat,yfrat,fmt='.',
-                                 xerr=xfraterr,yerr=yfraterr,
-                                 color='black',markersize=0,
-                                 elinewidth=1.5,ecolor='blue',alpha=0.5,zorder=3)
-                                  # color=cmap(norm(r_kpc[kk])),ms=1)
-                    iax.errorbar(np.median(xfrat),np.median(yfrat),
-                                 fillstyle='none',color='red',fmt='*',markersize=17,mew=2.5,zorder=3)
-                    iax.set_ylim(pltrng1)
-                    # iax.set_xlim(pltrng2)
-                    iax.set_xlim([-2.1,0.7])
-                    if cf == 0:
-                        iax.set_ylabel(fratnam1,fontsize=16)
-                        iax.tick_params(axis='y',which='major', length=10, width=1, direction='in',labelsize=13,
-                                      bottom=True, top=True, left=True, right=True,color='black')
+        # --------------------------
+        # Plot ine ratio map
+        # --------------------------
+        plt.close(PLTNUM)
+        figDIM = [nps,cntr]
+        figOUT = set_figSize(figDIM,mshaps[1])
+        fig,ax = plt.subplots(nps,cntr,num=PLTNUM,constrained_layout=True)#, gridspec_kw={'height_ratios': [1, 2]})
+        fig.set_figheight(figOUT[1]+1)
+        fig.set_figwidth(figOUT[0])
+        
+        CMAP='inferno'
+        cmap_r = cm.get_cmap(CMAP)
+        cmap_r.set_bad(color='black')
+        cf = 0
+            
+        for linrat in lineratios:
+            if lineratios[linrat] != None :
+                xx,yy = xcol,ycol
+                # iax = ax[cf]
+                for li,lratF in enumerate(['Ftot','Fci']):
+                    
+                    if lratF == 'Fci':
+                        frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
+                        for ci in range(0,ncomp): 
+                            display_pixels_wz(yy, xx, frat10[:,:,ci], CMAP=CMAP, AX=ax[li+ci,cf],
+                                              VMIN=-1, VMAX=1, NTICKS=5, COLORBAR=True)
                     else:
-                        iax.tick_params(axis='y',which='major', length=10, width=1, direction='in',labelsize=0,
-                                      bottom=True, top=True, left=True, right=True,color='black')
-                    iax.set_xlabel(fratnam2,fontsize=16)
+                        frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
+                        display_pixels_wz(yy, xx, frat10, CMAP=CMAP, AX=ax[li,cf],
+                                          VMIN=-1, VMAX=1, NTICKS=5, COLORBAR=True)
+                pltname,pltrange = lineratios[linrat]['pltname'],lineratios[linrat]['pltrange']
+                
+                for ni in range(0,nps):
+                    ax[ni,cf].set_xlabel('spaxel',fontsize=13)
+                    ax[ni,cf].set_ylabel('spaxel',fontsize=13)
+                    if KPC == True:
+                        ax[ni,cf].set_xlabel('Relative distance [kpc]',fontsize=13)
+                        ax[ni,cf].set_ylabel('Relative distance [kpc]',fontsize=13)
+                    prelud = ''
+                    if ni == 0:
+                        prelud = 'Ftot: '
+                    else:
+                        prelud = 'Fc'+str(ni+1)+': '
+                    ax[ni,cf].set_title(prelud+'log$_{10}$ '+pltname,fontsize=15,pad=45)
+                    ax[ni,cf].set_ylim([max(xx),np.ceil(min(xx))])
+                    ax[ni,cf].set_xlim([min(yy),np.ceil(max(yy))])
+                cf += 1
+        plt.tight_layout(pad=1.5,h_pad=0.1)
+        if SAVEDATA == True:
+            pltsave_name = 'emlin_ratio_map.png'
+            print('Saving figure:',pltsave_name)
+            plt.savefig(os.path.join(self.dataDIR,pltsave_name))
+        plt.show()
+        # --------------------------
+        # Plot BPT here
+        # --------------------------
+        PLTNUM += 1
+        plt.close(PLTNUM)
+        fig,ax = plt.subplots(1,bptc,figsize=(bptc*5,5),num=PLTNUM,constrained_layout=True)
+        cf=0
+        # breakpoint()
+        pixkpc = self.pix*arckpc
+        xgrid = np.arange(0, matrix_size[1])
+        ygrid = np.arange(0, matrix_size[0])
+        xcol = (xgrid-xyCenter[1])
+        ycol = (ygrid-xyCenter[0])
+        xcolkpc = xcol*np.median(arckpc)* self.pix
+        ycolkpc = ycol*np.median(arckpc)* self.pix
+        for bpt in BPTmod:
+            if bpt != None :
+                iax = ax[cf]
+                # first plot the theoretical curves
+                iBPTmod = BPTmod[bpt]
+                iax.plot(iBPTmod[0][0],iBPTmod[0][1],'k-',zorder=1,linewidth=1.5)
+                iax.plot(iBPTmod[1][0],iBPTmod[1][1],'k--',zorder=1,linewidth=1.5)
 
-                    iax.tick_params(axis='x',which='major', length=10, width=1, direction='in',labelsize=13,
-                                  bottom=True, top=True, left=True, right=True,color='black')
-                    iax.tick_params(which='minor', length=5, width=1, direction='in',
-                                  bottom=True, top=True, left=True, right=True,color='black')
-                    cf+=1
-                    # breakpoint()
+                iax.minorticks_on()
+                fnames = bpt.split('/')
+                frat1,frat1err,fratnam1,pltrng1 = lineratios[fnames[0]]
+                frat2,frat2err,fratnam2,pltrng2 = lineratios[fnames[1]]
 
-            plt.tight_layout(pad=1.5,h_pad=0.1)
-            if SAVEDATA == True:
-                pltsave_name = 'BPT_map.png'
-                print('Saving figure:',pltsave_name)
-                plt.savefig(os.path.join(self.dataDIR,pltsave_name))
-            # plt.savefig(tname+'_c'+str(int(ic+1))+'_bpt.pdf')
-            plt.show()
-            # breakpoint()
+                # print(fratnam1,fratnam2)
+
+                gg = np.where(~np.isnan(frat1) & ~np.isnan(frat2))
+                xfrat,xfraterr = [],[[],[]]
+                yfrat,yfraterr = [],[[],[]]
+                for pi in range(len(gg[0])):
+                    yfrat.append(frat1[gg[0][pi],gg[1][pi]])
+                    yfraterr[0].append(frat1err[0][gg[0][pi],gg[1][pi]])
+                    yfraterr[1].append(frat1err[1][gg[0][pi],gg[1][pi]])
+                    xfrat.append(frat2[gg[0][pi],gg[1][pi]])
+                    xfraterr[0].append(frat2err[0][gg[0][pi],gg[1][pi]])
+                    xfraterr[1].append(frat2err[1][gg[0][pi],gg[1][pi]])
+                iax.errorbar(xfrat,yfrat,fmt='.',
+                             # xerr=xfraterr,yerr=yfraterr,
+                             color='black',markersize=5,zorder=2)
+                iax.errorbar(xfrat,yfrat,fmt='.',
+                             xerr=xfraterr,yerr=yfraterr,
+                             color='black',markersize=0,
+                             elinewidth=1.5,ecolor='blue',alpha=0.5,zorder=3)
+                              # color=cmap(norm(r_kpc[kk])),ms=1)
+                iax.errorbar(np.median(xfrat),np.median(yfrat),
+                             fillstyle='none',color='red',fmt='*',markersize=17,mew=2.5,zorder=3)
+                iax.set_ylim(pltrng1)
+                # iax.set_xlim(pltrng2)
+                iax.set_xlim([-2.1,0.7])
+                if cf == 0:
+                    iax.set_ylabel(fratnam1,fontsize=16)
+                    iax.tick_params(axis='y',which='major', length=10, width=1, direction='in',labelsize=13,
+                                  bottom=True, top=True, left=True, right=True,color='black')
+                else:
+                    iax.tick_params(axis='y',which='major', length=10, width=1, direction='in',labelsize=0,
+                                  bottom=True, top=True, left=True, right=True,color='black')
+                iax.set_xlabel(fratnam2,fontsize=16)
+
+                iax.tick_params(axis='x',which='major', length=10, width=1, direction='in',labelsize=13,
+                              bottom=True, top=True, left=True, right=True,color='black')
+                iax.tick_params(which='minor', length=5, width=1, direction='in',
+                              bottom=True, top=True, left=True, right=True,color='black')
+                cf+=1
+                # breakpoint()
+
+        plt.tight_layout(pad=1.5,h_pad=0.1)
+        if SAVEDATA == True:
+            pltsave_name = 'BPT_map.png'
+            print('Saving figure:',pltsave_name)
+            plt.savefig(os.path.join(self.dataDIR,pltsave_name))
+        # plt.savefig(tname+'_c'+str(int(ic+1))+'_bpt.pdf')
+        plt.show()
+        # breakpoint()
         return
 
 

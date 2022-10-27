@@ -167,7 +167,9 @@ class Cube:
             self.dq = None
         # put all dq to good (0), data type bytes
         if zerodq:
-            self.dq = np.zeros(np.shape(self.dat), dtype=bytes)
+            # data type mirrors JWST output DQ
+            # https://jwst-pipeline.readthedocs.io/en/stable/jwst/data_products/science_products.html
+            self.dq = np.zeros(np.shape(self.dat), dtype='uint32')
 
         # Weight
         if wmapext is not None:
@@ -346,10 +348,7 @@ class Cube:
         # Flux unit conversions
         # default working flux unit is erg/s/cm^2/um/sr or erg/s/cm^2/um
         convert_flux = np.float32(1.)
-        if (u.Unit(self.fluxunit_in) == u.Unit('MJy/sr') or
-            u.Unit(self.fluxunit_in) == u.Unit('MJy')) and \
-            (u.Unit(self.fluxunit_out) != u.Unit('MJy/sr') and
-                u.Unit(self.fluxunit_out) != u.Unit('MJy')):
+        if 'MJy' in self.fluxunit_in and 'MJy' not in self.fluxunit_out:
             # IR units: https://coolwiki.ipac.caltech.edu/index.php/Units
             # default input flux unit is MJy/sr
             # 1 Jy = 10^-26 W/m^2/Hz
@@ -359,24 +358,22 @@ class Cube:
             wave_out = self.wave * u.Unit(self.waveunit_out)
             convert_flux = 1e6 * 1e-23 * c.value / wave_out.to('m').value / \
                 wave_out.to('micron').value
-            # This converts to erg/s/cm^-2/um
-            if u.Unit(self.fluxunit_in) == u.Unit('MJy/sr') and \
-                self.pixarea_sqas is not None:
-                convert_flux *= 1./(206265.*206265.)*self.pixarea_sqas
 
-        # case of input flux units: erg/s/cm^2/Anstrom (/arcsec2)
-        elif u.Unit(self.fluxunit_in) == u.Unit('erg/s/cm2/Angstrom') or \
-            u.Unit(self.fluxunit_in) == \
-                u.Unit('erg/s/cm2/Angstrom/arcsec2'):
+        # case of input flux_lambda cgs units per Angstrom:
+        elif '/Angstrom' in self.fluxunit_in:
             convert_flux = np.float32(1e4)
-            if u.Unit(self.fluxunit_in) == \
-                u.Unit('erg/s/cm2/Angstrom/arcsec2') and \
-                self.pixarea_sqas is not None:
-                convert_flux *= self.pixarea_sqas
 
-        # case of output flux units: erg/s/cm^2/Anstrom
-        if u.Unit(self.fluxunit_out) == u.Unit('erg/s/cm2/Angstrom'):
+        # case of output flux_lambda cgs units per Angstrom:
+        if '/Angstrom' in self.fluxunit_out:
             convert_flux /= np.float32(1e4)
+
+        # remove /sr or /arcsec2
+        if '/sr' in self.fluxunit_in and \
+            self.pixarea_sqas is not None:
+            convert_flux *= 1./(206265.*206265.)*self.pixarea_sqas
+        if '/arcsec2' in self.fluxunit_in and \
+            self.pixarea_sqas is not None:
+            convert_flux *= self.pixarea_sqas
 
         self.dat = self.dat * convert_flux
         self.var = self.var * convert_flux**2

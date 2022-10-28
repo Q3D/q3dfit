@@ -103,7 +103,7 @@ class Q3Dpro:
         # output in MICRON
         return linewave, linename
     
-    def get_linemap(self,LINESELECT,LINEVAC=True,APPLYMASK=True):
+    def get_linemap(self,LINESELECT,LINEVAC=True,APPLYMASK=True,SAVEDATA=False):
         print('getting line data...',LINESELECT)
         
         redshift = self.q3dinit['zsys_gas']
@@ -341,6 +341,178 @@ class Q3Dpro:
     def make_contmap(self):
 
         return
+    
+    def make_lineratio_map(self, lineA,lineB,SNRCUT=3, LINEVAC=True, SAVEDATA=False, PLTNUM=5, KPC=False,VMINMAX=[-1,1]):
+        # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # first identify the lines, extract fluxes, and apply the SNR cuts
+        # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        linelist = {lineA:None,lineB:None}
+
+        redshift = self.q3dinit['zsys_gas']
+        
+        arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
+        mshaps = [None,None]
+        li = 0
+        for lin in self.linedat.lines:
+            if lin in linelist:
+                ncomp = self.q3dinit['ncomp'][lin][0,0]
+                # fluxsum     = self.linedat.get_flux(lin,FLUXSEL='ftot')['flux']
+                # fluxsum_err = self.linedat.get_flux(lin,FLUXSEL='ftot')['fluxerr']
+                wave0,linetext,dataOUT = self.get_linemap(lin,LINEVAC=LINEVAC,APPLYMASK={})
+                istruct = {'wavcen':wave0,'wname':linetext,'data':dataOUT,'snr':{}}
+                for ditem in dataOUT:
+                    if len(dataOUT[ditem]['data'].shape) > 2:
+                        istruct['snr'][ditem] = [[],[],[]]
+                        if li == 0:
+                            mshaps[1] = dataOUT[ditem]['data'].shape
+                            istruct['snr'][ditem][0] = np.zeros(mshaps[1])
+                        for ci in range(0,ncomp):
+                            i_snc,i_gindx,i_bindx = snr_cut(dataOUT[ditem]['data'][:,:,ci],dataOUT[ditem]['err'][:,:,ci],SNRCUT=SNRCUT)
+                            istruct['snr'][ditem][0][:,:,ci] = i_snc
+                            istruct['snr'][ditem][1].append(i_gindx)
+                            istruct['snr'][ditem][2].append(i_bindx)
+                        li+=0
+                    else:
+                        if li == 0:
+                            mshaps[0] = dataOUT[ditem]['data'].shape
+                        i_snc,i_gindx,i_bindx = snr_cut(dataOUT[ditem]['data'],dataOUT[ditem]['err'],SNRCUT=SNRCUT)
+                        istruct['snr'][ditem] = [i_snc,i_gindx,i_bindx]
+                linelist[lin] = istruct
+        
+        lineratios = {'dothis':{'lines':[lineA,lineB],'pltname':linelist[lineA]['wname']+'/'+linelist[lineB]['wname'],'lrat':{'Ftot':None,'Fci':None}}}
+
+        # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # Calculate the line ratios
+        # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        print('calculating line ratios...')
+        cntr = 0
+        for lrat,lratdat in lineratios.items():
+            f1tot,f1tot_err,m1tot,f1scntot,f1ci,f1ci_err,m1ci,f1scnci = [],[],[],[],[],[],[],[]#np.zeros(mshaps[1]),np.zeros(mshaps[1]),np.zeros(mshaps[1])
+            f2tot,f2tot_err,m2tot,f2scntot,f2ci,f2ci_err,m2ci,f2scnci = [],[],[],[],[],[],[],[]#np.zeros(mshaps[1]),np.zeros(mshaps[1]),np.zeros(mshaps[1])
+            fratdat = [{'Ftot':[f1tot,f1tot_err,m1tot,f1scntot],'Fci':[f1ci,f1ci_err,m1ci,f1scnci]},
+                       {'Ftot':[f2tot,f2tot_err,m2tot,f2scntot],'Fci':[f2ci,f2ci_err,m2ci,f2scnci]}]
+            for li,lin in enumerate(lratdat['lines']):
+                if isinstance(lin,list):
+                    nogood = 0
+                    for pp in range(0,4):
+                        fratdat[li]['Ftot'][pp] = np.zeros(mshaps[0])
+                        fratdat[li]['Fci'][pp]  = np.zeros(mshaps[1])
+                    fratdat[li]['Ftot'][2] +=1
+                    fratdat[li]['Fci'][2] +=1
+                    for jlin in lin :
+                        if linelist[jlin] == None:
+                            nogood+=1
+                        else:
+                            lij_datOUT = linelist[jlin]['data']
+                            lij_snrOUT = linelist[jlin]['snr']
+                            lij_ftot,lij_ftotER,lij_ftotMASK = lij_datOUT['Ftot']['data'],lij_datOUT['Ftot']['err'],lij_datOUT['Ftot']['mask']
+                            lij_fci,lij_fciER,lij_fciMASK    = lij_datOUT['Fci']['data'],lij_datOUT['Fci']['err'],lij_datOUT['Fci']['mask']
+                            fratdat[li]['Ftot'][0] += lij_ftot
+                            fratdat[li]['Ftot'][1] += lij_ftotER
+                            fratdat[li]['Ftot'][2] *= lij_ftotMASK
+                            fratdat[li]['Ftot'][3] += lij_snrOUT['Ftot'][0]
+                            fratdat[li]['Fci'][0] += lij_fci
+                            fratdat[li]['Fci'][1] += lij_fciER
+                            fratdat[li]['Fci'][2] *= lij_fciMASK
+                            fratdat[li]['Fci'][3] += lij_snrOUT['Fci'][0]
+                    if nogood == len(lin):
+                        lineratios[lrat] = None
+                        break
+                elif linelist[lin] == None:
+                    lineratios[lrat] = None
+                    break
+                else:
+                    li_datOUT = linelist[lin]['data']
+                    li_snrOUT = linelist[lin]['snr']
+                    li_ftot,li_ftotER,li_ftotMASK = li_datOUT['Ftot']['data'],li_datOUT['Ftot']['err'],li_datOUT['Ftot']['mask']
+                    li_fci,li_fciER,li_fciMASK    = li_datOUT['Fci']['data'],li_datOUT['Fci']['err'],li_datOUT['Fci']['mask']
+                    fratdat[li]['Ftot'][0] = li_ftot
+                    fratdat[li]['Ftot'][1] = li_ftotER
+                    fratdat[li]['Ftot'][2] = li_ftotMASK
+                    fratdat[li]['Ftot'][3] = li_snrOUT['Ftot'][0]
+                    fratdat[li]['Fci'][0] = li_fci
+                    fratdat[li]['Fci'][1] = li_fciER
+                    fratdat[li]['Fci'][2] = li_fciMASK
+                    fratdat[li]['Fci'][3] = li_snrOUT['Fci'][0]
+            if lineratios[lrat] != None:
+                cntr +=1
+                for fi,lratF in enumerate(lratdat['lrat'] ):
+                    # print(fratdat[0])
+                    fi_mask = fratdat[0][lratF][2]*fratdat[1][lratF][2]
+                    fi_frat = fratdat[0][lratF][0]/fratdat[1][lratF][0]
+                    frat10 = np.log10(fi_frat)*fi_mask
+                    frat10err = lgerr(fratdat[0][lratF][3],fratdat[1][lratF][3],
+                                      fratdat[0][lratF][1],fratdat[1][lratF][1])
+                    lineratios[lrat]['lrat'][lratF]=[frat10,frat10err]
+                    
+        # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # Do the plotting here
+        # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # if cntr != 0 and bptc != 0:
+        nps = mshaps[1][2]+1
+        xyCenter = [int(np.ceil(mshaps[1][0]/2)),int(np.ceil(mshaps[1][1]/2))]
+        xgrid = np.arange(0, mshaps[1][1])
+        ygrid = np.arange(0, mshaps[1][0])
+        xcol = xgrid
+        ycol = ygrid
+        if KPC == True :
+            xcol = (xgrid-xyCenter[1])
+            ycol = (ygrid-xyCenter[0])
+        # --------------------------
+        # Plot ine ratio map
+        # --------------------------
+        plt.close(PLTNUM)
+        figDIM = [1,nps]
+        figOUT = set_figSize(figDIM,mshaps[1])
+        fig,ax = plt.subplots(1,nps,num=PLTNUM,constrained_layout=True)#, gridspec_kw={'height_ratios': [1, 2]})
+        fig.set_figheight(figOUT[1])
+        fig.set_figwidth(figOUT[0])
+        
+        CMAP='inferno'
+        cmap_r = cm.get_cmap(CMAP)
+        cmap_r.set_bad(color='black')
+        cf = 0
+        
+        for linrat in lineratios:
+            if lineratios[linrat] != None :
+                xx,yy = xcol,ycol
+                # iax = ax[cf]
+                for li,lratF in enumerate(['Ftot','Fci']):
+                    
+                    if lratF == 'Fci':
+                        frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
+                        for ci in range(0,ncomp): 
+                            display_pixels_wz(yy, xx, frat10[:,:,ci], CMAP=CMAP, AX=ax[li+ci],
+                                              VMIN=VMINMAX[0], VMAX=VMINMAX[1], NTICKS=5, COLORBAR=True)
+                    else:
+                        frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
+                        display_pixels_wz(yy, xx, frat10, CMAP=CMAP, AX=ax[li],
+                                          VMIN=VMINMAX[0], VMAX=VMINMAX[1], NTICKS=5, COLORBAR=True)
+                # pltname,pltrange = lineratios[linrat]['pltname'],lineratios[linrat]['pltrange']
+                
+                for ni in range(0,nps):
+                    ax[ni].set_xlabel('spaxel',fontsize=13)
+                    ax[ni].set_ylabel('spaxel',fontsize=13)
+                    if KPC == True:
+                        ax[ni].set_xlabel('Relative distance [kpc]',fontsize=13)
+                        ax[ni].set_ylabel('Relative distance [kpc]',fontsize=13)
+                    prelud = ''
+                    if ni == 0:
+                        prelud = 'Ftot: '
+                    else:
+                        prelud = 'Fc'+str(ni)+': '
+                    ax[ni].set_title(prelud+'log$_{10}$ '+lineratios[linrat]['pltname'],fontsize=15,pad=45)
+                    ax[ni].set_ylim([max(xx),np.ceil(min(xx))])
+                    ax[ni].set_xlim([min(yy),np.ceil(max(yy))])
+                cf += 1
+        plt.tight_layout(pad=1.5,h_pad=0.1)
+        if SAVEDATA == True:
+            pltsave_name = 'emlin_ratio_map.png'
+            print('Saving figure:',pltsave_name)
+            plt.savefig(os.path.join(self.dataDIR,pltsave_name))
+        plt.show()
+        return
+    
 
     def make_BPT(self, SNRCUT=3, LINEVAC=True, SAVEDATA=False, PLTNUM=5, KPC=False):
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -398,7 +570,7 @@ class Q3Dpro:
                                   'lrat':{'Ftot':None,'Fci':None}},
                         'OiHa'  :{'lines':['[OIII]5007','Halpha'],'pltname':'[OI]/H$\\alpha$','pltrange':[-1.8,0.1],
                                   'lrat':{'Ftot':None,'Fci':None}},
-                       'NiiHa' :{'lines':[['[NII]6548','[NII]6583'],'Halpha'],'pltname':'[NII]/H$\\alpha$','pltrange':[-1.8,0.1],
+                       'NiiHa' :{'lines':['[NII]6583','Halpha'],'pltname':'[NII]/H$\\alpha$','pltrange':[-1.8,0.1],
                                  'lrat':{'Ftot':None,'Fci':None}},
                       }
         
@@ -548,7 +720,7 @@ class Q3Dpro:
                     if ni == 0:
                         prelud = 'Ftot: '
                     else:
-                        prelud = 'Fc'+str(ni+1)+': '
+                        prelud = 'Fc'+str(ni)+': '
                     ax[ni,cf].set_title(prelud+'log$_{10}$ '+pltname,fontsize=15,pad=45)
                     ax[ni,cf].set_ylim([max(xx),np.ceil(min(xx))])
                     ax[ni,cf].set_xlim([min(yy),np.ceil(max(yy))])
@@ -1270,6 +1442,11 @@ def set_figSize(dim,plotsize,SQUARE=False):
         # figSIZE = [figSIZE[0],figSIZE[1]]
         figSIZE = [np.min(figSIZE),np.max(figSIZE)]
     figSIZE = np.array(figSIZE).astype(int)
+    
+    # elif SQUARE == True:
+        
+    
+    # print(figSIZE)
     return figSIZE
 
 

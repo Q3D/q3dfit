@@ -982,7 +982,6 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                initdat=initdat,
                                ct_coeff=struct['ct_coeff'],
                                title='Total', **argspltcont)
-
             # Plot continuum
             # Make sure fit doesn't indicate no continuum; avoids
             # plot range error in continuum fitting routine,
@@ -1002,15 +1001,16 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                                    struct['ct_coeff'], initdat,
                                    lines=lam_lines,
                                    linespec=struct['emlin_fit'])
-
     if filepresent and ct != 0:
-        # Save emission line and continuum dictionaries
-        np.savez('{[outdir]}{[label]}'.format(initdat, initdat)+'.lin.npz',
-                 emlwav=emlwav, emlwaverr=emlwaverr,
-                 emlsig=emlsig, emlsigerr=emlsigerr,
-                 emlflx=emlflx, emlflxerr=emlflxerr,
-                 emlweq=emlweq, emlncomp=emlncomp,
-                 ncols=cube.ncols, nrows=cube.nrows)
+        # added by weizhe. To avoid error when only fit stellar continuum with noemlinfit
+        if 'noemlinfit' not in initdat:
+            # Save emission line and continuum dictionaries
+            np.savez('{[outdir]}{[label]}'.format(initdat, initdat)+'.lin.npz',
+                     emlwav=emlwav, emlwaverr=emlwaverr,
+                     emlsig=emlsig, emlsigerr=emlsigerr,
+                     emlflx=emlflx, emlflxerr=emlflxerr,
+                     emlweq=emlweq, emlncomp=emlncomp,
+                     ncols=cube.ncols, nrows=cube.nrows)
         np.save('{[outdir]}{[label]}'.format(initdat, initdat)+'.cont.npy',
                 contcube)
 

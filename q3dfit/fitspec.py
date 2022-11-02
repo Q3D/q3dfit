@@ -20,6 +20,10 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             siginit_gas=None, siglim_gas=None, tweakcntfit=None,
             col=None, row=None, logfile=None):
     """
+    Modified by weizhe to allow adjusting the yrange of the continuum plot
+    """
+
+    """
     This function is the core routine to fit the continuum and emission
     lines of a spectrum.
 
@@ -143,6 +147,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             templatelambdaz *= 1. + zstar
         # This assumes template is in air wavelengths!
         # TODO: make this an option
+
+
         if vacuum:
             templatelambdaz = airtovac(templatelambdaz)
         if 'waveunit' in initdat:
@@ -170,6 +176,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         fitran_tmp = [wlambda[0], wlambda[len(wlambda)-1]]
     # indices locating good data and data within fit range
     # these index the full data range.
+    from matplotlib import pyplot as plt
+    plt.plot(wlambda,flux)
+    plt.show()
     gd_indx_1 = set(np.where(flux != 0.)[0])
     gd_indx_2 = set(np.where(err > 0.)[0])
     gd_indx_3 = set(np.where(np.isfinite(flux))[0])
@@ -182,10 +191,31 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     gd_indx_full = gd_indx_1.intersection(gd_indx_2, gd_indx_3, gd_indx_4,
                                           gd_indx_5, gd_indx_6, gd_indx_7,
                                           gd_indx_8, gd_indx_9)
+
     gd_indx_full = list(gd_indx_full)
     # limit actual fit range to good data
     fitran = [np.min(wlambda[gd_indx_full]), np.max(wlambda[gd_indx_full])]
-
+    
+    '''
+    testing by weizhe
+    #try:
+    #    fitran = [np.min(wlambda[gd_indx_full]), np.max(wlambda[gd_indx_full])]
+    #except:
+    #    #print(wlambda)
+    #    #print(templatelambdaz)
+    #    #print(min(templatelambdaz))
+    #    
+    #    print(np.shape(list(gd_indx_1)))
+    #    print(np.shape(list(gd_indx_2)))
+    #    print(np.shape(list(gd_indx_3)))
+    #    print(np.shape(list(gd_indx_4)))
+    #    print(np.shape(list(gd_indx_5)))
+    #    print(np.shape(list(gd_indx_6)))
+    #    print(np.shape(list(gd_indx_7)))
+    #    print(np.shape(list(gd_indx_8)))
+    #    print(np.shape(list(gd_indx_9)))
+    #    pdb.set_trace()
+    '''
     # indices locating data within actual fit range
     fitran_indx1 = np.where(wlambda >= fitran[0])[0]
     fitran_indx2 = np.where(wlambda <= fitran[1])[0]
@@ -317,7 +347,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             else:
                 templatelambdaz_tmp = b'0'
                 templateflux_tmp = b'0'
-
+            print(templatelambdaz)
             if 'argscontfit' in initdat:
                 argscontfit = initdat['argscontfit']
             else:
@@ -332,6 +362,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     if 'siginit_stars' in initdat:
                         argscontfit['siginit_stars'] = \
                             initdat['siginit_stars']
+
 
             continuum, ct_coeff, zstar = \
                 fcncontfit(gdlambda, gdflux, gdinvvar,
@@ -622,7 +653,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         dof = lmout.nfree
         rchisq = lmout.redchi
         nfev = lmout.nfev
-#        breakpoint()
 
         # error messages corresponding to LMFIT, plt
         # documentation was not very helpful with the error messages...

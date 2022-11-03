@@ -5,7 +5,7 @@ import pdb
 from astropy.constants import c
 from q3dfit.lmlabel import lmlabel
 from q3dfit.exceptions import InitializationError
-from q3dfit.parinit import manygauss
+from q3dfit.lineinit import manygauss
 
 
 def qso_mult_exp(wave, qsotemplate, a, b, c, d, e, f, g, h):

@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import copy
+import importlib
 import numpy as np
-import pdb
 import time
+
 from astropy.constants import c
 from astropy.table import Table
 from importlib import import_module
@@ -16,9 +17,9 @@ from scipy.interpolate import interp1d
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
-            specConv, initdat, maskwidths=None, peakinit=None, quiet=True,
-            siginit_gas=None, siglim_gas=None, tweakcntfit=None,
-            col=None, row=None, logfile=None):
+            specConv, q3di, maskwidths=None, peakinit=None, quiet=True,
+            siginit_gas=None,  siginit_stars=None, siglim_gas=None,
+            tweakcntfit=None, col=None, row=None, logfile=None):
     """
     This function is the core routine to fit the continuum and emission
     lines of a spectrum.
@@ -41,22 +42,24 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     logfile : str
     ncomp : ?
         Number of components fit to each line.
-    initdat : dict
+    q3di : dict
         Structure of initialization parameters
     maskwidths : hash(lines,maxncomp), optional, default=None
         Widths, in km/s, of regions to mask from continuum fit. If not
-        set, routine defaults to +/- 500 km/s. Can also be set in INITDAT.
+        set, routine defaults to +/- 500 km/s. Can also be set in q3di.
         Routine prioritizes the keyword definition.
     peakinit : hash(lines,maxncomp), optional, default=None
         Initial guesses for peak emission-line flux densities. If not
-        set, routine guesses from spectrum. Can also be set in INITDAT.
+        set, routine guesses from spectrum. Can also be set in q3di.
         Routine prioritizes the keyword definition.
     quiet : byte, optional, default=True
         Use to prevent detailed output to screen. Default is to print
         detailed output.
-    siginit_gas : hash(lines,maxncomp), optional, default=None
+    siginit_gas : hash(lines, maxncomp), optional, default=None
         Initial guess for emission line widths for fitting.
-        siglim_gas: in, optional, type=dblarr(2)
+    siginit_stars : float, optional, default=None
+        Initial guess for stellar line widths for fitting.
+    siglim_gas: in, optional, type=dblarr(2)
         Sigma limits for line fitting.
     tweakcntfit : dblarr(3,nregions), optional, default=None
         Parameters for tweaking continuum fit with localized polynomials. For
@@ -83,78 +86,31 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         from sys import stdout
         logfile = stdout
 
-    if 'ebv_star' in initdat:
-        ebv_star = initdat['ebv_star']
-    else:
-        ebv_star = None
-    if 'fcninitpar' in initdat:
-        fcninitpar = initdat['fcninitpar']
-    else:
-        fcninitpar = 'parinit'
-    if 'lines' in initdat:
-        # nlines = len(initdat['lines'])
-        linelabel = initdat['lines']
-    else:
-        linelabel = b'0'
-    # default half-width in km/s for emission line masking
-    if 'maskwidths_def' in initdat:
-        maskwidths_def = initdat['maskwidths_def']
-    else:
-        maskwidths_def = np.float32(500.)
-    if 'nomaskran' in initdat:
-        nomaskran = initdat['nomaskran']
-    else:
-        nomaskran = ''
-    if 'startempfile' in initdat:
-        istemp = True
-    else:
-        istemp = False
-    if 'vacuum' in initdat:
-        vacuum = True
-    else:
-        vacuum = False
+    # Some defaults
+    linelabel = None
 
-    noemlinfit = False
-    if 'noemlinfit' in initdat:
-        ct_comp_emlist = 0
-    else:
-        comp_emlist = np.where(np.array(list(ncomp.values())) != 0)[0]
-        ct_comp_emlist = len(comp_emlist)
-    if ct_comp_emlist == 0:
-        noemlinfit = True
-
-    noemlinmask = False
-    if noemlinfit and 'doemlinmask' not in initdat:
-        noemlinmask = True
-
-    if istemp and initdat['fcncontfit'] != 'questfit':
+    if q3di.startempfile is not None and q3di.fcncontfit != 'questfit':
 
         # Get stellar templates
-        startempfile = initdat['startempfile']
+        startempfile = q3di.startempfile
         if isinstance(startempfile, bytes):
-
             startempfile = startempfile.decode('utf-8')
-
         sav_data = np.load(startempfile, allow_pickle=True).item()
         template = sav_data
         # Redshift stellar templates
         templatelambdaz = np.copy(template['lambda'])
-        if 'keepstarz' not in initdat:
+        if not q3di.keepstarz:
             templatelambdaz *= 1. + zstar
-        # This assumes template is in air wavelengths!
-        # TODO: make this an option
-        if vacuum:
+        # Need option for when template is in vac and data in air ...
+        if q3di.vacuum and not q3di.startempvac:
             templatelambdaz = airtovac(templatelambdaz)
-        if 'waveunit' in initdat:
-            templatelambdaz *= initdat['waveunit']
-        if 'fcnconvtemp' in initdat:
-            impModule = import_module('q3dfit.'+initdat['fcnconvtemp'])
-            fcnconvtemp = getattr(impModule, initdat['fcnconvtemp'])
-            if 'argsconvtemp' in initdat:
-                newtemplate = fcnconvtemp(templatelambdaz, template,
-                                          **initdat['argsconvtemp'])
-            else:
-                newtemplate = fcnconvtemp(templatelambdaz, template)
+        #if 'waveunit' in q3di:
+        #    templatelambdaz *= q3di['waveunit']
+        if q3di.fcnconvtemp is not None:
+            impModule = import_module('q3dfit.'+q3di.fcnconvtemp)
+            fcnconvtemp = getattr(impModule, q3di.fcnconvtemp)
+            newtemplate = fcnconvtemp(templatelambdaz, template,
+                                      **q3di.argsconvtemp)
     else:
         templatelambdaz = wlambda
     # Set up error in zstar
@@ -164,8 +120,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # # Pick out regions to fit
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    if 'fitran' in initdat:
-        fitran_tmp = initdat['fitran']
+    if q3di.fitrange is not None:
+        fitran_tmp = q3di.fitrange
     else:
         fitran_tmp = [wlambda[0], wlambda[len(wlambda)-1]]
     # indices locating good data and data within fit range
@@ -262,8 +218,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Fit continuum
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    testing = 0
-    if 'fcncontfit' in initdat and testing != 1:
+
+    if q3di.docontfit:
 
         # Some defaults. These only apply in case of fitting with stellar model
         # + additive polynomial.
@@ -273,26 +229,26 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # Mask emission lines
         # Note that maskwidths is now an astropy Table
         # Column names are line labels, rows are components
-        if not noemlinmask:
+        if not q3di.nolinemask:
             if maskwidths is None:
-                if 'maskwidths' in initdat:
-                    maskwidths = initdat['maskwidths']
+                if q3di.maskwidths is not None:
+                    maskwidths = q3di.maskwidths
                 else:
-                    maskwidths = Table(np.full([initdat['maxncomp'],
-                                                listlines['name'].size],
-                                               maskwidths_def, dtype='float'),
-                                       names=listlines['name'])
+                    maskwidths = \
+                        Table(np.full([q3di.maxncomp, listlines['name'].size],
+                                      q3di.maskwidths_def, dtype='float'),
+                              names=listlines['name'])
             # This loop overwrites nans in the case that ncomp gets lowered
             # by checkcomp; these nans cause masklin to choke
             for line in listlines['name']:
-                for comp in range(ncomp[line], initdat['maxncomp']):
+                for comp in range(ncomp[line], q3di.maxncomp):
                     maskwidths[line][comp] = 0.
                     listlinesz[line][comp] = 0.
             ct_indx = masklin(gdlambda, listlinesz, maskwidths,
-                              nomaskran=nomaskran)
+                              nomaskran=q3di.nomaskran)
             # Mask emission lines in log space
             ct_indx_log = masklin(np.exp(gdlambda_log), listlinesz,
-                                  maskwidths, nomaskran=nomaskran)
+                                  maskwidths, nomaskran=q3di.nomaskran)
         else:
             ct_indx = np.arange(len(gdlambda))
             ct_indx_log = np.arange(len(gdlambda_log))
@@ -301,39 +257,34 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         ct_indx_log = np.intersect1d(ct_indx_log, gd_indx_log)
 
     # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    # # Option 1: Input function
+    # # Option 1: Input function that is not ppxf
     # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        if initdat['fcncontfit'] != 'ppxf':
 
-            module = import_module('q3dfit.' + initdat['fcncontfit'])
-            fcncontfit = getattr(module, initdat['fcncontfit'])
+        if q3di.fcncontfit != 'ppxf':
 
-            if initdat['fcncontfit'] == 'questfit' or not istemp:
-                istemp = False
+            # get fitting function
+            module = importlib.import_module('q3dfit.contfit')
+            fcncontfit = getattr(module, q3di.fcncontfit)
 
-            if istemp:
-                templatelambdaz_tmp = templatelambdaz
-                templateflux_tmp = template['flux']
-            else:
+            if q3di.fcncontfit == 'questfit' or q3di.startempfile is None:
                 templatelambdaz_tmp = b'0'
                 templateflux_tmp = b'0'
+            else:
+                templatelambdaz_tmp = templatelambdaz
+                templateflux_tmp = template['flux']
 
-            if 'argscontfit' in initdat:
-                argscontfit = initdat['argscontfit']
+            if q3di.argscontfit is not None:
+                argscontfit = q3di.argscontfit
             else:
                 argscontfit = dict()
-            if initdat['fcncontfit'] == 'fitqsohost':
+            if q3di.fcncontfit == 'fitqsohost':
                 argscontfit['fitran'] = fitran
             if 'refit' in argscontfit.keys():
                 if argscontfit['refit'] == 'ppxf':
                     argscontfit['index_log'] = ct_indx_log
                     argscontfit['flux_log'] = gdflux_log
                     argscontfit['err_log'] = gderr_log
-                    if 'siginit_stars' in initdat:
-                        argscontfit['siginit_stars'] = \
-                            initdat['siginit_stars']
-
-
+                    argscontfit['siginit_stars'] = siginit_stars
 
             continuum, ct_coeff, zstar = \
                 fcncontfit(gdlambda, gdflux, gdinvvar,
@@ -356,7 +307,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         # # Option 2: PPXF
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        elif (istemp and 'siginit_stars' in initdat):
+
+        elif q3di.startempfile is not None:
 
             # Interpolate template to same grid as data
             temp_log = interptemp(gdlambda_log, np.log(templatelambdaz),
@@ -364,14 +316,15 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
             # Check polynomial degree
             add_poly_degree = 4
-            if 'argscontfit' in initdat:
-                if 'add_poly_degree' in initdat['argscontfit']:
-                    add_poly_degree = initdat['argscontfit']['add_poly_degree']
+            if q3di.argscontfit is not None:
+                if 'add_poly_degree' in q3di.argscontfit:
+                    add_poly_degree = q3di.argscontfit['add_poly_degree']
 
             # run ppxf
             pp = ppxf(temp_log, gdflux_log, gderr_log, velscale[0],
-                      [0, initdat['siginit_stars']], goodpixels=ct_indx_log,
-                      degree=add_poly_degree, quiet=quiet, reddening=ebv_star)
+                      [0, siginit_stars], goodpixels=ct_indx_log,
+                      degree=add_poly_degree, quiet=quiet,
+                      reddening=q3di.ebv_star)
             # poly_mod = pp.apoly
             continuum_log = pp.bestfit
             add_poly_weights = pp.polyweights
@@ -414,7 +367,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Option to tweak cont. fit with local polynomial fits
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        if 'tweakcntfit' in initdat:
+        if q3di.tweakcntfit is not None:
             continuum_pretweak = continuum.copy()
         # Arrays holding emission-line-masked data
             ct_lambda=gdlambda[ct_indx]
@@ -444,7 +397,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         else:
             continuum_pretweak = continuum.copy()
 
-        if 'dividecont' in initdat:
+        if q3di.dividecont:
             gdflux_nocnt = gdflux.copy() / continuum - 1
             gdinvvar_nocnt = gdinvvar.copy() * np.power(continuum, 2.)
             # gderr_nocnt = gderr / continuum
@@ -454,6 +407,11 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             gdinvvar_nocnt = gdinvvar.copy()
             # gderr_nocnt = gderr
             method = 'CONTINUUM SUBTRACTED'
+
+    # This sets the output reddening to a numerical 0 instead of NULL
+    if q3di.ebv_star is None:
+        ebv_star = 0.
+
     else:
         add_poly_weights = 0.
         gdflux_nocnt = gdflux.clpy()
@@ -464,6 +422,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         ct_coeff = 0.
         ct_indx = 0.
         ct_rchisq = 0.
+        ebv_star = 0.
         ppxf_sigma = 0.
         ppxf_sigma_err = 0.
 
@@ -471,34 +430,35 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     if not quiet:
         print('{:s}{:0.1f}{:s}'.format('FITSPEC: Continuum fit took ',fit_time1-fit_time0,' s.'))
 
-
     #
     # Fit emission lines
     #
 
     fit_params = []
-    if not noemlinfit:
+    if q3di.dolinefit:
+
+        linelabel = q3di.lines
 
         # Initial guesses for emission line peak fluxes (above continuum)
         if peakinit is None:
-            if 'peakinit' in initdat:
-                peakinit = initdat['peakinit']
+            if q3di.peakinit is not None:
+                peakinit = q3di.peakinit
             else:
-                peakinit = {line: None for line in initdat['lines']}
+                peakinit = {line: None for line in q3di.lines}
                 # apply some light filtering
                 # https://stackoverflow.com/questions/20618804/how-to-smooth-a-curve-in-the-right-way/20642478
                 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html
                 from scipy.signal import savgol_filter
                 gdflux_nocnt_sm = savgol_filter(gdflux_nocnt, 11, 3)
                 fline = interp1d(gdlambda, gdflux_nocnt_sm, kind='linear')
-                for line in initdat['lines']:
+                for line in q3di.lines:
                     # Check that line wavelength is in data range
                     # Use first component as a proxy for all components
                     if listlinesz[line][0] >= min(gdlambda) and \
                         listlinesz[line][0] <= max(gdlambda):
                         #peakinit[line] = fline(listlinesz[line][0:ncomp[line]])
                         # look for peak within dz = +/-0.001
-                        peakinit[line] = np.zeros(initdat['maxncomp'])
+                        peakinit[line] = np.zeros(q3di.maxncomp)
                         for icomp in range(0,ncomp[line]):
                             # https://stackoverflow.com/questions/12141150/from-list-of-integers-get-number-closest-to-a-given-value
                             lamwin = \
@@ -534,30 +494,30 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                         peakinit[line] = \
                             np.where(peakinit[line] < 0., 0., peakinit[line])
                     else:
-                        peakinit[line] = np.zeros(initdat['maxncomp'])
+                        peakinit[line] = np.zeros(q3di.maxncomp)
 
         # Initial guesses for emission line widths
         if siginit_gas is None:
-            siginit_gas = {k: None for k in initdat['lines']}
-            for line in initdat['lines']:
+            siginit_gas = {k: None for k in q3di.lines}
+            for line in q3di.lines:
                 siginit_gas[line] = \
-                    np.zeros(initdat['maxncomp']) + siginit_gas_def
+                    np.zeros(q3di.maxncomp) + siginit_gas_def
 
         # Fill out parameter structure with initial guesses and constraints
-        impModule = import_module('q3dfit.' + fcninitpar)
-        run_fcninitpar = getattr(impModule, fcninitpar)
-        if 'argsinitpar' in initdat:
-            argsinitpar = initdat['argsinitpar']
+        impModule = import_module('q3dfit.' + q3di.fcnlineinit)
+        run_fcnlineinit = getattr(impModule, q3di.fcnlineinit)
+        if q3di.argslineinit is not None:
+            argslineinit = q3di.argslineinit
         else:
-            argsinitpar = dict()
-        if fcninitpar == 'parinit':
-            argsinitpar['waves'] = gdlambda
+            argslineinit = dict()
+        if q3di.fcnlineinit == 'lineinit':
+            argslineinit['waves'] = gdlambda
         if siglim_gas is not None:
-            argsinitpar['siglim'] = siglim_gas
+            argslineinit['siglim'] = siglim_gas
         emlmod, fit_params, siglim_gas = \
-            run_fcninitpar(listlines, listlinesz, initdat['linetie'], peakinit,
-                           siginit_gas, initdat['maxncomp'], ncomp, specConv,
-                           **argsinitpar)
+            run_fcnlineinit(listlines, listlinesz, q3di.linetie, peakinit,
+                           siginit_gas, q3di.maxncomp, ncomp, specConv,
+                           **argslineinit)
 
         # testsize = len(parinit)
         # if testsize == 0:
@@ -594,8 +554,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         iter_cb = None
 
         # Add more using 'argslinefit' dict in init file
-        if 'argslinefit' in initdat:
-            for key, val in initdat['argslinefit'].items():
+        if q3di.argslinefit is not None:
+            for key, val in q3di.argslinefit.items():
                 # max_nfev goes in as parameter to fit method instead
                 if key == 'max_nfev':
                     max_nfev = val
@@ -611,9 +571,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                            weights=np.sqrt(gdinvvar_nocnt),
                            nan_policy='omit', max_nfev=max_nfev,
                            fit_kws=fit_kws, iter_cb=iter_cb)
-
-        if False:
-            res1 = np.load('/Users/caroline/Documents/ARI-Heidelberg/Q3D/QUESTFIT/q3dfit-dev/jnb/22128896/22128896_NOCONVOL.lin.npz', allow_pickle=True)
 
         specfit = emlmod.eval(lmout.params, x=gdlambda)
         if not quiet:
@@ -637,7 +594,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             status = 0
         else:
             status = lmout.status
-
 
         # Errors from covariance matrix and from fit residual.
         # resid = gdflux - continuum - specfit
@@ -685,18 +641,15 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         nfev = 0
         status = 0
         outlistlines = 0
-        parinit = 0
         param = 0
         perror = 0
         perror_resid = 0
         covar = 0
-    # This sets the output reddening to a numerical 0 instead of NULL
-    if ebv_star is None:
-        ebv_star = 0.
-        fit_time2 = time.time()
-        if not quiet:
-            print('{:s}{:0.1f}{:s}'.format('FITSPEC: Line fit took ',
-                                           fit_time2-fit_time1, ' s.'))
+
+    fit_time2 = time.time()
+    if not quiet:
+        print('{:s}{:0.1f}{:s}'.format('FITSPEC: Line fit took ',
+                                       fit_time2-fit_time1, ' s.'))
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # Output structure
@@ -707,7 +660,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     err = err_out
 
     # need to adjust the output values here...
-    outstr = {'fitran': fitran,
+    outdict = {'fitran': fitran,
               # Continuum fit parameters
               'ct_method': method,
               'ct_coeff': ct_coeff,
@@ -733,14 +686,14 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
               'fitran_indx': fitran_indx,  # cuts on various criteria
               #              'ct_indx': ct_indx,         # where emission is not masked, masking not in yet.
               # Line fit parameters
-              'noemlinfit': noemlinfit,  # was emission line fit done?
-              'noemlinmask': noemlinmask,  # were emission lines masked?
+              'noemlinfit': not q3di.dolinefit,  # was emission line fit done?
+              'noemlinmask': q3di.nolinemask,  # were emission lines masked?
               'redchisq': rchisq,
               'nfev': nfev,
               'fitstatus': status,
               'linelist': outlistlines,
               'linelabel': linelabel,
-              'maxncomp': initdat['maxncomp'],
+              'maxncomp': q3di.maxncomp,
               'parinfo': fit_params,
               'param': param,
               'perror': perror,
@@ -750,7 +703,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
     # finish:
 
-    return outstr
+    return outdict
 
 
 # For diagnosing problems, print value of each parameter every iteration

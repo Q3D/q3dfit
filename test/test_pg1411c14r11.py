@@ -6,4 +6,4 @@ chdir('../jnb/')
 q3di = 'pg1411/q3di.npy'
 
 q3df(q3di, cols=14, rows=11, quiet=False)
-q3da(q3di, cols=14, rows=11)
+#q3da(q3di, cols=14, rows=11)

@@ -4,7 +4,7 @@
 Created on Fri May 28 16:40:03 2021
 
 Initialize parameters for fitting.
- EDIT - YI, added wavelnegth convolution in manygauss and parinit
+ EDIT - YI, added wavelnegth convolution in manygauss and lineinit
 @author: drupke
 """
 
@@ -18,7 +18,7 @@ import pdb
 import q3dfit.data
 import os
 
-def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, specConv,
+def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, specConv,
             lineratio=None, siglim=None, sigfix=None, blrcomp=None,
             blrlines=None, specres=None, waves=None):
 

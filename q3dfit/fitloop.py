@@ -10,7 +10,7 @@ import numpy as np
 import pdb
 
 
-def fitloop(ispax, colarr, rowarr, cube, initdat, listlines, specConv, onefit,
+def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv, onefit,
             quiet=True, logfile=None):
     """
 Created on Mon Jun  8 11:14:14 2020
@@ -29,8 +29,8 @@ rowarr : intarr(2)
   Row # of spaxel (0-offset)
 cube : object
   instance of Cube class
-initdat : structure
-  Output from initialization routine, containing fit parameters
+q3di : object
+  containing fit parameters
 onefit : byte
   If set, ignore second fit
 quiet : byte, default=True
@@ -45,9 +45,6 @@ logfile : strarr, optional, default=None
         from sys import stdout
         logfile = stdout
 
-    # When computing masking half-widths before second fit, sigmas from first
-    # fit are multiplied by this number.
-    masksig_secondfit_def = 2.
     # colind = ispax % cube.ncols
     # rowind = int(ispax / cube.ncols)
     i = colarr[ispax]  # colind, rowind]
@@ -78,7 +75,7 @@ logfile : strarr, optional, default=None
 
     errmax = max(err)
 
-    if initdat.__contains__('vormap'):
+    if q3di.vormap is not None:
         tmpi = cube.vorcoords[i, 0]
         tmpj = cube.vorcoords[i, 1]
         i = tmpi
@@ -87,13 +84,11 @@ logfile : strarr, optional, default=None
         if not quiet:
             print(f'Reference coordinate: [col, row]=[{i+1}, {j+1}]')
 
-    if cube.dat.ndim == 1:
-        outlab = '{[outdir]}{[label]}'.format(initdat, initdat)
-    elif cube.dat.ndim == 2:
-        outlab = '{[outdir]}{[label]}_{:04d}'.format(initdat, initdat, i+1)
-    else:
-        outlab = '{[outdir]}{[label]}_{:04d}_{:04d}'.format(initdat,
-                                                            initdat, i+1, j+1)
+    outlab = '{0.outdir}{0.label}'.format(q3di)
+    if cube.dat.ndim > 1:
+        outlab += '_{:04d}'.format(i+1)
+    if cube.dat.ndim > 2:
+        outlab += '_{:04d}'.format(j+1)
 
 #   Apply DQ plane
     if dq.ndim>0:
@@ -116,72 +111,91 @@ logfile : strarr, optional, default=None
     if somedata:
 
         ncomp = dict()
-        if 'noemlinfit' not in initdat:
-
+        if q3di.dolinefit:
             # Extract # of components specific to this spaxel and
-            # write as dict
-            # Each dict key (line) will have one value (# comp)
-            for line in initdat['lines']:
-                ncomp[line] = initdat['ncomp'][line][i, j]
+            # write as dict. Do this outside of while loop because ncomp
+            # may change with another iteration.
+            # Each dict key (line) will have one value (# comp).
+            for line in q3di.lines:
+                ncomp[line] = q3di.ncomp[line][i, j]
 
         # First fit
-
         dofit = True
         abortfit = False
         while(dofit):
 
-            # Make sure ncomp > 0 for at least one line
-            ct_comp_emlist = 0
-            if not initdat.__contains__('noemlinfit'):
-                for k in ncomp.values():
-                    if k > 0:
-                        ct_comp_emlist += 1
+            # Default values
+            listlinesz = None
+            siglim_gas = None
+            siginit_gas = None
+            siginit_stars = 50.
+            tweakcntfit = None
+            zstar = np.nan
 
-#           initialize gas sigma limit array
-            if initdat.__contains__('siglim_gas'):
-                if initdat['siglim_gas'].ndim == 1:
-                    siglim_gas = initdat['siglim_gas']
-                else:
-                    siglim_gas = initdat['siglim_gas'][i, j, ]
-            else:
-                siglim_gas = None
 
-#           initialize gas sigma initial guess array
-            if initdat.__contains__('siginit_gas'):
-                if initdat['siginit_gas'][initdat['lines'][0]].ndim == 1:
-                    siginit_gas = initdat['siginit_gas']
-                else:
-                    siginit_gas = dict()
-                    for k in initdat['lines']:
-                        siginit_gas[k] = initdat['siginit_gas'][k][i, j, ]
-            else:
-                siginit_gas = False
+            # Are we doing a line fit?
+            if q3di.dolinefit:
 
-#           initialize stellar redshift initial guess
-            if 'zinit_stars' in initdat:
-                zstar = initdat['zinit_stars'][i, j]
-            else:
-                zstar = np.nan
+                # initialize gas sigma limit array
+                if q3di.siglim_gas is not None:
+                    if q3di.siglim_gas.ndim == 1:
+                        siglim_gas = q3di.siglim_gas
+                    else:
+                        siglim_gas = q3di.siglim_gas[i, j, ]
 
-#           regions to ignore in fitting. Set to max(err)
-            if initdat.__contains__('cutrange'):
-                if initdat['cutrange'].ndim == 1:
+                #  initialize gas sigma initial guess array
+                if q3di.siginit_gas is not None:
+                    if q3di.siginit_gas[q3di.lines[0]].ndim == 1:
+                        siginit_gas = q3di.siginit_gas
+                    else:
+                        siginit_gas = dict()
+                        for k in q3di.lines:
+                            siginit_gas[k] = q3di.siginit_gas[k][i, j, ]
+
+                # initialize starting wavelengths for lines
+                # u['line'][(u['name']=='Halpha')]
+                listlinesz = dict()
+                if q3di.dolinefit:
+                    for line in q3di.lines:
+                        listlinesz[line] = \
+                            np.array(listlines['lines']
+                                     [(listlines['name'] == line)]) * \
+                                (1. + q3di.zinit_gas[line][i, j, ])
+
+
+            if q3di.docontfit:
+
+                # initialize stellar redshift initial guess
+                if q3di.zinit_stars is not None:
+                    zstar = q3di.zinit_stars[i, j]
+
+                #  initialize stellar sigma initial guess array
+                if q3di.siginit_stars is not None:
+                    siginit_stars = q3di.siginit_stars[i, j]
+
+                # option to tweak continuum fit
+                if q3di.tweakcntfit is not None:
+                    tweakcntfit = q3di.tweakcntfit[i, j, :, :]
+
+            # regions to ignore in fitting. Set to max(err)
+            if q3di.cutrange is not None:
+                if q3di.cutrange.ndim == 1:
                     indx_cut = \
                         np.intersect1d((cube.wave >=
-                                        initdat['cutrange'][0]).nonzero(),
+                                        q3di.cutrange[0]).nonzero(),
                                        (cube.wave <=
-                                        initdat['cutrange'][1]).nonzero())
+                                        q3di.cutrange[1]).nonzero())
                     if indx_cut.size != 0:
                         dq[indx_cut] = 1
                         err[indx_cut] = errmax*100.
-                elif initdat['cutrange'].ndim == 2:
-                    for k in range(initdat['cutrange'].shape[0]):
+                elif q3di.cutrange.ndim == 2:
+                    for k in range(q3di.cutrange.shape[0]):
                         indx_cut = \
                             np.intersect1d((cube.wave >=
-                                            initdat['cutrange']
+                                            q3di.cutrange
                                             [k, 0]).nonzero(),
                                            (cube.wave <=
-                                            initdat['cutrange']
+                                            q3di.cutrange
                                             [k, 1]).nonzero())
                         if indx_cut.size != 0:
                             dq[indx_cut] = 1
@@ -190,105 +204,75 @@ logfile : strarr, optional, default=None
                     raise InitializationError('CUTRANGE not' +
                                               ' properly specified')
 
-            # option to tweak continuum fit
-            tweakcntfit = False
-            if initdat.__contains__('tweakcntfit'):
-                tweakcntfit = initdat['tweakcntfit'][i, j, :, :]
-
-            # initialize starting wavelengths
-            # should this be astropy table? dict of numpy arrays?
-            # u['line'][(u['name']=='Halpha')]
-            listlinesz = dict()
-            if not initdat.__contains__('noemlinfit') and ct_comp_emlist > 0:
-                for line in initdat['lines']:
-                    listlinesz[line] = \
-                        np.array(listlines['lines']
-                                 [(listlines['name'] == line)]) * \
-                        (1. + initdat['zinit_gas'][line][i, j, ])
-
             if not quiet:
                 print('FITLOOP: First call to FITSPEC')
-            structinit = fitspec(cube.wave, flux, err, dq, zstar, listlines,
-                                 listlinesz, ncomp, specConv, initdat, quiet=quiet,
+            fitdictinit = fitspec(cube.wave, flux, err, dq, zstar, listlines,
+                                 listlinesz, ncomp, specConv, q3di, quiet=quiet,
                                  siglim_gas=siglim_gas,
                                  siginit_gas=siginit_gas,
+                                 siginit_stars=siginit_stars,
                                  tweakcntfit=tweakcntfit, logfile=logfile)
-            print('FIT STATUS: '+str(structinit['fitstatus']), file=logfile)
+            print('FIT STATUS: '+str(fitdictinit['fitstatus']), file=logfile)
             if not quiet:
-                print('FIT STATUS: '+str(structinit['fitstatus']))
+                print('FIT STATUS: '+str(fitdictinit['fitstatus']))
 
             # Second fit
 
             if not onefit and not abortfit:
 
-                if 'noemlinfit' not in initdat and ct_comp_emlist > 0:
+                maskwidths_tmp = None
+                peakinit_tmp = None
+                siginit_gas_tmp = None
 
+                if q3di.dolinefit:
                     # set emission line mask parameters
-                    linepars = sepfitpars(listlines, structinit['param'],
-                                          structinit['perror'],
-                                          initdat['maxncomp'])
+                    linepars = sepfitpars(listlines, fitdictinit['param'],
+                                          fitdictinit['perror'],
+                                          q3di.maxncomp)
                     listlinesz = linepars['wave']
-                    # Multiply sigmas from first fit by MASKSIG_SECONDFIT_DEF
-                    # to get half-widths for masking
-                    if 'masksig_secondfit' in initdat:
-                        masksig_secondfit = initdat['masksig_secondfit']
-                    else:
-                        masksig_secondfit = masksig_secondfit_def
                     maskwidths = linepars['sigma_obs']
+                    # Multiply sigmas from first fit by MASKSIG_SECONDFIT
+                    # to get half-widths for masking
                     for col in maskwidths.columns:
-                        maskwidths[col] *= masksig_secondfit
+                        maskwidths[col] *= q3di.masksig_secondfit
                     maskwidths_tmp = maskwidths
                     peakinit_tmp = linepars['fluxpk_obs']
                     siginit_gas_tmp = linepars['sigma']
 
-                else:
-
-                    maskwidths_tmp = None
-                    peakinit_tmp = None
-                    siginit_gas_tmp = None
-
                 if not quiet:
                     print('FITLOOP: Second call to FITSPEC')
-                struct = fitspec(cube.wave, flux, err, dq, structinit['zstar'],
-                                 listlines, listlinesz, ncomp, specConv, initdat,
+                fitdict = fitspec(cube.wave, flux, err, dq, fitdictinit['zstar'],
+                                 listlines, listlinesz, ncomp, specConv, q3di,
                                  quiet=quiet, maskwidths=maskwidths_tmp,
                                  peakinit=peakinit_tmp,
                                  siginit_gas=siginit_gas_tmp,
+                                 siginit_stars=siginit_stars,
                                  siglim_gas=siglim_gas,
                                  tweakcntfit=tweakcntfit, logfile=logfile)
-                print('FIT STATUS: '+str(structinit['fitstatus']), file=logfile)
+                print('FIT STATUS: '+str(fitdictinit['fitstatus']), file=logfile)
                 if not quiet:
-                    print('FIT STATUS: '+str(structinit['fitstatus']))
+                    print('FIT STATUS: '+str(fitdictinit['fitstatus']))
 
             else:
 
-                struct = structinit
+                fitdict = fitdictinit
 
             # Check components
 
-            if 'fcncheckcomp' in initdat and \
-                'noemlinfit' not in initdat and \
-                    not onefit and not abortfit and \
-                    ct_comp_emlist > 0:
+            if q3di.checkcomp and q3di.dolinefit and \
+                not onefit and not abortfit:
 
-                siglim_gas = struct['siglim']
+                siglim_gas = fitdict['siglim']
 
-                linepars = sepfitpars(listlines, struct['param'],
-                                      struct['perror'], initdat['maxncomp'])
+                linepars = sepfitpars(listlines, fitdict['param'],
+                                      fitdict['perror'], q3di.maxncomp)
                 ccModule = \
                     importlib.import_module('q3dfit.' +
-                                            initdat['fcncheckcomp'])
-                fcncheckcomp = getattr(ccModule, initdat['fcncheckcomp'])
+                                            q3di.fcncheckcomp)
+                fcncheckcomp = getattr(ccModule, q3di.fcncheckcomp)
                 # Note that this modifies the value of ncomp if necessary
-                if 'argscheckcomp' in initdat:
-                    newncomp = \
-                        fcncheckcomp(linepars, initdat['linetie'],
-                                     ncomp, siglim_gas,
-                                     **initdat['argscheckcomp'])
-                else:
-                    newncomp = \
-                        fcncheckcomp(linepars, initdat['linetie'],
-                                     ncomp, siglim_gas)
+                newncomp = fcncheckcomp(linepars, q3di.linetie, ncomp,
+                                        siglim_gas, **q3di.argscheckcomp)
 
                 if len(newncomp) > 0:
                     for line, nc in newncomp.items():
@@ -302,5 +286,5 @@ logfile : strarr, optional, default=None
             else:
                 dofit = False
 
-        # save struct to be used by q3da later
-        np.save(outlab, struct)
+        # save fitdict to be used by q3da later
+        np.save(outlab, fitdict)

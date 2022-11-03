@@ -43,24 +43,26 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.interpolate import interp1d
 import q3dfit.data.dispersion_files
 
+
 class spectConvol:
-    def __init__(self,initdat,cube,quiet=True):
+    def __init__(self, q3di, cube, quiet=True):
         self.printquiet = quiet
         #self.datDIR = '../data/dispersion_files'
         self.datDIR = os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],'dispersion_files')
-        if 'ws_method' not in initdat['spect_convol']:
-            initdat['spect_convol']['ws_method'] = 2
-        self.init_meth = initdat['spect_convol']['ws_method']
+        if 'ws_method' not in q3di.spect_convol:
+            q3di.spect_convol['ws_method'] = 2
+        self.init_meth = q3di.spect_convol['ws_method']
 
         # reorganize the input list of instruments
         self.init_inst = {}
-        for wsi,inst in initdat['spect_convol']['ws_instrum'].items():
+        for wsi,inst in q3di.spect_convol['ws_instrum'].items():
             self.init_inst[wsi.upper()] = {}
             for grat in inst:
                 self.init_inst[wsi.upper()][grat.upper()]=None
-        self.wavelength = cube.waveunit_out #initdat['argsreadcube']['waveunit_in']
+        self.wavelength = cube.waveunit_out #q3di['argsreadcube']['waveunit_in']
 
-        dispfiles = [dfile.split('/')[-1] for dfile in glob.glob(os.path.join(self.datDIR,'*.fits'))]
+        dispfiles = [dfile.split('/')[-1] for dfile in \
+                     glob.glob(os.path.join(self.datDIR,'*.fits'))]
         self.get_dispersion_data(dispfiles)
 
         return

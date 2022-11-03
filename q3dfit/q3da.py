@@ -826,19 +826,19 @@ def q3da(initproc, cols=None, rows=None, noplots=False, quiet=True,
                 struct_qso['cont_dat'] -= hostmod
                 struct_qso['cont_fit'] -= hostmod
 
-                    contcube['qso_mod'][i, j, struct['fitran_indx']] = \
-                        qsomod.copy()
-                    contcube['qso_poly_mod'][i, j, struct['fitran_indx']] = \
-                        qsomod_polynorm
-                    contcube['host_mod'][i, j, struct['fitran_indx']] = \
-                            hostmod.copy()                
-                    if not isinstance(polymod_refit, float):
-                        contcube['poly_mod'][i, j, struct['fitran_indx']] = \
-                            polymod_refit.copy()
-                    else:
-                        contcube['poly_mod'][i, j, struct['fitran_indx']] = \
-                            polymod_refit
-                    contcube['npts'][i, j] = len(struct['fitran_indx'])
+                contcube['qso_mod'][i, j, struct['fitran_indx']] = \
+                    qsomod.copy()
+                contcube['qso_poly_mod'][i, j, struct['fitran_indx']] = \
+                    qsomod_polynorm
+                contcube['host_mod'][i, j, struct['fitran_indx']] = \
+                    hostmod.copy()
+                if not isinstance(polymod_refit, float):
+                    contcube['poly_mod'][i, j, struct['fitran_indx']] = \
+                        polymod_refit.copy()
+                else:
+                    contcube['poly_mod'][i, j, struct['fitran_indx']] = \
+                        polymod_refit
+                contcube['npts'][i, j] = len(struct['fitran_indx'])
 
                 if 'remove_scattered' in initdat:
                     contcube['host_mod'][i, j, struct['fitran_indx']] -= \

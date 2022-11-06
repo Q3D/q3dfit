@@ -3,11 +3,11 @@
 
 from q3dfit.exceptions import InitializationError
 from q3dfit.fitspec import fitspec
-from q3dfit.sepfitpars import sepfitpars
+# from q3dfit.q3dout import q3dout
+# from q3dfit.sepfitpars import sepfitpars
 
 import importlib
 import numpy as np
-import pdb
 
 
 def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv, onefit,
@@ -16,7 +16,6 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv, onefit,
 Created on Mon Jun  8 11:14:14 2020
 
 Take outputs from Q3DF and perform fitting loop.
-
 
 Parameters
 ----------
@@ -40,7 +39,6 @@ logfile : strarr, optional, default=None
 
     """
 
-
     if logfile is None:
         from sys import stdout
         logfile = stdout
@@ -49,7 +47,7 @@ logfile : strarr, optional, default=None
     # rowind = int(ispax / cube.ncols)
     i = colarr[ispax]  # colind, rowind]
     j = rowarr[ispax]  # colind, rowind]
-    print(i,j)
+    # print(i,j)
     if cube.dat.ndim == 1:
         print('[spec]=[1] out of [1]', file=logfile)
         if not quiet:
@@ -90,17 +88,17 @@ logfile : strarr, optional, default=None
     if cube.dat.ndim > 2:
         outlab += '_{:04d}'.format(j+1)
 
-#   Apply DQ plane
-    if dq.ndim>0:
+    # Apply DQ plane
+    # The oned keyword was having trouble because np.nonzero doesn't work for
+    # zero arrays. I think this fixes the issue
+    if dq.ndim > 0:
         indx_bad = np.nonzero(dq > 0)
     else:
-        indx_bad= (dq!=0)
-        if indx_bad==True:
-            indx_bad=0
+        indx_bad = (dq != 0)
+        if indx_bad:
+            indx_bad = 0
         else:
-            indx_bad=dq
-   #the oned keyword was having trouble because np.nonzero doesn't work for zero arrays. I think this fixes the issue
-
+            indx_bad = dq
     flux[indx_bad] = 0.
     err[indx_bad] = errmax*100.
 
@@ -132,7 +130,6 @@ logfile : strarr, optional, default=None
             tweakcntfit = None
             zstar = np.nan
 
-
             # Are we doing a line fit?
             if q3di.dolinefit:
 
@@ -161,7 +158,6 @@ logfile : strarr, optional, default=None
                             np.array(listlines['lines']
                                      [(listlines['name'] == line)]) * \
                                 (1. + q3di.zinit_gas[line][i, j, ])
-
 
             if q3di.docontfit:
 
@@ -206,15 +202,15 @@ logfile : strarr, optional, default=None
 
             if not quiet:
                 print('FITLOOP: First call to FITSPEC')
-            fitdictinit = fitspec(cube.wave, flux, err, dq, zstar, listlines,
-                                 listlinesz, ncomp, specConv, q3di, quiet=quiet,
-                                 siglim_gas=siglim_gas,
-                                 siginit_gas=siginit_gas,
-                                 siginit_stars=siginit_stars,
-                                 tweakcntfit=tweakcntfit, logfile=logfile)
-            print('FIT STATUS: '+str(fitdictinit['fitstatus']), file=logfile)
+            q3do_init = fitspec(cube.wave, flux, err, dq, zstar, listlines,
+                                listlinesz, ncomp, specConv, q3di, quiet=quiet,
+                                siglim_gas=siglim_gas,
+                                siginit_gas=siginit_gas,
+                                siginit_stars=siginit_stars,
+                                tweakcntfit=tweakcntfit, logfile=logfile)
+            print('FIT STATUS: '+str(q3do_init.fitstatus), file=logfile)
             if not quiet:
-                print('FIT STATUS: '+str(fitdictinit['fitstatus']))
+                print('FIT STATUS: '+str(q3do_init.fitstatus))
 
             # Second fit
 
@@ -226,52 +222,50 @@ logfile : strarr, optional, default=None
 
                 if q3di.dolinefit:
                     # set emission line mask parameters
-                    linepars = sepfitpars(listlines, fitdictinit['param'],
-                                          fitdictinit['perror'],
-                                          q3di.maxncomp)
-                    listlinesz = linepars['wave']
-                    maskwidths = linepars['sigma_obs']
+                    q3do_init.sepfitpars()
+                    listlinesz = q3do_init.line_fitpars['wave']
+                    maskwidths = q3do_init.line_fitpars['sigma_obs']
                     # Multiply sigmas from first fit by MASKSIG_SECONDFIT
                     # to get half-widths for masking
                     for col in maskwidths.columns:
                         maskwidths[col] *= q3di.masksig_secondfit
                     maskwidths_tmp = maskwidths
-                    peakinit_tmp = linepars['fluxpk_obs']
-                    siginit_gas_tmp = linepars['sigma']
+                    peakinit_tmp = q3do_init.line_fitpars['fluxpk_obs']
+                    siginit_gas_tmp = q3do_init.line_fitpars['sigma']
 
                 if not quiet:
                     print('FITLOOP: Second call to FITSPEC')
-                fitdict = fitspec(cube.wave, flux, err, dq, fitdictinit['zstar'],
-                                 listlines, listlinesz, ncomp, specConv, q3di,
-                                 quiet=quiet, maskwidths=maskwidths_tmp,
-                                 peakinit=peakinit_tmp,
-                                 siginit_gas=siginit_gas_tmp,
-                                 siginit_stars=siginit_stars,
-                                 siglim_gas=siglim_gas,
-                                 tweakcntfit=tweakcntfit, logfile=logfile)
-                print('FIT STATUS: '+str(fitdictinit['fitstatus']), file=logfile)
+                q3do = fitspec(cube.wave, flux, err, dq, q3do_init.zstar,
+                               listlines, listlinesz, ncomp, specConv, q3di,
+                               quiet=quiet, maskwidths=maskwidths_tmp,
+                               peakinit=peakinit_tmp,
+                               siginit_gas=siginit_gas_tmp,
+                               siginit_stars=siginit_stars,
+                               siglim_gas=siglim_gas,
+                               tweakcntfit=tweakcntfit, logfile=logfile)
+                print('FIT STATUS: '+str(q3do.fitstatus), file=logfile)
                 if not quiet:
-                    print('FIT STATUS: '+str(fitdictinit['fitstatus']))
+                    print('FIT STATUS: '+str(q3do.fitstatus))
 
             else:
 
-                fitdict = fitdictinit
+                q3do = q3do_init
 
             # Check components
 
             if q3di.checkcomp and q3di.dolinefit and \
                 not onefit and not abortfit:
 
-                siglim_gas = fitdict['siglim']
+                siglim_gas = q3do.siglim
 
-                linepars = sepfitpars(listlines, fitdict['param'],
-                                      fitdict['perror'], q3di.maxncomp)
+                q3do.sepfitpars()
+
                 ccModule = \
                     importlib.import_module('q3dfit.' +
                                             q3di.fcncheckcomp)
                 fcncheckcomp = getattr(ccModule, q3di.fcncheckcomp)
                 # Note that this modifies the value of ncomp if necessary
-                newncomp = fcncheckcomp(linepars, q3di.linetie, ncomp,
+                newncomp = fcncheckcomp(q3do.line_fitpars, q3di.linetie, ncomp,
                                         siglim_gas, **q3di.argscheckcomp)
 
                 if len(newncomp) > 0:
@@ -280,11 +274,11 @@ logfile : strarr, optional, default=None
                               f'{nc} components.', file=logfile)
                         if not quiet:
                             print(f'FITLOOP: Repeating the fit of {line} with ' +
-                              f'{nc} components.')
+                                  f'{nc} components.')
                 else:
                     dofit = False
             else:
                 dofit = False
 
-        # save fitdict to be used by q3da later
-        np.save(outlab, fitdict)
+        # save q3do
+        np.save(outlab, q3do)

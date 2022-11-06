@@ -17,25 +17,25 @@ from matplotlib import rcParams
 def plotcont(instr, outfile, ct_coeff=None, initdat=None,
              compspec=None, comptitles=None, ps=None,
              title=None, fitran=None, yranminmax=None, IR=False, compcols=None):
-'''
-Created on Tue Jun  1 13:32:37 2021
+    '''
+    Created on Tue Jun  1 13:32:37 2021
 
-@author: annamurphree
+    @author: annamurphree
 
-Plots continuum fit of optical data (fit by fitqsohost or ppxf)
-or IR data (fit by questfit).
-Called by Q3DA.
+    Plots continuum fit of optical data (fit by fitqsohost or ppxf)
+    or IR data (fit by questfit).
+    Called by Q3DA.
 
-Init file optional parameters ('argscontplot'):
-    xstyle = log or lin (linear),
-    ystyle = log or lin (linear),
-    waveunit_in = micron or Angstrom,
-    waveunit_out = micron or Angstrom,
-    fluxunit_in = flambda, lambdaflambda (= nufnu), or fnu,
-    fluxunit_out = flambda, lambdaflambda (= nufnu), or fnu,
-    mode = light or dark
-The first options are the defaults.
-'''
+    Init file optional parameters ('argscontplot'):
+        xstyle = log or lin (linear),
+        ystyle = log or lin (linear),
+        waveunit_in = micron or Angstrom,
+        waveunit_out = micron or Angstrom,
+        fluxunit_in = flambda, lambdaflambda (= nufnu), or fnu,
+        fluxunit_out = flambda, lambdaflambda (= nufnu), or fnu,
+        mode = light or dark
+        The first options are the defaults.
+    '''
 
     xstyle = 'log'
     ystyle = 'log'

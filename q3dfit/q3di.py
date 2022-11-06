@@ -82,7 +82,7 @@ class q3di:
                      zinit=None,
                      argscheckcomp={}, argslineinit={}, argslinefit={},
                      argslinelist={}, argslineplot={}, checkcomp=True,
-                     fcnlineinit='lineinit',
+                     fcnlineinit='lineinit', fcnlineplot='plot_line',
                      fcncheckcomp='checkcomp', noemlinfit=True,
                      peakinit=None,
                      siglim_gas=None):
@@ -102,6 +102,9 @@ class q3di:
         fcncheckcomp : str
             Name of routine for filtering # of components.
         fcnlineinit : str
+        fcnlineplot : str
+            Function to plot lines. Assumed to be a method in
+            plot module of q3dfit package.
         linetie : list
             If not set, all lines are fit independently. If it's a single
             line, all lines are tied together. Otherwise,
@@ -139,6 +142,7 @@ class q3di:
         self.argslineplot = argslineplot
         self.checkcomp = checkcomp
         self.fcncheckcomp = fcncheckcomp
+        self.fcnlineplot = fcnlineplot
         self.fcnlineinit = fcnlineinit
         self.maxncomp = maxncomp
         self.peakinit = peakinit

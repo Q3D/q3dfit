@@ -37,9 +37,8 @@ wavelength-dependent JWST PSF is currently in development.
   
 .. warning::
 
-   This software has not yet been officially released. You are viewing
-   pre-release test documentation and content in active development. We are not 
-   yet able to provide user support. If you find a bug or have a feature request, 
+  This software has not yet been fully tested due to the limited availability of NIRSpec and MIRI data cubes. You are viewing
+   the documentation of the first software release and the content is in active development. If you find a bug or have a feature request, 
    please `submit an issue <https://github.com/Q3D/q3dfit/issues>`_. 
 
 Our papers describing ``q3dfit`` and all its functionalities are
@@ -80,7 +79,7 @@ following references:
 The software is being developed in part as a contribution to the JWST Early Release Science program *Imaging Spectroscopy of Quasar Hosts with JWST
 analyzed with a powerful new PSF Decomposition and Spectral Analysis Package*. The website for the project is `available
 here
-<https://wwwstaff.ari.uni-heidelberg.de/dwylezalek/q3d.html>`_. We
+<https://wwwstaff.ari.uni-heidelberg.de/dwylezalek/q3d.html>`_ and the first Q3D paper is `available here <https://ui.adsabs.harvard.edu/abs/2022arXiv221010074W/abstract>`_. We
 acknowledge funding provided by NASA through a contract issued by
 Space Telescope Science Institute for support of Early Release Science
 observations with JWST and in-kind contributions by leading and

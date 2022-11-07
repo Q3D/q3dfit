@@ -37,7 +37,7 @@ wavelength-dependent JWST PSF.
   
 .. warning::
 
-   This software has not yet been fully tested due to the limited availability of NIRSpec and MIRI data cubes. You are viewing
+  This software has not yet been fully tested due to the limited availability of NIRSpec and MIRI data cubes. You are viewing
    the documentation of the first software release and the content is in active development. If you find a bug or have a feature request, 
    please `submit an issue <https://github.com/Q3D/q3dfit/issues>`_. 
 

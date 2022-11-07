@@ -78,7 +78,7 @@ following references:
 The software is being developed in part as a contribution to the JWST Early Release Science program *Imaging Spectroscopy of Quasar Hosts with JWST
 analyzed with a powerful new PSF Decomposition and Spectral Analysis Package*. The website for the project is `available
 here
-<https://wwwstaff.ari.uni-heidelberg.de/dwylezalek/q3d.html>`_ and the first Q3D paper is available here <https://ui.adsabs.harvard.edu/abs/2022arXiv221010074W/abstract>`_. We
+<https://wwwstaff.ari.uni-heidelberg.de/dwylezalek/q3d.html>`_ and the first Q3D paper is `available here <https://ui.adsabs.harvard.edu/abs/2022arXiv221010074W/abstract>`. We
 acknowledge funding provided by NASA through a contract issued by
 Space Telescope Science Institute for support of Early Release Science
 observations with JWST and in-kind contributions by leading and

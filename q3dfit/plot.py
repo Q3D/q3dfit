@@ -4,7 +4,6 @@ import math
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
-import pdb
 
 from q3dfit.cmplin import cmplin
 from q3dfit.lmlabel import lmlabel
@@ -13,10 +12,16 @@ from q3dfit import questfit_readcf
 from matplotlib import rcParams
 
 
-
-def plotcont(instr, outfile, ct_coeff=None, initdat=None,
+def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
              compspec=None, comptitles=None, ps=None,
-             title=None, fitran=None, yranminmax=None, IR=False, compcols=None):
+             title=None, fitran=None, yranminmax=None, IR=False,
+             compcols=None, xstyle='log', ystyle='log',
+             waveunit_in='micron',
+             waveunit_out='micron',
+             fluxunit_in='flambda',
+             fluxunit_out='flambda',
+             mode='light'
+             ):
     '''
     Created on Tue Jun  1 13:32:37 2021
 
@@ -24,7 +29,6 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
 
     Plots continuum fit of optical data (fit by fitqsohost or ppxf)
     or IR data (fit by questfit).
-    Called by Q3DA.
 
     Init file optional parameters ('argscontplot'):
         xstyle = log or lin (linear),
@@ -37,31 +41,6 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
         The first options are the defaults.
     '''
 
-    xstyle = 'log'
-    ystyle = 'log'
-    # JWST defaults:
-    waveunit_in = 'micron'
-    waveunit_out = 'micron'
-    fluxunit_in = 'flambda'
-    fluxunit_out = 'flambda'
-    mode = 'light'
-
-    if 'argscontplot' in initdat:
-        if 'xstyle' in initdat['argscontplot']:
-            xstyle = initdat['argscontplot']['xstyle']
-        if 'ystyle' in initdat['argscontplot']:
-            ystyle = initdat['argscontplot']['ystyle']
-        if 'waveunit_in' in initdat['argscontplot']:
-            waveunit_in = initdat['argscontplot']['waveunit_in']
-        if 'waveunit_out' in initdat['argscontplot']:
-            waveunit_out = initdat['argscontplot']['waveunit_out']
-        if 'fluxunit_in' in initdat['argscontplot']:
-            fluxunit_in = initdat['argscontplot']['fluxunit_in']
-        if 'fluxunit_out' in initdat['argscontplot']:
-            fluxunit_out = initdat['argscontplot']['fluxunit_out']
-        if 'mode' in initdat['argscontplot']:
-            mode = initdat['argscontplot']['mode']
-
     # dark mode just for fun:
     if mode == 'dark':
         pltstyle = 'dark_background'
@@ -70,9 +49,9 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
         pltstyle = 'seaborn-ticks'
         dcolor = 'k'
 
-    wave = instr['wave']
-    specstars = instr['cont_dat']
-    modstars = instr['cont_fit']
+    wave = q3do.wave
+    specstars = q3do.cont_dat
+    modstars = q3do.cont_fit
 
     # for optical spectra fit by fitqsohost or ppxf:
     if not IR:
@@ -94,7 +73,7 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
         if fitran is not None:
             xran = fitran
         else:
-            xran = instr['fitran']
+            xran = q3do.fitran
 
         if waveunit_in == 'Angstrom' and waveunit_out == 'micron':
             # convert angstrom to microns
@@ -137,10 +116,12 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
         # plot on a log scale:
         if xstyle == 'log' or ystyle == 'log':
             plt.style.use(pltstyle)
-            if mode=='light':
-                rcParams['savefig.facecolor'] = 'white'    # CB: Otherwise the background becomes black and the axes ticks unreadable when saving the figure
+            # CB: Otherwise the background becomes black and the axes ticks
+            # unreadable when saving the figure
+            if mode == 'light':
+                rcParams['savefig.facecolor'] = 'white'
             fig = plt.figure(figsize=(20, 10))
-            #fig = plt.figure()
+            # fig = plt.figure()
             plt.axis('off')  # so the subplots don't share a y-axis
 
             fig.add_subplot(1, 1, 1)
@@ -149,15 +130,15 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
             # plotting
             plt.xlim(xran[0], xran[1])
 
-            fig.axes[0].axis('off') # so the subplots don't share a y-axis
-            fig.axes[1].axis('off') # so the subplots don't share a y-axis
+            fig.axes[0].axis('off')  # so the subplots don't share a y-axis
+            fig.axes[1].axis('off')  # so the subplots don't share a y-axis
 
-            gs = fig.add_gridspec(4,1)
+            gs = fig.add_gridspec(4, 1)
             ax1 = fig.add_subplot(gs[:3, :])
-            #ax1.legend(ncol=2)
+            # ax1.legend(ncol=2)
             if xstyle == 'log':
                 ax1.set_xscale('log')
-            #ax1.set_xticklabels([])
+            # ax1.set_xticklabels([])
             if ystyle == 'log':
                 ax1.set_yscale('log')
 
@@ -176,13 +157,14 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
             # tick formatting
             yticks_used = ax1.get_yticks()
             ylim_used = ax1.get_ylim()
-            yticks_used = np.append(np.append(ylim_used[0], yticks_used), ylim_used[1])
+            yticks_used = np.append(np.append(ylim_used[0], yticks_used),
+                                    ylim_used[1])
             ax1.set_yticks(yticks_used)
             ax1.set_ylim(ylim_used)
 
             ax1.minorticks_on()
-            ax1.tick_params(which='major', length=20, pad=10, labelsize = 20)
-            ax1.tick_params(which='minor', length=7, labelsize = 17)
+            ax1.tick_params(which='major', length=20, pad=10, labelsize=20)
+            ax1.tick_params(which='minor', length=7, labelsize=17)
 
 
             l = ax1.legend(loc='upper right', fontsize=16)
@@ -193,8 +175,8 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
             ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
             ax2.set_ylabel('Data/Model', fontsize=19)
 
-            ax2.tick_params(which='major', length=20, pad=20, labelsize = 18)
-            ax2.tick_params(which='minor', length=7, labelsize = 17)
+            ax2.tick_params(which='major', length=20, pad=20, labelsize=18)
+            ax2.tick_params(which='minor', length=7, labelsize=17)
 
             if waveunit_out == 'micron':
                 ax2.set_xlabel('Wavelength ($\mu$m)', fontsize=20)
@@ -206,7 +188,8 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
             if title is not None:
                 plt.suptitle(title, fontsize=30)
 
-            plt.savefig(outfile + '.jpg')
+            if savefig and outfile is not None:
+                plt.savefig(outfile + '.jpg')
 
         elif xstyle == 'lin' or ystyle == 'lin':
             dxran = xran[1] - xran[0]
@@ -257,7 +240,7 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
             ''
             idict = {1: i1, 2: i2, 3: i3}
             xrans = {1: xran1, 2: xran2, 3: xran3}
-            for group in range(1,4):
+            for group in range(1, 4):
                 if len(idict[group]) > 0:
                     fig.add_subplot(3, 1, group)
 
@@ -337,7 +320,8 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
             if title is not None:
                 plt.suptitle(title, fontsize=40)
 
-            plt.savefig(outfile + '.jpg')
+            if savefig and outfile is not None:
+                plt.savefig(outfile + '.jpg')
 
     # for IR spectra fit with questfit:
     else:
@@ -345,15 +329,15 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
         comp_best_fit = ct_coeff['comp_best_fit']
 
         if xstyle == 'log' or ystyle == 'log':
-            if 'plotMIR' in initdat.keys():
-              if initdat['plotMIR']:
+            if 'plotMIR' in q3di.keys():
+              if q3di.plotMIR:
                 fig = plt.figure(figsize=(50, 30))
                 gs = fig.add_gridspec(4,1)
                 ax1 = fig.add_subplot(gs[:3, :])
 
-                MIRgdlambda = wave #[instr['ct_indx']]
-                MIRgdflux = instr['spec'] #[instr['ct_indx']]
-                MIRcontinuum = modstars #[instr['ct_indx']]
+                MIRgdlambda = wave #[q3do.ct_indx]
+                MIRgdflux = q3do.spec #[q3do.ct_indx]
+                MIRcontinuum = modstars #[q3do.ct_indx]
 
                 if waveunit_in =='micron' and waveunit_out == 'Angstrom':
                     # convert microns to angstroms
@@ -385,8 +369,8 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
                 ax1.plot(MIRgdlambda, MIRgdflux, label='Data',color=dcolor)
                 ax1.plot(MIRgdlambda, MIRcontinuum, label='Model', color='r')
 
-                if 'argscontfit' in initdat:
-                    if 'global_ext_model' in initdat['argscontfit']:
+                if 'argscontfit' in q3di:
+                    if 'global_ext_model' in q3di.argscontfit:
                        for i in np.arange(0,len(comp_best_fit.keys())-2,1):
                           ax1.plot(MIRgdlambda,
                                    np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
@@ -430,7 +414,7 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
             if fitran is not None:
                 xran = fitran
             else:
-                xran = instr['fitran']
+                xran = q3do.fitran
 
             if waveunit_in == 'microns' and waveunit_out == 'Angstrom':
                 # convert wave list from microns to angstroms
@@ -577,8 +561,8 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
                     plt.plot(MIRgdlambda, MIRcontinuum, label='Model',
                              color='red')
 
-                    if 'argscontfit' in initdat:
-                        if 'global_ext_model' in initdat['argscontfit']:
+                    if 'argscontfit' in q3di:
+                        if 'global_ext_model' in q3di.argscontfit:
                            for i in np.arange(0,len(comp_best_fit.keys())-2,1):
                               plt.plot(MIRgdlambda,
                                        np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
@@ -606,21 +590,21 @@ def plotcont(instr, outfile, ct_coeff=None, initdat=None,
         if title is not None:
             plt.suptitle(title, fontsize=30)
 
-        plt.savefig(outfile + '.jpg')
+        if savefig and outfile is not None:
+            plt.savefig(outfile + '.jpg')
 
 
-def plotline(instr, pltpar, outfile):
+def plotline(q3do, nx=1, ny=1, line=None, center_obs=None, center_rest=None,
+             size=300., savefig=False, outfile=None):
     """
 
     Plot emission line fit and output to JPG
 
     Parameters
     ----------
-    instr : dict
+    q3do : dict
        contains results of fit
-    pltpar : dict
-       contains parameters to control plot
-        label=np.arrange(Nlines)
+    label=np.arrange(Nlines)
         label= str(label)
         line labels for plot
         wave= np.arrange((Nlines), float)
@@ -633,28 +617,28 @@ def plotline(instr, pltpar, outfile):
         Full path and name of output plot.
 
     """
-    ncomp = instr['maxncomp']
+    ncomp = q3do.maxncomp
     colors = ['Magenta', 'Green', 'Orange', 'Teal']
 
-    wave = instr['wave']
-    spectot = instr['spec']
-    specstars = instr['cont_dat']
-    modstars = instr['cont_fit']
-    modlines = instr['emlin_fit']
+    wave = q3do.wave
+    spectot = q3do.spec
+    specstars = q3do.cont_dat
+    modstars = q3do.cont_fit
+    modlines = q3do.line_fit
     modtot = modstars + modlines
 
     # To-do: Allow output wavelengths in Angstrom
     #'waveunit_out' = 'micron'
     # if 'waveunit_out' in pltpar:
-    #     if pltpar['waveunit_out'] = 'Angstrom':
+    #     if pltpar['waveunit_out = 'Angstrom':
     #         waveunit_out = 'Angstrom'
 
     # To-do: Get masking code from pltcont
 
     # lines
-    linelist = instr['linelist']['lines']
-    linelabel = instr['linelist']['name']
-    linetext = instr['linelist']['linelab']
+    linelist = q3do.linelist['lines']
+    linelabel = q3do.linelist['name']
+    linetext = q3do.linelist['linelab']
     # Sort in wavelength order
     isortlam = np.argsort(linelist)
     linelist = linelist[isortlam]
@@ -664,44 +648,44 @@ def plotline(instr, pltpar, outfile):
     #
     # Plotting parameters
     #
-    nx = pltpar['nx']
-    ny = pltpar['ny']
     # Look for line list, then determine center of plot window from fitted
     # wavelength
-    if 'line' in pltpar:
-        sub_linlab = pltpar['line']
+    if line is not None:
+        sub_linlab = line
         linwav = np.empty(len(sub_linlab), dtype='float32')
         for i in range(0, len(sub_linlab)):
             # Get wavelength from zeroth component
             if sub_linlab[i] != '':
                 lmline = lmlabel(sub_linlab[i])
                 # if ncomp > 0
-                if f'{lmline.lmlabel}_0_cwv' in instr['param'].keys():
-                    linwav[i] = instr['param'][f'{lmline.lmlabel}_0_cwv']
+                if f'{lmline.lmlabel}_0_cwv' in q3do.param.keys():
+                    linwav[i] = q3do.param[f'{lmline.lmlabel}_0_cwv']
                 # otherwise
                 else:
-                    idx = np.where(instr['linelist']['name'] == sub_linlab[i])
-                    linwav[i] = instr['linelist']['lines'][idx] * \
-                        (1. + instr['zstar'])
+                    idx = np.where(q3do.linelist['name'] == sub_linlab[i])
+                    linwav[i] = q3do.linelist['lines'][idx] * \
+                        (1. + q3do.zstar)
             else:
                 linwav[i] = 0.
     # If linelist not present, get cwavelength enter of plot window from list
     # first option: wavelength center specified in observed (plotted) frame
-    elif 'center_obs' in pltpar:
-        linwav = np.array(pltpar['center_obs'])
+    elif center_obs is not None:
+        linwav = np.array(center_obs)
     # second option: wavelength center specified in rest frame, then converted
     # to observed (plotted) frame
-    elif 'center_rest' in pltpar:
-        linwav = np.array(pltpar['center_rest']) * instr['zstar']
+    elif center_rest is not None:
+        linwav = np.array(center_rest) * q3do.zstar
     else:
         raise InitializationError('LINE, CENTER_OBS, or CENTER_REST ' +
                                   'list not given in ARGSPLTLIN dictionary')
     nlin = len(linwav)
     # Size of plot in wavelength, in observed frame
-    if 'size' in pltpar:
-        size = np.array(pltpar['size'])
+    # case of single size for all panels
+    if isinstance(size, float):
+        size = np.full(nlin, size)  # default size currently 300 A ... fix for
+    # case of array of sizes
     else:
-        size = np.full(nlin, 300.)  # default size currently 300 A ... fix for
+        size = np.array(size)
         # other units!
     off = np.array([-1.*size/2., size/2.])
     off = off.transpose()
@@ -799,16 +783,16 @@ def plotline(instr, pltpar, outfile):
                 ylaboff = 0.07
                 for k, line in enumerate(linelabel):
                     lmline = lmlabel(line)
-                    if f'{lmline.lmlabel}_{j}_cwv' in instr['param'].keys():
-                        refwav = instr['param'][f'{lmline.lmlabel}_{j}_cwv']
+                    if f'{lmline.lmlabel}_{j}_cwv' in q3do.param.keys():
+                        refwav = q3do.param[f'{lmline.lmlabel}_{j}_cwv']
                     else:
-                        irefwav = np.where(instr['linelist']['name'] == line)
-                        refwav = instr['linelist']['lines'][irefwav] * \
-                            (1. + instr['zstar'])
+                        irefwav = np.where(q3do.linelist['name'] == line)
+                        refwav = q3do.linelist['lines'][irefwav] * \
+                            (1. + q3do.zstar)
                     if refwav >= xran[0] and refwav <= xran[1]:
                         if f'{lmline.lmlabel}_{j}_cwv' in \
-                            instr['param'].keys():
-                            flux = cmplin(instr, line, j, velsig=True)
+                            q3do.param.keys():
+                            flux = cmplin(q3do, line, j, velsig=True)
                             ax0.plot(wave, yran[0] + flux, color=colors[j],
                                      linewidth=2, linestyle='dashed')
                         ax0.annotate(linetext[k], (0.05, 1. - ylaboff),
@@ -857,19 +841,20 @@ def plotline(instr, pltpar, outfile):
     #     xtit = 'Observed Wavelength ($\AA$)'
     fig.suptitle(xtit, fontsize=25)
 
-    fig.savefig(outfile + '.jpg')
+    if savefig and outfile is not None:
+        fig.savefig(outfile + '.jpg')
 
 
-def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat,
-               templ_mask=[], lines=[], linespec=[]):
+def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di,
+              savefig=False, outfile=None, templ_mask=[], lines=[], linespec=[]):
 
     comp_best_fit = ct_coeff['comp_best_fit']
 
     plot_noext = False
 
-    if 'argscontfit' in initdat.keys() and 'plot_decomp' in initdat['argscontfit'].keys(): # Test plot - To do: move this to the correct place in q3da
-      if initdat['argscontfit']['plot_decomp']:
-        config_file = questfit_readcf.readcf(initdat['argscontfit']['config_file'])
+    if 'argscontfit' in q3di.keys() and 'plot_decomp' in q3di.argscontfit.keys(): # Test plot - To do: move this to the correct place in q3da
+      if q3di.argscontfit['plot_decomp']:
+        config_file = questfit_readcf.readcf(q3di.argscontfit['config_file'])
         global_extinction = False
         for key in config_file:
             try:
@@ -894,7 +879,7 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat,
         if len(lines)>0:
           for line_i in lines:
             ax1.axvline(line_i, color='grey', linestyle='--', alpha=0.7, zorder=0)
-            #ax1.axvspan(line_i-max(initdat['siglim_gas']), line_i+max(initdat['siglim_gas']))
+            #ax1.axvspan(line_i-max(q3di.siglim_gas), line_i+max(q3di.siglim_gas))
           ax1.plot(MIRgdlambda, linespec, color='r', linestyle='-', alpha=0.7, linewidth=1.5)
 
 
@@ -960,8 +945,7 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, initdat,
         ax2.set_ylabel('Data/Model')
         ax2.set_xlabel('Wavelength [micron]')
         gs.update(wspace=0.0, hspace=0.05)
-
-        if 'argscontfit' in initdat:
-            if 'outdir' in initdat['argscontfit']:
-                plt.savefig(initdat['argscontfit']['outdir']+initdat['label']+'_decomposition')
         plt.show()
+
+        if savefig and outfile is not None:
+            plt.savefig(outfile+'.jpg')

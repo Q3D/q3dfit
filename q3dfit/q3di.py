@@ -51,9 +51,9 @@ class q3di:
     -----
     '''
 
-    def __init__(self, infile, argsreadcube={}, cutrange=None,
+    def __init__(self, infile, label, argsreadcube={}, cutrange=None,
                  docontfit=False, fitrange=None,
-                 label=None, logfile=None, name=None, outdir=None,
+                 logfile=None, name=None, outdir=None,
                  spect_convol={}, zsys_gas=None,
                  datext=1, varext=2, dqext=3, vormap=None,
                  vacuum=True):
@@ -81,8 +81,8 @@ class q3di:
     def init_linefit(self, lines, linetie=None, maxncomp=1, siginit=50.,
                      zinit=None,
                      argscheckcomp={}, argslineinit={}, argslinefit={},
-                     argslinelist={}, argslineplot={}, checkcomp=True,
-                     fcnlineinit='lineinit', fcnlineplot='plot_line',
+                     argslinelist={}, checkcomp=True,
+                     fcnlineinit='lineinit',
                      fcncheckcomp='checkcomp', noemlinfit=True,
                      peakinit=None,
                      siglim_gas=None):
@@ -95,16 +95,11 @@ class q3di:
         argslineinit : dict
         argslinefit : dict
         argslinelist : dict
-        argslineplot : dict
-            Arguments for ...
         checkcomp : bool
             Filter # of components.
         fcncheckcomp : str
             Name of routine for filtering # of components.
         fcnlineinit : str
-        fcnlineplot : str
-            Function to plot lines. Assumed to be a method in
-            plot module of q3dfit package.
         linetie : list
             If not set, all lines are fit independently. If it's a single
             line, all lines are tied together. Otherwise,
@@ -139,10 +134,8 @@ class q3di:
         self.argslineinit = argslineinit
         self.argslinefit = argslinefit
         self.argslinelist = argslinelist
-        self.argslineplot = argslineplot
         self.checkcomp = checkcomp
         self.fcncheckcomp = fcncheckcomp
-        self.fcnlineplot = fcnlineplot
         self.fcnlineinit = fcnlineinit
         self.maxncomp = maxncomp
         self.peakinit = peakinit
@@ -184,7 +177,8 @@ class q3di:
 
     def init_contfit(self, fcncontfit, siginit=50., zinit=None, argscontfit={},
                      argscontplot={}, argsconvtemp={},
-                     decompose_qso_fit=True, dividecont=False, ebv_star=None,
+                     decompose_qso_fit=False, decompose_ppxf_fit=False,
+                     dividecont=False, ebv_star=None,
                      fcncontplot='plotcont', fcnconvtemp=None,
                      keepstarz=False,
                      masksig_secondfit=2., maskwidths=None, maskwidths_def=500.,
@@ -199,18 +193,15 @@ class q3di:
             Function to fit continuum. Assumed to be a method in
             contfit module of q3dfit package.
             Exception is ppxf, can just specify 'ppxf'.
-        fcncontplot : str
-            Function to plot continuum. Assumed to be a method in
-            plot module of q3dfit package.
         fcnconvtemp : str
             Function with which to convolve template before fitting.
             (Not yet implemented.)
 
         argscontfit : dict
-        argscontplot : dict
         argsconvtemp : dict
 
         decompose_qso_fit : bool
+        decompose_ppxf_fit : bool
         dividecont : bool
             Divide data by continuum fit. Default is to subtract.
         ebv_star : float
@@ -245,13 +236,12 @@ class q3di:
         '''
 
         self.fcncontfit = fcncontfit
-        self.fcncontplot = fcncontplot
 
         self.argscontfit = argscontfit
-        self.argscontplot = argscontplot
         self.argsconvtemp = argsconvtemp
 
         self.decompose_qso_fit = decompose_qso_fit
+        self.decompose_ppxf_fit = decompose_ppxf_fit
         self.dividecont = dividecont
         self.ebv_star = ebv_star
         self.fcnconvtemp = fcnconvtemp

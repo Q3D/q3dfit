@@ -371,9 +371,13 @@ class Cube:
         if '/sr' in self.fluxunit_in and \
             self.pixarea_sqas is not None:
             convert_flux *= 1./(206265.*206265.)*self.pixarea_sqas
+            if '/sr' in self.fluxunit_out:
+                self.fluxunit_out = self.fluxunit_out.replace('/sr', '')
         if '/arcsec2' in self.fluxunit_in and \
             self.pixarea_sqas is not None:
             convert_flux *= self.pixarea_sqas
+            if '/arcsec2' in self.fluxunit_out:
+                self.fluxunit_out = self.fluxunit_out.replace('/arcsec2', '')
 
         self.dat = self.dat * convert_flux
         self.var = self.var * convert_flux**2

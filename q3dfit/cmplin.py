@@ -11,12 +11,12 @@ from astropy.constants import c
 from q3dfit.lmlabel import lmlabel
 
 
-def cmplin(instr, line, comp, velsig=False):
+def cmplin(q3do, line, comp, velsig=False):
     '''
     Function takes four parameters and returns specified flux
 
     Parameters:
-    instr : dict
+    q3do : obj
     line : str
     comp : int
     velsig : bool
@@ -26,17 +26,16 @@ def cmplin(instr, line, comp, velsig=False):
     flux : float
     '''
 
-
     lmline = lmlabel(line)
     mName = '{0}_{1}_'.format(lmline.lmlabel, comp)
     gausspar = np.zeros(3)
-    gausspar[0] = instr['param'][mName+'flx']
-    gausspar[1] = instr['param'][mName+'cwv']
-    gausspar[2] = instr['param'][mName+'sig']
+    gausspar[0] = q3do.param[mName+'flx']
+    gausspar[1] = q3do.param[mName+'cwv']
+    gausspar[2] = q3do.param[mName+'sig']
     if velsig:
         gausspar[2] = gausspar[2] * gausspar[1]/c.to('km/s').value
 
-    flux = gaussian(instr['wave'], gausspar)
+    flux = gaussian(q3do.wave, gausspar)
 
     return flux
 

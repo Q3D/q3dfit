@@ -112,14 +112,14 @@ def __get_Cube(q3di, quiet, logfile=None):
     return cube, q3di.vormap
 
 
-def __get_q3di(initobj):
+def __get_q3dio(initobj):
     '''
-    Load initialization object. Determine whether it's already an object,
+    Load initialization or output object. Determine whether it's already an object,
     or needs to be loaded from file.
 
     Parameters
     ----------
-    q3di : string or object
+    q3dio : string or object
 
     Raises
     ------
@@ -128,25 +128,25 @@ def __get_q3di(initobj):
 
     Returns
     -------
-    q3di object
+    q3di/o object
 
     '''
 
     # If it's a string, assume it's an input .npy file
     if type(initobj) == str:
-        q3diarr = np.load(initobj, allow_pickle=True)
-        q3di = q3diarr[()]
+        q3dioarr = np.load(initobj, allow_pickle=True)
+        q3dio = q3dioarr[()]
     # If it's an ndarray, assume the file's been loaded but not stripped
     # to dict{}
     elif isinstance(initobj, np.ndarray):
-        q3di = initobj[()]
+        q3dio = initobj[()]
     # If it's an object, assume all is well
     elif isinstance(initobj, object):
-        q3di = initobj
+        q3dio = initobj
     else:
-        raise InitializationError('q3di not in expected format')
+        raise InitializationError('q3di/o not in expected format')
 
-    return(q3di)
+    return(q3dio)
 
 
 def __get_voronoi(cols, rows, vormap):
@@ -286,7 +286,7 @@ def q3df_oneCore(initobj, cols=None, rows=None, onefit=False,
     path.append("common/")
     starttime = time.time()
 
-    q3di = __get_q3di(initobj)
+    q3di = __get_q3dio(initobj)
     linelist = __get_linelist(q3di)
 
     if q3di.logfile is not None:

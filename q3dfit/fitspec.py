@@ -214,7 +214,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # Initialize fit
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    q3doo = q3dout(gdlambda, gdflux, gderr, fitrange=fitran, gd_indx=gd_indx,
+    q3do = q3dout(gdlambda, gdflux, gderr, fitrange=fitran, gd_indx=gd_indx,
                    fitran_indx=fitran_indx)
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -223,7 +223,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
     if q3di.docontfit:
 
-        q3doo.init_contfit(zstar=zstar)
+        q3do.init_contfit(zstar=zstar)
 
         # Some defaults. These only apply in case of fitting with stellar model
         # + additive polynomial.
@@ -248,16 +248,16 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 for comp in range(ncomp[line], q3di.maxncomp):
                     maskwidths[line][comp] = 0.
                     listlinesz[line][comp] = 0.
-            q3doo.ct_indx = masklin(gdlambda, listlinesz, maskwidths,
+            q3do.ct_indx = masklin(gdlambda, listlinesz, maskwidths,
                                     nomaskran=q3di.nomaskran)
             # Mask emission lines in log space
             ct_indx_log = masklin(np.exp(gdlambda_log), listlinesz,
                                   maskwidths, nomaskran=q3di.nomaskran)
         else:
-            q3doo.ct_indx = np.arange(len(gdlambda))
+            q3do.ct_indx = np.arange(len(gdlambda))
             ct_indx_log = np.arange(len(gdlambda_log))
 
-        q3doo.ct_indx = np.intersect1d(q3doo.ct_indx, gd_indx)
+        q3do.ct_indx = np.intersect1d(q3do.ct_indx, gd_indx)
         ct_indx_log = np.intersect1d(ct_indx_log, gd_indx_log)
 
     # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -290,15 +290,15 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     argscontfit['err_log'] = gderr_log
                     argscontfit['siginit_stars'] = siginit_stars
 
-            q3doo.cont_fit, q3doo.ct_coeff, q3doo.zstar = \
+            q3do.cont_fit, q3do.ct_coeff, q3do.zstar = \
                 fcncontfit(gdlambda, gdflux, gdinvvar,
                            templatelambdaz_tmp,
-                           templateflux_tmp, q3doo.ct_indx, zstar,
+                           templateflux_tmp, q3do.ct_indx, zstar,
                            quiet=quiet, **argscontfit)
 
             if 'refit' in argscontfit.keys():
                 if argscontfit['refit'] == 'ppxf':
-                    q3doo.ppxf_sigma = q3doo.ct_coeff['ppxf_sigma']
+                    q3do.ppxf_sigma = q3do.ct_coeff['ppxf_sigma']
 
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         # # Option 2: PPXF
@@ -323,43 +323,43 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                       reddening=q3di.ebv_star)
             # poly_mod = pp.apoly
             continuum_log = pp.bestfit
-            q3doo.ct_add_poly_weights = pp.polyweights
-            q3doo.ct_coeff = pp.weights
-            q3doo.ct_ebv = pp.reddening
+            q3do.ct_add_poly_weights = pp.polyweights
+            q3do.ct_coeff = pp.weights
+            q3do.ct_ebv = pp.reddening
             sol = pp.sol
             solerr = pp.error
 
             # Resample the best fit into linear space
             cinterp = interp1d(gdlambda_log, continuum_log,
                                kind='cubic', fill_value="extrapolate")
-            q3doo.cont_fit = cinterp(np.log(gdlambda))
+            q3do.cont_fit = cinterp(np.log(gdlambda))
 
             # Adjust stellar redshift based on fit
             # From ppxf docs:
             # IMPORTANT: The precise relation between the output pPXF velocity
             # and redshift is Vel = c*np.log(1 + z).
             # See Section 2.3 of Cappellari (2017) for a detailed explanation.
-            q3doo.zstar += np.exp(sol[0]/c.to('km/s').value)-1.
-            q3doo.ct_ppxf_sigma = sol[1]
+            q3do.zstar += np.exp(sol[0]/c.to('km/s').value)-1.
+            q3do.ct_ppxf_sigma = sol[1]
 
             # From PPXF docs:
             # These errors are meaningless unless Chi^2/DOF~1.
             # However if one *assumes* that the fit is good ...
-            q3doo.ct_rchisq = pp.chi2
+            q3do.ct_rchisq = pp.chi2
             solerr *= np.sqrt(pp.chi2)
-            q3doo.zstar_err = (np.exp(solerr[0]/c.to('km/s').value))-1.
-            q3doo.ppxf_sigma_err = solerr[1]
+            q3do.zstar_err = (np.exp(solerr[0]/c.to('km/s').value))-1.
+            q3do.ppxf_sigma_err = solerr[1]
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Option to tweak cont. fit with local polynomial fits
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         # if q3di.tweakcntfit is not None:
-        #     q3doo.cont_fit_pretweak = q3doo.cont_fit.copy()
+        #     q3do.cont_fit_pretweak = q3do.cont_fit.copy()
         # # Arrays holding emission-line-masked data
-        #     ct_lambda = gdlambda[q3doo.ct_indx]
-        #     ct_flux = gdflux[q3doo.ct_indx]
-        #     ct_err = gderr[q3doo.ct_indx]
-        #     ct_cont = q3doo.cont_fit[q3doo.ct_indx]
+        #     ct_lambda = gdlambda[q3do.ct_indx]
+        #     ct_flux = gdflux[q3do.ct_indx]
+        #     ct_err = gderr[q3do.ct_indx]
+        #     ct_cont = q3do.cont_fit[q3do.ct_indx]
         #     for i in range(len(tweakcntfit[0,:])):
         #     # Indices into full data
         #         tmp_ind1 = np.where(gdlambda >= tweakcntfit[i,0])[0]
@@ -384,12 +384,12 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         #     continuum_pretweak = continuum.copy()
 
         if q3di.dividecont:
-            continuum = gdflux.copy() / q3doo.cont_fit - 1
-            gdinvvar_nocnt = gdinvvar.copy() * np.power(q3doo.cont_fit, 2.)
+            continuum = gdflux.copy() / q3do.cont_fit - 1
+            gdinvvar_nocnt = gdinvvar.copy() * np.power(q3do.cont_fit, 2.)
             # gderr_nocnt = gderr / continuum
-            q3doo.ct_method = 'CONTINUUM DIVIDED'
+            q3do.ct_method = 'CONTINUUM DIVIDED'
         else:
-            continuum = gdflux.copy() - q3doo.cont_fit
+            continuum = gdflux.copy() - q3do.cont_fit
             gdinvvar_nocnt = gdinvvar.copy()
 
     else:
@@ -408,7 +408,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     parinit = []
     if q3di.dolinefit:
 
-        q3doo.init_linefit(listlines, q3di.lines, q3di.maxncomp,
+        q3do.init_linefit(listlines, q3di.lines, q3di.maxncomp,
                            line_dat=continuum)
 
         # Initial guesses for emission line peak fluxes (above continuum)
@@ -421,7 +421,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 # https://stackoverflow.com/questions/20618804/how-to-smooth-a-curve-in-the-right-way/20642478
                 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html
                 from scipy.signal import savgol_filter
-                line_dat_sm = savgol_filter(q3doo.line_dat, 11, 3)
+                line_dat_sm = savgol_filter(q3do.line_dat, 11, 3)
                 # fline = interp1d(gdlambda, line_dat_sm, kind='linear')
                 for line in q3di.lines:
                     # Check that line wavelength is in data range
@@ -469,7 +469,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                             # unsmoothed
                             if np.isnan(peakinit[line][icomp]):
                                 peakinit[line][icomp] = \
-                                np.nanmax(q3doo.line_dat[ilamwin[0]:ilamwin[1]])
+                                np.nanmax(q3do.line_dat[ilamwin[0]:ilamwin[1]])
                             # if it's still all nans, just set to 0.
                             if np.isnan(peakinit[line][icomp]):
                                 peakinit[line][icomp] = 0.
@@ -498,7 +498,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             argslineinit['waves'] = gdlambda
         if siglim_gas is not None:
             argslineinit['siglim'] = siglim_gas
-        emlmod, q3doo.parinit, q3doo.siglim = \
+        emlmod, q3do.parinit, q3do.siglim = \
             run_fcnlineinit(listlines, listlinesz, q3di.linetie, peakinit,
                             siginit_gas, q3di.maxncomp, ncomp, specConv,
                             **argslineinit)
@@ -537,21 +537,21 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 else:
                     fit_kws[key] = val
 
-        lmout = emlmod.fit(q3doo.line_dat, q3doo.parinit, x=gdlambda,
+        lmout = emlmod.fit(q3do.line_dat, q3do.parinit, x=gdlambda,
                            method='least_squares',
                            weights=np.sqrt(gdinvvar_nocnt),
                            nan_policy='omit', max_nfev=max_nfev,
                            fit_kws=fit_kws, iter_cb=iter_cb)
 
-        q3doo.line_fit = emlmod.eval(lmout.params, x=gdlambda)
+        q3do.line_fit = emlmod.eval(lmout.params, x=gdlambda)
         if not quiet:
             print(lmout.fit_report(show_correl=False))
 
-        q3doo.param = lmout.best_values
-        q3doo.covar = lmout.covar
-        q3doo.dof = lmout.nfree
-        q3doo.redchisq = lmout.redchi
-        q3doo.nfev = lmout.nfev
+        q3do.param = lmout.best_values
+        q3do.covar = lmout.covar
+        q3do.dof = lmout.nfree
+        q3do.redchisq = lmout.redchi
+        q3do.nfev = lmout.nfev
 
         # error messages corresponding to LMFIT, plt
         # documentation was not very helpful with the error messages...
@@ -561,16 +561,16 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             print('lmfit: '+lmout.message, file=logfile)
             if not quiet:
                 print('lmfit: '+lmout.message)
-            q3doo.fitstatus = 0
+            q3do.fitstatus = 0
         else:
-            q3doo.fitstatus = lmout.status
+            q3do.fitstatus = lmout.status
 
         # Errors from covariance matrix and from fit residual.
         # resid = gdflux - continuum - specfit
-        q3doo.perror = dict()
+        q3do.perror = dict()
         for p in lmout.params:
-            q3doo.perror[p] = lmout.params[p].stderr
-        q3doo.perror_resid = copy.deepcopy(q3doo.perror)
+            q3do.perror[p] = lmout.params[p].stderr
+        q3do.perror_resid = copy.deepcopy(q3do.perror)
         # sigrange = 20.
         # for line in lines_arr:
         #     iline = np.array([ip for ip, item in enumerate(parinit)
@@ -601,11 +601,11 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         #             perror_resid[ifluxpk[i]] = \
         #                 np.sqrt(np.mean(np.power(resid[wlo:whi], 2.)))
 
-        q3doo.cont_dat = gdflux.copy() - q3doo.line_fit
+        q3do.cont_dat = gdflux.copy() - q3do.line_fit
 
     else:
 
-        q3doo.cont_dat = gdflux.copy()
+        q3do.cont_dat = gdflux.copy()
 
     fit_time2 = time.time()
     if not quiet:
@@ -616,7 +616,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 #  Finish
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    return(q3doo)
+    return(q3do)
 
 
 # For diagnosing problems, print value of each parameter every iteration

@@ -3,8 +3,6 @@
 
 from q3dfit.exceptions import InitializationError
 from q3dfit.fitspec import fitspec
-# from q3dfit.q3dout import q3dout
-# from q3dfit.sepfitpars import sepfitpars
 
 import importlib
 import numpy as np
@@ -43,10 +41,8 @@ logfile : strarr, optional, default=None
         from sys import stdout
         logfile = stdout
 
-    # colind = ispax % cube.ncols
-    # rowind = int(ispax / cube.ncols)
-    i = colarr[ispax]  # colind, rowind]
-    j = rowarr[ispax]  # colind, rowind]
+    i = colarr[ispax]
+    j = rowarr[ispax]
     # print(i,j)
     if cube.dat.ndim == 1:
         print('[spec]=[1] out of [1]', file=logfile)
@@ -281,4 +277,6 @@ logfile : strarr, optional, default=None
                 dofit = False
 
         # save q3do
+        q3do.col = i+1
+        q3do.row = j+1
         np.save(outlab, q3do)

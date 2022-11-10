@@ -91,9 +91,9 @@ class Q3Dpro:
     # =============================================================================================
     # processing the q3dfit cube data
     # =============================================================================================
-    def get_psfsubcube(self):
-        qso_subtract = self.contdat.host_mod - self.contdat.qso_mod
-        return qso_subtract
+    # def get_psfsubcube(self):
+    #     qso_subtract = self.contdat.host_mod - self.contdat.qso_mod
+    #     return qso_subtract
 
     def get_lineprop(self, LINESELECT, LINEVAC=True):
         listlines = linelist(self.linedat.lines,vacuum=LINEVAC)
@@ -189,6 +189,7 @@ class Q3Dpro:
     def make_linemap(self, LINESELECT, SNRCUT=5., LINEVAC=True,
                      xyCenter=None, VMINMAX=None,
                      XYSTYLE=None, PLTNUM=1, CMAP=None,
+                     VCOMP=None,
                      SAVEDATA=False):
 
         print('Plotting emission line maps')
@@ -211,7 +212,7 @@ class Q3Dpro:
         # EXTRACT THE DATA HERE
         # --------------------------
         wave0,linetext,dataOUT = self.get_linemap(LINESELECT,LINEVAC=LINEVAC,APPLYMASK=True)
-        
+        dataOUT,ncomp = self.resort_line_components(dataOUT,NCOMP=ncomp,COMP_SORT=VCOMP)
         # EXTRACT TOTAL FLUX
         # sn_tot = fluxsum/fluxsum_err
         # w80 = sigma*2.563   # w80 linewidth from the velocity dispersion
@@ -251,63 +252,83 @@ class Q3Dpro:
                 xcol,ycol = xcolkpc,ycolkpc
                 XYtitle = 'Relative distance [kpc]'
         plt.close(PLTNUM)
-        figDIM = [ncomp,5]
+        figDIM = [ncomp+1,4]
         figOUT = set_figSize(figDIM,matrix_size)
-        fig,ax = plt.subplots(figDIM[0],figDIM[1])
-        fig.set_figheight(figOUT[1])
-        fig.set_figwidth(figOUT[0])
+        fig,ax = plt.subplots(figDIM[0],figDIM[1],dpi=500)
+        print(figOUT)
+        fig.set_figheight(figOUT[1]+2)
+        fig.set_figwidth(figOUT[0]-1)
         if CMAP == None :
             CMAP = 'YlOrBr_r'
         ici = ''
         i,j=0,0
         for icomp,ipdat in dataOUT.items():
+            doPLT = False
             pixVals = ipdat['data']
             ipshape = pixVals.shape
             if VMINMAX != None :
                 vminmax = VMINMAX[icomp]
             if icomp == 'Ftot':
-                doPLT = True
                 NTICKS = 4
                 ici=''
-                vticks = None
+                vticks =  [vminmax[0],np.power(10,np.median([np.log10(vminmax[0]),np.log10(vminmax[1])])),vminmax[1]]
                 if 'fluxlog' in VMINMAX :
                     FLUXLOG = VMINMAX['fluxlog']
             else:
-                i=0
+                i=1
                 if icomp.lower() == 'fci' :
-                    NTICKS = 4
-                    vticks = None
+                    j = 0
+                    NTICKS = 3
+                    vticks =  [vminmax[0],np.power(10,np.median([np.log10(vminmax[0]),np.log10(vminmax[1])])),vminmax[1]]
                     if 'fluxlog' in VMINMAX :
                         FLUXLOG = VMINMAX['fluxlog']
-                elif icomp.lower() == 'sig':
+                if icomp.lower() == 'sig':
+                    j+=1
                     CMAP = 'YlOrBr_r'
-                    NTICKS = 5
-                    vticks = None
+                    NTICKS  = 5
+                    vticks = [vminmax[0],np.median([np.log10(vminmax[0]),np.log10(vminmax[1])]),vminmax[1]]
                     FLUXLOG = False
                 elif icomp.lower() == 'v50' :
+                    j+=1
+                    NTICKS = 3
                     vticks = [vminmax[0],vminmax[0]/2,0,vminmax[1]/2,vminmax[1]]
                     CMAP = 'RdYlBu'
                     CMAP += '_r'
                     FLUXLOG = False
+                elif icomp.lower() == 'w80' :
+                    j+=1
+                    NTICKS = 3
+                    vticks = [vminmax[0],np.median([np.log10(vminmax[0]),np.log10(vminmax[1])]),vminmax[1]]
+                    CMAP = 'RdYlBu'
+                    CMAP += '_r'
+                    FLUXLOG = False
+            if j != 0:
+                doPLT = False
+                fig.delaxes(ax[0,j])
             for ci in range(0,ncomp) :
-                i = ci
-                if len(ipshape) > 2:
-                    pixVals = ipdat['data'][:,:,ci]
+                ipixVals = []
+                if icomp != 'Ftot' and len(ipshape) > 2:
                     doPLT = True
+                    i = ci+1
                     ici = '_c'+str(ci+1)
-                if j == 0 and ci > 0:
-                    fig.delaxes(ax[i,j])
-                    doPLT = False
+                    ipixVals = pixVals[:,:,ci]
+                elif icomp == 'Ftot':
+                    doPLT = True
+                    if ci > 0 :
+                        doPLT = False
+                        break
+                    else:
+                        ipixVals = pixVals
                 if doPLT == True:
                     cmap_r = cm.get_cmap(CMAP)
                     cmap_r.set_bad(color='black')
                     xx, yy = xcol,ycol
-                    axi = []
+                    axi = ax[i,j]
                     if ncomp < 2:
-                        axi = ax[j]
+                        axi = ax[i,j]
                     else:
                         axi = ax[i,j]
-                    display_pixels_wz(yy, xx, pixVals, CMAP=CMAP, AX=axi,
+                    display_pixels_wz(yy, xx, ipixVals, CMAP=CMAP, AX=axi,
                                       COLORBAR=True, PLOTLOG=FLUXLOG,
                                       VMIN=vminmax[0], VMAX=vminmax[1],
                                       TICKS=vticks, NTICKS=NTICKS)
@@ -323,12 +344,14 @@ class Q3Dpro:
                         print('Saving line map:',linesave_name)
                         savepath = os.path.join(self.dataDIR,linesave_name)
                         save_to_fits(pixVals,[],savepath)
-            j+=1
+                
+                    
+            # j+=1
         fig.suptitle(self.target_name+' : '+linetext+' maps',fontsize=20,snap=True,
                      horizontalalignment='right')
                      # verticalalignment='center',
                      # fontweight='semibold')
-        fig.tight_layout(pad=0.15,h_pad=0.1)
+        fig.tight_layout()#pad=0.15,h_pad=0.1)
         if SAVEDATA == True:
             pltsave_name = LINESELECT+'_emlin_map'
             print('Saving figure:',pltsave_name)
@@ -338,9 +361,8 @@ class Q3Dpro:
         plt.show()
         return
 
-    def make_contmap(self):
-
-        return
+    # def make_contmap(self):
+    #     return
     
     def make_lineratio_map(self, lineA,lineB,SNRCUT=3, LINEVAC=True, SAVEDATA=False, PLTNUM=5, KPC=False,VMINMAX=[-1,1]):
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -439,7 +461,7 @@ class Q3Dpro:
                 for fi,lratF in enumerate(lratdat['lrat'] ):
                     # print(fratdat[0])
                     fi_mask = fratdat[0][lratF][2]*fratdat[1][lratF][2]
-                    fi_frat = fratdat[0][lratF][0]/fratdat[1][lratF][0]
+                    fi_frat = fratdat[0][lratF][3]/fratdat[1][lratF][3]
                     frat10 = np.log10(fi_frat)*fi_mask
                     frat10err = lgerr(fratdat[0][lratF][3],fratdat[1][lratF][3],
                                       fratdat[0][lratF][1],fratdat[1][lratF][1])
@@ -464,7 +486,7 @@ class Q3Dpro:
         plt.close(PLTNUM)
         figDIM = [1,nps]
         figOUT = set_figSize(figDIM,mshaps[1])
-        fig,ax = plt.subplots(1,nps,num=PLTNUM,constrained_layout=True)#, gridspec_kw={'height_ratios': [1, 2]})
+        fig,ax = plt.subplots(1,nps,num=PLTNUM,constrained_layout=True,dpi=500)#, gridspec_kw={'height_ratios': [1, 2]})
         fig.set_figheight(figOUT[1])
         fig.set_figwidth(figOUT[0])
         
@@ -659,7 +681,7 @@ class Q3Dpro:
                 for fi,lratF in enumerate(lratdat['lrat'] ):
                     # print(fratdat[0])
                     fi_mask = fratdat[0][lratF][2]*fratdat[1][lratF][2]
-                    fi_frat = fratdat[0][lratF][0]/fratdat[1][lratF][0]
+                    fi_frat = fratdat[0][lratF][3]/fratdat[1][lratF][3]
                     frat10 = np.log10(fi_frat)*fi_mask
                     frat10err = lgerr(fratdat[0][lratF][3],fratdat[1][lratF][3],
                                       fratdat[0][lratF][1],fratdat[1][lratF][1])
@@ -684,7 +706,7 @@ class Q3Dpro:
         plt.close(PLTNUM)
         figDIM = [nps,cntr]
         figOUT = set_figSize(figDIM,mshaps[1])
-        fig,ax = plt.subplots(nps,cntr,num=PLTNUM,constrained_layout=True)#, gridspec_kw={'height_ratios': [1, 2]})
+        fig,ax = plt.subplots(nps,cntr,num=PLTNUM,constrained_layout=True,dpi=500)#, gridspec_kw={'height_ratios': [1, 2]})
         fig.set_figheight(figOUT[1]+1)
         fig.set_figwidth(figOUT[0])
         
@@ -739,11 +761,10 @@ class Q3Dpro:
         plt.close(PLTNUM)
         figDIM = [nps,cntr-1]
         figOUT = set_figSize(figDIM,mshaps[1],SQUARE=True)
-        fig,ax = plt.subplots(nps,cntr-1,figsize=((cntr-1)*5,5),num=PLTNUM,constrained_layout=True)
+        fig,ax = plt.subplots(nps,cntr-1,figsize=((cntr-1)*5,5),num=PLTNUM,constrained_layout=True,dpi=500)
         fig.set_figheight(int(figOUT[1]/2))
         fig.set_figwidth(figOUT[0])
         cf=0
-        # breakpoint()
         pixkpc = self.pix*arckpc
         xgrid = np.arange(0, mshaps[1][1])
         ygrid = np.arange(0, mshaps[1][0])
@@ -751,40 +772,44 @@ class Q3Dpro:
         ycol = (ygrid-xyCenter[0])
         xcolkpc = xcol*np.median(arckpc)* self.pix
         ycolkpc = ycol*np.median(arckpc)* self.pix
-        # return
         for bpt in BPTmod:
             if bpt != None :
                 for li,lratF in enumerate(['Ftot','Fci']):
-                    # print(bpt,lratF)
                     fnames = bpt.split('/')
                     # pltname,pltrange = lineratios[linrat]['pltname'],lineratios[fnames[0]]['pltrange']
                     pltname1,pltrange1 = lineratios[fnames[0]]['pltname'],lineratios[fnames[0]]['pltrange']
                     pltname2,pltrange2 = lineratios[fnames[1]]['pltname'],lineratios[fnames[1]]['pltrange']
-                    
                     if lratF == 'Fci':
                         frat10_A,frat10errA = lineratios[fnames[0]]['lrat'][lratF][0],lineratios[fnames[0]]['lrat'][lratF][1]
                         frat10_B,frat10errB = lineratios[fnames[1]]['lrat'][lratF][0],lineratios[fnames[1]]['lrat'][lratF][1]
                         for ci in range(0,ncomp): 
                             gg = np.where(~np.isnan(frat10_A[:,:,ci]) & ~np.isnan(frat10_B[:,:,ci]))
-                            xfract,yfract = frat10_B[gg],frat10_A[gg]
-                            ax[li+ci,cf].errorbar(frat10_B[:,:,ci].flatten(),frat10_A[:,:,ci].flatten(),fmt='.',alpha=0.7,
-                                           # xerr=frat10errB[:,:,ci].flatten(),yerr=frat10errA[:,:,ci].flatten(),elinewidth=1.5,ecolor='blue',
-                                          color='black',markersize=5,zorder=2)
+                            xfract,yfract = frat10_B[:,:,ci][gg],frat10_A[:,:,ci][gg]
+                            xfracterr,yfracterr = [frat10errB[0][:,:,ci][gg].flatten(), frat10errB[1][:,:,ci][gg].flatten()],[frat10errA[0][:,:,ci][gg].flatten(),frat10errA[1][:,:,ci][gg].flatten()]
+                            ee = np.where(~np.isnan(xfracterr[0]) & ~np.isnan(xfracterr[1]) &  ~np.isnan(yfracterr[0]) & ~np.isnan(yfracterr[1]))
+                            ax[li+ci,cf].errorbar(xfract.flatten()[ee],yfract.flatten()[ee],fmt='.',alpha=0.7,
+                                                  color='black',markersize=5,zorder=2)
+                            ax[li+ci,cf].errorbar(xfract.flatten()[ee],yfract.flatten()[ee],fmt='.',alpha=0.7,
+                                                xerr=[xfracterr[0][ee],xfracterr[1][ee]],yerr=[yfracterr[0][ee],yfracterr[1][ee]],
+                                            elinewidth=0.6,ecolor='dodgerblue',
+                                            color='black',markersize=0,zorder=2)
                             ax[li+ci,cf].errorbar(np.median(frat10_B[gg[0],gg[1],ci].flatten()),np.median(frat10_A[gg[0],gg[1],ci].flatten()),
-                                                  fillstyle='none',color='red',fmt='*',markersize=17,mew=2.5,zorder=3)
+                                                  fillstyle='none',color='red',fmt='*',markersize=15,mew=2,zorder=3)
                     else:
                         frat10_A,frat10errA = lineratios[fnames[0]]['lrat'][lratF][0],lineratios[fnames[0]]['lrat'][lratF][1]
                         frat10_B,frat10errB = lineratios[fnames[1]]['lrat'][lratF][0],lineratios[fnames[1]]['lrat'][lratF][1]
-                        gg = np.where(~np.isnan(frat10_A) & ~np.isnan(frat10_B))
+                        gg = np.where(~np.isnan(frat10_B) & ~np.isnan(frat10_A))
                         xfract,yfract       = frat10_B[gg],frat10_A[gg]
-                        # xfracterr,yfracterr = frat10errB[gg],frat10errA[gg]
-                        ax[li,cf].errorbar(xfract.flatten(),yfract.flatten(),fmt='.',alpha=0.7,
-                                           # xerr=xfracterr.flatten(),yerr=yfracterr.flatten(), elinewidth=1.5,ecolor='blue',
-                                           color='black',markersize=5,zorder=2)
+                        xfracterr,yfracterr = [frat10errB[0][gg].flatten(),frat10errB[1][gg].flatten()],[frat10errA[0][gg].flatten(),frat10errA[1][gg].flatten()]
+                        ee = np.where(~np.isnan(xfracterr[0]) & ~np.isnan(xfracterr[1])&  ~np.isnan(yfracterr[0]) & ~np.isnan(yfracterr[1]))
+                        ax[li,cf].errorbar(xfract.flatten()[ee],yfract.flatten()[ee],fmt='.',alpha=0.7,
+                                            color='black',markersize=5,zorder=2)
+                        ax[li,cf].errorbar(xfract.flatten()[ee],yfract.flatten()[ee],fmt='.',alpha=0.7,
+                                            xerr=[xfracterr[0][ee],xfracterr[1][ee]],yerr=[yfracterr[0][ee],yfracterr[1][ee]],
+                                            elinewidth=0.6,ecolor='dodgerblue',
+                                            color='black',markersize=0,zorder=2)
                         ax[li,cf].errorbar(np.median(xfract.flatten()),np.median(yfract.flatten()),
-                                            fillstyle='none',color='red',fmt='*',markersize=17,mew=2.5,zorder=3)
-                    
-                
+                                            fillstyle='none',color='red',fmt='*',markersize=15,mew=2,zorder=3)
                 for ni in range(0,nps):
                     ax[ni,cf].set_xlim([-2.1,0.7])
                     ax[ni,cf].set_ylim(pltrange1)
@@ -792,7 +817,6 @@ class Q3Dpro:
                     iBPTmod = BPTmod[bpt]
                     ax[ni,cf].plot(iBPTmod[0][0],iBPTmod[0][1],'k-',zorder=1,linewidth=1.5)
                     ax[ni,cf].plot(iBPTmod[1][0],iBPTmod[1][1],'k--',zorder=1,linewidth=1.5)
-                    
                     compName = ''
                     if ni == 0:
                         compName = 'Ftot'
@@ -813,8 +837,6 @@ class Q3Dpro:
                     ax[ni,cf].tick_params(which='minor', length=5, width=1, direction='in',
                                   bottom=True, top=True, left=True, right=True,color='black')
                 cf+=1
-                # breakpoint()
-
         plt.tight_layout(pad=1.5,h_pad=0.1)
         if SAVEDATA == True:
             pltsave_name = 'BPT_map.png'
@@ -825,8 +847,83 @@ class Q3Dpro:
             # breakpoint()
         return
 
-
-
+    def resort_line_components(self,dataIN,NCOMP=1,COMP_SORT=None):
+        
+        if COMP_SORT == None:
+            return dataIN,NCOMP
+        else:
+            if COMP_SORT['sort_by'] in dataIN.keys() :
+                if 'sort_range' not in COMP_SORT:
+                    print('sort comp by:',COMP_SORT['sort_by'])
+                    dataOUT = copy.deepcopy(dataIN)
+                    sortDat = dataIN[COMP_SORT['sort_by']]
+                    mshap = sortDat['data'].shape
+                    for ii in range (0,mshap[0]):
+                        for jj in range (0,mshap[1]):
+                            sij = np.argsort(np.abs(sortDat['data'][ii,jj,:]))
+                            dataOUT['Fci']['data'][ii,jj,:] = dataIN['Fci']['data'][ii,jj,sij]
+                            dataOUT['Sig']['data'][ii,jj,:] = dataIN['Sig']['data'][ii,jj,sij]
+                            dataOUT['v50']['data'][ii,jj,:] = dataIN['v50']['data'][ii,jj,sij]
+                            dataOUT['w80']['data'][ii,jj,:] = dataIN['w80']['data'][ii,jj,sij]
+                            dataOUT['Fci']['err'][ii,jj,:]  = dataIN['Fci']['err'][ii,jj,sij]
+                            dataOUT['Sig']['err'][ii,jj,:]  = dataIN['Sig']['err'][ii,jj,sij]
+                            dataOUT['v50']['err'][ii,jj,:]  = dataIN['v50']['err'][ii,jj,sij]
+                            dataOUT['w80']['err'][ii,jj,:]  = dataIN['w80']['err'][ii,jj,sij]
+                            dataOUT['Fci']['mask'][ii,jj,:] = dataIN['Fci']['mask'][ii,jj,sij]
+                            dataOUT['Sig']['mask'][ii,jj,:] = dataIN['Sig']['mask'][ii,jj,sij]
+                            dataOUT['v50']['mask'][ii,jj,:] = dataIN['v50']['mask'][ii,jj,sij]
+                            dataOUT['w80']['mask'][ii,jj,:] = dataIN['w80']['mask'][ii,jj,sij]
+                    return dataOUT,mshap[2]
+                else:
+                    sort_rang = COMP_SORT['sort_range']
+                    print('========================')
+                    print('sort comp by:',COMP_SORT['sort_by'])
+                    for si,srang in enumerate(sort_rang):
+                        print('c'+str(si+1),srang)
+                    sortDat = dataIN[COMP_SORT['sort_by']]
+                    mshap = sortDat['data'].shape
+                    dataOUT = {'Ftot':dataIN['Ftot'],
+                               'Fci':{'data':None,'err':None,'name':None,'mask':None},
+                               'Sig':{'data':None,'err':None,'name':None,'mask':None},
+                               'v50':{'data':None,'err':None,'name':None,'mask':None},
+                               'w80':{'data':None,'err':None,'name':None,'mask':None}}
+                    for ditem in dataOUT:
+                        if ditem != 'Ftot':
+                            dataOUT[ditem]['data'] = np.zeros((mshap[0],mshap[1],len(sort_rang)))+np.nan
+                            dataOUT[ditem]['err']  = np.zeros((mshap[0],mshap[1],len(sort_rang)))+np.nan
+                            dataOUT[ditem]['name'] = []
+                            dataOUT[ditem]['mask'] = np.zeros((mshap[0],mshap[1],len(sort_rang)))+np.nan
+                            
+                    for ii in range (0,mshap[0]):
+                        for jj in range (0,mshap[1]):
+                            for cc in range(0,mshap[2]):
+                                for sri,sr in enumerate(sort_rang):
+                                    # dataOUT['Fci']['name'].append()
+                                    ici = sri
+                                    dataOUT['Fci']['name'].append('F$_{c'+str(ici)+'}$')
+                                    dataOUT['Sig']['name'].append('$\sigma_{c'+str(ici)+'}$')
+                                    dataOUT['v50']['name'].append('v$_{50,c'+str(ici)+'}$')
+                                    dataOUT['w80']['name'].append('w$_{80,c'+str(ici)+'}$')
+                                    if sr[0] <= sortDat['data'][ii,jj,cc] <= sr[1]:
+                                        dataOUT['Fci']['data'][ii,jj,sri] = dataIN['Fci']['data'][ii,jj,cc]
+                                        dataOUT['Sig']['data'][ii,jj,sri] = dataIN['Sig']['data'][ii,jj,cc]
+                                        dataOUT['v50']['data'][ii,jj,sri] = dataIN['v50']['data'][ii,jj,cc]
+                                        dataOUT['w80']['data'][ii,jj,sri] = dataIN['w80']['data'][ii,jj,cc]
+                                        dataOUT['Fci']['err'][ii,jj,sri]  = dataIN['Fci']['err'][ii,jj,cc]
+                                        dataOUT['Sig']['err'][ii,jj,sri]  = dataIN['Sig']['err'][ii,jj,cc]
+                                        dataOUT['v50']['err'][ii,jj,sri]  = dataIN['v50']['err'][ii,jj,cc]
+                                        dataOUT['w80']['err'][ii,jj,sri]  = dataIN['w80']['err'][ii,jj,cc]
+                                        dataOUT['Fci']['mask'][ii,jj,sri] = dataIN['Fci']['mask'][ii,jj,cc]
+                                        dataOUT['Sig']['mask'][ii,jj,sri] = dataIN['Sig']['mask'][ii,jj,cc]
+                                        dataOUT['v50']['mask'][ii,jj,sri] = dataIN['v50']['mask'][ii,jj,cc]
+                                        dataOUT['w80']['mask'][ii,jj,sri] = dataIN['w80']['mask'][ii,jj,cc]
+                                # print('---')
+                    return dataOUT,len(sort_rang)
+            else:
+                print('SORT ERROR...')
+                return foo
+            
+        
 
 # =============================================================================================
 # reading in the .npy and .npz files
@@ -1346,8 +1443,8 @@ def display_pixels_wz(x, y, datIN, PIXELSIZE=None, VMIN=None, VMAX=None,
             else:
                 TICKS = LinearLocator(NTICKS).tick_values(VMIN, VMAX)
         cax.tick_params(labelsize=10)
-        plt.colorbar(imgPLT, cax=cax, ticks=TICKS, orientation='horizontal',
-                     ticklocation='top')
+        # plt.colorbar(imgPLT, cax=cax, ticks=TICKS, orientation='horizontal',
+        #              ticklocation='top')
         if np.abs(VMIN) >= 1:
             plt.colorbar(imgPLT, cax=cax, ticks=TICKS,
                          orientation='horizontal', ticklocation='top')
@@ -1355,6 +1452,7 @@ def display_pixels_wz(x, y, datIN, PIXELSIZE=None, VMIN=None, VMAX=None,
             plt.colorbar(imgPLT, cax=cax, ticks=TICKS,
                          orientation='horizontal', ticklocation='top',
                          format='%.0e')
+        # cax.formatter.set_powerlimits((0, 0))
         plt.sca(AX)  # Activate main plot before returning
     AX.set_facecolor('black')
 
@@ -1384,8 +1482,7 @@ def lgerr(x1,x2,x1err,x2err,):
     yderr0 = ((x1err/x2)**2+(x2err*x1/x2**2)**2)**0.5
     lgyerrup = np.log10(yd0+yderr0) - yd
     lgyerrlow = yd - np.log10(yd0-yderr0)
-    return lgyerrlow,lgyerrup
-
+    return [lgyerrlow,lgyerrup]
 
 def clean_mask(dataIN,BAD=1e99):
     dataOUT = copy.deepcopy(dataIN)
@@ -1396,10 +1493,12 @@ def clean_mask(dataIN,BAD=1e99):
 
 def snr_cut(dataIN,errIN,SNRCUT=2):
     snr = dataIN/errIN
+    
     gud_indx = np.where(snr >= SNRCUT)
     bad_indx = np.where(snr < SNRCUT)
     dataOUT = copy.deepcopy(dataIN)
     dataOUT[snr < SNRCUT] = np.nan
+    dataOUT[np.where(np.isnan(errIN))] = np.nan
     return dataOUT,gud_indx,bad_indx
 
 def save_to_fits(dataIN,hdrIN,savepath):
@@ -1414,39 +1513,24 @@ def save_to_fits(dataIN,hdrIN,savepath):
     return
 
 def set_figSize(dim,plotsize,SQUARE=False):
-    # breakpoint()
     dim = np.array(dim)
     xy = [12,14]
-    # print(dim,plotsize)
-    figSIZE = 5*np.round(np.array(plotsize)/5)[0:2]#*dim
-    # figSIZE = [figSIZE[0],figSIZE[0]]
-    # print(figSIZE)
-    figSIZE = figSIZE/np.min(figSIZE)#*dim
-    # print(figSIZE)
+    figSIZE = 5*np.round(np.array(plotsize)/5)[0:2]
+    figSIZE = figSIZE/np.min(figSIZE)
     if dim[0] == dim[1] :
         if figSIZE[0] == figSIZE[1]:
             figSIZE = figSIZE*max(xy)
         if figSIZE[0] < figSIZE[1]:
             figSIZE = figSIZE*min(xy)
-        # print(figSIZE)
     elif dim[0] < dim[1]:
         figSIZE = np.ceil(figSIZE*min(xy))
-        # print(figSIZE)
-        # figSIZE = [figSIZE[1],figSIZE[0]]
         figSIZE = [np.max(figSIZE),np.min(figSIZE)]
         if dim[0] == 1:
             figSIZE[1] = np.ceil(figSIZE[1]/2)
     elif dim[0] > dim[1]:
         figSIZE = np.ceil(figSIZE*max(xy))
-        # print(figSIZE)
-        # figSIZE = [figSIZE[0],figSIZE[1]]
         figSIZE = [np.min(figSIZE),np.max(figSIZE)]
     figSIZE = np.array(figSIZE).astype(int)
-    
-    # elif SQUARE == True:
-        
-    
-    # print(figSIZE)
     return figSIZE
 
 

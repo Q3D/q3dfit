@@ -18,8 +18,7 @@ of stellar continuum, emission and absorption of dust and ices, and
 ionic and molecular emission lines.
 
 ``q3dfit`` has been tested on ground-based data where PSF is weakly
-wavelength-dependent. The update of ``q3dfit`` to the case of the strongly
-wavelength-dependent JWST PSF is currently in development.
+wavelength-dependent. Furthermore, it has been tested on a Q3D JWST/NIRSpec cube of a high-redshift quasar for the case of the strongly wavelength-dependent JWST PSF. Continuous updates of ``q3dfit`` to NIRSpec and MIRI specifics is under active development and software releases will happen on a regular basis.
 
 ``q3dfit`` developers are:
 * David Rupke (Rhodes College, software lead)

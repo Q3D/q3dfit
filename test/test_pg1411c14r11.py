@@ -1,11 +1,11 @@
 q3di = 'pg1411/q3di.npy'
 
 from os import chdir
-chdir('../jnb/')
+chdir('../q3dfit/jnb/')
 
 # Fitting
-from q3dfit.q3df import q3df
-q3df(q3di, ncores=10)
+from q3dfit.q3dfit import q3dfit
+q3dfit(q3di, cols=14, rows=11) #ncores=10)
 
 # Plotting
 # from q3dfit.q3dout import load_q3dout
@@ -30,5 +30,5 @@ q3df(q3di, ncores=10)
 # q3do.plot_cont(q3di, plotargs=argscontplot)
 
 # Collating
-#from q3dfit.q3da import q3da
-#q3da(q3di, cols=[5,10], rows=[5,10])
+#from q3dfit.q3dcollect import q3dcollect
+#q3dcollect(q3di) #, cols=[5,10], rows=[5,10])

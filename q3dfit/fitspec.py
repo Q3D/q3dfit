@@ -10,7 +10,7 @@ from astropy.table import Table
 from importlib import import_module
 from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
-from q3dfit.airtovac import airtovac
+from q3dfit.math import airtovac
 from q3dfit.interptemp import interptemp
 from q3dfit.masklin import masklin
 from scipy.interpolate import interp1d

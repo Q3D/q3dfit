@@ -10,16 +10,17 @@ from astropy.table import Table
 from q3dfit.data import linelists
 
 
-def q3da(q3di, cols=None, rows=None, quiet=True):
+def q3dcollect(q3di, cols=None, rows=None, quiet=True):
     """
     Routine to collate spaxel information together.
 
-    As input, it requires a q3di object and the q3do objects output by the fit.
+    As input, it requires a q3din object and the q3dout objects output by
+    the fit.
 
     Parameters
     ----------
     q3di: in, required, type=string
-        Name of procedure to initialize the fit.
+        Name of object to initialize the fit.
     cols: in, optional, type=intarr, default=all
         Columns to fit, in 1-offset format. Either a scalar or a
         two-element vector listing the first and last columns to fit.
@@ -164,6 +165,10 @@ def q3da(q3di, cols=None, rows=None, quiet=True):
                                             cube.nwave))
 
     # LOOP THROUGH SPAXELS
+
+    # track first continuum fit
+    firstcontfit = True
+
     for ispax in range(0, nspax):
 
         i = colarr[ispax]
@@ -171,7 +176,6 @@ def q3da(q3di, cols=None, rows=None, quiet=True):
 
         if not quiet:
             print(f'Column {i+1} of {cube.ncols}')
-
 
         # set up labeling
 
@@ -306,9 +310,11 @@ def q3da(q3di, cols=None, rows=None, quiet=True):
             # Collate continuum data
             if q3do.docontfit:
 
+
                 # Add wavelength to output cubes
-                if ispax == 0:
+                if firstcontfit:
                     contcube['wave'] = q3do.wave
+                    firstcontfit = False
 
                 contcube['npts'][i, j] = len(q3do.fitran_indx)
 
@@ -393,11 +399,11 @@ def q3da(q3di, cols=None, rows=None, quiet=True):
                  emlflx=emlflx, emlflxerr=emlflxerr,
                  emlweq=emlweq, emlncomp=emlncomp,
                  ncols=cube.ncols, nrows=cube.nrows)
-        print('q3da: Saving emission-line fit results into '+outfile)
+        print('q3dcollect: Saving emission-line fit results into '+outfile)
     if q3di.docontfit:
         outfile = '{0.outdir}{0.label}'.format(q3di)+'.cont.npy'
         np.save(outfile, contcube)
-        print('q3da: Saving continuum fit results into '+outfile)
+        print('q3dcollect: Saving continuum fit results into '+outfile)
 
 # def cap_range(x1, x2, n):
 #     a = np.zeros(1, dtype=float)

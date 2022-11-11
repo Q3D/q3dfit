@@ -43,10 +43,11 @@ __credits__ = ['Carlos Anicetti', 'David Rupke']
 __created__ = '2020 June 29'
 __last_modified__ = '2021 Feb 22'
 
+
 # invoke the correct q3df helper function depending on whether this is to a
 # single or multi-threaded process
-def q3df(initproc, cols=None, rows=None, onefit=False, ncores=1,
-         quiet=True, mpipath=None):
+def q3dfit(initproc, cols=None, rows=None, onefit=False, ncores=1,
+           quiet=True, mpipath=None):
     if ncores == 1:
         from q3dfit.q3df_helperFunctions import q3df_oneCore
         q3df_oneCore(initproc, cols, rows, onefit, quiet)

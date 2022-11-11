@@ -10,8 +10,8 @@ import q3dfit.utility as util
 from astropy.table import Table
 from importlib import import_module
 from ppxf.ppxf_util import log_rebin
-from q3dfit.gaussflux import gaussflux
-from q3dfit.lmlabel import lmlabel
+from q3dfit.math import gaussflux
+from q3dfit.utility import lmlabel
 from q3dfit.qsohostfcn import qsohostfcn
 from scipy import constants
 from scipy.interpolate import interp1d
@@ -519,10 +519,10 @@ class q3dout:
                 qsowave = qsotemplate['wave']
                 qsoflux_full = qsotemplate['flux']
 
-                iqsoflux = \
-                    np.where((qsowave >= q3dii.fitrange[0]) &
-                             (qsowave <= q3dii.fitrange[1]))
-                qsoflux = qsoflux_full[iqsoflux]
+                #iqsoflux = \
+                #    np.where((qsowave >= q3dii.fitrange[0]) &
+                #             (qsowave <= q3dii.fitrange[1]))
+                qsoflux = qsoflux_full[self.fitran_indx]
 
                 # If polynomial residual is re-fit with PPXF,
                 # compute polynomial component

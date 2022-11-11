@@ -12,7 +12,7 @@ import os.path
 from q3dfit.readcube import Cube
 
 
-class q3di:
+class q3din:
     '''
     Initialize fit.
 
@@ -45,7 +45,7 @@ class q3di:
     Examples
     --------
     >>> from q3dfit import q3di
-    >>> q3di = q3di('file.fits')
+    >>> q3di = q3din('file.fits')
 
     Notes
     -----

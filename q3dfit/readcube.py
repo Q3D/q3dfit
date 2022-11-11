@@ -4,7 +4,6 @@ This module contains the Cube class for reading in and containing a data cube
 
 import copy
 import numpy as np
-import pdb
 import re
 import warnings
 

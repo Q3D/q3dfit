@@ -1,3 +1,8 @@
+import numpy as np
+import pdb
+from astropy.constants import c
+
+
 def masklin(llambda, linelambda, halfwidth, nomaskran=None):
     """
 
@@ -61,11 +66,6 @@ def masklin(llambda, linelambda, halfwidth, nomaskran=None):
     plt.show()
 
     """
-
-    import numpy as np
-    import pdb
-    from astropy.constants import c
-
     # we will return the ones that are not masked
 
     # start by retaining all elements -- mark them all True

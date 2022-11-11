@@ -2,6 +2,7 @@ import numpy as np
 from q3dfit.readcube import Cube
 import matplotlib.pyplot as plt
 
+
 def select_spaxels(infits, datext=0, varext=1, dqext=2, wavext=None,
                    wmapext=None, plot=True, waveunit_in='micron',
                    waveunit_out='micron',wavelength_segments=[]):
@@ -84,7 +85,7 @@ def mom8_map(infits, datext=0, varext=1, dqext=2, wavext=None,
     indx_bd = np.where(dq!=0)
     flux[indx_bd] = 0.
     err[indx_bd] = 0.
-    
+
     if len(wavelength_segments) > 0:
         SNR_map = np.zeros((flux.shape[0],flux.shape[1]))
         mom8 = np.zeros((flux.shape[0],flux.shape[1]))
@@ -98,21 +99,21 @@ def mom8_map(infits, datext=0, varext=1, dqext=2, wavext=None,
         SNR_map = mom8/mom8_var**0.5
         indx_bd_SNR = np.where((SNR_map == np.inf) | (SNR_map == -np.inf) )
         SNR_map[indx_bd_SNR] = 0.
-        
+
         indx_bd_SNR = np.where((np.isnan(SNR_map) == True))
         SNR_map[indx_bd_SNR] = 0.
-        
+
         spaxels_to_fit = np.where(SNR_map>SNR_cut)
-        
-        
+
+
     return SNR_map,spaxels_to_fit
-        
+
 def M_N(v,i_v,m_0,m_1,n):
     M_N  = sum(i_v*(v-m_1)**n)/m_0
     if np.isnan(M_N):
         M_N = 0
     return M_N
-    
+
 if __name__ == "__main__":
 #    cube = Cube(infile='../../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2.fits',datext=0, varext=1, dqext=2, wavext=None, wmapext=None)
 
@@ -167,7 +168,7 @@ if __name__ == "__main__":
     M_0 = M_0[np.where(M_2>1.)]
     M_1 = M_1[np.where(M_2>1.)]
     M_2 = M_2[np.where(M_2>1.)]
-    
+
 
     N_sigma = 3
     for i in np.arange(0,spec_good.shape[0]):
@@ -176,7 +177,7 @@ if __name__ == "__main__":
         M_0[i] = np.sum(spec_good[i][np.int(M_1[i]-M_2[i]*N_sigma):int(M_1[i]+M_2[i]*N_sigma)])
         M_1[i] = np.sum(v[np.int(M_1[i]-M_2[i]*N_sigma):np.int(M_1[i]+M_2[i]*N_sigma)]*spec_good[i][np.int(M_1[i]-M_2[i]*N_sigma):np.int(M_1[i]+M_2[i]*N_sigma)])/M_0[i]
         M_2[i] = M_N(v[np.int(M_1[i]-M_2[i]*N_sigma):np.int(M_1[i]+M_2[i]*N_sigma)],spec_good[i][np.int(M_1[i]-M_2[i]*N_sigma):np.int(M_1[i]+M_2[i]*N_sigma)],M_0[i],M_1[i],2)**0.5
-    
+
     I[loc_good_II] = M_0
     V[loc_good_II] = M_1
     D[loc_good_II] = M_2

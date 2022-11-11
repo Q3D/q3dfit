@@ -21,7 +21,6 @@ import os
 def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, specConv,
             lineratio=None, siglim=None, sigfix=None, blrcomp=None,
             blrlines=None, specres=None, waves=None):
-
     # Get fixed-ratio doublet pairs for tying intensities
     data_path = os.path.abspath(q3dfit.data.__file__)[:-11]
     doublets = Table.read(data_path+'linelists/doublets.tbl', format='ipac')
@@ -148,18 +147,23 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, sp
             'comp' not in lineratio.colnames:
             raise InitializationError('The lineratio table must contain' +
                                       ' the line1, line2, and comp columns')
-        else:
-            for ilinrat in range(0, len(lineratio)):
-                line1 = lineratio['line1'][ilinrat]
-                line2 = lineratio['line2'][ilinrat]
-                comp = lineratio['comp'][ilinrat]
-                lmline1 = lmlabel(line1)
-                lmline2 = lmlabel(line2)
+        
+        for ilinrat in range(0, len(lineratio)):
+            line1 = lineratio['line1'][ilinrat]
+            line2 = lineratio['line2'][ilinrat]
+            lmline1 = lmlabel(line1)
+            lmline2 = lmlabel(line2)
+            comps = lineratio['comp'][ilinrat]
+            for comp in comps:
+                
+                print(f'{lmline1.lmlabel}_{comp}_flx')
                 if f'{lmline1.lmlabel}_{comp}_flx' in fit_params.keys() and \
                     f'{lmline2.lmlabel}_{comp}_flx' in fit_params.keys():
                     # set initial value
                     if 'value' in lineratio.colnames:
                         initval = lineratio['value'][ilinrat]
+                        print('here')
+                        print(initval)
                     else:
                         initval = \
                             np.divide(

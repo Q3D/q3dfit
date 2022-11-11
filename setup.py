@@ -7,6 +7,7 @@ setup(
     author='David Rupke',
     author_email='drupke@gmail.com',
     license='GPL-3',
+    long_description='Model astronomical data from integral field spectrographs.',
 
     packages=find_packages(),
 

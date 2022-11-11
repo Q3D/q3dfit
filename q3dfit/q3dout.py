@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-  @author: Caroline Bertemes, based on q3da by hadley
+@author: Caroline Bertemes, based on q3da by hadley
 """
 
 import copy
 import numpy as np
-
-# not importing everything at once results in a weird circular error
-import q3dfit.q3df_helperFunctions as q3dutil
-#from q3dfit.q3df_helperFunctions import __get_Cube, __get_q3dio
+import q3dfit.utility as util
 
 from astropy.table import Table
 from importlib import import_module
@@ -45,9 +42,13 @@ def load_q3dout(q3di, col, row, cubedim=None):
         DESCRIPTION.
 
     """
-    filelab = '{0.outdir}{0.label}'.format(q3di)
+
+    # convert from string to object if necessary.
+    q3dii = util.get_q3dio(q3di)
+
+    filelab = '{0.outdir}{0.label}'.format(q3dii)
     if cubedim is None:
-        cube, vormap = q3dutil.__get_Cube(q3di)
+        cube, vormap = util.get_Cube(q3dii)
         cubedim = cube.dat.ndim
     if cubedim > 1:
         filelab += '_{:04d}'.format(col)
@@ -56,7 +57,7 @@ def load_q3dout(q3di, col, row, cubedim=None):
     infile = filelab + '.npy'
 
     # this should work for both q3di and q3do
-    q3dout = q3dutil.__get_q3dio(infile)
+    q3dout = util.get_q3dio(infile)
     # add file label to object
     q3dout.filelab = filelab
     return q3dout
@@ -143,9 +144,7 @@ class q3dout:
         # gd_indx is applied, and then ct_indx
         self.ct_indx = ct_indx
 
-
     def sepfitpars(self, waveran=None, tflux=False, doublets=None):
-
         """
         Convert output of LMFIT, with best-fit line parameters in a single
         array, into a structure with separate arrays for different line
@@ -161,7 +160,8 @@ class q3dout:
         perror : ndarray, shape (N,)
             Errors in best fit parameters, output by MPFIT.
         parinfo : dict (the old version's type is structure)
-            Dictionary input into MPFIT. Each tag has N values, one per parameter.
+            Dictionary input into MPFIT. Each tag has N values,
+            one per parameter.
             Used to sort param and perror arrays.
         waveran: ndarray, shape (2,), optional
             Set to upper and lower limits to return line parameters only
@@ -171,7 +171,8 @@ class q3dout:
         Returns
         -------
         dict
-            A structure with separate hashes for different line parameters. The dictionaries
+            A structure with separate hashes for different line parameters.
+            The dictionaries
             are indexed by line, and each value is an array over components.
             Tags: flux, fluxerr, fluxpk, fluxpkerr, nolines, wave, and sigma.
         """
@@ -412,8 +413,10 @@ class q3dout:
             # Special doublet cases: combine fluxes from each line
             if doublets is not None:
 
-                for (name1, name2) in zip(doublets['line1'], doublets['line2']):
-                    if name1 in self.linelist['name'] and name2 in self.linelist['name']:
+                for (name1, name2) in zip(doublets['line1'],
+                                          doublets['line2']):
+                    if name1 in self.linelist['name'] and \
+                        name2 in self.linelist['name']:
                         # new line label
                         dkey = name1+'+'+name2
                         # add fluxes
@@ -451,14 +454,15 @@ class q3dout:
     def sepcontpars(self, q3di):
         '''
         '''
+        q3dii = util.get_q3dio(q3di)
 
         # Compute PPXF components: additive polynomial and stellar fit
-        if q3di.decompose_ppxf_fit:
+        if q3dii.decompose_ppxf_fit:
             self.add_poly_degree = 4  # should match fitspec
-            if q3di.argscontfit is not None:
-                if 'add_poly_degree' in q3di.argscontfit:
+            if q3dii.argscontfit is not None:
+                if 'add_poly_degree' in q3dii.argscontfit:
                     add_poly_degree = \
-                        q3di.argscontfit['add_poly_degree']
+                        q3dii.argscontfit['add_poly_degree']
             # Compute polynomial
             dumy_log, wave_log, _ = \
                 log_rebin([self.wave[0],
@@ -479,51 +483,51 @@ class q3dout:
                                              self.cont_fit_poly)
 
         # Compute FITQSOHOST components
-        elif q3di.decompose_qso_fit:
+        elif q3dii.decompose_qso_fit:
 
             self.qsomod = 0.
             self.hostmod = 0.
             self.polymod_refit = np.zeros(len(self.wave),
                                           dtype=float)
 
-            if q3di.fcncontfit == 'fitqsohost':
-                if 'qsoord' in q3di.argscontfit:
-                    qsoord = q3di.argscontfit['qsoord']
+            if q3dii.fcncontfit == 'fitqsohost':
+                if 'qsoord' in q3dii.argscontfit:
+                    qsoord = q3dii.argscontfit['qsoord']
                 else:
                     qsoord = None
 
-                if 'hostord' in q3di.argscontfit:
-                    hostord = q3di.argscontfit['hostord']
+                if 'hostord' in q3dii.argscontfit:
+                    hostord = q3dii.argscontfit['hostord']
                 else:
                     hostord = None
                 # copy of BLR fit parameters from argscontfit
-                if 'blrpar' in q3di.argscontfit:
-                    self.blrpar = q3di.argscontfit['blrpar']
+                if 'blrpar' in q3dii.argscontfit:
+                    self.blrpar = q3dii.argscontfit['blrpar']
                 else:
                     self.blrpar = None
                 # default here must be same as in IFSF_FITQSOHOST
-                if 'add_poly_degree' in q3di.argscontfit:
+                if 'add_poly_degree' in q3dii.argscontfit:
                     self.add_poly_degree = \
-                        q3di.argscontfit['add_poly_degree']
+                        q3dii.argscontfit['add_poly_degree']
                 else:
                     self.add_poly_degree = 30
 
                 # Get and renormalize template
                 qsotemplate = \
-                    np.load(q3di.argscontfit['qsoxdr'],
+                    np.load(q3dii.argscontfit['qsoxdr'],
                             allow_pickle='TRUE').item()
                 qsowave = qsotemplate['wave']
                 qsoflux_full = qsotemplate['flux']
 
                 iqsoflux = \
-                    np.where((qsowave >= q3di.fitrange[0]) &
-                             (qsowave <= q3di.fitrange[1]))
+                    np.where((qsowave >= q3dii.fitrange[0]) &
+                             (qsowave <= q3dii.fitrange[1]))
                 qsoflux = qsoflux_full[iqsoflux]
 
                 # If polynomial residual is re-fit with PPXF,
                 # compute polynomial component
-                if 'refit' in q3di.argscontfit and \
-                    'args_questfit' not in q3di.argscontfit:
+                if 'refit' in q3dii.argscontfit and \
+                    'args_questfit' not in q3dii.argscontfit:
 
                     par_qsohost = self.ct_coeff['qso_host']
                     # par_stel = self.ct_coeff']['stel']
@@ -545,8 +549,8 @@ class q3dout:
                             interpfunct(np.log(self.wave))
 
                 # Refitting with questfit in the MIR
-                elif 'refit' in q3di.argscontfit and \
-                    q3di.argscontfit['refit'] == 'questfit':
+                elif 'refit' in q3dii.argscontfit and \
+                    q3dii.argscontfit['refit'] == 'questfit':
 
                     par_qsohost = self.ct_coeff['qso_host']
                 else:
@@ -566,7 +570,7 @@ class q3dout:
                 # if continuum is tweaked in any region, subide resulting residual
                 # proportionality @ each wavelength btwn qso and host components
                 # qsomod_notweak = qsomod
-                # if q3di.tweakcntfit is not None:
+                # if q3dii.tweakcntfit is not None:
                 #     modresid = self.cont_fit - self.cont_fit_pretweak
                 #     inz = np.where((qsomod != 0) & (hostmod != 0))[0]
                 #     qsofrac = np.zeros(len(qsomod))
@@ -588,10 +592,10 @@ class q3dout:
                     self.qsomod_blronly = 0.
 
             # CB: adding option to plot decomposed QSO fit if questfit is used
-            elif q3di.fcncontfit == 'questfit':
+            elif q3dii.fcncontfit == 'questfit':
                 from q3dfit.questfit import quest_extract_QSO_contrib
                 self.qsomod, self.hostmod, qsomod_intr, hostmod_intr = \
-                    quest_extract_QSO_contrib(self.ct_coeff, q3di)
+                    quest_extract_QSO_contrib(self.ct_coeff, q3dii)
                 # qsomod_polynorm = 1.
                 # qsomod_notweak = self.qsomod
                 qsoflux = self.qsomod.copy()/np.median(self.qsomod)
@@ -611,6 +615,10 @@ class q3dout:
                   plotargs={}):
         '''
         '''
+
+        # if inline is False:
+        #    mpl.use('agg')
+
         if self.dolinefit:
             mod = import_module('q3dfit.plot')
             plotline = getattr(mod, fcn)
@@ -627,13 +635,21 @@ class q3dout:
                     outfile = outfile+'_lin'
             plotline(self, savefig=savefig, outfile=outfile,
                      **plotargs)
+        else:
+            print('plot_line: no lines to plot!')
 
     def plot_cont(self, q3di, fcn='plotcont', savefig=False, outfile=None,
                   plotargs={}):
         '''
         Continuum plotting function
         '''
+
+        # if inline is False:
+        #    mpl.use('agg')
+
         if self.docontfit:
+
+            q3dii = util.get_q3dio(q3di)
 
             mod = import_module('q3dfit.plot')
             plotcont = getattr(mod, fcn)
@@ -654,7 +670,7 @@ class q3dout:
                 outfilehost = None
 
             # Plot QSO and host only continuum fit
-            if q3di.decompose_qso_fit:
+            if q3dii.decompose_qso_fit:
 
                 q3do_host = copy.deepcopy(self)
                 q3do_qso = copy.deepcopy(self)
@@ -671,7 +687,7 @@ class q3dout:
 
                     # Host only plot
                     # assume argscontfit exists if we're doing fitqsohost
-                    if 'refit' in q3di.argscontfit:
+                    if 'refit' in q3dii.argscontfit:
                         compspec = np.array([self.polymod_refit,
                                              self.hostmod-self.polymod_refit])
                         comptitles = ['ord. ' + str(self.add_poly_degree) +
@@ -681,8 +697,8 @@ class q3dout:
                         comptitles = ['exponential terms']
                     plotcont(q3do_host, savefig=savefig, outfile=outfilehost,
                              compspec=compspec, comptitles=comptitles,
-                             title='Host', fitran=q3di.fitrange,
-                             q3di=q3di, **plotargs)
+                             title='Host', fitran=q3dii.fitrange,
+                             q3di=q3dii, **plotargs)
 
                     # QSO only plot
                     if self.blrpar is not None and \
@@ -698,28 +714,28 @@ class q3dout:
                         compspec = [self.qsomod_normonly.copy()]
                         comptitles = ['raw template']
 
-                    if q3di.fcncontfit != 'questfit':
+                    if q3dii.fcncontfit != 'questfit':
                         plotcont(q3do_qso, savefig=savefig, outfile=outfileqso,
                                  compspec=compspec, comptitles=comptitles,
-                                 title='QSO', fitran=q3di.fitrange,
-                                 q3di=q3di, **plotargs)
+                                 title='QSO', fitran=q3dii.fitrange,
+                                 q3di=q3dii, **plotargs)
                     else:
                         plotcont(q3do_qso, savefig=savefig, outfile=outfileqso,
                                  compspec=[q3do_qso.cont_fit],
-                                 title='QSO', fitran=q3di.fitrange,
-                                 comptitles=['QSO'], q3di=q3di,
+                                 title='QSO', fitran=q3dii.fitrange,
+                                 comptitles=['QSO'], q3di=q3dii,
                                  **plotargs)
 
             if sum(self.cont_fit) != 0.0:
 
-                if q3di.decompose_qso_fit:
+                if q3dii.decompose_qso_fit:
                     plotcont(self, savefig=savefig, outfile=outfilecnt,
                              compspec=np.array([self.qsomod, self.hostmod]),
                              title='Total', comptitles=['QSO', 'host'],
-                             fitran=q3di.fitrange, q3di=q3di,
+                             fitran=q3dii.fitrange, q3di=q3dii,
                              **plotargs)
 
-                elif q3di.decompose_ppxf_fit:
+                elif q3dii.decompose_ppxf_fit:
                     plotcont(self, savefig=savefig, outfile=outfilecnt,
                              compspec=np.array([self.cont_fit_stel,
                                                 self.cont_fit_poly]),
@@ -727,12 +743,12 @@ class q3dout:
                              comptitles=['stel. temp.', 'ord. ' +
                                          str(self.add_poly_degree) +
                                          'Leg.poly'],
-                             fitran=q3di.fitrange, q3di=q3di,
+                             fitran=q3dii.fitrange, q3di=q3dii,
                              **plotargs)
                 else:
                     plotcont(self, savefig=savefig, outfile=outfilecnt,
-                             fitran=q3di.fitrange,
-                             q3di=q3di,
+                             fitran=q3dii.fitrange,
+                             q3di=q3dii,
                              ct_coeff=self.ct_coeff,
                              title='Total', **plotargs)
 
@@ -740,9 +756,9 @@ class q3dout:
                 # Make sure fit doesn't indicate no continuum; avoids
                 # plot range error in continuum fitting routine,
                 # as well as a blank plot!
-                # if not noplots and q3di.argscontfit is not None:
-                #     if 'plot_decomp' in q3di.argscontfit'].keys():
-                #         if q3di.argscontfit']['plot_decomp']:
+                # if not noplots and q3dii.argscontfit is not None:
+                #     if 'plot_decomp' in q3dii.argscontfit'].keys():
+                #         if q3dii.argscontfit']['plot_decomp']:
                 #             from q3dfit.plot_quest import plot_quest
                 #             if not q3do.noemlinfit']:
                 #                 lam_lines = \
@@ -752,7 +768,9 @@ class q3dout:
                 #             plot_quest(q3do.wave'],
                 #                        q3do.cont_dat']+q3do.emlin_dat'],
                 #                        q3do.cont_fit']+q3do.emlin_fit'],
-                #                        q3do.ct_coeff'], q3di,
+                #                        q3do.ct_coeff'], q3dii,
                 #                        lines=lam_lines,
                 #                        linespec=q3do.emlin_fit'])
 
+        else:
+            print('plot_cont: no continuum to plot!')

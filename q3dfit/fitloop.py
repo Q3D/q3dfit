@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
+'''
+Created on Mon Jun  8 11:14:14 2020
+'''
 from q3dfit.exceptions import InitializationError
 from q3dfit.fitspec import fitspec
 
@@ -8,33 +10,34 @@ import importlib
 import numpy as np
 
 
-def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv, onefit,
-            quiet=True, logfile=None):
+def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
+            onefit=False, quiet=True, logfile=None):
     """
-Created on Mon Jun  8 11:14:14 2020
+    Take outputs from Q3DF and perform fitting loop.
 
-Take outputs from Q3DF and perform fitting loop.
+    Parameters
+    ----------
 
-Parameters
-----------
+    ispax : int
+        Value of index over which to loop
+    colarr : array
+        Column # of spaxel (0-offset)
+    rowarr : array
+        Row # of spaxel (0-offset)
+    cube : object
+        instance of Cube class
+    q3di : object
+        containing fit parameters
+    onefit : bool, default=False
+        If set, ignore second fit
+    quiet : bool, default=True
+        verbosity switch from Q3DF
+    logfile : str, optional, default=None
+         Name of log file
 
-ispax : int
-  Value of index over which to loop
-colarr : intarr(2)
-  Column # of spaxel (0-offset)
-rowarr : intarr(2)
-  Row # of spaxel (0-offset)
-cube : object
-  instance of Cube class
-q3di : object
-  containing fit parameters
-onefit : byte
-  If set, ignore second fit
-quiet : byte, default=True
-  verbosity switch from Q3DF
-logfile : strarr, optional, default=None
-     Names of log filesone per spaxel.
-
+    Returns
+    -------
+    Nothing.
     """
 
     if logfile is None:
@@ -216,7 +219,7 @@ logfile : strarr, optional, default=None
                 peakinit_tmp = None
                 siginit_gas_tmp = None
 
-                if q3di.dolinefit:
+                if q3do_init.dolinefit:
                     # set emission line mask parameters
                     q3do_init.sepfitpars()
                     listlinesz = q3do_init.line_fitpars['wave']
@@ -249,7 +252,7 @@ logfile : strarr, optional, default=None
 
             # Check components
 
-            if q3di.checkcomp and q3di.dolinefit and \
+            if q3di.checkcomp and q3do.dolinefit and \
                 not onefit and not abortfit:
 
                 siglim_gas = q3do.siglim

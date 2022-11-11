@@ -2,6 +2,7 @@
 
 import copy
 import numpy as np
+import q3dfit.q3dout as q3dout
 import time
 
 from astropy.constants import c
@@ -12,14 +13,13 @@ from ppxf.ppxf_util import log_rebin
 from q3dfit.airtovac import airtovac
 from q3dfit.interptemp import interptemp
 from q3dfit.masklin import masklin
-from q3dfit.q3dout import q3dout
 from scipy.interpolate import interp1d
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             specConv, q3di, maskwidths=None, peakinit=None, quiet=True,
             siginit_gas=None,  siginit_stars=None, siglim_gas=None,
-            tweakcntfit=None, col=None, row=None, logfile=None):
+            tweakcntfit=None, logfile=None):
     """
     This function is the core routine to fit the continuum and emission
     lines of a spectrum.
@@ -27,41 +27,41 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     Parameters
     ----------
 
-    lambda : dblarr(npix)
+    wlambda : array
         Spectrum, observed-frame wavelengths.
-    flux : dblarr(npix)
+    flux : array
         Spectrum, fluxes.
-    err : dblarr(npix)
+    err : array
         Spectrum, flux errors.
-    zstar : ?
+    zstar : float
         Initial guess for stellar redshift
-    listlines : ?
+    listlines :
         Emission line rest frame wavelengths
-    listlinesz : ?
+    listlinesz :
         Emission line observed frame wavelengths.
     logfile : str
-    ncomp : ?
+    ncomp : dict
         Number of components fit to each line.
-    q3di : dict
-        Structure of initialization parameters
-    maskwidths : hash(lines,maxncomp), optional, default=None
+    q3di : object
+        initialization parameters
+    maskwidths : dict(lines,maxncomp), optional, default=None
         Widths, in km/s, of regions to mask from continuum fit. If not
         set, routine defaults to +/- 500 km/s. Can also be set in q3di.
         Routine prioritizes the keyword definition.
-    peakinit : hash(lines,maxncomp), optional, default=None
+    peakinit : dict(lines,maxncomp), optional, default=None
         Initial guesses for peak emission-line flux densities. If not
         set, routine guesses from spectrum. Can also be set in q3di.
         Routine prioritizes the keyword definition.
-    quiet : byte, optional, default=True
+    quiet : bool, optional, default=True
         Use to prevent detailed output to screen. Default is to print
         detailed output.
-    siginit_gas : hash(lines, maxncomp), optional, default=None
+    siginit_gas : dict(lines, maxncomp), optional, default=None
         Initial guess for emission line widths for fitting.
     siginit_stars : float, optional, default=None
         Initial guess for stellar line widths for fitting.
-    siglim_gas: in, optional, type=dblarr(2)
+    siglim_gas: array, optional, type=dblarr(2)
         Sigma limits for line fitting.
-    tweakcntfit : dblarr(3,nregions), optional, default=None
+    tweakcntfit : array, optional, default=None
         Parameters for tweaking continuum fit with localized polynomials. For
         each of nregions regions, array contains lower limit, upper limit, and
         polynomial degree.
@@ -214,8 +214,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # Initialize fit
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    q3do = q3dout(gdlambda, gdflux, gderr, fitrange=fitran, gd_indx=gd_indx,
-                   fitran_indx=fitran_indx)
+    q3do = q3dout.q3dout(gdlambda, gdflux, gderr, fitrange=fitran,
+                         gd_indx=gd_indx, fitran_indx=fitran_indx)
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # Fit continuum
@@ -406,202 +406,213 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     parinit = []
+
+
     if q3di.dolinefit:
 
         q3do.init_linefit(listlines, q3di.lines, q3di.maxncomp,
-                           line_dat=continuum)
+                          line_dat=continuum)
 
-        # Initial guesses for emission line peak fluxes (above continuum)
-        if peakinit is None:
-            if q3di.peakinit is not None:
-                peakinit = q3di.peakinit
-            else:
-                peakinit = {line: None for line in q3di.lines}
-                # apply some light filtering
-                # https://stackoverflow.com/questions/20618804/how-to-smooth-a-curve-in-the-right-way/20642478
-                # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html
-                from scipy.signal import savgol_filter
-                line_dat_sm = savgol_filter(q3do.line_dat, 11, 3)
-                # fline = interp1d(gdlambda, line_dat_sm, kind='linear')
-                for line in q3di.lines:
-                    # Check that line wavelength is in data range
-                    # Use first component as a proxy for all components
-                    if listlinesz[line][0] >= min(gdlambda) and \
-                        listlinesz[line][0] <= max(gdlambda):
-                        # peakinit[line] = fline(listlinesz[line][0:ncomp[line]])
-                        # look for peak within dz = +/-0.001
-                        peakinit[line] = np.zeros(q3di.maxncomp)
-                        for icomp in range(0, ncomp[line]):
-                            # https://stackoverflow.com/questions/12141150/from-list-of-integers-get-number-closest-to-a-given-value
-                            lamwin = \
-                                [min(gdlambda, key=lambda x:
-                                    abs(x - listlinesz[line][icomp]*0.999)),
-                                 min(gdlambda, key=lambda x:
-                                     abs(x - listlinesz[line][icomp]*1.001))]
-                            ilamwin = [np.where(gdlambda == lamwin[0])[0][0],
-                                       np.where(gdlambda == lamwin[1])[0][0]]
-                            # e.g. in the MIR, the wavelength range spanned by
-                            # (listlinesz[line][icomp]*0.999,
-                            # listlinesz[line][icomp]*1.001) can be smaller
-                            # than one spectral element
-                            if ilamwin[1]-ilamwin[0] < 10:
-                                dlam = \
-                                    gdlambda[int(0.5*(ilamwin[0] +
-                                                      ilamwin[1]))]\
-                                    - gdlambda[int(0.5*(ilamwin[0] +
-                                                        ilamwin[1]))-1]
+        # Check that # components being fit to at least one line is > 0
+        nonzerocomp = np.where(np.array(list(ncomp.values())) != 0)[0]
+        if len(nonzerocomp) > 0:
+
+            # Initial guesses for emission line peak fluxes (above continuum)
+            if peakinit is None:
+                if q3di.peakinit is not None:
+                    peakinit = q3di.peakinit
+                else:
+                    peakinit = {line: None for line in q3di.lines}
+                    # apply some light filtering
+                    # https://stackoverflow.com/questions/20618804/how-to-smooth-a-curve-in-the-right-way/20642478
+                    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html
+                    from scipy.signal import savgol_filter
+                    line_dat_sm = savgol_filter(q3do.line_dat, 11, 3)
+                    # fline = interp1d(gdlambda, line_dat_sm, kind='linear')
+                    for line in q3di.lines:
+                        # Check that line wavelength is in data range
+                        # Use first component as a proxy for all components
+                        if listlinesz[line][0] >= min(gdlambda) and \
+                            listlinesz[line][0] <= max(gdlambda):
+                            # peakinit[line] = fline(listlinesz[line][0:ncomp[line]])
+                            # look for peak within dz = +/-0.001
+                            peakinit[line] = np.zeros(q3di.maxncomp)
+                            for icomp in range(0, ncomp[line]):
+                                # https://stackoverflow.com/questions/12141150/from-list-of-integers-get-number-closest-to-a-given-value
                                 lamwin = \
                                     [min(gdlambda, key=lambda x:
-                                         abs(x - (listlinesz[line][icomp] -
-                                                  5.*dlam))),
+                                        abs(x - listlinesz[line][icomp]*0.999)),
                                      min(gdlambda, key=lambda x:
-                                         abs(x - (listlinesz[line][icomp] +
-                                                  5.*dlam)))]
-                                ilamwin = \
-                                    [np.where(gdlambda == lamwin[0])[0][0],
-                                     np.where(gdlambda == lamwin[1])[0][0]]
+                                         abs(x - listlinesz[line][icomp]*1.001))]
+                                ilamwin = [np.where(gdlambda == lamwin[0])[0][0],
+                                           np.where(gdlambda == lamwin[1])[0][0]]
+                                # e.g. in the MIR, the wavelength range spanned by
+                                # (listlinesz[line][icomp]*0.999,
+                                # listlinesz[line][icomp]*1.001) can be smaller
+                                # than one spectral element
+                                if ilamwin[1]-ilamwin[0] < 10:
+                                    dlam = \
+                                        gdlambda[int(0.5*(ilamwin[0] +
+                                                          ilamwin[1]))]\
+                                        - gdlambda[int(0.5*(ilamwin[0] +
+                                                            ilamwin[1]))-1]
+                                    lamwin = \
+                                        [min(gdlambda, key=lambda x:
+                                             abs(x - (listlinesz[line][icomp] -
+                                                      5.*dlam))),
+                                         min(gdlambda, key=lambda x:
+                                             abs(x - (listlinesz[line][icomp] +
+                                                      5.*dlam)))]
+                                    ilamwin = \
+                                        [np.where(gdlambda == lamwin[0])[0][0],
+                                         np.where(gdlambda == lamwin[1])[0][0]]
 
-                            peakinit[line][icomp] = \
-                                np.nanmax(line_dat_sm
-                                          [ilamwin[0]:ilamwin[1]])
-
-                            # If the smoothed version gives all nans, try
-                            # unsmoothed
-                            if np.isnan(peakinit[line][icomp]):
                                 peakinit[line][icomp] = \
-                                np.nanmax(q3do.line_dat[ilamwin[0]:ilamwin[1]])
-                            # if it's still all nans, just set to 0.
-                            if np.isnan(peakinit[line][icomp]):
-                                peakinit[line][icomp] = 0.
-                        # If initial guess is negative, set to 0 to prevent
-                        # fitter from choking (since we limit peak to be >= 0)
-                        peakinit[line] = \
-                            np.where(peakinit[line] < 0., 0., peakinit[line])
+                                    np.nanmax(line_dat_sm
+                                              [ilamwin[0]:ilamwin[1]])
+
+                                # If the smoothed version gives all nans, try
+                                # unsmoothed
+                                if np.isnan(peakinit[line][icomp]):
+                                    peakinit[line][icomp] = \
+                                    np.nanmax(q3do.line_dat[ilamwin[0]:ilamwin[1]])
+                                # if it's still all nans, just set to 0.
+                                if np.isnan(peakinit[line][icomp]):
+                                    peakinit[line][icomp] = 0.
+                            # If initial guess is negative, set to 0 to prevent
+                            # fitter from choking (since we limit peak to be >= 0)
+                            peakinit[line] = \
+                                np.where(peakinit[line] < 0., 0., peakinit[line])
+                        else:
+                            peakinit[line] = np.zeros(q3di.maxncomp)
+
+            # Initial guesses for emission line widths
+            if siginit_gas is None:
+                siginit_gas = {k: None for k in q3di.lines}
+                for line in q3di.lines:
+                    siginit_gas[line] = \
+                        np.zeros(q3di.maxncomp) + siginit_gas_def
+
+            # Fill out parameter structure with initial guesses and constraints
+            impModule = import_module('q3dfit.' + q3di.fcnlineinit)
+            run_fcnlineinit = getattr(impModule, q3di.fcnlineinit)
+            if q3di.argslineinit is not None:
+                argslineinit = q3di.argslineinit
+            else:
+                argslineinit = dict()
+            if q3di.fcnlineinit == 'lineinit':
+                argslineinit['waves'] = gdlambda
+            if siglim_gas is not None:
+                argslineinit['siglim'] = siglim_gas
+            emlmod, q3do.parinit, q3do.siglim = \
+                run_fcnlineinit(listlines, listlinesz, q3di.linetie, peakinit,
+                                siginit_gas, q3di.maxncomp, ncomp, specConv,
+                                **argslineinit)
+
+            # Actual fit
+
+            # Collect keywords to pass to the minimizer routine via lmfit
+            # Defaults
+            if quiet:
+                lmverbose = 0  # verbosity for scipy.optimize.least_squares
+            else:
+                lmverbose = 2
+            fit_kws = {'verbose': lmverbose}
+
+            # Maximum # evals cannot be specified as a keyword to the minimzer,
+            # as it's a parameter of the fit method. Default for 'least_squares'
+            # with 'trf' method (which is what lmfit assumes)
+            # is 100*npar, but lmfit changes this to 2000*(npar+1)
+            # https://github.com/lmfit/lmfit-py/blob/b930ddef320d93f984181db19fec8e9c9a41be8f/lmfit/minimizer.py#L1526
+            # We'll change default to 200*(npar+1).
+            # Note that lmfit method 'least_squares’ with default least_squares
+            # method 'lm' counts function calls in
+            # Jacobian estimation if numerical Jacobian is used (again the default)
+            max_nfev = 200*(len(parinit)+1)
+            iter_cb = None
+
+            # Add more using 'argslinefit' dict in init file
+            if q3di.argslinefit is not None:
+                for key, val in q3di.argslinefit.items():
+                    # max_nfev goes in as parameter to fit method instead
+                    if key == 'max_nfev':
+                        max_nfev = val
+                    # iter_cb goes in as parameter to fit method instead
+                    elif key == 'iter_cb':
+                        iter_cb = globals()[val]
                     else:
-                        peakinit[line] = np.zeros(q3di.maxncomp)
+                        fit_kws[key] = val
 
-        # Initial guesses for emission line widths
-        if siginit_gas is None:
-            siginit_gas = {k: None for k in q3di.lines}
-            for line in q3di.lines:
-                siginit_gas[line] = \
-                    np.zeros(q3di.maxncomp) + siginit_gas_def
+            lmout = emlmod.fit(q3do.line_dat, q3do.parinit, x=gdlambda,
+                               method='least_squares',
+                               weights=np.sqrt(gdinvvar_nocnt),
+                               nan_policy='omit', max_nfev=max_nfev,
+                               fit_kws=fit_kws, iter_cb=iter_cb)
 
-        # Fill out parameter structure with initial guesses and constraints
-        impModule = import_module('q3dfit.' + q3di.fcnlineinit)
-        run_fcnlineinit = getattr(impModule, q3di.fcnlineinit)
-        if q3di.argslineinit is not None:
-            argslineinit = q3di.argslineinit
-        else:
-            argslineinit = dict()
-        if q3di.fcnlineinit == 'lineinit':
-            argslineinit['waves'] = gdlambda
-        if siglim_gas is not None:
-            argslineinit['siglim'] = siglim_gas
-        emlmod, q3do.parinit, q3do.siglim = \
-            run_fcnlineinit(listlines, listlinesz, q3di.linetie, peakinit,
-                            siginit_gas, q3di.maxncomp, ncomp, specConv,
-                            **argslineinit)
-
-        # Actual fit
-
-        # Collect keywords to pass to the minimizer routine via lmfit
-        # Defaults
-        if quiet:
-            lmverbose = 0  # verbosity for scipy.optimize.least_squares
-        else:
-            lmverbose = 2
-        fit_kws = {'verbose': lmverbose}
-
-        # Maximum # evals cannot be specified as a keyword to the minimzer,
-        # as it's a parameter of the fit method. Default for 'least_squares'
-        # with 'trf' method (which is what lmfit assumes)
-        # is 100*npar, but lmfit changes this to 2000*(npar+1)
-        # https://github.com/lmfit/lmfit-py/blob/b930ddef320d93f984181db19fec8e9c9a41be8f/lmfit/minimizer.py#L1526
-        # We'll change default to 200*(npar+1).
-        # Note that lmfit method 'least_squares’ with default least_squares
-        # method 'lm' counts function calls in
-        # Jacobian estimation if numerical Jacobian is used (again the default)
-        max_nfev = 200*(len(parinit)+1)
-        iter_cb = None
-
-        # Add more using 'argslinefit' dict in init file
-        if q3di.argslinefit is not None:
-            for key, val in q3di.argslinefit.items():
-                # max_nfev goes in as parameter to fit method instead
-                if key == 'max_nfev':
-                    max_nfev = val
-                # iter_cb goes in as parameter to fit method instead
-                elif key == 'iter_cb':
-                    iter_cb = globals()[val]
-                else:
-                    fit_kws[key] = val
-
-        lmout = emlmod.fit(q3do.line_dat, q3do.parinit, x=gdlambda,
-                           method='least_squares',
-                           weights=np.sqrt(gdinvvar_nocnt),
-                           nan_policy='omit', max_nfev=max_nfev,
-                           fit_kws=fit_kws, iter_cb=iter_cb)
-
-        q3do.line_fit = emlmod.eval(lmout.params, x=gdlambda)
-        if not quiet:
-            print(lmout.fit_report(show_correl=False))
-
-        q3do.param = lmout.best_values
-        q3do.covar = lmout.covar
-        q3do.dof = lmout.nfree
-        q3do.redchisq = lmout.redchi
-        q3do.nfev = lmout.nfev
-
-        # error messages corresponding to LMFIT, plt
-        # documentation was not very helpful with the error messages...
-        # This can happen if, e.g., max_nfev is reached. Status message is in
-        # this case not set, so we'll set it by hand.
-        if not lmout.success:
-            print('lmfit: '+lmout.message, file=logfile)
+            q3do.line_fit = emlmod.eval(lmout.params, x=gdlambda)
             if not quiet:
-                print('lmfit: '+lmout.message)
-            q3do.fitstatus = 0
+                print(lmout.fit_report(show_correl=False))
+
+            q3do.param = lmout.best_values
+            q3do.covar = lmout.covar
+            q3do.dof = lmout.nfree
+            q3do.redchisq = lmout.redchi
+            q3do.nfev = lmout.nfev
+
+            # error messages corresponding to LMFIT, plt
+            # documentation was not very helpful with the error messages...
+            # This can happen if, e.g., max_nfev is reached. Status message is in
+            # this case not set, so we'll set it by hand.
+            if not lmout.success:
+                print('lmfit: '+lmout.message, file=logfile)
+                if not quiet:
+                    print('lmfit: '+lmout.message)
+                q3do.fitstatus = 0
+            else:
+                q3do.fitstatus = lmout.status
+
+            # Errors from covariance matrix and from fit residual.
+            # resid = gdflux - continuum - specfit
+            q3do.perror = dict()
+            for p in lmout.params:
+                q3do.perror[p] = lmout.params[p].stderr
+            q3do.perror_resid = copy.deepcopy(q3do.perror)
+            # sigrange = 20.
+            # for line in lines_arr:
+            #     iline = np.array([ip for ip, item in enumerate(parinit)
+            #                       if item['line'] == line])
+            #     ifluxpk = \
+            #         np.intersect1d(iline,
+            #                        np.array([ip for ip, item in enumerate(parinit)
+            #                                  if item['parname'] == 'flux_peak']))
+            #     ctfluxpk = len(ifluxpk)
+            #     isigma = \
+            #         np.intersect1d(iline,
+            #                        np.array([ip for ip, item in enumerate(parinit)
+            #                                  if item['parname'] == 'sigma']))
+            #     iwave = \
+            #         np.intersect1d(iline,
+            #                        np.array([ip for ip, item in enumerate(parinit)
+            #                                  if item['parname'] == 'wavelength']))
+            #     for i in range(0, ctfluxpk):
+            #         waverange = \
+            #             sigrange * np.sqrt(np.power((param[isigma[i]] /
+            #                                          c*param[iwave[i]]), 2.) +
+            #                                np.power(param[2], 2.))
+            #         wlo = np.searchsorted(gdlambda, param[iwave[i]] - waverange/2.)
+            #         whi = np.searchsorted(gdlambda, param[iwave[i]] + waverange/2.)
+            #         if whi == len(gdlambda)+1:
+            #             whi = len(gdlambda)-1
+            #         if param[ifluxpk[i]] > 0:
+            #             perror_resid[ifluxpk[i]] = \
+            #                 np.sqrt(np.mean(np.power(resid[wlo:whi], 2.)))
+
+            q3do.cont_dat = gdflux.copy() - q3do.line_fit
+
         else:
-            q3do.fitstatus = lmout.status
 
-        # Errors from covariance matrix and from fit residual.
-        # resid = gdflux - continuum - specfit
-        q3do.perror = dict()
-        for p in lmout.params:
-            q3do.perror[p] = lmout.params[p].stderr
-        q3do.perror_resid = copy.deepcopy(q3do.perror)
-        # sigrange = 20.
-        # for line in lines_arr:
-        #     iline = np.array([ip for ip, item in enumerate(parinit)
-        #                       if item['line'] == line])
-        #     ifluxpk = \
-        #         np.intersect1d(iline,
-        #                        np.array([ip for ip, item in enumerate(parinit)
-        #                                  if item['parname'] == 'flux_peak']))
-        #     ctfluxpk = len(ifluxpk)
-        #     isigma = \
-        #         np.intersect1d(iline,
-        #                        np.array([ip for ip, item in enumerate(parinit)
-        #                                  if item['parname'] == 'sigma']))
-        #     iwave = \
-        #         np.intersect1d(iline,
-        #                        np.array([ip for ip, item in enumerate(parinit)
-        #                                  if item['parname'] == 'wavelength']))
-        #     for i in range(0, ctfluxpk):
-        #         waverange = \
-        #             sigrange * np.sqrt(np.power((param[isigma[i]] /
-        #                                          c*param[iwave[i]]), 2.) +
-        #                                np.power(param[2], 2.))
-        #         wlo = np.searchsorted(gdlambda, param[iwave[i]] - waverange/2.)
-        #         whi = np.searchsorted(gdlambda, param[iwave[i]] + waverange/2.)
-        #         if whi == len(gdlambda)+1:
-        #             whi = len(gdlambda)-1
-        #         if param[ifluxpk[i]] > 0:
-        #             perror_resid[ifluxpk[i]] = \
-        #                 np.sqrt(np.mean(np.power(resid[wlo:whi], 2.)))
-
-        q3do.cont_dat = gdflux.copy() - q3do.line_fit
+            q3do.dolinefit = False
+            q3do.cont_dat = gdflux.copy()
 
     else:
 

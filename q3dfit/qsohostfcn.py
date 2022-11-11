@@ -1,8 +1,6 @@
 import lmfit
 import numpy as np
-import pdb
-# import scipy
-from astropy.constants import c
+
 from q3dfit.lmlabel import lmlabel
 from q3dfit.exceptions import InitializationError
 from q3dfit.lineinit import manygauss

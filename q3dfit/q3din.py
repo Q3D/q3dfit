@@ -278,7 +278,8 @@ class q3din:
         if not os.path.isfile(self.infile):
             print('Data cube not found.')
         else:
-            cube = Cube(self.infile, **self.argsreadcube)
+            cube = Cube(self.infile, datext=self.datext, varext=self.varext,
+                        dqext=self.dqext, **self.argsreadcube)
             self.ncols = cube.ncols
             self.nrows = cube.nrows
             cube.about()

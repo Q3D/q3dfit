@@ -28,7 +28,8 @@ def get_linelist(q3di):
         DESCRIPTION.
 
     '''
-    listlines = linelist(q3di.lines, **q3di.argslinelist)
+    vacuum = q3di.vacuum
+    listlines = linelist(q3di.lines, vacuum=vacuum, **q3di.argslinelist)
     return listlines
 
 

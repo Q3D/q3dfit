@@ -282,8 +282,9 @@ class q3din:
                         dqext=self.dqext, **self.argsreadcube)
             self.ncols = cube.ncols
             self.nrows = cube.nrows
+            self.cubedim = cube.cubedim
             cube.about()
-        return(cube)
+            return(cube)
 
 #if __name__ == "__main__":
 #    q3di = q3di()

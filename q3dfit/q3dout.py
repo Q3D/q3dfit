@@ -48,8 +48,12 @@ def load_q3dout(q3di, col, row, cubedim=None):
 
     filelab = '{0.outdir}{0.label}'.format(q3dii)
     if cubedim is None:
-        cube, vormap = util.get_Cube(q3dii)
-        cubedim = cube.dat.ndim
+        if hasattr(q3di, 'cubedim'):
+            cubedim = q3di.cubedim
+        else:
+            print('load_q3dout: q3di has no attribute cubedim, loading cube')
+            cube, vormap = util.get_Cube(q3dii)
+            cubedim = cube.dat.ndim
     if cubedim > 1:
         filelab += '_{:04d}'.format(col)
     if cubedim > 2:
@@ -626,13 +630,13 @@ class q3dout:
             if savefig:
                 # use default label
                 if hasattr(self, 'filelab'):
-                    outfile = self.filelab
+                    outfile = self.filelab+'_lin'
                 # make sure an outfile is available if the default is not
                 # specified
                 elif outfile is None:
                     print('plot_line: need to specify outfile')
                 else:
-                    outfile = outfile+'_lin'
+                    outfile += '_lin'
             plotline(self, savefig=savefig, outfile=outfile,
                      **plotargs)
         else:

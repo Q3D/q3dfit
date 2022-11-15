@@ -1,4 +1,3 @@
-include q3dfit/jnb/*.ipynb
 include q3dfit/data/linelists/*
 include q3dfit/data/dispersion_files/*
 include q3dfit/data/questfit_templates/*

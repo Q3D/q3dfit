@@ -35,10 +35,10 @@ def interptemp(spec_lam, temp_lam, template):
 
     if np.min(temp_lam) > np.min(spec_lam):
         print('IFSF_INTERPTEMP: WARNING -- Extrapolating template from ' +
-              min(temp_lam) + ' to ' + min(spec_lam) + '.')
+              str(min(temp_lam)) + ' to ' + str(min(spec_lam)) + '.')
     if np.max(temp_lam) < np.max(spec_lam):
         print('IFSF_INTERPTEMP: WARNING -- Extrapolating template from ' +
-              max(temp_lam) + ' to ' + max(spec_lam) + '.')
+              str(max(temp_lam)) + ' to ' + str(max(spec_lam)) + '.')
 
     # Default interpolation for INTERPOL is linear
     if ntemp != 1:
@@ -48,6 +48,6 @@ def interptemp(spec_lam, temp_lam, template):
             new_temp[:, i] = interpfunc(spec_lam)
     else:
         interpfunc = \
-            interpolate.interp1d(temp_lam, template, kind='linear')
+            interpolate.interp1d(temp_lam, template, kind='linear',bounds_error=False,fill_value=0)
         new_temp = interpfunc(spec_lam)
     return new_temp

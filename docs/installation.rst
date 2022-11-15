@@ -3,39 +3,12 @@ Installation
 
 **Downloading and Installing q3dfit**
 
-``q3dfit`` is only supported and tested for Python 3.7, 3.8 and
-3.9. We recommend installation of clean environment via conda.
+``q3dfit`` is only supported and tested for Python 3.7-3.9. We
+recommend installation via pip:
 
-    #. Download one of the supported environment files: `for Python 3.7 <https://raw.githubusercontent.com/Q3D/q3dfit/main/docs/q3dfit-py37.yml>`_, `for Python 3.8 <https://raw.githubusercontent.com/Q3D/q3dfit/main/docs/q3dfit-py38.yml>`_, or `for Python 3.9 <https://raw.githubusercontent.com/Q3D/q3dfit/main/docs/q3dfit-py39.yml>`_. We are currently conducting all primary testing and development in Python 3.8. 
+    .. code-block:: console
 
-    #. Create a new conda environment from the environment file: 
-
-        .. code-block:: console
-
-            conda env create -f q3dfit-py38.yml
-
-    #. Activate it:
-
-        .. code-block:: console
-
-            conda activate q3dfit-py38
-
-    #. Install ``q3dfit`` into the newly created environment:
-
-        .. code-block:: console
-
-            git clone https://github.com/Q3D/q3dfit
-
-    #. Suppose you cloned ``q3dfit`` into a directory ``/Users/username/work/``. Your python must know the path to the directory where ``q3dfit`` is installed in order to be able to import it. This can be accomplished in a couple of different ways. One is to run ``jupyter notebook`` from the command line while being in the ``/Users/username/work/`` directory. In that case running ``import q3dfit`` in python will successfully find the package. 
-
-       A less restrictive way is to append the location of ``q3dfit`` to your system path. To this end, start your python code or jupyter notebook with 
-
-        .. code-block:: python
-
-	    import sys
-	    sys.path.append("/Users/username/work/")
-	    import q3dfit
-
+	pip install q3dfit
 
 **Optional multi-processing capability**
 
@@ -81,5 +54,3 @@ or
  system path to be able to find, e.g., ``mpiexec`` and ``q3dfit``. This
  can be accomplished in the case of Jupyter or Spyder by running these
  applications from the command line.
-
-

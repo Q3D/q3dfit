@@ -1,9 +1,11 @@
-Configuration
-============
+MIR Configuration
+=================
 
 .. warning::
 
-   The format of the MIR configuration file and the setting up of the configuration file are in active development. 
+   The configuration of the MIR fit is in active development. This
+   page will be updated as MIRI data from the Q3D program become
+   available.
 
 **How to set up configuration file for MIR fitting**
 

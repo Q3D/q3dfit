@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='q3dfit',
-    version='0.1.0-beta',    
+    version='0.1.0',    
     url='https://q3dfit.readthedocs.io/en/latest/index.html',
     author='David Rupke',
     author_email='drupke@gmail.com',

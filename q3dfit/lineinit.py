@@ -1,26 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Fri May 28 16:40:03 2021
-
-Initialize parameters for fitting.
- EDIT - YI, added wavelnegth convolution in manygauss and parinit
-@author: drupke
-"""
 
 from astropy.constants import c
 from astropy.table import QTable, Table
 from lmfit import Model
-from q3dfit.lmlabel import lmlabel
+from q3dfit.utility import lmlabel
 from q3dfit.exceptions import InitializationError
 import numpy as np
-import pdb
 import q3dfit.data
 import os
 
-def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, specConv,
-            lineratio=None, siglim=None, sigfix=None, blrcomp=None,
-            blrlines=None, specres=None, waves=None):
+def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, specConv,
+             lineratio=None, siglim=None, sigfix=None, blrcomp=None,
+             blrlines=None, specres=None, waves=None):
+    '''
+    Initialize parameters for emission-line fitting.
+    '''
     # Get fixed-ratio doublet pairs for tying intensities
     data_path = os.path.abspath(q3dfit.data.__file__)[:-11]
     doublets = Table.read(data_path+'linelists/doublets.tbl', format='ipac')
@@ -147,23 +142,18 @@ def parinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, sp
             'comp' not in lineratio.colnames:
             raise InitializationError('The lineratio table must contain' +
                                       ' the line1, line2, and comp columns')
-        
         for ilinrat in range(0, len(lineratio)):
             line1 = lineratio['line1'][ilinrat]
             line2 = lineratio['line2'][ilinrat]
+            comps = lineratio['comp'][ilinrat]
             lmline1 = lmlabel(line1)
             lmline2 = lmlabel(line2)
-            comps = lineratio['comp'][ilinrat]
             for comp in comps:
-                
-                print(f'{lmline1.lmlabel}_{comp}_flx')
                 if f'{lmline1.lmlabel}_{comp}_flx' in fit_params.keys() and \
                     f'{lmline2.lmlabel}_{comp}_flx' in fit_params.keys():
                     # set initial value
                     if 'value' in lineratio.colnames:
                         initval = lineratio['value'][ilinrat]
-                        print('here')
-                        print(initval)
                     else:
                         initval = \
                             np.divide(

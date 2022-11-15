@@ -1,4 +1,9 @@
-def masklin(llambda, linelambda, halfwidth, nomaskran=''):
+import numpy as np
+import pdb
+from astropy.constants import c
+
+
+def masklin(llambda, linelambda, halfwidth, nomaskran=None):
     """
 
     Masks emission lines from the spectrum for continuum fitting
@@ -61,11 +66,6 @@ def masklin(llambda, linelambda, halfwidth, nomaskran=''):
     plt.show()
 
     """
-
-    import numpy as np
-    import pdb
-    from astropy.constants import c
-
     # we will return the ones that are not masked
 
     # start by retaining all elements -- mark them all True
@@ -85,7 +85,7 @@ def masklin(llambda, linelambda, halfwidth, nomaskran=''):
             retain = (retain & (temp1 | temp2))
 
     # if the user has defined the regions not to be masked:
-    if (len(nomaskran) > 0):
+    if nomaskran is not None:
         # set all to False
         nomask = np.array(np.zeros(len(llambda)), dtype=bool)
         for j, llim in enumerate(nomaskran[0]):

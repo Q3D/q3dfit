@@ -4,7 +4,6 @@ This module contains the Cube class for reading in and containing a data cube
 
 import copy
 import numpy as np
-import pdb
 import re
 import warnings
 
@@ -89,6 +88,7 @@ class Cube:
     header_wmap :
         Headers of the various extensions (phu = first, or primary, header
         data unit)
+    cubedim : int
     ncols : int
     nrows : int
     nwave : int
@@ -240,6 +240,7 @@ class Cube:
         self.ncols = int(ncols)
         self.nrows = int(nrows)
         self.nwave = int(nwave)
+        self.cubedim = np.size(datashape)
 
         # check on wavelength and flux units
         waveunit_tmp = waveunit_in
@@ -371,9 +372,13 @@ class Cube:
         if '/sr' in self.fluxunit_in and \
             self.pixarea_sqas is not None:
             convert_flux *= 1./(206265.*206265.)*self.pixarea_sqas
+            if '/sr' in self.fluxunit_out:
+                self.fluxunit_out = self.fluxunit_out.replace('/sr', '')
         if '/arcsec2' in self.fluxunit_in and \
             self.pixarea_sqas is not None:
             convert_flux *= self.pixarea_sqas
+            if '/arcsec2' in self.fluxunit_out:
+                self.fluxunit_out = self.fluxunit_out.replace('/arcsec2', '')
 
         self.dat = self.dat * convert_flux
         self.var = self.var * convert_flux**2
@@ -528,7 +533,7 @@ class Cube:
 
         np.save(outpy, qsotemplate)
 
-    def specextract(self, cent, method='circle', norm=1., plot=True,
+    def specextract(self, col, row, method='circle', norm=1., plot=True,
                     radius=1.):
 
         import matplotlib.pyplot as plt
@@ -557,6 +562,13 @@ class Cube:
             present.
 
         '''
+
+        cent = np.array([row-1., col-1.])
+
+        # Set radius to some value v. near 0 if zero is specified, otherwise
+        # something chokes
+        if radius == 0.:
+            radius = 0.01
 
         # create circular mask
         if method == 'circle':

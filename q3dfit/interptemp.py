@@ -48,6 +48,7 @@ def interptemp(spec_lam, temp_lam, template):
             new_temp[:, i] = interpfunc(spec_lam)
     else:
         interpfunc = \
-            interpolate.interp1d(temp_lam, template, kind='linear',bounds_error=False,fill_value=0)
+            interpolate.interp1d(temp_lam, template, kind='linear',
+                                 bounds_error=False, fill_value=0)
         new_temp = interpfunc(spec_lam)
     return new_temp

@@ -7,45 +7,20 @@ Created on Tue May 31 15:31:13 2022
 """
 
 import copy as copy
-import importlib
-# import matplotlib as mpl
 import numpy as np
-import os,sys
-import pdb
+import os
+import q3dfit.utility as util
 
-# import q3dfit
-
-from astropy import units as u
 from astropy.constants import c
 from astropy.cosmology import WMAP9 as cosmo
 from astropy.io import fits
-from astropy.table import Table
-
-from ppxf.ppxf_util import log_rebin
-from q3dfit.cmpcvdf import cmpcvdf
-from q3dfit.linelist import linelist
-from q3dfit.readcube import Cube
-from q3dfit.sepfitpars import sepfitpars
-from q3dfit.qsohostfcn import qsohostfcn
-from q3dfit.exceptions import InitializationError
-from numpy.polynomial import legendre
-from scipy import interpolate
-
-import q3dfit.data
-
 from matplotlib import pyplot as plt
-from  matplotlib import cm
-from matplotlib import colors as co
-import matplotlib.gridspec as gridspec
-import copy
-
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.ticker import MaxNLocator,LinearLocator,FixedLocator
-from scipy.spatial import distance
-from plotbin.sauron_colormap import register_sauron_colormap
-from plotbin.display_pixels import display_pixels
-import matplotlib.gridspec as gridspec
+from matplotlib import cm
 from matplotlib.colors import LogNorm
+from matplotlib.ticker import MaxNLocator, LinearLocator
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from q3dfit.math import cmpcvdf
+from q3dfit.linelist import linelist
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -53,37 +28,27 @@ plt.rcParams['figure.constrained_layout.use'] = False
 
 
 class Q3Dpro:
-    # =============================================================================================
+    # =========================================================================
     # instantiate the q3dpro object
-    # =============================================================================================
-    def __init__(self, initproc, SILENT=True, NOCONT=False, NOLINE=False,
+    # =========================================================================
+    def __init__(self, q3di, SILENT=True, NOCONT=False, NOLINE=False,
                  PLATESCALE=0.15):
-        # read in the q3d initproc file and unpack
-        # If it's a string, assume it's an input .npy file
-        if type(initproc) == str:
-            initprocarr = np.load(initproc, allow_pickle=True)
-            self.q3dinit = initprocarr[()]
-        # If it's an ndarray, assume the file's been loaded but not stripped
-        # to dict{}
-        elif isinstance(initproc, np.ndarray):
-            self.q3dinit = initproc[()]
-        # If it's a dictionary, assume all is well
-        elif isinstance(initproc, dict):
-            self.q3dinit = initproc
+        # read in the q3di file and unpack
+        self.q3dinit = util.get_q3dio(q3di)
         # unpack initproc
-        self.target_name = self.q3dinit['name']
+        self.target_name = self.q3dinit.name
         self.silent = SILENT
         if self.silent is False:
             print('processing outputs...')
-            print('Target name:',self.target_name)
+            print('Target name:', self.target_name)
 
-        self.pix = PLATESCALE # pixel size
+        self.pix = PLATESCALE  # pixel size
         self.bad = 1e99
-        self.dataDIR = self.q3dinit['outdir']
+        self.dataDIR = self.q3dinit.outdir
         # instantiate the Continuum (npy) and Emission Line (npz) objects
-        if NOCONT == False:
+        if not NOCONT:
             self.contdat = ContData(self.q3dinit)
-        if NOLINE == False:
+        if not NOLINE:
             self.linedat = LineData(self.q3dinit)
 
         return
@@ -102,30 +67,30 @@ class Q3Dpro:
         linename = listlines['linelab'][ww].value[0]
         # output in MICRON
         return linewave, linename
-    
+
     def get_linemap(self,LINESELECT,LINEVAC=True,APPLYMASK=True,SAVEDATA=False):
         print('getting line data...',LINESELECT)
-        
-        redshift = self.q3dinit['zsys_gas']
-        ncomp = self.q3dinit['ncomp'][LINESELECT][0,0]
+
+        redshift = self.q3dinit.zsys_gas
+        ncomp = self.q3dinit.ncomp[LINESELECT][0,0]
 
         # kpc_arcsec = cosmo.kpc_proper_per_arcmin(redshift).value/60.
         # arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
-        # argscheckcomp = self.q3dinit['argscheckcomp']
+        # argscheckcomp = self.q3dinit.argscheckcomp
         # xycen = xyCenter # (nx,ny) of the center
 
         # cid = -1 # index of the component to plot, -1 is the broadest component
         # central wavelength --> need to get from linereader
-        wave0,linetext = self.get_lineprop(LINESELECT,LINEVAC=LINEVAC)
-        
-        ncomp = self.q3dinit['ncomp'][LINESELECT][0,0]
-        
+        wave0,linetext = self.get_lineprop(LINESELECT, LINEVAC=LINEVAC)
+
+        ncomp = self.q3dinit.ncomp[LINESELECT][0,0]
+
         fluxsum     = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['flux']
         fluxsum_err = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['fluxerr']
         fsmsk = clean_mask(fluxsum, BAD=self.bad)
 
         matrix_size = (fluxsum.shape[0],fluxsum.shape[1],ncomp)
-        
+
         dataOUT = {'Ftot':{'data':fluxsum,
                            'err':fluxsum_err,
                            'name':['F$_{tot}$'],'mask':fsmsk},
@@ -158,7 +123,7 @@ class Q3Dpro:
             dataOUT['Sig']['data'][:,:,ci] = isigm#*isgmsk
             dataOUT['v50']['data'][:,:,ci] = iv50#*iwvmsk
             dataOUT['w80']['data'][:,:,ci] = iw80#*isgmsk
-            
+
             dataOUT['Fci']['err'][:,:,ci]  = ifler#*ifmask
             dataOUT['Sig']['err'][:,:,ci]  = isger#*isgmsk
             dataOUT['v50']['err'][:,:,ci]  = iwver#*ifmask
@@ -168,13 +133,13 @@ class Q3Dpro:
             dataOUT['Sig']['name'].append('$\sigma_{c'+str(ici)+'}$')
             dataOUT['v50']['name'].append('v$_{50,c'+str(ici)+'}$')
             dataOUT['w80']['name'].append('w$_{80,c'+str(ici)+'}$')
-            
+
             dataOUT['Fci']['mask'][:,:,ci] = ifmask
             dataOUT['Sig']['mask'][:,:,ci] = isgmsk
             dataOUT['v50']['mask'][:,:,ci] = iwvmsk
             dataOUT['w80']['mask'][:,:,ci] = isgmsk
-            
-        if APPLYMASK == True:
+
+        if APPLYMASK:
             for ditem in dataOUT:
                 if len(dataOUT[ditem]['data'].shape) > 2:
                     for ci in range(0,ncomp):
@@ -183,7 +148,7 @@ class Q3Dpro:
                 else:
                     dataOUT[ditem]['data'] = dataOUT[ditem]['data']*dataOUT[ditem]['mask']
                     dataOUT[ditem]['err']  = dataOUT[ditem]['data']*dataOUT[ditem]['mask']
-        
+
         return wave0,linetext,dataOUT
 
     def make_linemap(self, LINESELECT, SNRCUT=5., LINEVAC=True,
@@ -194,20 +159,20 @@ class Q3Dpro:
 
         print('Plotting emission line maps')
         if self.silent is False:
-            print('create linemap:',LINESELECT)
+            print('create linemap:', LINESELECT)
 
-        redshift = self.q3dinit['zsys_gas']
-        ncomp = self.q3dinit['ncomp'][LINESELECT][0,0]
+        redshift = self.q3dinit.zsys_gas
+        ncomp = self.q3dinit.ncomp[LINESELECT][0,0]
 
         kpc_arcsec = cosmo.kpc_proper_per_arcmin(redshift).value/60.
         # arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
-        # argscheckcomp = self.q3dinit['argscheckcomp']
+        # argscheckcomp = self.q3dinit.argscheckcomp
         # xycen = xyCenter # (nx,ny) of the center
 
         # cid = -1 # index of the component to plot, -1 is the broadest component
         # central wavelength --> need to get from linereader
         # wave0,linetext = self.get_lineprop(LINESELECT,LINEVAC=LINEVAC)
-        
+
         # --------------------------
         # EXTRACT THE DATA HERE
         # --------------------------
@@ -219,7 +184,7 @@ class Q3Dpro:
         # sn = flux/flux_err
         fluxsum     = dataOUT['Ftot']['data']
         fluxsum_err = dataOUT['Ftot']['err']
-        
+
         fluxsum_snc,gdindx,bdindx = snr_cut(fluxsum,fluxsum_err,SNRCUT=SNRCUT)
         matrix_size = (fluxsum.shape[0],fluxsum.shape[1],ncomp)
         FLUXLOG = False
@@ -344,8 +309,8 @@ class Q3Dpro:
                         print('Saving line map:',linesave_name)
                         savepath = os.path.join(self.dataDIR,linesave_name)
                         save_to_fits(pixVals,[],savepath)
-                
-                    
+
+
             # j+=1
         fig.suptitle(self.target_name+' : '+linetext+' maps',fontsize=20,snap=True,
                      horizontalalignment='right')
@@ -363,21 +328,22 @@ class Q3Dpro:
 
     # def make_contmap(self):
     #     return
-    
-    def make_lineratio_map(self, lineA,lineB,SNRCUT=3, LINEVAC=True, SAVEDATA=False, PLTNUM=5, KPC=False,VMINMAX=[-1,1]):
+
+    def make_lineratio_map(self, lineA, lineB, SNRCUT=3, LINEVAC=True,
+                           SAVEDATA=False, PLTNUM=5, KPC=False, VMINMAX=[-1,1]):
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # first identify the lines, extract fluxes, and apply the SNR cuts
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         linelist = {lineA:None,lineB:None}
 
-        redshift = self.q3dinit['zsys_gas']
-        
+        redshift = self.q3dinit.zsys_gas
+
         arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
         mshaps = [None,None]
         li = 0
         for lin in self.linedat.lines:
             if lin in linelist:
-                ncomp = self.q3dinit['ncomp'][lin][0,0]
+                ncomp = self.q3dinit.ncomp[lin][0,0]
                 # fluxsum     = self.linedat.get_flux(lin,FLUXSEL='ftot')['flux']
                 # fluxsum_err = self.linedat.get_flux(lin,FLUXSEL='ftot')['fluxerr']
                 wave0,linetext,dataOUT = self.get_linemap(lin,LINEVAC=LINEVAC,APPLYMASK={})
@@ -400,7 +366,7 @@ class Q3Dpro:
                         i_snc,i_gindx,i_bindx = snr_cut(dataOUT[ditem]['data'],dataOUT[ditem]['err'],SNRCUT=SNRCUT)
                         istruct['snr'][ditem] = [i_snc,i_gindx,i_bindx]
                 linelist[lin] = istruct
-        
+
         lineratios = {'dothis':{'lines':[lineA,lineB],'pltname':linelist[lineA]['wname']+'/'+linelist[lineB]['wname'],'lrat':{'Ftot':None,'Fci':None}}}
 
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -466,7 +432,7 @@ class Q3Dpro:
                     frat10err = lgerr(fratdat[0][lratF][3],fratdat[1][lratF][3],
                                       fratdat[0][lratF][1],fratdat[1][lratF][1])
                     lineratios[lrat]['lrat'][lratF]=[frat10,frat10err]
-                    
+
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # Do the plotting here
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -489,21 +455,21 @@ class Q3Dpro:
         fig,ax = plt.subplots(1,nps,num=PLTNUM,constrained_layout=True,dpi=500)#, gridspec_kw={'height_ratios': [1, 2]})
         fig.set_figheight(figOUT[1])
         fig.set_figwidth(figOUT[0])
-        
+
         CMAP='inferno'
         cmap_r = cm.get_cmap(CMAP)
         cmap_r.set_bad(color='black')
         cf = 0
-        
+
         for linrat in lineratios:
             if lineratios[linrat] != None :
                 xx,yy = xcol,ycol
                 # iax = ax[cf]
                 for li,lratF in enumerate(['Ftot','Fci']):
-                    
+
                     if lratF == 'Fci':
                         frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
-                        for ci in range(0,ncomp): 
+                        for ci in range(0,ncomp):
                             display_pixels_wz(yy, xx, frat10[:,:,ci], CMAP=CMAP, AX=ax[li+ci],
                                               VMIN=VMINMAX[0], VMAX=VMINMAX[1], NTICKS=5, COLORBAR=True)
                     else:
@@ -511,7 +477,7 @@ class Q3Dpro:
                         display_pixels_wz(yy, xx, frat10, CMAP=CMAP, AX=ax[li],
                                           VMIN=VMINMAX[0], VMAX=VMINMAX[1], NTICKS=5, COLORBAR=True)
                 # pltname,pltrange = lineratios[linrat]['pltname'],lineratios[linrat]['pltrange']
-                
+
                 for ni in range(0,nps):
                     ax[ni].set_xlabel('spaxel',fontsize=13)
                     ax[ni].set_ylabel('spaxel',fontsize=13)
@@ -534,9 +500,10 @@ class Q3Dpro:
             plt.savefig(os.path.join(self.dataDIR,pltsave_name))
         plt.show()
         return
-    
 
-    def make_BPT(self, SNRCUT=3, LINEVAC=True, SAVEDATA=False, PLTNUM=5, KPC=False):
+
+    def make_BPT(self, SNRCUT=3, LINEVAC=True, SAVEDATA=False, PLTNUM=5,
+                 KPC=False):
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # first identify the lines, extract fluxes, and apply the SNR cuts
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -549,14 +516,14 @@ class Q3Dpro:
                     '[SII]6716':None,
                     '[SII]6731':None}
 
-        redshift = self.q3dinit['zsys_gas']
-        
+        redshift = self.q3dinit.zsys_gas
+
         arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
         mshaps = [None,None]
         li = 0
         for lin in self.linedat.lines:
             if lin in BPTlines:
-                ncomp = self.q3dinit['ncomp'][lin][0,0]
+                ncomp = self.q3dinit.ncomp[lin][0,0]
                 # fluxsum     = self.linedat.get_flux(lin,FLUXSEL='ftot')['flux']
                 # fluxsum_err = self.linedat.get_flux(lin,FLUXSEL='ftot')['fluxerr']
                 wave0,linetext,dataOUT = self.get_linemap(lin,LINEVAC=LINEVAC,APPLYMASK={})
@@ -579,13 +546,13 @@ class Q3Dpro:
                         i_snc,i_gindx,i_bindx = snr_cut(dataOUT[ditem]['data'],dataOUT[ditem]['err'],SNRCUT=SNRCUT)
                         istruct['snr'][ditem] = [i_snc,i_gindx,i_bindx]
                 BPTlines[lin] = istruct
-                
-               #redshift = self.q3dinit['zinit_gas'][lin]
+
+               #redshift = self.q3dinit.zinit_gas[lin]
                #matrix_size = redshift.shape
                #redshift = redshift.reshape(matrix_size[0],matrix_size[1])
                #arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
                # BPTlines[lin] = [fluxsum,fluxsum_err,flux_snc,fmask,gud_indx]
-        
+
         lineratios = {'OiiiHb':{'lines':['[OIII]5007','Hbeta'],'pltname':'[OIII]/H$\\beta$','pltrange':[-1,1.5],
                                 'lrat':{'Ftot':None,'Fci':None}},
                         'SiiHa' :{'lines':[['[SII]6716','[SII]6731'],'Halpha'],'pltname':'[SII]/H$\\alpha$','pltrange':[-1.8,0.9],
@@ -595,7 +562,7 @@ class Q3Dpro:
                        'NiiHa' :{'lines':['[NII]6583','Halpha'],'pltname':'[NII]/H$\\alpha$','pltrange':[-1.8,0.1],
                                  'lrat':{'Ftot':None,'Fci':None}},
                       }
-        
+
         BPTmod = {'OiiiHb/NiiHa':None,
                     'OiiiHb/SiiHa':None,
                     'OiiiHb/OiHa':None}
@@ -686,7 +653,7 @@ class Q3Dpro:
                     frat10err = lgerr(fratdat[0][lratF][3],fratdat[1][lratF][3],
                                       fratdat[0][lratF][1],fratdat[1][lratF][1])
                     lineratios[lrat]['lrat'][lratF]=[frat10,frat10err]
-                    
+
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # Do the plotting here
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -709,21 +676,21 @@ class Q3Dpro:
         fig,ax = plt.subplots(nps,cntr,num=PLTNUM,constrained_layout=True,dpi=500)#, gridspec_kw={'height_ratios': [1, 2]})
         fig.set_figheight(figOUT[1]+1)
         fig.set_figwidth(figOUT[0])
-        
+
         CMAP='inferno'
         cmap_r = cm.get_cmap(CMAP)
         cmap_r.set_bad(color='black')
         cf = 0
-            
+
         for linrat in lineratios:
             if lineratios[linrat] != None :
                 xx,yy = xcol,ycol
                 # iax = ax[cf]
                 for li,lratF in enumerate(['Ftot','Fci']):
-                    
+
                     if lratF == 'Fci':
                         frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
-                        for ci in range(0,ncomp): 
+                        for ci in range(0,ncomp):
                             display_pixels_wz(yy, xx, frat10[:,:,ci], CMAP=CMAP, AX=ax[li+ci,cf],
                                               VMIN=-1, VMAX=1, NTICKS=5, COLORBAR=True)
                     else:
@@ -731,7 +698,7 @@ class Q3Dpro:
                         display_pixels_wz(yy, xx, frat10, CMAP=CMAP, AX=ax[li,cf],
                                           VMIN=-1, VMAX=1, NTICKS=5, COLORBAR=True)
                 pltname,pltrange = lineratios[linrat]['pltname'],lineratios[linrat]['pltrange']
-                
+
                 for ni in range(0,nps):
                     ax[ni,cf].set_xlabel('spaxel',fontsize=13)
                     ax[ni,cf].set_ylabel('spaxel',fontsize=13)
@@ -753,7 +720,7 @@ class Q3Dpro:
             print('Saving figure:',pltsave_name)
             plt.savefig(os.path.join(self.dataDIR,pltsave_name))
         plt.show()
-    
+
         # --------------------------
         # Plot BPT here
         # --------------------------
@@ -782,7 +749,7 @@ class Q3Dpro:
                     if lratF == 'Fci':
                         frat10_A,frat10errA = lineratios[fnames[0]]['lrat'][lratF][0],lineratios[fnames[0]]['lrat'][lratF][1]
                         frat10_B,frat10errB = lineratios[fnames[1]]['lrat'][lratF][0],lineratios[fnames[1]]['lrat'][lratF][1]
-                        for ci in range(0,ncomp): 
+                        for ci in range(0,ncomp):
                             gg = np.where(~np.isnan(frat10_A[:,:,ci]) & ~np.isnan(frat10_B[:,:,ci]))
                             xfract,yfract = frat10_B[:,:,ci][gg],frat10_A[:,:,ci][gg]
                             xfracterr,yfracterr = [frat10errB[0][:,:,ci][gg].flatten(), frat10errB[1][:,:,ci][gg].flatten()],[frat10errA[0][:,:,ci][gg].flatten(),frat10errA[1][:,:,ci][gg].flatten()]
@@ -822,7 +789,7 @@ class Q3Dpro:
                         compName = 'Ftot'
                     else:
                         compName = 'Fc'+str(ni)
-                    
+
                     ax[ni,cf].minorticks_on()
                     if cf == 0:
                         ax[ni,cf].set_ylabel(pltname1+', '+compName,fontsize=16)
@@ -848,7 +815,7 @@ class Q3Dpro:
         return
 
     def resort_line_components(self,dataIN,NCOMP=1,COMP_SORT=None):
-        
+
         if COMP_SORT == None:
             return dataIN,NCOMP
         else:
@@ -893,7 +860,7 @@ class Q3Dpro:
                             dataOUT[ditem]['err']  = np.zeros((mshap[0],mshap[1],len(sort_rang)))+np.nan
                             dataOUT[ditem]['name'] = []
                             dataOUT[ditem]['mask'] = np.zeros((mshap[0],mshap[1],len(sort_rang)))+np.nan
-                            
+
                     for ii in range (0,mshap[0]):
                         for jj in range (0,mshap[1]):
                             for cc in range(0,mshap[2]):
@@ -921,9 +888,9 @@ class Q3Dpro:
                     return dataOUT,len(sort_rang)
             else:
                 print('SORT ERROR...')
-                return foo
-            
-        
+                pass
+
+
 
 # =============================================================================================
 # reading in the .npy and .npz files
@@ -941,9 +908,7 @@ class LineData:
 
     Parameters
     -----------
-    initproc : dict
-         Dictionary of initialization parameters (contained in, e.g.,
-         q3dpro.q3dinit).
+    q3di : object
 
     Attributes
     ----------
@@ -963,23 +928,24 @@ class LineData:
     -----
     '''
 
-    def __init__(self, initproc):
-        filename = initproc['label']+'.lin.npz'
-        datafile = os.path.join(initproc['outdir'], filename)
+    def __init__(self, q3di):
+
+        filename = q3di.label+'.line.npz'
+        datafile = os.path.join(q3di.outdir, filename)
         # print(datafile)
         if not os.path.exists(datafile):
             print('ERROR: emission line ('+filename+') file does not exist')
             return
-        self.lines = initproc['lines']
-        self.zgas = initproc['zinit_gas']
-        self.maxncomp = initproc['maxncomp']
+        self.lines = q3di.lines
+        self.zgas = q3di.zinit_gas
+        self.maxncomp = q3di.maxncomp
         self.data = self.read_npz(datafile)
         # book-keeping inheritance from initproc
         self.ncols = self.data['ncols'].item()
         self.nrows = self.data['nrows'].item()
         self.bad = 1e99
-        self.dataDIR = initproc['outdir']
-        self.target_name = initproc['name']
+        self.dataDIR = q3di.outdir
+        self.target_name = q3di.name
         # self.flux    = self.get_flux()
         # self.siga    = self.get_sigma()
         # self.wavelen = self.get_wave()
@@ -1308,20 +1274,19 @@ class OneLineData:
 # Continuum data
 # ---------------------------------------------------------------------------------------------
 class ContData:
-    def __init__(self,initproc):
-        filename = initproc['label']+'.cont.npy'
-        datafile = os.path.join(initproc['outdir'],filename)
+    def __init__(self, q3di):
+        filename = q3di.label+'.cont.npy'
+        datafile = os.path.join(q3di.outdir,filename)
         if os.path.exists(datafile) != True:
             print('ERROR: continuum ('+filename+') file does not exist')
             return None
         self.data = self.read_npy(datafile)
         self.wave           = self.data['wave']
         self.qso_mod        = self.data['qso_mod']
-        self.qso_poly_mod   = self.data['qso_poly_mod']
         self.host_mod       = self.data['host_mod']
         self.poly_mod       = self.data['poly_mod']
         self.npts           = self.data['npts']
-        self.stel_sixgma     = self.data['stel_sigma']
+        self.stel_sixgma    = self.data['stel_sigma']
         self.stel_sigma_err = self.data['stel_sigma_err']
         self.stel_z         = self.data['stel_z']
         self.stel_z_err     = self.data['stel_z_err']
@@ -1330,8 +1295,8 @@ class ContData:
         self.stel_ebv_err   = self.data['stel_ebv_err']
         return
 
-    def read_npy(self,datafile):
-        dataout = np.load(datafile,allow_pickle=True).item()
+    def read_npy(self, datafile):
+        dataout = np.load(datafile, allow_pickle=True).item()
         self.colname = dataout.keys()
         return dataout
 
@@ -1493,7 +1458,7 @@ def clean_mask(dataIN,BAD=1e99):
 
 def snr_cut(dataIN,errIN,SNRCUT=2):
     snr = dataIN/errIN
-    
+
     gud_indx = np.where(snr >= SNRCUT)
     bad_indx = np.where(snr < SNRCUT)
     dataOUT = copy.deepcopy(dataIN)

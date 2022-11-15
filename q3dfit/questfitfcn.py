@@ -1,8 +1,9 @@
-from astropy.constants import c
-import lmfit
-from lmfit.models import ExpressionModel
-import numpy as np
 from astropy import units as u
+from lmfit.models import ExpressionModel
+
+import lmfit
+import numpy as np
+
 
 def blackbody(wave,a,T, fitFlambda=True):
 

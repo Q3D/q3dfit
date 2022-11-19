@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Helper functions for q3df.py.
+Helper functions for q3dfit.py.
 
 Created on Tue May 26 13:37:58 2020
 
@@ -83,8 +83,6 @@ def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
     None.
 
     '''
-    # add common subdirectory to Python PATH for ease of importing
-#    path.append("common/")
     starttime = time.time()
 
     q3di = util.get_q3dio(inobj)
@@ -120,7 +118,7 @@ def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
         logfile.close()
 
 
-def q3df_multiCore(rank, inobj, cols=None, rows=None,
+def q3df_multiCore(rank, size, inobj, cols=None, rows=None,
                    onefit=False, ncores=1, quiet=True):
 
     '''
@@ -223,4 +221,4 @@ if __name__ == "__main__":
         quiet = True
     else:
         quiet = False
-    q3df_multiCore(rank, inobj, cols, rows, onefit, size, quiet)
+    q3df_multiCore(rank, size, inobj, cols, rows, onefit, quiet)

@@ -1,0 +1,172 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Installation &#8212; q3dfit 1.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Fitting" href="fitting.html" />
+    <link rel="prev" title="q3dfit" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">¶</a></h1>
+<section id="downloading-and-installing-q3dfit">
+<h2>Downloading and Installing q3dfit<a class="headerlink" href="#downloading-and-installing-q3dfit" title="Permalink to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">q3dfit</span></code> is only supported and tested for Python 3.7-3.9. We
+recommend installation via pip:</p>
+<blockquote>
+<div><div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">pip install q3dfit</span>
+</pre></div>
+</div>
+</div></blockquote>
+</section>
+<section id="optional-multi-processing-capability">
+<h2>Optional multi-processing capability<a class="headerlink" href="#optional-multi-processing-capability" title="Permalink to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">q3dfit</span></code> has the optional capability to parallelize fitting across multiple processor cores using the Message Passing Interface (MPI) standard. This is accomplished using the <code class="docutils literal notranslate"><span class="pre">mpich</span></code> package and its python wrapper <code class="docutils literal notranslate"><span class="pre">mpi4py</span></code>. Installation instructions for <code class="docutils literal notranslate"><span class="pre">mpich</span></code> vary dependending on the user’s system configurations. Some common methods include:</p>
+<blockquote>
+<div><ul>
+<li><p>Install via Macports:</p>
+<blockquote>
+<div><div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">sudo port install mpich</span>
+<span class="go">sudo port select --set mpi mpich-mp-fortran</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>Install via Brew:</p>
+<blockquote>
+<div><div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">brew install mpich</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>Install via Conda:</p>
+<blockquote>
+<div><div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">conda install mpich</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+<p>If <code class="docutils literal notranslate"><span class="pre">mpich</span></code> is successfully installed, you should be able to locate the path to its main executable by typing <code class="docutils literal notranslate"><span class="pre">which</span> <span class="pre">mpiexec</span></code>.</p>
+<p>The final step is to install <code class="docutils literal notranslate"><span class="pre">mpi4py</span></code>, the <code class="docutils literal notranslate"><span class="pre">mpich</span></code> wrapper for the multi-processor mode. This can be done by</p>
+<blockquote>
+<div><div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">conda install mpi4py</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>or</p>
+<blockquote>
+<div><div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">pip install mpi4py==3.1.3</span>
+</pre></div>
+</div>
+</div></blockquote>
+<div class="toctree-wrapper compound">
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">q3dfit</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">q3dfit</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#downloading-and-installing-q3dfit">Downloading and Installing q3dfit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#optional-multi-processing-capability">Optional multi-processing capability</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="fitting.html">Fitting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MIR-configuration.html">MIR Configuration</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">q3dfit</a></li>
+      <li>Next: <a href="fitting.html" title="next chapter">Fitting</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, David Rupke and the Q3D Team.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/installation.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

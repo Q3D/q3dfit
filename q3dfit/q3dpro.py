@@ -222,8 +222,8 @@ class Q3Dpro:
         fig,ax = plt.subplots(figDIM[0],figDIM[1],dpi=100)
         print("here")
         print(figOUT[0])
-        fig.set_figheight(12)#figOUT[1]+2)
-        fig.set_figwidth(14)#figOUT[0]-1)
+        fig.set_figheight(figOUT[1]+2)#(12)
+        fig.set_figwidth(figOUT[0]-1)#(14)
         if CMAP == None :
             CMAP = 'YlOrBr_r'
         ici = ''

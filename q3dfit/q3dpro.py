@@ -19,7 +19,7 @@ from matplotlib import cm
 from matplotlib.colors import LogNorm
 from matplotlib.ticker import MaxNLocator, LinearLocator
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from q3dfit.math import cmpcvdf
+from q3dfit.q3dmath import cmpcvdf
 from q3dfit.linelist import linelist
 
 plt.rcParams["font.family"] = "serif"
@@ -219,10 +219,11 @@ class Q3Dpro:
         plt.close(PLTNUM)
         figDIM = [ncomp+1,4]
         figOUT = set_figSize(figDIM,matrix_size)
-        fig,ax = plt.subplots(figDIM[0],figDIM[1],dpi=500)
-        print(figOUT)
-        fig.set_figheight(figOUT[1]+2)
-        fig.set_figwidth(figOUT[0]-1)
+        fig,ax = plt.subplots(figDIM[0],figDIM[1],dpi=100)
+        print("here")
+        print(figOUT[0])
+        fig.set_figheight(12)#figOUT[1]+2)
+        fig.set_figwidth(14)#figOUT[0]-1)
         if CMAP == None :
             CMAP = 'YlOrBr_r'
         ici = ''
@@ -452,7 +453,7 @@ class Q3Dpro:
         plt.close(PLTNUM)
         figDIM = [1,nps]
         figOUT = set_figSize(figDIM,mshaps[1])
-        fig,ax = plt.subplots(1,nps,num=PLTNUM,constrained_layout=True,dpi=500)#, gridspec_kw={'height_ratios': [1, 2]})
+        fig,ax = plt.subplots(1,nps,num=PLTNUM,constrained_layout=True,dpi=100)#, gridspec_kw={'height_ratios': [1, 2]})
         fig.set_figheight(figOUT[1])
         fig.set_figwidth(figOUT[0])
 
@@ -673,7 +674,7 @@ class Q3Dpro:
         plt.close(PLTNUM)
         figDIM = [nps,cntr]
         figOUT = set_figSize(figDIM,mshaps[1])
-        fig,ax = plt.subplots(nps,cntr,num=PLTNUM,constrained_layout=True,dpi=500)#, gridspec_kw={'height_ratios': [1, 2]})
+        fig,ax = plt.subplots(nps,cntr,num=PLTNUM,constrained_layout=True,dpi=100)#, gridspec_kw={'height_ratios': [1, 2]})
         fig.set_figheight(figOUT[1]+1)
         fig.set_figwidth(figOUT[0])
 
@@ -728,7 +729,7 @@ class Q3Dpro:
         plt.close(PLTNUM)
         figDIM = [nps,cntr-1]
         figOUT = set_figSize(figDIM,mshaps[1],SQUARE=True)
-        fig,ax = plt.subplots(nps,cntr-1,figsize=((cntr-1)*5,5),num=PLTNUM,constrained_layout=True,dpi=500)
+        fig,ax = plt.subplots(nps,cntr-1,figsize=((cntr-1)*5,5),num=PLTNUM,constrained_layout=True,dpi=100)
         fig.set_figheight(int(figOUT[1]/2))
         fig.set_figwidth(figOUT[0])
         cf=0
@@ -1264,7 +1265,7 @@ class OneLineData:
                 str(int(pct)) + '-map'
             print('Saving ', pltsave_name, ' to ', self.dataDIR)
             plt.savefig(os.path.join(self.dataDIR, pltsave_name + '.' +
-                                     outformat), format=outformat, dpi=300.)
+                                     outformat), format=outformat, dpi=100.)
         plt.show()
 
         return

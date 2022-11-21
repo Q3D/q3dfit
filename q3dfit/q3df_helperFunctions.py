@@ -8,17 +8,21 @@ Created on Tue May 26 13:37:58 2020
 @author: drupke
 @author: canicetti
 """
+
+import sys
+#if '/Users/discovery/Projects/Q3Ddev/q3dfit-dev/q3dfit' in sys.path:
+#    sys.path.remove('/Users/discovery/Projects/Q3Ddev/q3dfit-dev/q3dfit')
+from q3dfit.fitloop import fitloop
 import numpy as np
-import q3dfit.fitloop as fitloop
 import time
+from q3dfit.exceptions import InitializationError
 import q3dfit.utility as util
 
-from mpi4py import MPI
-from sys import argv, path
 
 
 def execute_fitloop(nspax, colarr, rowarr, cube, q3di, linelist, specConv,
                     onefit, quiet, logfile=None):
+    
     '''
     handle the FITLOOP execution.
     In its own function due to commonality between single- and
@@ -55,12 +59,14 @@ def execute_fitloop(nspax, colarr, rowarr, cube, q3di, linelist, specConv,
     '''
     print(nspax)
     for ispax in range(0, nspax):
-        fitloop.fitloop(ispax, colarr, rowarr, cube, q3di, linelist, specConv,
+        fitloop(ispax, colarr, rowarr, cube, q3di, linelist, specConv,
                         onefit=onefit, quiet=quiet, logfile=logfile)
 
 
 def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
                  quiet=True):
+
+    
     '''
     q3df setup for multi-threaded execution
 
@@ -83,7 +89,7 @@ def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
 
     '''
     # add common subdirectory to Python PATH for ease of importing
-    path.append("common/")
+#    path.append("common/")
     starttime = time.time()
 
     q3di = util.get_q3dio(inobj)
@@ -121,6 +127,7 @@ def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
 
 def q3df_multiCore(rank, inobj, cols=None, rows=None,
                    onefit=False, ncores=1, quiet=True):
+
     '''
     q3df setup for multi-threaded execution
 
@@ -185,6 +192,8 @@ def q3df_multiCore(rank, inobj, cols=None, rows=None,
 
 # if called externally, default to MPI behavior
 if __name__ == "__main__":
+    from sys import argv
+    from mpi4py import MPI
     # get multiprocessor data: number of tasks and which one this is
     comm = MPI.COMM_WORLD
     size = comm.Get_size()

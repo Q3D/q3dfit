@@ -10,7 +10,7 @@ from astropy.table import Table
 from importlib import import_module
 from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
-from q3dfit.math import airtovac
+from q3dfit.q3dmath import airtovac
 from q3dfit.interptemp import interptemp
 from q3dfit.masklin import masklin
 from scipy.interpolate import interp1d
@@ -427,7 +427,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     # https://stackoverflow.com/questions/20618804/how-to-smooth-a-curve-in-the-right-way/20642478
                     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html
                     from scipy.signal import savgol_filter
-                    line_dat_sm = savgol_filter(q3do.line_dat, 11, 3)
+#                    from scipy.ndimage import gaussian_filter
+                    line_dat_sm = savgol_filter(q3do.line_dat, 11, 3)#gaussian_filter(q3do.line_dat,1)
                     # fline = interp1d(gdlambda, line_dat_sm, kind='linear')
                     for line in q3di.lines:
                         # Check that line wavelength is in data range

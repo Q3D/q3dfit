@@ -171,8 +171,8 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True):
 
     for ispax in range(0, nspax):
 
-        i = colarr[ispax]
-        j = rowarr[ispax]
+        i = colarr[ispax]-1
+        j = rowarr[ispax]-1
 
         if not quiet:
             print(f'Column {i+1} of {cube.ncols}')

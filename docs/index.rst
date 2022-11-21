@@ -17,9 +17,11 @@ host galaxy. Host galaxy emission is carefully fit with a combination
 of stellar continuum, emission and absorption of dust and ices, and
 ionic and molecular emission lines.
 
-``q3dfit`` has been tested on ground-based data where PSF is weakly
-wavelength-dependent. The update of ``q3dfit`` to the case of the strongly
-wavelength-dependent JWST PSF is currently in development.
+``q3dfit`` has been tested on both ground-based data and NIRSpec-IFU
+ERS data of the quasar SDSSJ165202.64+172852.3 from the Q3D program
+(`Wylezalek et al. 2022
+<https://ui.adsabs.harvard.edu/abs/2022arXiv221010074W/abstract>`_). Testing
+with MIRI-IFU data is pending future Q3D observations.
 
 ``q3dfit`` developers are:
 * David Rupke (Rhodes College, software lead)
@@ -35,12 +37,8 @@ wavelength-dependent JWST PSF is currently in development.
 * Grace Lim (Rhodes College, contributor)
 * Ryan McCrory (Rhodes College, contributor)
   
-.. warning::
-
-   This software has not yet been officially released. You are viewing
-   pre-release test documentation and content in active development. We are not 
-   yet able to provide user support. If you find a bug or have a feature request, 
-   please `submit an issue <https://github.com/Q3D/q3dfit/issues>`_. 
+.. warning:: If you find a bug or have a feature request, please
+   `submit an issue <https://github.com/Q3D/q3dfit/issues>`_.
 
 Our papers describing ``q3dfit`` and all its functionalities are
 currently in preparation and the links will be posted here. If you use
@@ -77,10 +75,11 @@ following references:
    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
    }
 
-The software is being developed in part as a contribution to the JWST Early Release Science program *Imaging Spectroscopy of Quasar Hosts with JWST
-analyzed with a powerful new PSF Decomposition and Spectral Analysis Package*. The website for the project is `available
-here
-<https://wwwstaff.ari.uni-heidelberg.de/dwylezalek/q3d.html>`_. We
+The software is being developed in part as a contribution to the JWST
+Early Release Science program *Imaging Spectroscopy of Quasar Hosts
+with JWST analyzed with a powerful new PSF Decomposition and Spectral
+Analysis Package*. The website for the project is `available here
+<https://q3d.github.io/>`_. We
 acknowledge funding provided by NASA through a contract issued by
 Space Telescope Science Institute for support of Early Release Science
 observations with JWST and in-kind contributions by leading and
@@ -98,9 +97,9 @@ Johns Hopkins University, and University of Maryland College Park.
 
    installation
 
-   testing
+   fitting
 
-   configuration
+   MIR-configuration
    
 ..   examples/one_spaxel
 

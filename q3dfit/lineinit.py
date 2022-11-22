@@ -142,13 +142,13 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
             'comp' not in lineratio.colnames:
             raise InitializationError('The lineratio table must contain' +
                                       ' the line1, line2, and comp columns')
-        else:
-            for ilinrat in range(0, len(lineratio)):
-                line1 = lineratio['line1'][ilinrat]
-                line2 = lineratio['line2'][ilinrat]
-                comps = np.array(lineratio['comp'][ilinrat])
-                lmline1 = lmlabel(line1)
-                lmline2 = lmlabel(line2)
+        for ilinrat in range(0, len(lineratio)):
+            line1 = lineratio['line1'][ilinrat]
+            line2 = lineratio['line2'][ilinrat]
+            comps = lineratio['comp'][ilinrat]
+            lmline1 = lmlabel(line1)
+            lmline2 = lmlabel(line2)
+            for comp in comps:
                 if f'{lmline1.lmlabel}_{comp}_flx' in fit_params.keys() and \
                     f'{lmline2.lmlabel}_{comp}_flx' in fit_params.keys():
                     # set initial value

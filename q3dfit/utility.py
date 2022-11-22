@@ -59,7 +59,7 @@ def get_dispersion(q3di, cube, quiet=True):
         return spectConvol.spectConvol(q3di, cube, quiet=quiet)
 
 
-def get_Cube(q3di, quiet, logfile=None):
+def get_Cube(q3di, quiet=True, logfile=None):
     '''
     initialize Cube object
 

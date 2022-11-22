@@ -1,11 +1,11 @@
 q3di = 'pg1411/q3di.npy'
 
 from os import chdir
-chdir('../q3dfit/jnb/')
+chdir('../jnb/')
 
 # Fitting
-from q3dfit.q3dfit import q3dfit
-q3dfit(q3di, cols=14, rows=11) #ncores=10)
+from q3dfit.q3df import q3dfit
+q3dfit(q3di, cols=[13, 14], rows=11, ncores=2)
 
 # Plotting
 # from q3dfit.q3dout import load_q3dout

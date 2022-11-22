@@ -55,7 +55,7 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True):
                 lines_with_doublets.append(name1+'+'+name2)
 
     # READ DATA
-    cube, vormap = util.get_Cube(q3di, quiet)
+    cube, vormap = util.get_Cube(q3di, quiet=quiet)
 
     # process col, row specifications
     nspax, colarr, rowarr = util.get_spaxels(cube, cols=cols, rows=rows)

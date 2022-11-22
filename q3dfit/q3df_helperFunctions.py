@@ -8,21 +8,16 @@ Created on Tue May 26 13:37:58 2020
 @author: drupke
 @author: canicetti
 """
-
-import sys
-#if '/Users/discovery/Projects/Q3Ddev/q3dfit-dev/q3dfit' in sys.path:
-#    sys.path.remove('/Users/discovery/Projects/Q3Ddev/q3dfit-dev/q3dfit')
-from q3dfit.fitloop import fitloop
-import numpy as np
 import time
-from q3dfit.exceptions import InitializationError
+import numpy as np
+
+from q3dfit.fitloop import fitloop
+#from q3dfit.exceptions import InitializationError
 import q3dfit.utility as util
-
-
 
 def execute_fitloop(nspax, colarr, rowarr, cube, q3di, linelist, specConv,
                     onefit, quiet, logfile=None):
-    
+
     '''
     handle the FITLOOP execution.
     In its own function due to commonality between single- and
@@ -66,7 +61,7 @@ def execute_fitloop(nspax, colarr, rowarr, cube, q3di, linelist, specConv,
 def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
                  quiet=True):
 
-    
+
     '''
     q3df setup for multi-threaded execution
 
@@ -100,7 +95,7 @@ def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
     else:
         logfile = None
 
-    cube, vormap = util.get_Cube(q3di, quiet, logfile=logfile)
+    cube, vormap = util.get_Cube(q3di, quiet=quiet, logfile=logfile)
     specConv = util.get_dispersion(q3di, cube, quiet=quiet)
 
     if cols and rows and vormap:
@@ -162,7 +157,7 @@ def q3df_multiCore(rank, inobj, cols=None, rows=None,
     else:
         logfile = None
 
-    cube, vormap = util.get_Cube(q3di, quiet, logfile=logfile)
+    cube, vormap = util.get_Cube(q3di, quiet=quiet, logfile=logfile)
     specConv = util.get_dispersion(q3di, cube, quiet=quiet)
     if cols and rows and vormap:
         cols = util.get_voronoi(cols, rows, vormap)

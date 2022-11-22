@@ -51,9 +51,6 @@ or
 
 .. toctree::
 
-   Downloading and Installing q3dfit
-   Optional multi-processing capability
-
 .. 
  In multi-core processing, the system path is used. Thus the tool you
  use to run python (command line, Jupyter, Spyder) must inherit the

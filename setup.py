@@ -19,6 +19,7 @@ setup(
         'matplotlib>=3.5.1',
         'numpy>=1.21.5',
         'pandas>=1.3.5',
+        'photutils>=1.5.0',
         'plotbin>=3.1.3',
         'ppxf>=7.4.5',
         'scikit-image>=0.19.1',

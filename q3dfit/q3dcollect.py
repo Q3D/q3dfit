@@ -4,7 +4,7 @@ import importlib.resources as pkg_resources
 import matplotlib as mpl
 import numpy as np
 import os
-import q3dfit.utility as util
+import q3dfit.q3dutil as q3dutil
 
 from astropy.table import Table
 from q3dfit.data import linelists
@@ -37,12 +37,12 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True):
     bad = 1e99
 
     #load initialization object
-    q3di = util.get_q3dio(q3di)
+    q3di = q3dutil.get_q3dio(q3di)
 
     # set up linelist
     if q3di.dolinefit:
 
-        linelist = util.get_linelist(q3di)
+        linelist = q3dutil.get_linelist(q3di)
 
         # table with doublets to combine
         with pkg_resources.path(linelists, 'doublets.tbl') as p:
@@ -55,10 +55,10 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True):
                 lines_with_doublets.append(name1+'+'+name2)
 
     # READ DATA
-    cube, vormap = util.get_Cube(q3di, quiet=quiet)
+    cube, vormap = q3dutil.get_Cube(q3di, quiet=quiet)
 
     # process col, row specifications
-    nspax, colarr, rowarr = util.get_spaxels(cube, cols=cols, rows=rows)
+    nspax, colarr, rowarr = q3dutil.get_spaxels(cube, cols=cols, rows=rows)
     # TODO
     # if q3di.vormap is not None:
     #     vormap = q3di.vromap
@@ -235,7 +235,7 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True):
         else:
 
             # load fit object
-            q3do = util.get_q3dio(infile)
+            q3do = q3dutil.get_q3dio(infile)
 
             # Restore original error.
             q3do.spec_err = err[q3do.fitran_indx]

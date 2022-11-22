@@ -4,7 +4,7 @@
 from astropy.constants import c
 from astropy.table import QTable, Table
 from lmfit import Model
-from q3dfit.utility import lmlabel
+from q3dfit.q3dutil import lmlabel
 from q3dfit.exceptions import InitializationError
 import numpy as np
 import q3dfit.data

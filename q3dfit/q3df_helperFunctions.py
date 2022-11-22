@@ -12,7 +12,7 @@ import time
 import numpy as np
 
 from q3dfit.fitloop import fitloop
-import q3dfit.utility as util
+import q3dfit.q3dutil as q3dutil
 
 def execute_fitloop(nspax, colarr, rowarr, cube, q3di, linelist, specConv,
                     onefit, quiet, logfile=None):
@@ -84,21 +84,21 @@ def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
     '''
     starttime = time.time()
 
-    q3di = util.get_q3dio(inobj)
-    linelist = util.get_linelist(q3di)
+    q3di = q3dutil.get_q3dio(inobj)
+    linelist = q3dutil.get_linelist(q3di)
 
     if q3di.logfile is not None:
         logfile = open(q3di.logfile, 'w+')
     else:
         logfile = None
 
-    cube, vormap = util.get_Cube(q3di, quiet=quiet, logfile=logfile)
-    specConv = util.get_dispersion(q3di, cube, quiet=quiet)
+    cube, vormap = q3dutil.get_Cube(q3di, quiet=quiet, logfile=logfile)
+    specConv = q3dutil.get_dispersion(q3di, cube, quiet=quiet)
 
     if cols and rows and vormap:
-        cols = util.get_voronoi(cols, rows, vormap)
+        cols = q3dutil.get_voronoi(cols, rows, vormap)
         rows = 1
-    nspax, colarr, rowarr = util.get_spaxels(cube, cols, rows)
+    nspax, colarr, rowarr = q3dutil.get_spaxels(cube, cols, rows)
 
     # execute FITLOOP
 
@@ -146,20 +146,20 @@ def q3df_multiCore(rank, size, inobj, cols=None, rows=None,
 
     '''
     starttime = time.time()
-    q3di = util.get_q3dio(inobj)
-    linelist = util.get_linelist(q3di)
+    q3di = q3dutil.get_q3dio(inobj)
+    linelist = q3dutil.get_linelist(q3di)
 
     if q3di.logfile is not None:
         logfile = open(q3di.logfile + '_core'+str(rank+1), 'w+')
     else:
         logfile = None
 
-    cube, vormap = util.get_Cube(q3di, quiet=quiet, logfile=logfile)
-    specConv = util.get_dispersion(q3di, cube, quiet=quiet)
+    cube, vormap = q3dutil.get_Cube(q3di, quiet=quiet, logfile=logfile)
+    specConv = q3dutil.get_dispersion(q3di, cube, quiet=quiet)
     if cols and rows and vormap:
-        cols = util.get_voronoi(cols, rows, vormap)
+        cols = q3dutil.get_voronoi(cols, rows, vormap)
         rows = 1
-    nspax, colarr, rowarr = util.get_spaxels(cube, cols, rows)
+    nspax, colarr, rowarr = q3dutil.get_spaxels(cube, cols, rows)
     # get the range of spaxels this core is responsible for
     start = int(np.floor(nspax * rank / size))
     stop = int(np.floor(nspax * (rank+1) / size))

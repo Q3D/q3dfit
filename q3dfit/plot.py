@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from q3dfit.q3dmath import cmplin
-from q3dfit.utility import lmlabel
+from q3dfit.q3dutil import lmlabel
 from q3dfit.exceptions import InitializationError
 from q3dfit import questfit_readcf
 from matplotlib import rcParams

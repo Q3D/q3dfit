@@ -5,7 +5,7 @@
 
 import copy
 import numpy as np
-import q3dfit.utility as util
+import q3dfit.q3dutil as q3dutil
 
 from astropy.table import Table
 from importlib import import_module
@@ -44,7 +44,7 @@ def load_q3dout(q3di, col, row, cubedim=None):
     """
 
     # convert from string to object if necessary.
-    q3dii = util.get_q3dio(q3di)
+    q3dii = q3dutil.get_q3dio(q3di)
 
     filelab = '{0.outdir}{0.label}'.format(q3dii)
     if cubedim is None:
@@ -52,7 +52,7 @@ def load_q3dout(q3di, col, row, cubedim=None):
             cubedim = q3dii.cubedim
         else:
             print('load_q3dout: q3di has no attribute cubedim, loading cube')
-            cube, vormap = util.get_Cube(q3dii)
+            cube, vormap = q3dutil.get_Cube(q3dii)
             cubedim = cube.dat.ndim
     if cubedim > 1:
         filelab += '_{:04d}'.format(col)
@@ -61,7 +61,7 @@ def load_q3dout(q3di, col, row, cubedim=None):
     infile = filelab + '.npy'
 
     # this should work for both q3di and q3do
-    q3dout = util.get_q3dio(infile)
+    q3dout = q3dutil.get_q3dio(infile)
     # add file label to object
     q3dout.filelab = filelab
     return q3dout
@@ -458,7 +458,7 @@ class q3dout:
     def sepcontpars(self, q3di):
         '''
         '''
-        q3dii = util.get_q3dio(q3di)
+        q3dii = q3dutil.get_q3dio(q3di)
 
         # Compute PPXF components: additive polynomial and stellar fit
         if q3dii.decompose_ppxf_fit:
@@ -653,7 +653,7 @@ class q3dout:
 
         if self.docontfit:
 
-            q3dii = util.get_q3dio(q3di)
+            q3dii = q3dutil.get_q3dio(q3di)
 
             mod = import_module('q3dfit.plot')
             plotcont = getattr(mod, fcn)

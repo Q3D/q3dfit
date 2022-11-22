@@ -1,3 +1,16 @@
+1.0.1 (X Nov 2022)
+------------------
+
+Patches:
+- Fixed bug in initialization of line ratio constraints. Added text
+  better describing these constraints in notebooks.
+- Fixed error in multicore processing due to conflicting
+  filenames. math.py, utility.py, and q3dfit.py renamed to q3dmath.py,
+  q3dutil.py, and q3df.py.
+- Added sphinx processing for readthedocs.
+- Fixed link errors in readthedocs.
+- A few other bugfixes.
+  
 1.0.0 (15 Nov 2022)
 -------------------
 

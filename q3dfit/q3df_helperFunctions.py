@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Helper functions for q3dfit.py.
+Helper functions for q3df.py.
 
 Created on Tue May 26 13:37:58 2020
 
@@ -12,7 +12,6 @@ import time
 import numpy as np
 
 from q3dfit.fitloop import fitloop
-#from q3dfit.exceptions import InitializationError
 import q3dfit.utility as util
 
 def execute_fitloop(nspax, colarr, rowarr, cube, q3di, linelist, specConv,

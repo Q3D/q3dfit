@@ -9,7 +9,7 @@ Created on Tue May 31 15:31:13 2022
 import copy as copy
 import numpy as np
 import os
-import q3dfit.utility as util
+import q3dfit.q3dutil as q3dutil
 
 from astropy.constants import c
 from astropy.cosmology import WMAP9 as cosmo
@@ -34,7 +34,7 @@ class Q3Dpro:
     def __init__(self, q3di, SILENT=True, NOCONT=False, NOLINE=False,
                  PLATESCALE=0.15):
         # read in the q3di file and unpack
-        self.q3dinit = util.get_q3dio(q3di)
+        self.q3dinit = q3dutil.get_q3dio(q3di)
         # unpack initproc
         self.target_name = self.q3dinit.name
         self.silent = SILENT

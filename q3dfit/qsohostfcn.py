@@ -1,7 +1,7 @@
 import lmfit
 import numpy as np
 
-from q3dfit.utility import lmlabel
+from q3dfit.q3dutil import lmlabel
 from q3dfit.exceptions import InitializationError
 from q3dfit.lineinit import manygauss
 

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import copy
 import numpy as np
 import q3dfit.q3dout as q3dout

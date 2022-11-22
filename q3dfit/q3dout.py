@@ -48,8 +48,8 @@ def load_q3dout(q3di, col, row, cubedim=None):
 
     filelab = '{0.outdir}{0.label}'.format(q3dii)
     if cubedim is None:
-        if hasattr(q3di, 'cubedim'):
-            cubedim = q3di.cubedim
+        if hasattr(q3dii, 'cubedim'):
+            cubedim = q3dii.cubedim
         else:
             print('load_q3dout: q3di has no attribute cubedim, loading cube')
             cube, vormap = util.get_Cube(q3dii)

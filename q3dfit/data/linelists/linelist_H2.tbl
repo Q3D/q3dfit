@@ -7,7 +7,7 @@
 \ https://www.mpe.mpg.de/ir/ISO/linelists, file H2.html 
 \ The original precision for wavelength is maintained. 
 |                    name|          lines|                linelab|
-|                    char|         double|                   char|
+|                    char|          float|                   char|
 |                        |         micron|                       |
 |                    null|           null|                   null|
                  H2_10_S0          2.2235     H$_2$(1-0) S(0) 

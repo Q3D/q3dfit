@@ -115,7 +115,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     if q3di.fitrange is not None:
-        fitran_tmp = q3di.fitrange
+        fitran_tmp = list(map(np.float32, q3di.fitrange))
     else:
         fitran_tmp = [wlambda[0], wlambda[len(wlambda)-1]]
     # indices locating good data and data within fit range
@@ -134,7 +134,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                                           gd_indx_8, gd_indx_9)
     gd_indx_full = list(gd_indx_full)
     # limit actual fit range to good data
-    fitran = [np.min(wlambda[gd_indx_full]), np.max(wlambda[gd_indx_full])]
+    fitran = [np.min(wlambda[gd_indx_full]).astype('float32'),
+              np.max(wlambda[gd_indx_full]).astype('float32')]
 
     # indices locating data within actual fit range
     fitran_indx1 = np.where(wlambda >= fitran[0])[0]
@@ -407,7 +408,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     if q3di.dolinefit:
 
         q3do.init_linefit(listlines, q3di.lines, q3di.maxncomp,
-                          line_dat=continuum)
+                          line_dat=continuum.astype('float32'))
 
         # Check that # components being fit to at least one line is > 0
         nonzerocomp = np.where(np.array(list(ncomp.values())) != 0)[0]
@@ -482,13 +483,16 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                                 np.where(peakinit[line] < 0., 0., peakinit[line])
                         else:
                             peakinit[line] = np.zeros(q3di.maxncomp)
+                        # re-cast as float32
+                        peakinit[line] = peakinit[line].astype('float32')
 
             # Initial guesses for emission line widths
             if siginit_gas is None:
                 siginit_gas = {k: None for k in q3di.lines}
                 for line in q3di.lines:
                     siginit_gas[line] = \
-                        np.zeros(q3di.maxncomp) + siginit_gas_def
+                        np.zeros(q3di.maxncomp, dtype='float32') + \
+                        np.float32(siginit_gas_def)
 
             # Fill out parameter structure with initial guesses and constraints
             impModule = import_module('q3dfit.' + q3di.fcnlineinit)

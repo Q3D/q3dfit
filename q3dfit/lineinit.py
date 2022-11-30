@@ -6,6 +6,7 @@ from astropy.table import QTable, Table
 from lmfit import Model
 from q3dfit.q3dutil import lmlabel
 from q3dfit.exceptions import InitializationError
+import copy
 import numpy as np
 import q3dfit.data
 import os
@@ -18,7 +19,11 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
     '''
     # Get fixed-ratio doublet pairs for tying intensities
     data_path = os.path.abspath(q3dfit.data.__file__)[:-11]
-    doublets = Table.read(data_path+'linelists/doublets.tbl', format='ipac')
+    doublets64 = Table.read(data_path+'linelists/doublets.tbl', format='ipac')
+    doublets = \
+        Table(doublets64,
+              dtype=['str', 'str', 'int', 'float32', 'float32', 'float32'])
+
     dblt_pairs = dict()
     for idx, name in enumerate(doublets['line1']):
         if doublets['fixed_ratio'][idx] == 1:
@@ -31,7 +36,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
     #    specres = np.float32(specres)
     # A reasonable lower limit of 5d for physicality
     if siglim is None:
-        siglim = np.array([5., 2000.])
+        siglim = np.array([5., 2000.], dtype='float32')
     else:
         siglim = np.array(siglim, dtype='float32')
 
@@ -51,7 +56,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
             # LMFIT parameters can only consist of letters,  numbers, or _
             lmline = lmlabel(line)
             mName = f'{lmline.lmlabel}_{i}_'
-            imodel = Model(manygauss, prefix=mName,SPECRES=specConv)
+            imodel = Model(manygauss, prefix=mName, SPECRES=specConv)
             if isinstance(totmod, Model):
                 totmod += imodel
             else:
@@ -120,7 +125,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
 #            if not inrange:
 #                vary = False
         else:
-            value = 0.  # specres
+            value = np.float32(0.)
             limited = None
             limits = None
             vary = False
@@ -160,7 +165,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
                                 fit_params[f'{lmline1.lmlabel}_{comp}_flx'],
                                 fit_params[f'{lmline2.lmlabel}_{comp}_flx'])
                     lmrat = f'{lmline1.lmlabel}_div_{lmline2.lmlabel}_{comp}'
-                    fit_params.add(lmrat, value=initval)
+                    fit_params.add(lmrat, value=initval.astype('float32'))
                     # tie second line to first line divided by the ratio
                     fit_params[f'{lmline2.lmlabel}_{comp}_flx'].expr = \
                         f'{lmline1.lmlabel}_{comp}_flx'+'/'+lmrat
@@ -171,34 +176,34 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
                     # apply lower limit?
                     if 'lower' in lineratio.colnames:
                         lower = lineratio['lower'][ilinrat]
-                        fit_params[lmrat].min = lower
+                        fit_params[lmrat].min = lower.astype('float32')
                     # logic to apply doublet lower limits if in doublets table
                     elif line1 in doublets['line1']:
                         iline1 = np.where(doublets['line1'] == line1)
                         if doublets['line2'][iline1] == line2:
                             lower = doublets['lower'][iline1][0]
-                        fit_params[lmrat].min = lower
+                        fit_params[lmrat].min = lower.astype('float32')
                     # doublet can be specified in init file in either order
                     # relative to doublets table ...
                     elif line1 in doublets['line2']:
                         iline1 = np.where(doublets['line2'] == line1)
                         if doublets['line1'][iline1] == line2:
                             upper = 1. / doublets['lower'][iline1][0]
-                        fit_params[lmrat].max = upper
+                        fit_params[lmrat].max = upper.astype('float32')
                     # apply upper limit?
                     if 'upper' in lineratio.colnames:
                         upper = lineratio['upper'][ilinrat]
-                        fit_params[lmrat].max = upper
+                        fit_params[lmrat].max = upper.astype('float32')
                     elif line1 in doublets['line1']:
                         iline1 = np.where(doublets['line1'] == line1)
                         if doublets['line2'][iline1] == line2:
                             upper = doublets['upper'][iline1][0]
-                        fit_params[lmrat].max = upper
+                        fit_params[lmrat].max = upper.astype('float32')
                     elif line1 in doublets['line2']:
                         iline1 = np.where(doublets['line2'] == line1)
                         if doublets['line1'][iline1] == line2:
                             lower = 1. / doublets['upper'][iline1][0]
-                        fit_params[lmrat].min = lower
+                        fit_params[lmrat].min = lower.astype('float32')
 
     # pass siglim_gas back because the default is set here, and it's needed
     # downstream
@@ -207,16 +212,19 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
 
 def set_params(fit_params, NAME, VALUE=None, VARY=True, LIMITED=None,
                TIED=None, LIMITS=None):
+    # we can force the input to float32, but lmfit has values as float64 and
+    # doesn't seem like we can change it. These astypes assume that the
+    # VALUE is a numpy object
     if VALUE is not None:
-        fit_params[NAME].set(value=VALUE)
+        fit_params[NAME].set(value=VALUE.astype('float32'))
     fit_params[NAME].set(vary=VARY)
     if TIED is not None:
         fit_params[NAME].expr = TIED
     if LIMITED is not None and LIMITS is not None:
         if LIMITED[0] == 1:
-            fit_params[NAME].min = LIMITS[0]
+            fit_params[NAME].min = LIMITS[0].astype('float32')
         if LIMITED[1] == 1:
-            fit_params[NAME].max = LIMITS[1]
+            fit_params[NAME].max = LIMITS[1].astype('float32')
     return fit_params
 
 

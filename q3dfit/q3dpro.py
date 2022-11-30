@@ -558,7 +558,7 @@ class Q3Dpro:
                                 'lrat':{'Ftot':None,'Fci':None}},
                         'SiiHa' :{'lines':[['[SII]6716','[SII]6731'],'Halpha'],'pltname':'[SII]/H$\\alpha$','pltrange':[-1.8,0.9],
                                   'lrat':{'Ftot':None,'Fci':None}},
-                        'OiHa'  :{'lines':['[OIII]5007','Halpha'],'pltname':'[OI]/H$\\alpha$','pltrange':[-1.8,0.1],
+                        'OiHa'  :{'lines':['[OI]6300','Halpha'],'pltname':'[OI]/H$\\alpha$','pltrange':[-1.8,0.1],
                                   'lrat':{'Ftot':None,'Fci':None}},
                        'NiiHa' :{'lines':['[NII]6583','Halpha'],'pltname':'[NII]/H$\\alpha$','pltrange':[-1.8,0.1],
                                  'lrat':{'Ftot':None,'Fci':None}},

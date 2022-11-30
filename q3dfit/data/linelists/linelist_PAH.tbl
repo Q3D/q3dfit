@@ -3,7 +3,7 @@
 \ Data Source 1: data from the link
 \ https://github.com/spacetelescope/jdaviz/blob/main/jdaviz/data/linelists
 |   name| lines| linelab|
-|   char|double|    char|
+|   char| float|    char|
 |       |micron|        |
 |   null|  null|    null|
  PAH3.25   3.25 PAH 3.25 

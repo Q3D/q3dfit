@@ -124,9 +124,11 @@ class q3din:
         # check for defined zsys
         if zinit is None:
             if self.zsys_gas is not None:
-                zinit = self.zsys_gas
+                zinit = np.float32(self.zsys_gas)
             else:
                 print('problem!')
+        else:
+            zinit = np.float32(zinit)
 
         self.lines = lines
 
@@ -169,11 +171,13 @@ class q3din:
         for i, line in enumerate(self.lines):
             self.linetie[line] = linetie[i]
             self.ncomp[line] = np.full((self.ncols, self.nrows),
-                                       self.maxncomp)
+                                       self.maxncomp, dtype='int')
             self.zinit_gas[line] = np.full((self.ncols, self.nrows,
-                                            self.maxncomp), zinit)
+                                            self.maxncomp), zinit,
+                                           dtype='float32')
             self.siginit_gas[line] = np.full((self.ncols, self.nrows,
-                                              self.maxncomp), siginit)
+                                              self.maxncomp), siginit,
+                                             dtype='float32')
 
     def init_contfit(self, fcncontfit, siginit=50., zinit=None, argscontfit={},
                      argscontplot={}, argsconvtemp={},
@@ -261,9 +265,11 @@ class q3din:
         # check for defined zsys
         if zinit is None:
             if self.zsys_gas is not None:
-                zinit = self.zsys_gas
+                zinit = np.float32(self.zsys_gas)
             else:
                 print('problem!')
+        else:
+            zinit = np.float32(zinit)
 
         # check that load_cube() has been invoked, or ncols/nrows otherwise
         # defined
@@ -271,8 +277,10 @@ class q3din:
             _ = self.load_cube(self.infile)
             print('q3di: Loading cube to get ncols, nrows')
 
-        self.siginit_stars = np.full((self.ncols, self.nrows), siginit)
-        self.zinit_stars = np.full((self.ncols, self.nrows), zinit)
+        self.siginit_stars = np.full((self.ncols, self.nrows), siginit,
+                                     dtype='float32')
+        self.zinit_stars = np.full((self.ncols, self.nrows), zinit,
+                                   dtype='float32')
 
     def load_cube(self):
         if not os.path.isfile(self.infile):

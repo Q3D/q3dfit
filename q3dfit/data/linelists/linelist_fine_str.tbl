@@ -3,7 +3,7 @@
 \ Data Source 1: ISO list of fine structure lines at 2-205 micron 
 \ https://www.mpe.mpg.de/ir/ISO/linelists/FSlines.html 
 |                    name|          lines|              linelab|
-|                    char|         double|                 char|
+|                    char|          float|                 char|
 |                        |         micron|                     |
 |                    null|           null|                 null|
                [SiVI]1.96        1.963410           [SiVI] 1.96 

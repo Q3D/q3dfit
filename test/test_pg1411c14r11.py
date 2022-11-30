@@ -5,7 +5,7 @@ chdir('../jnb/')
 
 # Fitting
 from q3dfit.q3df import q3dfit
-q3dfit(q3di, cols=[13, 14], rows=11, ncores=2)
+q3dfit(q3di, cols=14, rows=11, quiet=False)
 
 # Plotting
 # from q3dfit.q3dout import load_q3dout

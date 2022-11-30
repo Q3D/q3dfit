@@ -189,7 +189,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
                 plt.suptitle(title, fontsize=30)
 
             if savefig and outfile is not None:
-                plt.savefig(outfile + '.jpg')
+                plt.savefig(outfile[0] + '.jpg')
 
         elif xstyle == 'lin' or ystyle == 'lin':
             dxran = xran[1] - xran[0]
@@ -321,7 +321,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
                 plt.suptitle(title, fontsize=40)
 
             if savefig and outfile is not None:
-                plt.savefig(outfile + '.jpg')
+                plt.savefig(outfile[0] + '.jpg')
 
     # for IR spectra fit with questfit:
     else:
@@ -591,7 +591,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
             plt.suptitle(title, fontsize=30)
 
         if savefig and outfile is not None:
-            plt.savefig(outfile + '.jpg')
+            plt.savefig(outfile[0] + '.jpg')
 
 
 def plotline(q3do, nx=1, ny=1, line=None, center_obs=None, center_rest=None,
@@ -842,7 +842,7 @@ def plotline(q3do, nx=1, ny=1, line=None, center_obs=None, center_rest=None,
     fig.suptitle(xtit, fontsize=25)
 
     if savefig and outfile is not None:
-        fig.savefig(outfile + '.jpg')
+        fig.savefig(outfile[0] + '.jpg')
 
 
 def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di,
@@ -948,4 +948,4 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di,
         plt.show()
 
         if savefig and outfile is not None:
-            plt.savefig(outfile+'.jpg')
+            plt.savefig(outfile[0]+'.jpg')

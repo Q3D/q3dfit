@@ -11,7 +11,7 @@ from astropy.table import Table
 from importlib import import_module
 from ppxf.ppxf_util import log_rebin
 from q3dfit.q3dmath import gaussflux
-from q3dfit.utility import lmlabel
+from q3dfit.q3dutil import lmlabel
 from q3dfit.qsohostfcn import qsohostfcn
 from scipy import constants
 from scipy.interpolate import interp1d

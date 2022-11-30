@@ -404,9 +404,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # Fit emission lines
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    parinit = []
-
-
     if q3di.dolinefit:
 
         q3do.init_linefit(listlines, q3di.lines, q3di.maxncomp,
@@ -528,7 +525,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             # Note that lmfit method 'least_squares’ with default least_squares
             # method 'lm' counts function calls in
             # Jacobian estimation if numerical Jacobian is used (again the default)
-            max_nfev = 200*(len(parinit)+1)
+            max_nfev = 200*(len(q3do.parinit)+1)
             iter_cb = None
 
             # Add more using 'argslinefit' dict in init file

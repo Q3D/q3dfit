@@ -319,6 +319,8 @@ class Cube:
                 self.cdelt = header[CD]
             else:
                 raise CubeError('Cannot find or compute wavelengths')
+        # explicitly cast as float32
+        self.wave = self.wave.astype('float32')
 
         # convert wavelengths if requested
         if self.waveunit_in != self.waveunit_out:

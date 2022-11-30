@@ -3,7 +3,7 @@
 \ Data Source 1: Storchi-Bergmann et al. 2009, MNRAS, 394, 1148 
 \ Data Source 2: Glikman et al. 2006, ApJ, 640, 579 (but looked up on NIST)
 |                    name|          lines|              linelab|
-|                    char|         double|                 char|
+|                    char|          float|                 char|
 |                        |         micron|                     |
 |                    null|           null|                 null|
                       Pae        0.954860          Pa$\epsilon$ 

@@ -6,7 +6,7 @@
 \ https://www.mpe.mpg.de/ir/ISO/linelists/Hydrogenic.html
 \ The original precision for wavelength is maintained. 
 |                    name|          lines|                linelab|
-|                    char|         double|                   char|
+|                    char|          float|                   char|
 |                        |         micron|                       |
 |                    null|           null|                   null|
                   HI_11_3       0.8865217                 HI 11-3

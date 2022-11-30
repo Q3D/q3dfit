@@ -96,13 +96,14 @@ OR
     all_units = []
     for llist in linetables:
         with pkg_resources.path(linelists, llist) as p:
+            # this sets float64 data types
             newtable = Table.read(p, format='ipac')
-            all_tables.append(newtable)
+            all_tables.append(Table(newtable, dtype=['str', 'float32', 'str']))
             all_units.append(newtable['lines'].unit)
 
     # get everything on the user-requested units:
     if ((waveunit!='Angstrom') & (waveunit!='micron')):
-        print ('Wave unit ',waveunit,' not recognized, returning microns')
+           print ('Wave unit ',waveunit,' not recognized, returning microns')
     if (waveunit=='Angstrom'):
         for i,u in enumerate(all_units):
             if (u=='micron'):

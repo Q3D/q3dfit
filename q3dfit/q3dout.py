@@ -81,9 +81,9 @@ class q3dout:
                  gd_indx=None, fitran_indx=None):
 
         self.fitrange = fitrange
-        self.wave = wave
-        self.spec = spec
-        self.spec_err = spec_err
+        self.wave = np.float32(wave)
+        self.spec = np.float32(spec)
+        self.spec_err = np.float32(spec_err)
 
         self.fitran_indx = fitran_indx
         self.gd_indx = gd_indx

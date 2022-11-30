@@ -7,7 +7,7 @@
 \ A handful of previousy missing Latex labels were added by hand to the 
 \ original two tables before combining. 
 |                    name|          lines|              linelab|
-|                    char|         double|                 char|
+|                    char|          float|                 char|
 |                        |       Angstrom|                     |
 |                    null|           null|                 null|
                  SiII1304      1304.37000             SiII 1304 

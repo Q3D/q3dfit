@@ -32,7 +32,8 @@ class Q3Dpro:
     # instantiate the q3dpro object
     # =========================================================================
     def __init__(self, q3di, SILENT=True, NOCONT=False, NOLINE=False,
-                 PLATESCALE=0.15):
+                 PLATESCALE=0.15,BACKGROUND='white'):
+        
         # read in the q3di file and unpack
         self.q3dinit = q3dutil.get_q3dio(q3di)
         # unpack initproc
@@ -50,6 +51,7 @@ class Q3Dpro:
             self.contdat = ContData(self.q3dinit)
         if not NOLINE:
             self.linedat = LineData(self.q3dinit)
+        self.map_bkg = BACKGROUND
 
         return
 
@@ -288,7 +290,8 @@ class Q3Dpro:
                         ipixVals = pixVals
                 if doPLT == True:
                     cmap_r = cm.get_cmap(CMAP)
-                    cmap_r.set_bad(color='black')
+                    # cmap_r.set_bad(color='black')
+                    cmap_r.set_bad(color=self.map_bkg)
                     xx, yy = xcol,ycol
                     axi = ax[i,j]
                     if ncomp < 2:
@@ -304,7 +307,7 @@ class Q3Dpro:
                     axi.set_xlabel(XYtitle,fontsize=16)
                     axi.set_ylabel(XYtitle,fontsize=16)
                     axi.set_title(ipdat['name'][ci],fontsize=20,pad=45)
-                    # axi.set_ylim([max(xx),np.ceil(min(xx))])
+                    # axi.set_ylim([min(xx),np.ceil(max(xx))])
                     # axi.set_xlim([min(yy),np.ceil(max(yy))])
                     if SAVEDATA == True:
                         linesave_name = self.target_name+'_'+LINESELECT+'_'+icomp+ici+'_map.fits'
@@ -460,7 +463,7 @@ class Q3Dpro:
 
         CMAP='inferno'
         cmap_r = cm.get_cmap(CMAP)
-        cmap_r.set_bad(color='black')
+        cmap_r.set_bad(color=self.map_bkg)
         cf = 0
 
         for linrat in lineratios:
@@ -492,8 +495,19 @@ class Q3Dpro:
                     else:
                         prelud = 'Fc'+str(ni)+': '
                     ax[ni].set_title(prelud+'log$_{10}$ '+lineratios[linrat]['pltname'],fontsize=15,pad=45)
-                    ax[ni].set_ylim([max(xx),np.ceil(min(xx))])
-                    ax[ni].set_xlim([min(yy),np.ceil(max(yy))])
+                    # ax[ni].set_ylim([min(xx),np.ceil(max(xx))])
+                    # ax[ni].set_xlim([min(yy),np.ceil(max(yy))])
+                for li,lratF in enumerate(['Ftot','Fci']):
+                    if lratF == 'Fci':
+                        frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
+                        for ci in range(0,ncomp):
+                            display_pixels_wz(yy, xx, frat10[:,:,ci], CMAP=CMAP, AX=ax[li+ci],
+                                              VMIN=VMINMAX[0], VMAX=VMINMAX[1], NTICKS=5, COLORBAR=True)
+                    else:
+                        frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
+                        display_pixels_wz(yy, xx, frat10, CMAP=CMAP, AX=ax[li],
+                                          VMIN=VMINMAX[0], VMAX=VMINMAX[1], NTICKS=5, COLORBAR=True)
+                # pltname,pltrange = lineratios[linrat]['pltname'],lineratios[linrat]['pltrange']
                 cf += 1
         plt.tight_layout(pad=1.5,h_pad=0.1)
         if SAVEDATA == True:
@@ -596,7 +610,7 @@ class Q3Dpro:
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         print('calculating line ratios...')
         cntr = 0
-        bptc = 0
+        # bptc = 0
         for lrat,lratdat in lineratios.items():
             f1tot,f1tot_err,m1tot,f1scntot,f1ci,f1ci_err,m1ci,f1scnci = [],[],[],[],[],[],[],[]#np.zeros(mshaps[1]),np.zeros(mshaps[1]),np.zeros(mshaps[1])
             f2tot,f2tot_err,m2tot,f2scntot,f2ci,f2ci_err,m2ci,f2scnci = [],[],[],[],[],[],[],[]#np.zeros(mshaps[1]),np.zeros(mshaps[1]),np.zeros(mshaps[1])
@@ -670,7 +684,7 @@ class Q3Dpro:
             xcol = (xgrid-xyCenter[1])
             ycol = (ygrid-xyCenter[0])
         # --------------------------
-        # Plot ine ratio map
+        # Plot line ratio map
         # --------------------------
         plt.close(PLTNUM)
         figDIM = [nps,cntr]
@@ -681,7 +695,7 @@ class Q3Dpro:
 
         CMAP='inferno'
         cmap_r = cm.get_cmap(CMAP)
-        cmap_r.set_bad(color='black')
+        cmap_r.set_bad(color=self.map_bkg)
         cf = 0
 
         for linrat in lineratios:
@@ -713,8 +727,21 @@ class Q3Dpro:
                     else:
                         prelud = 'Fc'+str(ni)+': '
                     ax[ni,cf].set_title(prelud+'log$_{10}$ '+pltname,fontsize=15,pad=45)
-                    ax[ni,cf].set_ylim([max(xx),np.ceil(min(xx))])
-                    ax[ni,cf].set_xlim([min(yy),np.ceil(max(yy))])
+                    # ax[ni,cf].set_ylim([max(xx),np.ceil(min(xx))])
+                    # ax[ni,cf].set_xlim([min(yy),np.ceil(max(yy))])
+                
+                for li,lratF in enumerate(['Ftot','Fci']):
+                    if lratF == 'Fci':
+                        frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
+                        for ci in range(0,ncomp):
+                            display_pixels_wz(yy, xx, 
+                                              frat10[:,:,ci], CMAP=CMAP, AX=ax[li+ci,cf],
+                                              VMIN=-1, VMAX=1,NTICKS=5, COLORBAR=True)
+                    else:
+                        frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
+                        display_pixels_wz(yy, xx, 
+                                          frat10, CMAP=CMAP, AX=ax[li,cf],
+                                          VMIN=-1, VMAX=1, NTICKS=5, COLORBAR=True)
                 cf += 1
         plt.tight_layout(pad=1.5,h_pad=0.1)
         if SAVEDATA == True:
@@ -731,7 +758,7 @@ class Q3Dpro:
         figDIM = [nps,cntr-1]
         figOUT = set_figSize(figDIM,mshaps[1],SQUARE=True)
         fig,ax = plt.subplots(nps,cntr-1,figsize=((cntr-1)*5,5),num=PLTNUM,constrained_layout=True,dpi=100)
-        fig.set_figheight(int(figOUT[1]/2))
+        fig.set_figheight(int(figOUT[1]))
         fig.set_figwidth(figOUT[0])
         cf=0
         pixkpc = self.pix*arckpc
@@ -760,7 +787,7 @@ class Q3Dpro:
                                                   color='black',markersize=5,zorder=2)
                             ax[li+ci,cf].errorbar(xfract.flatten()[ee],yfract.flatten()[ee],fmt='.',alpha=0.7,
                                                 xerr=[xfracterr[0][ee],xfracterr[1][ee]],yerr=[yfracterr[0][ee],yfracterr[1][ee]],
-                                            elinewidth=0.6,ecolor='dodgerblue',
+                                            elinewidth=0.8,ecolor='dodgerblue',
                                             color='black',markersize=0,zorder=2)
                             ax[li+ci,cf].errorbar(np.median(frat10_B[gg[0],gg[1],ci].flatten()),np.median(frat10_A[gg[0],gg[1],ci].flatten()),
                                                   fillstyle='none',color='red',fmt='*',markersize=15,mew=2,zorder=3)
@@ -775,7 +802,7 @@ class Q3Dpro:
                                             color='black',markersize=5,zorder=2)
                         ax[li,cf].errorbar(xfract.flatten()[ee],yfract.flatten()[ee],fmt='.',alpha=0.7,
                                             xerr=[xfracterr[0][ee],xfracterr[1][ee]],yerr=[yfracterr[0][ee],yfracterr[1][ee]],
-                                            elinewidth=0.6,ecolor='dodgerblue',
+                                            elinewidth=0.8,ecolor='dodgerblue',
                                             color='black',markersize=0,zorder=2)
                         ax[li,cf].errorbar(np.median(xfract.flatten()),np.median(yfract.flatten()),
                                             fillstyle='none',color='red',fmt='*',markersize=15,mew=2,zorder=3)
@@ -1237,6 +1264,7 @@ class OneLineData:
         nticks = 4
         cmap_r = cm.get_cmap(cmap)
         cmap_r.set_bad(color='black')
+        # cmap_r.set_bad(color=self.map_bkg)
         display_pixels_wz(cols_cent, rows_cent, pixVals, CMAP=cmap, AX=ax,
                           COLORBAR=True, VMIN=velran[0], VMAX=velran[1],
                           TICKS=vticks, NTICKS=nticks, XRAN=xran, YRAN=yran)
@@ -1499,3 +1527,5 @@ def set_figSize(dim,plotsize,SQUARE=False):
         figSIZE = [np.min(figSIZE),np.max(figSIZE)]
     figSIZE = np.array(figSIZE).astype(int)
     return figSIZE
+
+

@@ -469,20 +469,6 @@ class Q3Dpro:
         for linrat in lineratios:
             if lineratios[linrat] != None :
                 xx,yy = xcol,ycol
-                # iax = ax[cf]
-                for li,lratF in enumerate(['Ftot','Fci']):
-
-                    if lratF == 'Fci':
-                        frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
-                        for ci in range(0,ncomp):
-                            display_pixels_wz(yy, xx, frat10[:,:,ci], CMAP=CMAP, AX=ax[li+ci],
-                                              VMIN=VMINMAX[0], VMAX=VMINMAX[1], NTICKS=5, COLORBAR=True)
-                    else:
-                        frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
-                        display_pixels_wz(yy, xx, frat10, CMAP=CMAP, AX=ax[li],
-                                          VMIN=VMINMAX[0], VMAX=VMINMAX[1], NTICKS=5, COLORBAR=True)
-                # pltname,pltrange = lineratios[linrat]['pltname'],lineratios[linrat]['pltrange']
-
                 for ni in range(0,nps):
                     ax[ni].set_xlabel('spaxel',fontsize=13)
                     ax[ni].set_ylabel('spaxel',fontsize=13)
@@ -702,19 +688,7 @@ class Q3Dpro:
             if lineratios[linrat] != None :
                 xx,yy = xcol,ycol
                 # iax = ax[cf]
-                for li,lratF in enumerate(['Ftot','Fci']):
-
-                    if lratF == 'Fci':
-                        frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
-                        for ci in range(0,ncomp):
-                            display_pixels_wz(yy, xx, frat10[:,:,ci], CMAP=CMAP, AX=ax[li+ci,cf],
-                                              VMIN=-1, VMAX=1, NTICKS=5, COLORBAR=True)
-                    else:
-                        frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
-                        display_pixels_wz(yy, xx, frat10, CMAP=CMAP, AX=ax[li,cf],
-                                          VMIN=-1, VMAX=1, NTICKS=5, COLORBAR=True)
                 pltname,pltrange = lineratios[linrat]['pltname'],lineratios[linrat]['pltrange']
-
                 for ni in range(0,nps):
                     ax[ni,cf].set_xlabel('spaxel',fontsize=13)
                     ax[ni,cf].set_ylabel('spaxel',fontsize=13)

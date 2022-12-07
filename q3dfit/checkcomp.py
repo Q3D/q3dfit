@@ -69,8 +69,8 @@ def checkcomp(linepars, linetie, ncomp, siglim, sigcut=None, ignore=[]):
                         & (linepars['fluxerr'][line][:ncomp[line]] > 0.) \
                         & (linepars['sigma'][line][:ncomp[line]] > siglim[0]) \
                         & (linepars['sigma'][line][:ncomp[line]] < siglim[1])
-                if igd.any():
-                    goodcomp[np.where(igd)] = 1
+                    if igd.any():
+                        goodcomp[np.where(igd)] = 1
             tmpncomp = goodcomp.sum()
             if tmpncomp < ncomp[key]:
                 newncomp[key] = tmpncomp

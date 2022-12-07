@@ -1,4 +1,4 @@
-1.0.1 (X Nov 2022)
+1.0.1 (7 Dec 2022)
 ------------------
 
 Patches:
@@ -7,9 +7,11 @@ Patches:
 - Fixed error in multicore processing due to conflicting
   filenames. math.py, utility.py, and q3dfit.py renamed to q3dmath.py,
   q3dutil.py, and q3df.py.
+- All inputs to LMFIT now float32 to prevent numerical errors.
 - Added sphinx processing for readthedocs.
 - Fixed link errors in readthedocs.
-- A few other bugfixes.
+- Bugfix: checkcomp now working properly.
+- Misc. bugfixes.
   
 1.0.0 (15 Nov 2022)
 -------------------

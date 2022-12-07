@@ -2,9 +2,9 @@ from setuptools import setup, find_packages
 
 setup(
     name='q3dfit',
-    version='1.0.0',    
+    version='1.0.1',    
     url='https://q3dfit.readthedocs.io/en/latest/index.html',
-    author='David Rupke',
+    author='David Rupke and the Q3D Team',
     author_email='drupke@gmail.com',
     license='GPL-3',
     long_description='Model astronomical data from integral field spectrographs.',

@@ -30,12 +30,13 @@ with MIRI-IFU data is pending future Q3D observations.
 * Sylvain Veilleux (University of Maryland College Park, CoPI)
 * Andrey Vayner (Johns Hopkins University, primary developer)
 * Caroline Bertemes (Heidelberg, primary developer)
-* Yuzo Ishikawa (Johns Hopkins University, contributor)
-* Weizhe Liu (University of Maryland College Park, contributor)
+* Yuzo Ishikawa (Johns Hopkins University, primary developer)
+* Weizhe Liu (University of Maryland College Park, primary developer)
 * Carlos Anicetti (Johns Hopkins University, contributor)
-* Lillian Whitesell (Rhodes College, contributor)
 * Grace Lim (Rhodes College, contributor)
 * Ryan McCrory (Rhodes College, contributor)
+* Anna Murphree (Rhodes College and University of Hawai'i, contributor)
+* Lillian Whitesell (Rhodes College, contributor)
   
 .. note::
    If you find a bug or have a feature request, please

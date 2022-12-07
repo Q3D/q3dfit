@@ -146,10 +146,10 @@ class Q3Dpro:
                 if len(dataOUT[ditem]['data'].shape) > 2:
                     for ci in range(0,ncomp):
                         dataOUT[ditem]['data'][:,:,ci] = dataOUT[ditem]['data'][:,:,ci]*dataOUT[ditem]['mask'][:,:,ci]
-                        dataOUT[ditem]['err'][:,:,ci]  = dataOUT[ditem]['data'][:,:,ci]*dataOUT[ditem]['mask'][:,:,ci]
+                        dataOUT[ditem]['err'][:,:,ci]  = dataOUT[ditem]['err'][:,:,ci]*dataOUT[ditem]['mask'][:,:,ci]
                 else:
                     dataOUT[ditem]['data'] = dataOUT[ditem]['data']*dataOUT[ditem]['mask']
-                    dataOUT[ditem]['err']  = dataOUT[ditem]['data']*dataOUT[ditem]['mask']
+                    dataOUT[ditem]['err']  = dataOUT[ditem]['err']*dataOUT[ditem]['mask']
 
         return wave0,linetext,dataOUT
 

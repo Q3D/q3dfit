@@ -291,9 +291,12 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     argscontfit['siginit_stars'] = siginit_stars
 
             q3do.cont_fit, q3do.ct_coeff, q3do.zstar = \
-                fcncontfit(gdlambda, gdflux, gdinvvar,
+                fcncontfit(gdlambda.astype(np.float64),
+                           gdflux.astype(np.float64),
+                           gdinvvar.astype(np.float64),
                            templatelambdaz_tmp,
-                           templateflux_tmp, q3do.ct_indx, zstar,
+                           templateflux_tmp, q3do.ct_indx,
+                           zstar.astype(np.float64),
                            quiet=quiet, **argscontfit)
 
             if 'refit' in argscontfit.keys():

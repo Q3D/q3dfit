@@ -184,7 +184,7 @@ class q3din:
                      decompose_qso_fit=False, decompose_ppxf_fit=False,
                      dividecont=False, ebv_star=None,
                      fcncontplot='plotcont', fcnconvtemp=None,
-                     keepstarz=False,
+                     forcefloat64=False, keepstarz=False,
                      masksig_secondfit=2., maskwidths=None, maskwidths_def=500.,
                      nolinemask=False, nomaskran=None,
                      startempfile=None, startempvac=True, tweakcntfit=None):
@@ -200,6 +200,9 @@ class q3din:
         fcnconvtemp : str
             Function with which to convolve template before fitting.
             (Not yet implemented.)
+        forcefloat64 : bool
+            If set, force type inputs to continuum fitting function. Default
+            is False, which means float32.
 
         argscontfit : dict
         argsconvtemp : dict
@@ -249,6 +252,7 @@ class q3din:
         self.dividecont = dividecont
         self.ebv_star = ebv_star
         self.fcnconvtemp = fcnconvtemp
+        self.forcefloat64 = forcefloat64
         self.keepstarz = keepstarz
         self.maskwidths = maskwidths
         self.maskwidths_def = maskwidths_def

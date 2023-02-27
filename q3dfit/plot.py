@@ -329,8 +329,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
         comp_best_fit = ct_coeff['comp_best_fit']
 
         if xstyle == 'log' or ystyle == 'log':
-            if 'plotMIR' in q3di.keys():
-              if q3di.plotMIR:
+            if IR:
                 fig = plt.figure(figsize=(50, 30))
                 gs = fig.add_gridspec(4,1)
                 ax1 = fig.add_subplot(gs[:3, :])
@@ -369,25 +368,22 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
                 ax1.plot(MIRgdlambda, MIRgdflux, label='Data',color=dcolor)
                 ax1.plot(MIRgdlambda, MIRcontinuum, label='Model', color='r')
 
-                if 'argscontfit' in q3di:
-                    if 'global_ext_model' in q3di.argscontfit:
-                       for i in np.arange(0,len(comp_best_fit.keys())-2,1):
-                          ax1.plot(MIRgdlambda,
-                                   np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
-                                                             np.multiply(comp_best_fit[list(comp_best_fit.keys())[-2]],
-                                                                                       comp_best_fit[list(comp_best_fit.keys())[-1]])),
-                                                             label=list(comp_best_fit.keys())[i],
-                                                             linestyle='--',alpha=0.5)
-                    else:
-                       for i in np.arange(0,len(comp_best_fit.keys()),3):
-                          ax1.plot(MIRgdlambda,
-                                   np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
-                                                             np.multiply(comp_best_fit[list(comp_best_fit.keys())[i+1]],
-                                                                                       comp_best_fit[list(comp_best_fit.keys())[i+2]])),
-                                                             label=list(comp_best_fit.keys())[i],
-                                                             linestyle='--',alpha=0.5)
+                if 'global_ext_model' in q3di.argscontfit:
+                    for i in np.arange(0,len(comp_best_fit.keys())-2,1):
+                        ax1.plot(MIRgdlambda,
+                                 np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
+                                             np.multiply(comp_best_fit[list(comp_best_fit.keys())[-2]],
+                                                         comp_best_fit[list(comp_best_fit.keys())[-1]])),
+                                 label=list(comp_best_fit.keys())[i],
+                                 linestyle='--',alpha=0.5)
                 else:
-                    print('argscontfit  missing in the init dict \n --> Not plotting MIR fitting results correctly.')
+                    for i in np.arange(0,len(comp_best_fit.keys()),3):
+                        ax1.plot(MIRgdlambda,
+                                 np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
+                                             np.multiply(comp_best_fit[list(comp_best_fit.keys())[i+1]],
+                                                         comp_best_fit[list(comp_best_fit.keys())[i+2]])),
+                                 label=list(comp_best_fit.keys())[i],
+                                 linestyle='--',alpha=0.5)
 
                 #ax1.legend(ncol=2)
                 ax1.legend(loc='upper right',bbox_to_anchor=(1.15, 1),prop={'size': 10})
@@ -561,8 +557,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
                     plt.plot(MIRgdlambda, MIRcontinuum, label='Model',
                              color='red')
 
-                    if 'argscontfit' in q3di:
-                        if 'global_ext_model' in q3di.argscontfit:
+                    if 'global_ext_model' in q3di.argscontfit:
                            for i in np.arange(0,len(comp_best_fit.keys())-2,1):
                               plt.plot(MIRgdlambda,
                                        np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
@@ -570,13 +565,13 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
                                                                comp_best_fit[list(comp_best_fit.keys())[-1]])),
                                        label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
 
-                        else:
-                           for i in np.arange(0,len(comp_best_fit.keys()),3):
-                              plt.plot(MIRgdlambda,
-                                       np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
-                                                   np.multiply(comp_best_fit[list(comp_best_fit.keys())[i+1]],
-                                                               comp_best_fit[list(comp_best_fit.keys())[i+2]])),
-                                       label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
+                    else:
+                        for i in np.arange(0,len(comp_best_fit.keys()),3):
+                            plt.plot(MIRgdlambda,
+                                     np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
+                                                 np.multiply(comp_best_fit[list(comp_best_fit.keys())[i+1]],
+                                                             comp_best_fit[list(comp_best_fit.keys())[i+2]])),
+                                     label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
 
                     if group == 1:
                         ax.legend(loc='upper right',bbox_to_anchor=(1.22, 1),prop={'size': 10})
@@ -595,7 +590,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
 
 
 def plotline(q3do, nx=1, ny=1, line=None, center_obs=None, center_rest=None,
-             size=300., savefig=False, outfile=None):
+             size=300., savefig=False, outfile=None, specConv=None):
     """
 
     Plot emission line fit and output to JPG
@@ -793,7 +788,11 @@ def plotline(q3do, nx=1, ny=1, line=None, center_obs=None, center_rest=None,
                         if f'{lmline.lmlabel}_{j}_cwv' in \
                             q3do.param.keys():
                             flux = cmplin(q3do, line, j, velsig=True)
-                            ax0.plot(wave, yran[0] + flux, color=colors[j],
+                            if specConv is not None:
+                                conv = specConv.spect_convolver(wave, flux, refwav)
+                            else:
+                                conv = flux
+                            ax0.plot(wave, yran[0] + conv, color=colors[j],
                                      linewidth=2, linestyle='dashed')
                         ax0.annotate(linetext[k], (0.05, 1. - ylaboff),
                                      xycoords='axes fraction',
@@ -852,8 +851,7 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di,
 
     plot_noext = False
 
-    if 'argscontfit' in q3di.keys() and 'plot_decomp' in q3di.argscontfit.keys(): # Test plot - To do: move this to the correct place in q3da
-      if q3di.argscontfit['plot_decomp']:
+    if 'plot_decomp' in q3di.argscontfit:
         config_file = questfit_readcf.readcf(q3di.argscontfit['config_file'])
         global_extinction = False
         for key in config_file:
@@ -877,11 +875,10 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di,
           MIRgdlambda_temp = MIRgdlambda
 
         if len(lines)>0:
-          for line_i in lines:
-            ax1.axvline(line_i, color='grey', linestyle='--', alpha=0.7, zorder=0)
+            for line_i in lines:
+              ax1.axvline(line_i, color='grey', linestyle='--', alpha=0.7, zorder=0)
             #ax1.axvspan(line_i-max(q3di.siglim_gas), line_i+max(q3di.siglim_gas))
-          ax1.plot(MIRgdlambda, linespec, color='r', linestyle='-', alpha=0.7, linewidth=1.5)
-
+            ax1.plot(MIRgdlambda, linespec, color='r', linestyle='-', alpha=0.7, linewidth=1.5)
 
         colour_list = ['dodgerblue', 'mediumblue', 'salmon', 'palegreen', 'orange', 'purple', 'forestgreen', 'darkgoldenrod', 'mediumblue', 'magenta', 'plum', 'yellowgreen']
 

@@ -628,8 +628,9 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
 
             temp_value_rebin = \
                 interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
+            models_dictionary[i] = temp_value_rebin
             if convert2Flambda:
-                models_dictionary[i] = temp_value_rebin*c_scale
+                models_dictionary[i] *= c_scale
             models_dictionary[i] = models_dictionary[i]/models_dictionary[i].max()  # normalise
 
         models_dictionary['wave'] = wlambda

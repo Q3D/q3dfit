@@ -615,13 +615,15 @@ class q3dout:
         #self.qso_cont_dat = self.cont_dat - self.hostmod
         #self.qso_cont_fit = self.cont_fit - self.hostmod
 
-    def plot_line(self, fcn='plotline', savefig=False, outfile=None,
+    def plot_line(self, q3di, fcn='plotline', savefig=False, outfile=None,
                   plotargs={}):
         '''
         '''
 
         # if inline is False:
         #    mpl.use('agg')
+
+        q3dii = q3dutil.get_q3dio(q3di)
 
         if self.dolinefit:
             mod = import_module('q3dfit.plot')
@@ -637,7 +639,14 @@ class q3dout:
                     print('plot_line: need to specify outfile')
                 else:
                     outfile += '_lin'
-            plotline(self, savefig=savefig, outfile=outfile,
+
+            if q3di.spect_convol:
+                cube, _ = q3dutil.get_Cube(q3dii)
+                specConv = q3dutil.get_dispersion(q3dii, cube, quiet=True)
+            else:
+                specConv = None
+
+            plotline(self, savefig=savefig, outfile=outfile, specConv=specConv,
                      **plotargs)
         else:
             print('plot_line: no lines to plot!')

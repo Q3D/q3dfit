@@ -100,6 +100,7 @@ class Q3Dpro:
                    'Sig' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[],'mask':np.zeros(matrix_size)},
                    'v50' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[],'mask':np.zeros(matrix_size)},
                    'w80' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[],'mask':np.zeros(matrix_size)}}
+
         # EXTRACT COMPONENTS
         for ci in range(0,ncomp) :
             ici = ci+1
@@ -203,7 +204,8 @@ class Q3Dpro:
 
         qsoCenter = xyCenter
         if xyCenter == None :
-            qsoCenter = [int(np.ceil(matrix_size[0]/2)),int(np.ceil(matrix_size[1]/2))]
+            qsoCenter = [int(np.ceil(matrix_size[0]/2)),
+                         int(np.ceil(matrix_size[1]/2))]
 
         XYtitle = 'Spaxel'
         if XYSTYLE != None and XYSTYLE != False:
@@ -211,24 +213,24 @@ class Q3Dpro:
             xcol = (xgrid-xyCenter[1])
             ycol = (ygrid-xyCenter[0])
             if xyCenter != None :
-                qsoCenter = [0,0]
+                qsoCenter = [0, 0]
             if XYSTYLE.lower() == 'kpc':
                 kpc_pix = np.median(kpc_arcsec)* self.pix
                 xcolkpc = xcol*kpc_pix
                 ycolkpc = ycol*kpc_pix
-                xcol,ycol = xcolkpc,ycolkpc
+                xcol,ycol = xcolkpc, ycolkpc
                 XYtitle = 'Relative distance [kpc]'
         plt.close(PLTNUM)
-        figDIM = [ncomp+1,4]
-        figOUT = set_figSize(figDIM,matrix_size)
-        fig,ax = plt.subplots(figDIM[0],figDIM[1],dpi=100)
-        fig.set_figheight(figOUT[1]+2)#(12)
-        fig.set_figwidth(figOUT[0]-1)#(14)
+        figDIM = [ncomp+1, 4]
+        figOUT = set_figSize(figDIM, matrix_size)
+        fig, ax = plt.subplots(figDIM[0], figDIM[1], dpi=100)
+        fig.set_figheight(figOUT[1]+2)  # (12)
+        fig.set_figwidth(figOUT[0]-1)  # (14)
         if CMAP == None :
             CMAP = 'YlOrBr_r'
         ici = ''
         i,j=0,0
-        for icomp,ipdat in dataOUT.items():
+        for icomp, ipdat in dataOUT.items():
             doPLT = False
             pixVals = ipdat['data']
             ipshape = pixVals.shape
@@ -251,12 +253,13 @@ class Q3Dpro:
                 if icomp.lower() == 'sig':
                     j+=1
                     CMAP = 'YlOrBr_r'
-                    NTICKS  = 5
-                    vticks = [vminmax[0],np.median([np.log10(vminmax[0]),np.log10(vminmax[1])]),vminmax[1]]
+                    NTICKS  = 3
+                    #vticks = [vminmax[0],np.median([np.log10(vminmax[0]),np.log10(vminmax[1])]),vminmax[1]]
+                    vticks = [vminmax[0],(vminmax[0]+vminmax[1])/2.,vminmax[1]]
                     FLUXLOG = False
                 elif icomp.lower() == 'v50' :
                     j+=1
-                    NTICKS = 3
+                    NTICKS = 5
                     vticks = [vminmax[0],vminmax[0]/2,0,vminmax[1]/2,vminmax[1]]
                     CMAP = 'RdYlBu'
                     CMAP += '_r'
@@ -264,7 +267,7 @@ class Q3Dpro:
                 elif icomp.lower() == 'w80' :
                     j+=1
                     NTICKS = 3
-                    vticks = [vminmax[0],np.median([np.log10(vminmax[0]),np.log10(vminmax[1])]),vminmax[1]]
+                    vticks = [vminmax[0],(vminmax[0]+vminmax[1])/2.,vminmax[1]]
                     CMAP = 'RdYlBu'
                     CMAP += '_r'
                     FLUXLOG = False
@@ -1448,7 +1451,7 @@ def lgerr(x1,x2,x1err,x2err,):
     lgyerrlow = yd - np.log10(yd0-yderr0)
     return [lgyerrlow,lgyerrup]
 
-def clean_mask(dataIN,BAD=1e99):
+def clean_mask(dataIN, BAD=1e99):
     dataOUT = copy.deepcopy(dataIN)
     dataOUT[dataIN != BAD] = 1
     dataOUT[dataIN == BAD] = np.nan
@@ -1477,12 +1480,12 @@ def save_to_fits(dataIN,hdrIN,savepath):
     return
 
 def set_figSize(dim,plotsize,SQUARE=False):
-    dim = np.array(dim)
-    xy = [12,14]
-    figSIZE = 5*np.round(np.array(plotsize)/5)[0:2]
+    dim = np.array(dim, dtype='float')
+    xy = [12.,14.]
+    figSIZE = 5.*np.round(np.array(plotsize, dtype='float')/5.)[0:2]
     figSIZE = figSIZE/np.min(figSIZE)
     if dim[0] == dim[1] :
-        if figSIZE[0] == figSIZE[1]:
+        if figSIZE[0] >= figSIZE[1]:
             figSIZE = figSIZE*max(xy)
         if figSIZE[0] < figSIZE[1]:
             figSIZE = figSIZE*min(xy)
@@ -1490,7 +1493,7 @@ def set_figSize(dim,plotsize,SQUARE=False):
         figSIZE = np.ceil(figSIZE*min(xy))
         figSIZE = [np.max(figSIZE),np.min(figSIZE)]
         if dim[0] == 1:
-            figSIZE[1] = np.ceil(figSIZE[1]/2)
+            figSIZE[1] = np.ceil(figSIZE[1]/2.)
     elif dim[0] > dim[1]:
         figSIZE = np.ceil(figSIZE*max(xy))
         figSIZE = [np.min(figSIZE),np.max(figSIZE)]

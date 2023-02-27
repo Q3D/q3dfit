@@ -1,3 +1,15 @@
+1.1.0 (27 Feb 2023)
+-------------------
+
+- MIR Spitzer notebook ported to new framework.
+
+Patches:
+- q3di now a required argument to q3do.line_fit()
+- forcefloat64 now an option to q3di, for forcing 64-bit float inputs to
+  continuum fitting routine
+- Bugfix: q3dutil typo on line 209
+- Linelist cleanups, additions
+
 1.0.1 (7 Dec 2022)
 ------------------
 

@@ -206,7 +206,7 @@ def get_spaxels(cube, cols=None, rows=None):
     else:
         nrows = rows[1]-rows[0]+1
 
-    if len(cols) or len(rows) <= 2:
+    if len(cols)<=2 or len(rows) <= 2:
         colarr = np.empty((ncols, nrows), dtype=np.int32)
         rowarr = np.empty((ncols, nrows), dtype=np.int32)
         for i in range(nrows):

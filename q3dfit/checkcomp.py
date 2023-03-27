@@ -59,13 +59,26 @@ def checkcomp(linepars, linetie, ncomp, siglim, sigcut=None, ignore=[]):
     for key, tiedlist in newlinetie.items():
         if ncomp[key] > 0:
             goodcomp = np.zeros(ncomp[key], dtype=int)
+            # badcomp = np.zeros(ncomp[key], dtype=int) + 1
             # Loop through lines tied to each anchor,
             # looking for good components
             for line in tiedlist:
                 if line not in ignore:
+                    # check for zeroed out lines
+                    # for testing numerical issues with least_squares
+                    # import pdb; pdb.set_trace()
+                    # izero = ((linepars['fluxpk'][line][:ncomp[line]] < 1e-10) &
+                    #          (np.isnan(linepars['fluxpkerr'][line][:ncomp[line]])))
+                    # if izero.any():
+                    #     goodcomp += 1
+                    #     goodcomp[np.where(izero)] = 0
+                    # else:
+                    # Peak flux is insensitive to issues with sigma
+                    #    (linepars['flux'][line][:ncomp[line]] >
+                    #     sigcut*linepars['fluxerr'][line][:ncomp[line]]) \
                     igd = \
-                        (linepars['flux'][line][:ncomp[line]] >
-                         sigcut*linepars['fluxerr'][line][:ncomp[line]]) \
+                        (linepars['fluxpk'][line][:ncomp[line]] >
+                         sigcut*linepars['fluxpkerr'][line][:ncomp[line]]) \
                         & (linepars['fluxerr'][line][:ncomp[line]] > 0.) \
                         & (linepars['sigma'][line][:ncomp[line]] > siglim[0]) \
                         & (linepars['sigma'][line][:ncomp[line]] < siglim[1])

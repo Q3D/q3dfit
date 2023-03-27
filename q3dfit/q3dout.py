@@ -408,11 +408,11 @@ class q3dout:
                 igd = np.where(flux[line] > 0.)
                 ctgd = np.count_nonzero(flux[line] > 0.)
                 if ctgd > 0:
-                    tf[line] = np.sum(flux[line][igd])
-                    tfe[line] = np.sqrt(np.sum(fluxerr[line][igd]**2.))
+                    tf[line][0] = np.sum(flux[line][igd])
+                    tfe[line][0] = np.sqrt(np.sum(fluxerr[line][igd]**2.))
                 else:
-                    tf[line] = 0.
-                    tfe[line] = 0.
+                    tf[line][0] = 0.
+                    tfe[line][0] = 0.
 
             # Special doublet cases: combine fluxes from each line
             if doublets is not None:

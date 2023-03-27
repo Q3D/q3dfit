@@ -184,11 +184,11 @@ class Cube:
         # headers
         self.header_phu = hdu[0].header
         self.header_dat = hdu[datext].header
-        if self.var is not None:
+        if self.varext is not None:
             self.header_var = hdu[varext].header
-        if self.dq is not None:
+        if self.dqext is not None:
             self.header_dq = hdu[dqext].header
-        if self.wmap is not None:
+        if self.wmapext is not None:
             self.header_wmap = hdu[wmapext].header
         # copy of data header
         header = copy.copy(self.header_dat)
@@ -484,16 +484,18 @@ class Cube:
         # re-compute error
         self.err = np.sqrt(self.var)
 
-    def makeqsotemplate(self, outpy, norm=1., plot=True, radius=1.):
-
-        import matplotlib.pyplot as plt
+    def makeqsotemplate(self, outpy, col=None, row=None, norm=1., plot=True,
+                        radius=1.):
 
         '''Extract the quasar spectrum
 
         Parameters
         ----------
         outpy : string
-                Name of the numpy save file for the resulting qso spectrum
+            Name of the numpy save file for the resulting qso spectrum
+        col, row : float
+            x, y pixel coordinates of aperture center, in unity-offset
+            coordinates
         norm : float, optional
             Factor by which to divide output spectrum.
         plot : bool, optional
@@ -507,31 +509,23 @@ class Cube:
             {wave,flux,dq}
         '''
 
-        white_light_image = np.median(self.dat, axis=2)
-        white_light_image[np.where(np.isnan(white_light_image))] = 0
+        if col is None and row is None:
+            print('makeqsotempate: using peak spaxel in white light as center')
+            white_light_image = np.median(self.dat, axis=2)
+            white_light_image[np.where(np.isnan(white_light_image))] = 0
 
-        loc_max = np.where(white_light_image == white_light_image.max())
-        map_x = np.tile(np.indices((self.ncols, 1))[0], (1, self.nrows))
-        map_y = np.tile(np.indices((self.nrows, 1))[0].T[0], (self.ncols, 1))
-        map_r = np.sqrt((map_x - loc_max[0][0])**2 +
-                        (map_y - loc_max[1][0])**2)
-        iap = np.where(map_r <= radius)
+            loc_max = np.where(white_light_image == white_light_image.max())
+            col = loc_max[0][0]+1
+            row = loc_max[1][0]+1
 
         qsotemplate = {'wave': self.wave}
+        spec = self.specextract(col, row, norm=norm, plot=plot, radius=radius)
         if self.dat is not None:
-            # norm = np.median(self.dat[loc_max[0][0], loc_max[1][0]])
-            qsotemplate['flux'] = self.dat[iap[0][:], iap[1][:], :].sum(0) \
-                / norm
-        if plot:
-            fig, ax = plt.subplots()
-            ax.plot(self.wave, qsotemplate['flux'])
-            #plt.plot(self.wave, qsotemplate['flux'])
-            #plt.show()
+            qsotemplate['flux'] = spec[:, 0]
         if self.var is not None:
-            qsotemplate['var'] = self.var[iap[0][:], iap[1][:], :].sum(0) \
-                / norm / norm
+            qsotemplate['var'] = spec[:, 1]
         if self.dq is not None:
-            qsotemplate['dq'] = self.dq[iap[0][:], iap[1][:], :].sum(0)
+            qsotemplate['dq'] = spec[:, 2]
 
         np.save(outpy, qsotemplate)
 
@@ -546,12 +540,13 @@ class Cube:
 
         Parameters
         ----------
-        cent : ndarray
-            x, y pixel coordinates of aperture center
+        col, row : float
+            x, y pixel coordinates of aperture center, in unity-offset
+            coordinates
         method : string, optional
             Method of extraction. Default is circular aperture of radius r.
         radius : float, optional
-            Radius for circular extraction. Must be > 0.
+            Radius for circular extraction. If 0, extract single spaxel.
         norm : float, optional
             Factor by which to divide output spectrum.
         plot : bool, optional
@@ -565,16 +560,11 @@ class Cube:
 
         '''
 
+        #try:
+        #except:
+        #    raise CubeError('specextract is for cubes, not 1d or 2d spectra')
+
         cent = np.array([row-1., col-1.])
-
-        # Set radius to some value v. near 0 if zero is specified, otherwise
-        # something chokes
-        if radius == 0.:
-            radius = 0.01
-
-        # create circular mask
-        if method == 'circle':
-            aper = photutils.aperture.CircularAperture(cent, radius)
 
         # second dimension of output array
         next = 1
@@ -582,27 +572,40 @@ class Cube:
             next += 1
         if self.dq is not None:
             next += 1
-
         # create output array
         # Note that all planes have same dtype (float)
         spec = np.ndarray((self.nwave, next))
-        # loop through wavelengths
-        for i in np.arange(0, self.nwave):
-            specdat = \
-                photutils.aperture.aperture_photometry(self.dat[:, :, i], aper)
-            spec[i, 0] = specdat['aperture_sum'].data[0] / norm
-            # for now simply sum var as well
+
+        # Set extraction to single pixel if zero radius is specified
+        if radius == 0.:
+            spec[:, 0] = self.dat[col-1, row-1, :] / norm
             if self.var is not None:
-                specvar = \
-                    photutils.aperture.aperture_photometry(self.var[:, :, i],
-                                                           aper)
-                spec[i, 1] = specvar['aperture_sum'].data[0] / norm / norm
-            # for now simply sum dq
+                spec[:, 1] = self.var[col-1, row-1, :] / norm / norm
             if self.dq is not None:
-                specdq = \
-                    photutils.aperture.aperture_photometry(self.dq[:, :, i],
-                                                           aper)
-                spec[i, 2] = specdq['aperture_sum'].data[0]
+                spec[:, 2] = self.dq[col-1, row-1, :]
+        else:
+            # create circular mask
+            if method == 'circle':
+                aper = photutils.aperture.CircularAperture(cent, radius)
+
+            # loop through wavelengths
+            for i in np.arange(0, self.nwave):
+                specdat = \
+                    photutils.aperture.aperture_photometry(
+                        self.dat[:, :, i], aper)
+                spec[i, 0] = specdat['aperture_sum'].data[0] / norm
+                # for now simply sum var as well
+                if self.var is not None:
+                    specvar = \
+                        photutils.aperture.aperture_photometry(
+                            self.var[:, :, i], aper)
+                    spec[i, 1] = specvar['aperture_sum'].data[0] / norm / norm
+                # for now simply sum dq
+                if self.dq is not None:
+                    specdq = \
+                        photutils.aperture.aperture_photometry(
+                            self.dq[:, :, i], aper)
+                    spec[i, 2] = specdq['aperture_sum'].data[0]
 
         if plot:
             plt.plot(self.wave, spec[:, 0])

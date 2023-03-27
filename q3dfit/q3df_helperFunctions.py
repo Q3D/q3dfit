@@ -15,7 +15,7 @@ from q3dfit.fitloop import fitloop
 import q3dfit.q3dutil as q3dutil
 
 def execute_fitloop(nspax, colarr, rowarr, cube, q3di, linelist, specConv,
-                    onefit, quiet, logfile=None):
+                    onefit, quiet, logfile=None, core=1):
 
     '''
     handle the FITLOOP execution.
@@ -51,7 +51,7 @@ def execute_fitloop(nspax, colarr, rowarr, cube, q3di, linelist, specConv,
     None.
 
     '''
-    print(nspax)
+    print('Core '+str(core)+': # spaxels fit='+str(nspax))
     for ispax in range(0, nspax):
         fitloop(ispax, colarr, rowarr, cube, q3di, linelist, specConv,
                         onefit=onefit, quiet=quiet, logfile=logfile)
@@ -83,7 +83,6 @@ def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
 
     '''
     starttime = time.time()
-
     q3di = q3dutil.get_q3dio(inobj)
     linelist = q3dutil.get_linelist(q3di)
 
@@ -94,17 +93,13 @@ def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
 
     cube, vormap = q3dutil.get_Cube(q3di, quiet=quiet, logfile=logfile)
     specConv = q3dutil.get_dispersion(q3di, cube, quiet=quiet)
-
     if cols and rows and vormap:
         cols = q3dutil.get_voronoi(cols, rows, vormap)
         rows = 1
     nspax, colarr, rowarr = q3dutil.get_spaxels(cube, cols, rows)
-
     # execute FITLOOP
-
-    execute_fitloop(nspax, colarr, rowarr, cube, q3di, linelist, specConv,
-                    onefit, quiet, logfile=logfile)
-
+    execute_fitloop(nspax, colarr, rowarr, cube, q3di,
+                    linelist, specConv, onefit, quiet, logfile=logfile)
     if logfile is None:
         from sys import stdout
         logtmp = stdout
@@ -169,7 +164,8 @@ def q3df_multiCore(rank, size, inobj, cols=None, rows=None,
     nspax_thisCore = stop-start
     # execute FITLOOP
     execute_fitloop(nspax_thisCore, colarr, rowarr, cube, q3di,
-                    linelist, specConv, onefit, quiet, logfile=logfile)
+                    linelist, specConv, onefit, quiet, logfile=logfile,
+                    core=rank+1)
     if logfile is None:
         from sys import stdout
         logtmp = stdout

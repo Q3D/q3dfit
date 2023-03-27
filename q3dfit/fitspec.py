@@ -520,12 +520,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             # Actual fit
 
             # Collect keywords to pass to the minimizer routine via lmfit
-            # Defaults
-            if quiet:
-                lmverbose = 0  # verbosity for scipy.optimize.least_squares
-            else:
-                lmverbose = 2
-            fit_kws = {'verbose': lmverbose}
+            fit_kws = {}
 
             # Maximum # evals cannot be specified as a keyword to the minimzer,
             # as it's a parameter of the fit method. Default for 'least_squares'
@@ -538,6 +533,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             # Jacobian estimation if numerical Jacobian is used (again the default)
             max_nfev = 200*(len(q3do.parinit)+1)
             iter_cb = None
+            method = 'least_squares'
 
             # Add more using 'argslinefit' dict in init file
             if q3di.argslinefit is not None:
@@ -548,12 +544,22 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     # iter_cb goes in as parameter to fit method instead
                     elif key == 'iter_cb':
                         iter_cb = globals()[val]
+                    elif key == 'method':
+                        method = val
                     else:
                         fit_kws[key] = val
 
+            if method == 'least_squares':
+                # verbosity for scipy.optimize.least_squares
+                if quiet:
+                    lmverbose = 0
+                else:
+                    lmverbose = 2
+                fit_kws['verbose'] = lmverbose
+
+
             lmout = emlmod.fit(q3do.line_dat, q3do.parinit, x=gdlambda,
-                               method='least_squares',
-                               weights=np.sqrt(gdinvvar_nocnt),
+                               method=method, weights=np.sqrt(gdinvvar_nocnt),
                                nan_policy='omit', max_nfev=max_nfev,
                                fit_kws=fit_kws, iter_cb=iter_cb)
 
@@ -571,13 +577,15 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             # documentation was not very helpful with the error messages...
             # This can happen if, e.g., max_nfev is reached. Status message is in
             # this case not set, so we'll set it by hand.
-            if not lmout.success:
-                print('lmfit: '+lmout.message, file=logfile)
-                if not quiet:
-                    print('lmfit: '+lmout.message)
-                q3do.fitstatus = 0
-            else:
-                q3do.fitstatus = lmout.status
+            q3do.fitstatus = 1
+            if method == 'least_squares':
+                if not lmout.success:
+                    print('lmfit: '+lmout.message, file=logfile)
+                    if not quiet:
+                        print('lmfit: '+lmout.message)
+                    q3do.fitstatus = 0
+                else:
+                    q3do.fitstatus = lmout.status
 
             # Errors from covariance matrix and from fit residual.
             # resid = gdflux - continuum - specfit

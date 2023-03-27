@@ -121,7 +121,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
         stellar continuum
 
     template_flux: array
-        Flux of the stellar template used ass model for stellar continuum
+        Flux of the stellar template used as model for stellar continuum
 
     index: array
         Pixels used in the fit
@@ -172,11 +172,18 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
         qsohostfcn(wave, params_fit=None, qsoxdr=qsoxdr, qsoonly=qsoonly,
                    qsoord=qsoord, hostonly=hostonly, hostord=hostord,
                    blronly=blronly, blrpar=blrpar, qsoflux=qsoflux, **kwargs)
-    if quiet:
-        lmverbose = 0  # verbosity for scipy.optimize.least_squares
-    else:
-        lmverbose = 2
-    fit_kws = {'verbose': lmverbose}
+
+    method = 'least_squares'
+    if 'method' in kwargs:
+        method = kwargs['method']
+
+    fit_kws = {}
+    if method == 'least_squares':
+        if quiet:
+            lmverbose = 0  # verbosity for scipy.optimize.least_squares
+        else:
+            lmverbose = 2
+        fit_kws = {'verbose': lmverbose}
 
     # Add additional parameter settings for scipy.optimize.least_squares
     if 'argslmfit' in kwargs:
@@ -185,7 +192,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
 
     result = ymod.fit(iflux, params, weights=np.sqrt(iweight),
                       qsotemplate=qsoflux[index],
-                      wave=iwave, x=iwave, method='least_squares',
+                      wave=iwave, x=iwave, method=method,
                       nan_policy='omit', fit_kws=fit_kws)
 
     if not quiet:

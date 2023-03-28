@@ -577,12 +577,15 @@ class Cube:
         spec = np.ndarray((self.nwave, next))
 
         # Set extraction to single pixel if zero radius is specified
+        # Round col, row to nearest integer first
         if radius == 0.:
-            spec[:, 0] = self.dat[col-1, row-1, :] / norm
+            intcol = round(col)
+            introw = round(row)
+            spec[:, 0] = self.dat[intcol-1, introw-1, :] / norm
             if self.var is not None:
-                spec[:, 1] = self.var[col-1, row-1, :] / norm / norm
+                spec[:, 1] = self.var[intcol-1, introw-1, :] / norm / norm
             if self.dq is not None:
-                spec[:, 2] = self.dq[col-1, row-1, :]
+                spec[:, 2] = self.dq[intcol-1, introw-1, :]
         else:
             # create circular mask
             if method == 'circle':

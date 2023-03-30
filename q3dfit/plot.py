@@ -10,6 +10,7 @@ from q3dfit.q3dutil import lmlabel
 from q3dfit.exceptions import InitializationError
 from q3dfit import questfit_readcf
 from matplotlib import rcParams
+from matplotlib import pyplot as plt
 
 
 def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
@@ -864,7 +865,8 @@ def plotline(q3do, nx=1, ny=1, line=None, center_obs=None, center_rest=None,
 
 
 
-def plotdecomp(q3do, q3di, savefig=True, outfile=None, templ_mask=[], do_lines=False, show=False):
+def plotdecomp(q3do, q3di, savefig=True, outfile=None, templ_mask=[], do_lines=False, show=False,
+             mode='light'):
     wave = q3do.wave
     specstars = q3do.cont_dat
     modstars = q3do.cont_fit
@@ -874,15 +876,30 @@ def plotdecomp(q3do, q3di, savefig=True, outfile=None, templ_mask=[], do_lines=F
 
     if do_lines:
         plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile, 
-            templ_mask=templ_mask, lines=q3do.linelist['lines'], linespec=q3do.line_fit, show=show)
+            templ_mask=templ_mask, lines=q3do.linelist['lines'], linespec=q3do.line_fit, show=show, mode=mode)
     else:
         plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile, 
-            templ_mask=templ_mask, show=show)
+            templ_mask=templ_mask, show=show, mode=mode)
 
 
 
 def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
-              savefig=False, outfile=None, templ_mask=[], lines=[], linespec=[], show=False):
+            savefig=False, outfile=None, templ_mask=[], lines=[], linespec=[], show=False,
+            mode='light'):
+
+    # dark mode just for fun:
+    if mode == 'dark':
+        pltstyle = 'dark_background'
+        dcolor = 'w'
+    else:
+        pltstyle = 'seaborn-ticks'
+        dcolor = 'k'
+
+    plt.style.use(pltstyle)
+    # CB: Otherwise the background becomes black and the axes ticks
+    # unreadable when saving the figure
+    if mode == 'light':
+        rcParams['savefig.facecolor'] = 'white'
 
     comp_best_fit = ct_coeff['comp_best_fit']
 
@@ -898,7 +915,6 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
             except:
                 continue
 
-        from matplotlib import pyplot as plt
         fig = plt.figure(figsize=(6, 10))
         gs = fig.add_gridspec(4,1)
         ax1 = fig.add_subplot(gs[:3, :])
@@ -975,14 +991,15 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
         ax1.set_yscale('log')
         ax1.set_xticklabels([])
         #ax1.set_ylim(1e-5,1e2)
-        if len(lines)>=1:
-            ax1.set_ylim(min(MIRcontinuum)/1e3, 3*max(MIRcontinuum + linespec * (1. + zstar)))
-        else:
-            ax1.set_ylim(min(MIRcontinuum)/1e3, max(MIRcontinuum))
         ax1.set_ylabel('Flux')
 
         ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
-        ax2.plot(MIRgdlambda,MIRgdflux/MIRcontinuum,color='black')
+        if len(lines)>=1:
+            ax1.set_ylim(min(MIRcontinuum)/1e3, 3*max(MIRcontinuum + linespec * (1. + zstar)))
+            ax2.plot(MIRgdlambda,MIRgdflux/(MIRcontinuum + linespec * (1. + zstar)),color='black')
+        else:
+            ax1.set_ylim(min(MIRcontinuum)/1e3, max(MIRcontinuum))
+            ax2.plot(MIRgdlambda,MIRgdflux/MIRcontinuum,color='black')
         ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
         ax2.set_ylabel('Data/Model')
         ax2.set_xlabel('Wavelength [micron]')

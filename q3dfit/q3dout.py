@@ -597,7 +597,7 @@ class q3dout:
 
             # CB: adding option to plot decomposed QSO fit if questfit is used
             elif q3dii.fcncontfit == 'questfit':
-                from q3dfit.questfit import quest_extract_QSO_contrib
+                from q3dfit.contfit import quest_extract_QSO_contrib
                 self.qsomod, self.hostmod, qsomod_intr, hostmod_intr = \
                     quest_extract_QSO_contrib(self.ct_coeff, q3dii)
                 # qsomod_polynorm = 1.

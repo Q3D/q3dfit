@@ -326,7 +326,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
     # for IR spectra fit with questfit:
     else:
 
-        comp_best_fit = ct_coeff['comp_best_fit']
+        comp_best_fit = q3do.ct_coeff['comp_best_fit']
 
         if xstyle == 'log' or ystyle == 'log':
             if IR:
@@ -385,6 +385,16 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
                                  label=list(comp_best_fit.keys())[i],
                                  linestyle='--',alpha=0.5)
 
+                    for comp_i in comp_best_fit.keys():
+                            if 'ext' not in comp_i and 'abs' not in comp_i:
+                                spec_out = comp_best_fit[comp_i]
+                                if comp_i+'_ext' in comp_best_fit.keys():
+                                    spec_out *= comp_best_fit[comp_i+'_ext']
+                                if comp_i+'_abs' in comp_best_fit.keys():
+                                    spec_out *= comp_best_fit[comp_i+'_abs']
+                                plt.plot(MIRgdlambda, spec_out, label=comp_i,linestyle='--',alpha=0.5)
+
+
                 #ax1.legend(ncol=2)
                 ax1.legend(loc='upper right',bbox_to_anchor=(1.15, 1),prop={'size': 10})
                 if xstyle == 'log':
@@ -412,6 +422,12 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
             else:
                 xran = q3do.fitran
 
+
+            MIRgdlambda = wave #[q3do.ct_indx]
+            MIRgdflux = q3do.spec #[q3do.ct_indx]
+            MIRcontinuum = modstars #[q3do.ct_indx]
+
+            xtit = ''
             if waveunit_in == 'microns' and waveunit_out == 'Angstrom':
                 # convert wave list from microns to angstroms
                 MIRgdlambda = list(np.multiply(MIRgdlambda, 10**4))
@@ -491,12 +507,12 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
                     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
                     # finding max value between ydat and ymod at indices from i1
                     for i in idict[group]:
-                        bigboy = np.nanmax(ydat[i], ymod[i])
+                        bigboy = np.nanmax([ydat[i], ymod[i]])
                         if bigboy > maximum:
                             maximum = bigboy
                     # finding min
                     for i in idict[group]:
-                        smallboy = np.nanmin(ydat[i], ymod[i])
+                        smallboy = np.nanmin([ydat[i], ymod[i]])
                         if smallboy < minimum:
                             minimum = smallboy
                     # set min and max in yran
@@ -566,12 +582,15 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
                                        label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
 
                     else:
-                        for i in np.arange(0,len(comp_best_fit.keys()),3):
-                            plt.plot(MIRgdlambda,
-                                     np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
-                                                 np.multiply(comp_best_fit[list(comp_best_fit.keys())[i+1]],
-                                                             comp_best_fit[list(comp_best_fit.keys())[i+2]])),
-                                     label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
+                        for comp_i in comp_best_fit.keys():
+                            if 'ext' not in comp_i and 'abs' not in comp_i:
+                                spec_out = comp_best_fit[comp_i]
+                                if comp_i+'_ext' in comp_best_fit.keys():
+                                    spec_out *= comp_best_fit[comp_i+'_ext']
+                                if comp_i+'_abs' in comp_best_fit.keys():
+                                    spec_out *= comp_best_fit[comp_i+'_abs']
+                                plt.plot(MIRgdlambda, spec_out, label=comp_i,linestyle='--',alpha=0.5)
+
 
                     if group == 1:
                         ax.legend(loc='upper right',bbox_to_anchor=(1.22, 1),prop={'size': 10})
@@ -844,8 +863,26 @@ def plotline(q3do, nx=1, ny=1, line=None, center_obs=None, center_rest=None,
         fig.savefig(outfile[0] + '.jpg')
 
 
-def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di,
-              savefig=False, outfile=None, templ_mask=[], lines=[], linespec=[]):
+
+def plotdecomp(q3do, q3di, savefig=True, outfile=None, templ_mask=[], do_lines=False, show=False):
+    wave = q3do.wave
+    specstars = q3do.cont_dat
+    modstars = q3do.cont_fit
+    MIRgdlambda = wave
+    MIRgdflux = q3do.spec
+    MIRcontinuum = modstars
+
+    if do_lines:
+        plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile, 
+            templ_mask=templ_mask, lines=q3do.linelist['lines'], linespec=q3do.line_fit, show=show)
+    else:
+        plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile, 
+            templ_mask=templ_mask, show=show)
+
+
+
+def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
+              savefig=False, outfile=None, templ_mask=[], lines=[], linespec=[], show=False):
 
     comp_best_fit = ct_coeff['comp_best_fit']
 
@@ -862,12 +899,15 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di,
                 continue
 
         from matplotlib import pyplot as plt
-        fig = plt.figure(figsize=(6, 7))
+        fig = plt.figure(figsize=(6, 10))
         gs = fig.add_gridspec(4,1)
         ax1 = fig.add_subplot(gs[:3, :])
 
         ax1.plot(MIRgdlambda, MIRgdflux,color='black')
-        ax1.plot(MIRgdlambda, MIRcontinuum)
+        if len(lines)==0:
+            ax1.plot(MIRgdlambda, MIRcontinuum)
+        else:
+            ax1.plot(MIRgdlambda, MIRcontinuum + linespec * (1. + zstar))
 
         if len(templ_mask)>0:
           MIRgdlambda_temp = MIRgdlambda[templ_mask]
@@ -876,9 +916,10 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di,
 
         if len(lines)>0:
             for line_i in lines:
-              ax1.axvline(line_i, color='grey', linestyle='--', alpha=0.7, zorder=0)
+              ax1.axvline(line_i * (1. + zstar), color='grey', linestyle='--', alpha=0.7, zorder=0)
             #ax1.axvspan(line_i-max(q3di.siglim_gas), line_i+max(q3di.siglim_gas))
             ax1.plot(MIRgdlambda, linespec, color='r', linestyle='-', alpha=0.7, linewidth=1.5)
+
 
         colour_list = ['dodgerblue', 'mediumblue', 'salmon', 'palegreen', 'orange', 'purple', 'forestgreen', 'darkgoldenrod', 'mediumblue', 'magenta', 'plum', 'yellowgreen']
 
@@ -933,7 +974,11 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di,
         ax1.set_xscale('log')
         ax1.set_yscale('log')
         ax1.set_xticklabels([])
-        ax1.set_ylim(1e-5,1e2)
+        #ax1.set_ylim(1e-5,1e2)
+        if len(lines)>=1:
+            ax1.set_ylim(min(MIRcontinuum)/1e3, 3*max(MIRcontinuum + linespec * (1. + zstar)))
+        else:
+            ax1.set_ylim(min(MIRcontinuum)/1e3, max(MIRcontinuum))
         ax1.set_ylabel('Flux')
 
         ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
@@ -942,7 +987,8 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di,
         ax2.set_ylabel('Data/Model')
         ax2.set_xlabel('Wavelength [micron]')
         gs.update(wspace=0.0, hspace=0.05)
-        plt.show()
+        if show:
+            plt.show()
 
         if savefig and outfile is not None:
             plt.savefig(outfile[0]+'.jpg')

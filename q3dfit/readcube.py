@@ -422,6 +422,8 @@ class Cube:
               self.nwave, "]")
         print("Wavelength range: [", self.wave[0], ",",
               self.wave[self.nwave-1], "] ", self.waveunit_out)
+        print("Input flux units: ", self.fluxunit_in)
+        print("Output flux units: ", self.fluxunit_out)
 
     def convolve(self, refsize, wavescale='none', method='circle'):
 

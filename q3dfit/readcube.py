@@ -57,6 +57,10 @@ class Cube:
         units to flux per voxel.
     quiet : bool, optional
         Suppress progress messages.
+    usebunit : bool, optional, default=False
+        If BUNIT and fluxunit_in differ, default to BUNIT.
+    usecunit : bool, optional, default=False
+        If CUNIT and waveunit_in differ, default to CUNIT.
     vormap : array_like, optional
         2D array specifying a Voronoi bin to which each spaxel belongs.
     waveunit_in : str, optional
@@ -108,8 +112,8 @@ class Cube:
     def __init__(self, infile, datext=1, varext=2, dqext=3, wmapext=4,
                  error=False, fluxunit_in='MJy/sr',
                  fluxnorm=None, fluxunit_out='erg/s/cm2/micron/sr',
-                 invvar=False, linearize=False, logfile=stdout, quiet=True,
-                 pixarea_sqas=None,
+                 invvar=False, linearize=False, logfile=stdout, quiet=False,
+                 pixarea_sqas=None, usebunit=False, usecunit=False,
                  vormap=None, waveunit_in='micron', waveunit_out='micron',
                  wavext=None, zerodq=False):
 
@@ -138,7 +142,7 @@ class Cube:
                 self.var = np.array((hdu[varext].data).T, dtype='float32')
             except (IndexError or KeyError):
                 raise CubeError('Variance extension not properly specified ' +
-                                'or absent')
+                                'or absent', file=logfile)
             if invvar:
                 self.var = 1./self.var
                 self.err = np.sqrt(self.var)
@@ -202,7 +206,7 @@ class Cube:
             nwave = (datashape)[2]
             if np.max([nrows, ncols]) > nwave:
                 raise CubeError('Data cube dimensions not in ' +
-                                '[nwave, nrows, ncols] format')
+                                '[nwave, nrows, ncols] format', file=logfile)
             CDELT = 'CDELT3'
             CRVAL = 'CRVAL3'
             CRPIX = 'CRPIX3'
@@ -243,24 +247,36 @@ class Cube:
         self.cubedim = np.size(datashape)
 
         # check on wavelength and flux units
-        waveunit_tmp = waveunit_in
-        fluxunit_tmp = fluxunit_in
+        self.waveunit_in = waveunit_in
+        self.fluxunit_in = fluxunit_in
         self.waveunit_out = waveunit_out
         self.fluxunit_out = fluxunit_out
         # set with header if available
         try:
-            self.waveunit_in = header[CUNIT]
+            cunitval = header[CUNIT]
+            if cunitval != waveunit_in and not usecunit:
+                if not quiet:
+                    print('Cube: Wave units in header (CUNIT) differ from ' +
+                          'waveunit_in='+waveunit_in+'; ignoring CUNIT. ' +
+                          'To override, set usecunit=True.', file=logfile)
+            else:
+                self.waveunit_in = cunitval
         except KeyError:
-            self.waveunit_in = waveunit_tmp
             if not quiet:
-                print('Cube: No wavelength units in header; assuming micron.',
-                      file=logfile)
+                print('Cube: No wavelength units in header; using ' +
+                      waveunit_in, file=logfile)
         try:
-            self.fluxunit_in = header[BUNIT]
+            bunitval = header[BUNIT]
+            if bunitval != fluxunit_in and not usebunit:
+                if not quiet:
+                    print('Cube: Flux units in header (BUNIT) differ from ' +
+                          'fluxunit_in='+fluxunit_in+'; ignoring BUNIT. ' +
+                          'To override, set usebunit=True.', file=logfile)
+            else:
+                self.fluxunit_in = bunitval
         except KeyError:
-            self.fluxunit_in = fluxunit_tmp
             if not quiet:
-                print('Cube: No flux units in header; assuming MJy/sr',
+                print('Cube: No flux units in header; using ' + fluxunit_in,
                       file=logfile)
         # Remove whitespace from units
         self.waveunit_in.strip()
@@ -272,7 +288,7 @@ class Cube:
         except:
             self.pixarea_sqas = pixarea_sqas
             if not quiet and pixarea_sqas is None:
-                print('Cube: No pixel area in header or specified in call;' +
+                print('Cube: No pixel area in header or specified in call; ' +
                       'no correction for surface brightness flux units.',
                       file=logfile)
 
@@ -376,6 +392,8 @@ class Cube:
             convert_flux *= 1./(206265.*206265.)*self.pixarea_sqas
             if '/sr' in self.fluxunit_out:
                 self.fluxunit_out = self.fluxunit_out.replace('/sr', '')
+        if '/sr' not in self.fluxunit_in and '/sr' in self.fluxunit_out:
+            self.fluxunit_out = self.fluxunit_out.replace('/sr', '')
         if '/arcsec2' in self.fluxunit_in and \
             self.pixarea_sqas is not None:
             convert_flux *= self.pixarea_sqas
@@ -423,7 +441,10 @@ class Cube:
         print("Wavelength range: [", self.wave[0], ",",
               self.wave[self.nwave-1], "] ", self.waveunit_out)
         print("Input flux units: ", self.fluxunit_in)
+        print("Input wave units: ", self.waveunit_in)
         print("Output flux units: ", self.fluxunit_out)
+        print("Output wave units: ", self.waveunit_out)
+        print("NB: q3dfit uses output units for internal calculations.")
 
     def convolve(self, refsize, wavescale='none', method='circle'):
 

@@ -10,6 +10,7 @@ from importlib import import_module
 from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
 from q3dfit.q3dmath import airtovac
+from q3dfit.q3dutil import lmlabel
 from q3dfit.interptemp import interptemp
 from q3dfit.masklin import masklin
 from scipy.interpolate import interp1d
@@ -133,89 +134,101 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                                           gd_indx_5, gd_indx_6, gd_indx_7,
                                           gd_indx_8, gd_indx_9)
     gd_indx_full = list(gd_indx_full)
-    # limit actual fit range to good data
-    fitran = [np.min(wlambda[gd_indx_full]).astype('float32'),
-              np.max(wlambda[gd_indx_full]).astype('float32')]
 
-    # indices locating data within actual fit range
-    fitran_indx1 = np.where(wlambda >= fitran[0])[0]
-    fitran_indx2 = np.where(wlambda <= fitran[1])[0]
-    fitran_indx = np.intersect1d(fitran_indx1, fitran_indx2)
-    # indices locating good regions within wlambda[fitran_indx]
-    gd_indx_full_rezero = gd_indx_full - fitran_indx[0]
-    max_gd_indx_full_rezero = max(fitran_indx) - fitran_indx[0]
-    igdfz1 = np.where(gd_indx_full_rezero >= 0)[0]
-    igdfz2 = np.where(gd_indx_full_rezero <= max_gd_indx_full_rezero)[0]
-    i_gd_indx_full_rezero = np.intersect1d(igdfz1, igdfz2)
-    # Final index for addressing ALL "good" pixels
-    # these address only the fitted data range; i.e., they address gdflux, etc.
-    gd_indx = gd_indx_full_rezero[i_gd_indx_full_rezero]
+    # Check that gd_indx_full is not empty!
+    if len(gd_indx_full) > 0:
 
-    # Limit data to fit range
-    gdflux = flux[fitran_indx]
-    gdlambda = wlambda[fitran_indx]
-    gderr = err[fitran_indx]
-    gddq = dq[fitran_indx]
-    gdinvvar = 1./np.power(gderr, 2.)  # inverse variance
+        # limit actual fit range to good data
+        fitran = [np.min(wlambda[gd_indx_full]).astype('float32'),
+                  np.max(wlambda[gd_indx_full]).astype('float32')]
 
-    # Log rebin galaxy spectrum for PPXF
-    gdflux_log, gdlambda_log, velscale = log_rebin(fitran, gdflux)
-    gderrsq_log, _, _ = log_rebin(fitran, np.power(gderr, 2.))
-    gderr_log = np.sqrt(gderrsq_log)
-    # gdinvvar_log = 1./np.power(gderr_log, 2.)
+        # indices locating data within actual fit range
+        fitran_indx1 = np.where(wlambda >= fitran[0])[0]
+        fitran_indx2 = np.where(wlambda <= fitran[1])[0]
+        fitran_indx = np.intersect1d(fitran_indx1, fitran_indx2)
+        # indices locating good regions within wlambda[fitran_indx]
+        gd_indx_full_rezero = gd_indx_full - fitran_indx[0]
+        max_gd_indx_full_rezero = max(fitran_indx) - fitran_indx[0]
+        igdfz1 = np.where(gd_indx_full_rezero >= 0)[0]
+        igdfz2 = np.where(gd_indx_full_rezero <= max_gd_indx_full_rezero)[0]
+        i_gd_indx_full_rezero = np.intersect1d(igdfz1, igdfz2)
+        # Final index for addressing ALL "good" pixels
+        # these address only the fitted data range; i.e., they address gdflux, etc.
+        gd_indx = gd_indx_full_rezero[i_gd_indx_full_rezero]
 
-    # Find where flux is <= 0 or error is <= 0 or infinite or NaN or dq != 0
-    # these index the fitted data range
-    zerinf_indx_1 = np.where(gdflux == 0.)[0]
-    zerinf_indx_2 = np.where(gderr <= 0.)[0]
-    zerinf_indx_3 = np.where(np.isinf(gdflux))[0]
-    zerinf_indx_4 = np.where(np.isinf(gderr))[0]
-    zerinf_indx_5 = np.where(gddq != 0)[0]
-    zerinf_indx = np.unique(np.hstack([zerinf_indx_1, zerinf_indx_2,
-                                       zerinf_indx_3, zerinf_indx_4,
-                                       zerinf_indx_5]))
+        # Limit data to fit range
+        gdflux = flux[fitran_indx]
+        gdlambda = wlambda[fitran_indx]
+        gderr = err[fitran_indx]
+        gddq = dq[fitran_indx]
+        gdinvvar = 1./np.power(gderr, 2.)  # inverse variance
 
-    zerinf_indx_1 = np.where(gdflux_log == 0.)[0]
-    zerinf_indx_2 = np.where(gderr_log <= 0.)[0]
-    zerinf_indx_3 = np.where(np.isinf(gdflux_log))[0]
-    zerinf_indx_4 = np.where(np.isinf(gderr_log))[0]
-    # to-do: log rebin dq and apply here?
-    zerinf_indx_log = np.unique(np.hstack([zerinf_indx_1, zerinf_indx_2,
-                                           zerinf_indx_3, zerinf_indx_4]))
+        # Log rebin galaxy spectrum for PPXF
+        gdflux_log, gdlambda_log, velscale = log_rebin(fitran, gdflux)
+        gderrsq_log, _, _ = log_rebin(fitran, np.power(gderr, 2.))
+        gderr_log = np.sqrt(gderrsq_log)
+        # gdinvvar_log = 1./np.power(gderr_log, 2.)
 
-    # good indices for log arrays
-    ctfitran = len(gdflux_log)
-    gd_indx_log = np.arange(ctfitran)
-    ctzerinf_log = len(zerinf_indx_log)
-    if ctzerinf_log > 0:
-        gd_indx_log = np.setdiff1d(gd_indx_log, zerinf_indx_log)
+        # Find where flux is <= 0 or error is <= 0 or infinite or NaN or dq != 0
+        # these index the fitted data range
+        zerinf_indx_1 = np.where(gdflux == 0.)[0]
+        zerinf_indx_2 = np.where(gderr <= 0.)[0]
+        zerinf_indx_3 = np.where(np.isinf(gdflux))[0]
+        zerinf_indx_4 = np.where(np.isinf(gderr))[0]
+        zerinf_indx_5 = np.where(gddq != 0)[0]
+        zerinf_indx = np.unique(np.hstack([zerinf_indx_1, zerinf_indx_2,
+                                           zerinf_indx_3, zerinf_indx_4,
+                                           zerinf_indx_5]))
 
-    # Set bad points to nan so lmfit will ignore
-    ctzerinf = len(zerinf_indx)
-    if ctzerinf > 0:
-        gdflux[zerinf_indx] = np.nan
-        gderr[zerinf_indx] = np.nan
-        gdinvvar[zerinf_indx] = np.nan
-        if not quiet:
-            print('{:s}{:0f}{:s}'.
-                  format('FITLOOP: Setting ', ctzerinf,
-                         ' points from zero/inf flux or ' +
-                         'neg/zero/inf error to np.nan'))
+        zerinf_indx_1 = np.where(gdflux_log == 0.)[0]
+        zerinf_indx_2 = np.where(gderr_log <= 0.)[0]
+        zerinf_indx_3 = np.where(np.isinf(gdflux_log))[0]
+        zerinf_indx_4 = np.where(np.isinf(gderr_log))[0]
+        # to-do: log rebin dq and apply here?
+        zerinf_indx_log = np.unique(np.hstack([zerinf_indx_1, zerinf_indx_2,
+                                               zerinf_indx_3, zerinf_indx_4]))
 
-    if ctzerinf_log > 0:
-        gdflux_log[zerinf_indx_log] = bad
-        gderr_log[zerinf_indx_log] = bad
-        # gdinvvar_log[zerinf_indx_log] = bad
+        # good indices for log arrays
+        ctfitran = len(gdflux_log)
+        gd_indx_log = np.arange(ctfitran)
+        ctzerinf_log = len(zerinf_indx_log)
+        if ctzerinf_log > 0:
+            gd_indx_log = np.setdiff1d(gd_indx_log, zerinf_indx_log)
 
-    # timer
-    fit_time0 = time.time()
+        # Set bad points to nan so lmfit will ignore
+        ctzerinf = len(zerinf_indx)
+        if ctzerinf > 0:
+            gdflux[zerinf_indx] = np.nan
+            gderr[zerinf_indx] = np.nan
+            gdinvvar[zerinf_indx] = np.nan
+            if not quiet:
+                print('{:s}{:0f}{:s}'.
+                      format('FITLOOP: Setting ', int(ctzerinf),
+                             ' points from zero/inf flux or ' +
+                             'neg/zero/inf error to np.nan'))
+
+        if ctzerinf_log > 0:
+            gdflux_log[zerinf_indx_log] = bad
+            gderr_log[zerinf_indx_log] = bad
+            # gdinvvar_log[zerinf_indx_log] = bad
+
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # Initialize fit
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    q3do = q3dout.q3dout(gdlambda, gdflux, gderr, fitrange=fitran,
-                         gd_indx=gd_indx, fitran_indx=fitran_indx)
+        q3do = q3dout.q3dout(gdlambda, gdflux, gderr, fitrange=fitran,
+                             gd_indx=gd_indx, fitran_indx=fitran_indx)
+
+    else:
+
+        gdflux = 0
+        q3di.docontfit = False
+        q3di.dolinefit = False
+        q3do = q3dout.q3dout(0., 0., 0.)
+
+    # timer
+    fit_time0 = time.time()
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # Fit continuum
@@ -399,14 +412,15 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             continuum = gdflux.copy() - q3do.cont_fit
             gdinvvar_nocnt = gdinvvar.copy()
 
+        fit_time1 = time.time()
+        if not quiet:
+            print('{:s}{:0.1f}{:s}'.format('FITSPEC: Continuum fit took ',
+                                           fit_time1-fit_time0, ' s.'))
+
     else:
 
         continuum = gdflux.copy()
 
-    fit_time1 = time.time()
-    if not quiet:
-        print('{:s}{:0.1f}{:s}'.format('FITSPEC: Continuum fit took ',
-                                       fit_time1-fit_time0, ' s.'))
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # Fit emission lines
@@ -587,12 +601,37 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 else:
                     q3do.fitstatus = lmout.status
 
-            # Errors from covariance matrix and from fit residual.
-            # resid = gdflux - continuum - specfit
+            # Errors from covariance matrix
             q3do.perror = dict()
             for p in lmout.params:
                 q3do.perror[p] = lmout.params[p].stderr
-            q3do.perror_resid = copy.deepcopy(q3do.perror)
+            # Get flux peak errors from error spectrum
+            # use +/-10 pix around peak
+            errspec_pixrad = 10
+            q3do.perror_errspec = copy.deepcopy(q3do.perror)
+            for line in listlines['name']:
+                for i in range(0, ncomp[line]):
+                    lmline = lmlabel(line)
+                    fluxlab = f'{lmline.lmlabel}_{i}_flx'
+                    if q3do.param[fluxlab] > 0:
+                        peakwave = q3do.param[f'{lmline.lmlabel}_{i}_cwv']
+                        ipeakwave = (np.abs(gdlambda - peakwave)).argmin()
+                        ipklo = ipeakwave - errspec_pixrad
+                        ipkhi = ipeakwave + errspec_pixrad
+                        if ipklo < 0:
+                            ipklo = 0
+                        if ipkhi > len(gdlambda)-1:
+                            ipkhi = len(gdlambda)-1
+                        q3do.perror_errspec[fluxlab] = \
+                            np.median(gderr[ipklo:ipkhi+1])
+                        # Deal with flux pegging at boundary and no error
+                        # from lmfit
+                        if np.isnan(q3do.perror[fluxlab]):
+                            q3do.perror[fluxlab] = q3do.perror_errspec[fluxlab]
+
+            # Flux peak errors from fit residual.
+            # resid = gdflux - continuum - specfit
+            # q3do.perror_resid = copy.deepcopy(q3do.perror)
             # sigrange = 20.
             # for line in lines_arr:
             #     iline = np.array([ip for ip, item in enumerate(parinit)
@@ -625,6 +664,12 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
             q3do.cont_dat = gdflux.copy() - q3do.line_fit
 
+
+            fit_time2 = time.time()
+            if not quiet:
+                print('{:s}{:0.1f}{:s}'.format('FITSPEC: Line fit took ',
+                                               fit_time2-fit_time1, ' s.'))
+
         else:
 
             q3do.dolinefit = False
@@ -634,10 +679,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
         q3do.cont_dat = gdflux.copy()
 
-    fit_time2 = time.time()
-    if not quiet:
-        print('{:s}{:0.1f}{:s}'.format('FITSPEC: Line fit took ',
-                                       fit_time2-fit_time1, ' s.'))
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 #  Finish

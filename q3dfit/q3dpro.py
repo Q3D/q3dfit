@@ -33,7 +33,7 @@ class Q3Dpro:
     # =========================================================================
     def __init__(self, q3di, SILENT=True, NOCONT=False, NOLINE=False,
                  PLATESCALE=0.15,BACKGROUND='white'):
-        
+
         # read in the q3di file and unpack
         self.q3dinit = q3dutil.get_q3dio(q3di)
         # unpack initproc
@@ -457,7 +457,7 @@ class Q3Dpro:
         plt.close(PLTNUM)
         figDIM = [1,nps]
         figOUT = set_figSize(figDIM,mshaps[1])
-        fig,ax = plt.subplots(1,nps,num=PLTNUM,constrained_layout=True,dpi=100)#, gridspec_kw={'height_ratios': [1, 2]})
+        fig,ax = plt.subplots(1,nps,num=PLTNUM,dpi=100)#, gridspec_kw={'height_ratios': [1, 2]})
         fig.set_figheight(figOUT[1])
         fig.set_figwidth(figOUT[0])
 
@@ -675,7 +675,7 @@ class Q3Dpro:
         plt.close(PLTNUM)
         figDIM = [nps,cntr]
         figOUT = set_figSize(figDIM,mshaps[1])
-        fig,ax = plt.subplots(nps,cntr,num=PLTNUM,constrained_layout=True,dpi=100)#, gridspec_kw={'height_ratios': [1, 2]})
+        fig,ax = plt.subplots(nps,cntr,num=PLTNUM,dpi=100)#, gridspec_kw={'height_ratios': [1, 2]})
         fig.set_figheight(figOUT[1]+1)
         fig.set_figwidth(figOUT[0])
 
@@ -703,17 +703,17 @@ class Q3Dpro:
                     ax[ni,cf].set_title(prelud+'log$_{10}$ '+pltname,fontsize=15,pad=45)
                     # ax[ni,cf].set_ylim([max(xx),np.ceil(min(xx))])
                     # ax[ni,cf].set_xlim([min(yy),np.ceil(max(yy))])
-                
+
                 for li,lratF in enumerate(['Ftot','Fci']):
                     if lratF == 'Fci':
                         frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
                         for ci in range(0,ncomp):
-                            display_pixels_wz(yy, xx, 
+                            display_pixels_wz(yy, xx,
                                               frat10[:,:,ci], CMAP=CMAP, AX=ax[li+ci,cf],
                                               VMIN=-1, VMAX=1,NTICKS=5, COLORBAR=True)
                     else:
                         frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
-                        display_pixels_wz(yy, xx, 
+                        display_pixels_wz(yy, xx,
                                           frat10, CMAP=CMAP, AX=ax[li,cf],
                                           VMIN=-1, VMAX=1, NTICKS=5, COLORBAR=True)
                 cf += 1
@@ -731,7 +731,7 @@ class Q3Dpro:
         plt.close(PLTNUM)
         figDIM = [nps,cntr-1]
         figOUT = set_figSize(figDIM,mshaps[1],SQUARE=True)
-        fig,ax = plt.subplots(nps,cntr-1,figsize=((cntr-1)*5,5),num=PLTNUM,constrained_layout=True,dpi=100)
+        fig,ax = plt.subplots(nps,cntr-1,figsize=((cntr-1)*5,5),num=PLTNUM,dpi=100)
         fig.set_figheight(int(figOUT[1]))
         fig.set_figwidth(figOUT[0])
         cf=0

@@ -99,7 +99,7 @@ class q3dout:
                      line_dat=None, line_fit=None, nfev=None,
                      noemlinmask=None, redchisq=None, param=None,
                      parinit=None, perror=None, perror_resid=None,
-                     siglim=None):
+                     perror_errspec=None, siglim=None):
 
         self.dolinefit = True
 
@@ -117,6 +117,7 @@ class q3dout:
         self.parinit = parinit
         self.param = param
         self.perror = perror
+        self.perror_errspec = perror_errspec
         self.perror_resid = perror_resid
         self.redchisq = redchisq
         self.siglim = siglim
@@ -299,24 +300,6 @@ class q3dout:
 
                 #     fluxpkerr[line] = fluxpkerr_obs[line]
 
-    ## DW: the following is a commented section in the IDL code:
-    #      if line eq 'Hbeta' AND cthahb gt 0 then begin
-    #         fluxpkerr_obs[line,0:cthahb-1] = $
-    #            fluxpk_obs[line,0:cthahb-1]*sqrt($
-    #            (perror[ihahb]/param[ihahb])^2d + $
-    #            (fluxpkerr_obs['Halpha',0:cthahb-1]/$
-    #            fluxpk_obs['Halpha',0:cthahb-1])^2d)
-    #         fluxpkerr[line] = fluxpkerr_obs[line]
-    ##        If Halpha/Hbeta gets too high, MPFIT sees it as an "upper limit" and
-    ##        sets perror = 0d. Then the errors seem too low, and it registers as a
-    ##        detection. This bit of code corrects that.
-    #         ipeggedupper = $
-    #            where(param[ihahb] gt 1d1 AND perror[ihahb] eq 0d,ctpegged)
-    #         if ctpegged gt 0 then begin
-    #            fluxpk[line,ipeggedupper] = 0d
-    #            fluxpk_obs[line,ipeggedupper] = 0d
-    #         endif
-
                 # if (line == 'Hbeta') and (np.count_nonzero(self.linelist['name'] == 'Halpha') == 1):
                 #     # If Halpha/Hbeta goes belowlower limit, then we re-calculate the errors
                 #     # add discrepancy in quadrature to currently calculated error. Assume
@@ -354,26 +337,28 @@ class q3dout:
                         # Can't use sigma = 0 as criterion since the line could be
                         # fitted but unresolved.
                         if fluxpk[line][i] > 0:
-                            sigmatmp = \
-                                sigma[line][i]/(constants.c/1.e3)*wave[line][i]
-                            # sigmatmp = np.sqrt(sigmatmp**2. + param[ispecres]**2.)
+                            #sigmatmp = \
+                            #    sigma[line][i]/(constants.c/1.e3)*wave[line][i]
                             # in km/s
-                            sigma_obs[line][i] = \
-                                sigmatmp/wave[line][i]*(constants.c/1.e3)
+                            #sigma_obs[line][i] = \
+                            #    sigmatmp/wave[line][i]*(constants.c/1.e3)
                             # error propagation for adding in quadrature
-                            sigmaerr_obs[line][i] *= \
-                                sigma[line][i]/(constants.c/1.e3)*wave[line][i] /\
-                                sigmatmp
+                            #sigmaerr_obs[line][i] *= \
+                            #    sigma[line][i]/(constants.c/1.e3)*wave[line][i] /\
+                            #    sigmatmp
                             # Correct peak flux and error for deconvolution
-                            fluxpk[line][i] *= sigma_obs[line][i]/sigma[line][i]
-                            fluxpkerr[line][i] *= sigma_obs[line][i]/sigma[line][i]
+                            #fluxpk[line][i] *= sigma_obs[line][i]/sigma[line][i]
+                            #fluxpkerr[line][i] *= sigma_obs[line][i]/sigma[line][i]
 
                             # Compute total Gaussian flux
                             # sigma and error need to be in wavelength space
-                            gflux = gaussflux(fluxpk_obs[line][i], sigmatmp,
-                                              normerr=fluxpkerr_obs[line][i],
-                                              sigerr=sigmaerr_obs[line][i] /
-                                              (constants.c / 1.e3) * wave[line][i])
+                            gflux = \
+                                gaussflux(fluxpk[line][i],
+                                          sigma[line][i] /
+                                          (constants.c / 1.e3) * wave[line][i],
+                                          normerr=fluxpkerr[line][i],
+                                          sigerr=sigmaerr[line][i] /
+                                          (constants.c / 1.e3) * wave[line][i])
                         else:
                             gflux = {'flux': 0., 'flux_err': 0.}
                         flux[line][i] = gflux['flux']
@@ -630,15 +615,16 @@ class q3dout:
             plotline = getattr(mod, fcn)
 
             if savefig:
-                # use default label
-                if hasattr(self, 'filelab'):
-                    outfile = self.filelab+'_lin'
-                # make sure an outfile is available if the default is not
-                # specified
-                elif outfile is None:
-                    print('plot_line: need to specify outfile')
+                if outfile is None:
+                    # use default label
+                    if hasattr(self, 'filelab'):
+                        outfile = self.filelab+'_lin'
+                    # make sure an outfile is available if the default is not
+                    # specified
+                    else:
+                        print('plot_line: need to specify outfile')
                 else:
-                    outfile += '_lin'
+                    outfile = outfile + '_lin',
 
             if q3di.spect_convol:
                 cube, _ = q3dutil.get_Cube(q3dii)
@@ -668,10 +654,11 @@ class q3dout:
             plotcont = getattr(mod, fcn)
 
             if savefig:
-                if hasattr(self, 'filelab'):
-                    outfile = self.filelab
-                elif outfile is None:
-                    print('plot_line: need to specify outfile')
+                if outfile is None:
+                    if hasattr(self, 'filelab'):
+                        outfile = self.filelab
+                    else:
+                        print('plot_line: need to specify outfile')
 
             if outfile is not None:
                 outfilecnt = outfile + '_cnt',

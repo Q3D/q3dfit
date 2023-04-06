@@ -874,6 +874,9 @@ def plotdecomp(q3do, q3di, savefig=True, outfile=None, templ_mask=[], do_lines=F
     MIRgdflux = q3do.spec
     MIRcontinuum = modstars
 
+    if outfile is None:
+        outfile=q3do.filelab + '_decomp'
+
     if do_lines:
         plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile, 
             templ_mask=templ_mask, lines=q3do.linelist['lines'], linespec=q3do.line_fit, show=show, mode=mode)

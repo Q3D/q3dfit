@@ -295,7 +295,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
              index, z, quiet=True, config_file=None, global_ice_model='None',
              global_ext_model='None', models_dictionary=None,
              template_dictionary=None, fitran=None, convert2Flambda=True,
-             outdir=None, plot_decomp=None):
+             outdir=None, plot_decomp=None, rows=-1, cols=-1):
     '''Function defined to fit the MIR continuum
 
     Parameters
@@ -715,7 +715,11 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
                                nan_policy='omit', **{'verbose': 2})
 
         lmfit.report_fit(result.params)
-        with open(outdir+'fit_result.txt', 'w') as fh:
+        if rows >=0 and cols>=0:
+            saveres = 'fit_result__{}_{}.txt'.format(cols, rows)
+        else:
+            saveres = 'fit_result.txt'
+        with open(outdir+saveres, 'w') as fh:
             fh.write(result.fit_report())
             fh.write('\n')
 

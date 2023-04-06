@@ -235,6 +235,9 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
 
                 if not quiet:
                     print('FITLOOP: Second call to FITSPEC')
+                if hasattr(q3di,'argscontfit'):
+                    q3di.argscontfit['rows'] = j+1
+                    q3di.argscontfit['cols'] = i+1
                 q3do = fitspec(cube.wave, flux, err, dq, q3do_init.zstar,
                                listlines, listlinesz, ncomp, specConv, q3di,
                                quiet=quiet, maskwidths=maskwidths_tmp,

@@ -3,7 +3,8 @@
 import numpy as np
 
 
-def checkcomp(linepars, linetie, ncomp, siglim, sigcut=None, ignore=[]):
+def checkcomp(linepars, linetie, ncomp, siglim, sigcut=3., subone=False,
+              ignore=[]):
     """
     Automatically search for "good" components.
 
@@ -17,9 +18,13 @@ def checkcomp(linepars, linetie, ncomp, siglim, sigcut=None, ignore=[]):
         # of components for each fitted line
     siglim: float
         Sigma limits for emission lines.
-    sigcut: float, optional
-        Sigma threshold in flux for rejection of a component,
-        default is 3.0
+    sigcut: float, optional, default=3.
+        Sigma threshold in flux for rejection of a component
+    subone: bool, optional, default=False
+        Remove only one component if multiple lines are found to be
+        insignificant. Useful when degeneracy between components
+        lowers significance for all components, but some components
+        still exist.
     ignore: array, optional
         Array of lines to ignore in looking for good copmonents,
         array of string-typed elements.
@@ -35,9 +40,6 @@ def checkcomp(linepars, linetie, ncomp, siglim, sigcut=None, ignore=[]):
     -----
 
     """
-
-    if sigcut is None:
-        sigcut = 3.
 
     # Output dictionary
     newncomp = dict()
@@ -86,10 +88,13 @@ def checkcomp(linepars, linetie, ncomp, siglim, sigcut=None, ignore=[]):
                         goodcomp[np.where(igd)] = 1
             tmpncomp = goodcomp.sum()
             if tmpncomp < ncomp[key]:
-                newncomp[key] = tmpncomp
+                if subone:
+                    newncomp[key] = ncomp[key] - 1
+                else:
+                    newncomp[key] = tmpncomp
                 #  Loop through lines tied to each anchor and
                 # set proper number of components
                 for line in tiedlist:
-                    ncomp[line] = tmpncomp
+                    ncomp[line] = newncomp[key]
 
     return(newncomp)

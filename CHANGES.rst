@@ -1,3 +1,27 @@
+1.1.1 (6 Apr 2023)
+------------------
+- Changed checkcomp to check S/N on peak flux rather than total flux.
+- Added option to change lmfit method to, e.g., leastsq, in line and cont. fitting.
+- Changed radius = 0 case in spectral extraction to single spaxel.
+- readcube.makeqsotemplate now invokes readcube.specextract for either a single-spaxel or a circular extraction. col and row can be specified.
+- Bugfix: total flux in q3dout.sepfitpars()
+- Execute_fitloop now logs core # explicitly
+- Made plotquest() compatible with object architecture via new function plotdecomp().
+- Bugfix: 'IR' option in plotcont() now works when some components (e.g. QSO templates) are not affected by extinction / absorption.
+- Bugfix: redshift mistake within questfit()
+- Made 'decompose_qso_fit' functionality work with updated architecture
+- Enable white mode in plot_decomp(), include line fit in residuals if specified
+- Added subone option to checkcomp.
+- Bugfix: if all points rejected, abort fit.
+- Add calculation of fluxpkerr based on error spectrum in case of np.nan due to bounds.
+- Bugfix: flux calculation for lines (sigmaerr was wrong);
+- Bugfix: output file for plots now defaults to output file specified in method call rather than file defined in load_q3dout()
+- q3dout now contains parameter error dictionary with fluxpkerr computed from error spectrum.
+- Bugfix: constrained_layout vs. tight_layout in q3dpro
+- Bugfix: removed minima on even exponential terms in qsohostfcn to prevent qso and stellar templates from flipping sign
+- Cleaned up treatment of input/output flux and wave units, including more verbose output for debugging.
+- Relaxed version requirements in setup.
+
 1.1.0 (27 Feb 2023)
 -------------------
 

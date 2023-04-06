@@ -20,6 +20,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             specConv, q3di, maskwidths=None, peakinit=None, quiet=True,
             siginit_gas=None, siginit_stars=None, siglim_gas=None,
             tweakcntfit=None, logfile=None):
+
     """
     This function is the core routine to fit the continuum and emission
     lines of a spectrum.

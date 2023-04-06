@@ -1,5 +1,12 @@
 # Jupyter notebook temporary files
 .ipynb_checkpoints/
+./jnb/.ipynb_checkpoints/
+
+# Various output folders & scripts
+./jnb/XID2028/
+./jnb/NGC7469
+./jnb/q3dfit_XID2028_MIR.ipynb 
+./jnb/q3dfit_from_npy_file.py 
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -47,10 +47,10 @@ __last_modified__ = '2021 Feb 22'
 # invoke the correct q3df helper function depending on whether this is to a
 # single or multi-threaded process
 def q3dfit(initproc, cols=None, rows=None, onefit=False, ncores=1,
-           quiet=True, mpipath=None):
+           quiet=True, mpipath=None, nocrash=False):
     if ncores == 1:
         from q3dfit.q3df_helperFunctions import q3df_oneCore
-        q3df_oneCore(initproc, cols, rows, onefit, quiet)
+        q3df_oneCore(initproc, cols, rows, onefit, quiet, nocrash=nocrash)
     elif ncores > 1:
         from inspect import getfile
         from q3dfit import q3df_helperFunctions

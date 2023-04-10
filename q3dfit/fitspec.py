@@ -625,8 +625,10 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                         q3do.perror_errspec[fluxlab] = \
                             np.median(gderr[ipklo:ipkhi+1])
                         # Deal with flux pegging at boundary and no error
-                        # from lmfit
-                        if np.isnan(q3do.perror[fluxlab]):
+                        # from lmfit. Check for both Nones and nans:
+                        if q3do.perror[fluxlab] is None:
+                            q3do.perror[fluxlab] = q3do.perror_errspec[fluxlab]
+                        elif np.isnan(q3do.perror[fluxlab]):
                             q3do.perror[fluxlab] = q3do.perror_errspec[fluxlab]
 
             # Flux peak errors from fit residual.

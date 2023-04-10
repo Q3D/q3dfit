@@ -21,6 +21,7 @@
 - Bugfix: removed minima on even exponential terms in qsohostfcn to prevent qso and stellar templates from flipping sign
 - Cleaned up treatment of input/output flux and wave units, including more verbose output for debugging.
 - Relaxed version requirements in setup.
+- Hotfix (10 Apr 2023): perror check in fitspec.
 
 1.1.0 (27 Feb 2023)
 -------------------

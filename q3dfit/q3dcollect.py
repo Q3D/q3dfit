@@ -10,7 +10,8 @@ from astropy.table import Table
 from q3dfit.data import linelists
 
 
-def q3dcollect(q3di, cols=None, rows=None, quiet=True):
+def q3dcollect(q3di, cols=None, rows=None, quiet=True, compsortpar='sigma',
+               compsortdir='up'):
     """
     Routine to collate spaxel information together.
 
@@ -34,13 +35,16 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True):
     -------
 
     """
-    bad = 1e99
+    bad = np.nan
 
     #load initialization object
     q3di = q3dutil.get_q3dio(q3di)
 
     # set up linelist
     if q3di.dolinefit:
+
+        print('Sorting components by '+compsortpar+' in the '+
+              compsortdir+'ward direction.')
 
         linelist = q3dutil.get_linelist(q3di)
 
@@ -255,9 +259,9 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True):
                     # TODO
                     igd = [idx for idx in range(len(sigtmp)) if
                            (sigtmp[idx] != 0 and
-                            sigtmp[idx] != bad and
+                            not np.isnan(sigtmp[idx]) and
                             fluxtmp[idx] != 0 and
-                            fluxtmp[idx] != bad)]
+                            not np.isnan(fluxtmp[idx]))]
                     ctgd = len(igd)
 
                     if ctgd > thisncomp:
@@ -277,11 +281,11 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True):
                 if thisncomp == 1:
                     isort = [0]
                 elif thisncomp >= 2:
-                    # sort components on sigma
                     igd = np.arange(thisncomp)
-                    sigtmp = q3do.line_fitpars['sigma'][thisncompline]
-                    # fluxtmp = q3do.line_fitpars['flux'][thisncompline]
-                    isort = np.argsort(sigtmp[igd])
+                    sortpars = q3do.line_fitpars[compsortpar][thisncompline]
+                    isort = np.argsort(sortpars[igd])
+                    if compsortdir == 'down':
+                        isort = np.flip(isort)
                 if thisncomp > 0:
                     for line in lines_with_doublets:
                         kcomp = 1

@@ -44,7 +44,7 @@ class Q3Dpro:
             print('Target name:', self.target_name)
 
         self.pix = PLATESCALE  # pixel size
-        self.bad = 1e99
+        self.bad = np.nan
         self.dataDIR = self.q3dinit.outdir
         # instantiate the Continuum (npy) and Emission Line (npz) objects
         if not NOCONT:
@@ -946,7 +946,7 @@ class LineData:
         # book-keeping inheritance from initproc
         self.ncols = self.data['ncols'].item()
         self.nrows = self.data['nrows'].item()
-        self.bad = 1e99
+        self.bad = np.nan
         self.dataDIR = q3di.outdir
         self.target_name = q3di.name
         # self.flux    = self.get_flux()
@@ -1453,7 +1453,7 @@ def lgerr(x1,x2,x1err,x2err,):
     lgyerrlow = yd - np.log10(yd0-yderr0)
     return [lgyerrlow,lgyerrup]
 
-def clean_mask(dataIN, BAD=1e99):
+def clean_mask(dataIN, BAD=np.nan):
     dataOUT = copy.deepcopy(dataIN)
     dataOUT[dataIN != BAD] = 1
     dataOUT[dataIN == BAD] = np.nan

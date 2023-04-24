@@ -18,7 +18,7 @@ from scipy.interpolate import interp1d
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             specConv, q3di, maskwidths=None, peakinit=None, quiet=True,
-            siginit_gas=None,  siginit_stars=None, siglim_gas=None,
+            siginit_gas=None, siginit_stars=None, siglim_gas=None,
             tweakcntfit=None, logfile=None):
     """
     This function is the core routine to fit the continuum and emission
@@ -605,10 +605,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             q3do.perror = dict()
             for p in lmout.params:
                 q3do.perror[p] = lmout.params[p].stderr
-            # Get flux peak errors from error spectrum
-            # use +/-10 pix around peak
-            errspec_pixrad = 10
+            # Get flux peak errors from error spectrum and std dev of residual
             q3do.perror_errspec = copy.deepcopy(q3do.perror)
+            q3do.perror_resid = copy.deepcopy(q3do.perror)
             for line in listlines['name']:
                 for i in range(0, ncomp[line]):
                     lmline = lmlabel(line)
@@ -616,20 +615,34 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     if q3do.param[fluxlab] > 0:
                         peakwave = q3do.param[f'{lmline.lmlabel}_{i}_cwv']
                         ipeakwave = (np.abs(gdlambda - peakwave)).argmin()
-                        ipklo = ipeakwave - errspec_pixrad
-                        ipkhi = ipeakwave + errspec_pixrad
+                        # from error spec
+                        ipklo = ipeakwave - round(q3di.perror_errspecwin/2)
+                        ipkhi = ipeakwave + round(q3di.perror_errspecwin/2)
                         if ipklo < 0:
                             ipklo = 0
                         if ipkhi > len(gdlambda)-1:
                             ipkhi = len(gdlambda)-1
                         q3do.perror_errspec[fluxlab] = \
                             np.median(gderr[ipklo:ipkhi+1])
+                        # from residual
+                        ipklo = ipeakwave - round(q3di.perror_residwin/2)
+                        ipkhi = ipeakwave + round(q3di.perror_residwin/2)
+                        if ipklo < 0:
+                            ipklo = 0
+                        if ipkhi > len(gdlambda)-1:
+                            ipkhi = len(gdlambda)-1
+                        q3do.perror_resid[fluxlab] = \
+                            np.std((q3do.line_dat - q3do.line_fit)
+                                   [ipklo:ipkhi+1])
                         # Deal with flux pegging at boundary and no error
                         # from lmfit. Check for both Nones and nans:
                         if q3do.perror[fluxlab] is None:
                             q3do.perror[fluxlab] = q3do.perror_errspec[fluxlab]
                         elif np.isnan(q3do.perror[fluxlab]):
                             q3do.perror[fluxlab] = q3do.perror_errspec[fluxlab]
+                        if q3di.perror_useresid and \
+                            q3do.perror_resid[fluxlab] > q3do.perror[fluxlab]:
+                            q3do.perror[fluxlab] = q3do.perror_resid[fluxlab]
 
             # Flux peak errors from fit residual.
             # resid = gdflux - continuum - specfit
@@ -665,7 +678,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             #                 np.sqrt(np.mean(np.power(resid[wlo:whi], 2.)))
 
             q3do.cont_dat = gdflux.copy() - q3do.line_fit
-
 
             fit_time2 = time.time()
             if not quiet:

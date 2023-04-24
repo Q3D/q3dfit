@@ -84,7 +84,8 @@ class q3din:
                      argslinelist={}, checkcomp=True,
                      fcnlineinit='lineinit',
                      fcncheckcomp='checkcomp', noemlinfit=True,
-                     peakinit=None,
+                     peakinit=None, perror_errspecwin=20, perror_residwin=200,
+                     perror_useresid=False,
                      siglim_gas=None):
         '''
         Initialize line fit.
@@ -97,6 +98,7 @@ class q3din:
         argslinelist : dict
         checkcomp : bool
             Filter # of components.
+        errspec_rmspixrad : int, default=10
         fcncheckcomp : str
             Name of routine for filtering # of components.
         fcnlineinit : str
@@ -141,6 +143,9 @@ class q3din:
         self.fcnlineinit = fcnlineinit
         self.maxncomp = maxncomp
         self.peakinit = peakinit
+        self.perror_errspecwin = perror_errspecwin
+        self.perror_residwin = perror_residwin
+        self.perror_useresid = perror_useresid
         self.siglim_gas = siglim_gas
 
         # flip this switch

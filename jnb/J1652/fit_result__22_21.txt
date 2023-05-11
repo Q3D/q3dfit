@@ -1,0 +1,24 @@
+[[Model]]
+    (Model(template_0, prefix='template_0_') + ((Model(blackbody, prefix='blackbody250') * Model(blackbody250_ext)) * Model(blackbody250_abs)))
+[[Fit Statistics]]
+    # fitting method   = least_squares
+    # function evals   = 155
+    # data points      = 971
+    # variables        = 8
+    chi-square         = 9.47832971
+    reduced chi-square = 0.00984250
+    Akaike info crit   = -4479.06813
+    Bayesian info crit = -4440.04151
+##  Warning: uncertainties could not be estimated:
+    template_0_amp:        at boundary
+    blackbody250_ext_Av:   at initial value
+    blackbody250_abs_tau:  at boundary
+[[Variables]]
+    template_0_amp:        1.12499977 (init = 0.9)
+    template_0_multpolyA:  1.92526622 (init = 1)
+    template_0_multpolyB:  0.05270728 (init = 1)
+    template_0_multpolyC:  8.1867e-04 (init = 0.1)
+    blackbody250a:         0.23694376 (init = 0.1)
+    blackbody250T:         1021.21262 (init = 250)
+    blackbody250_ext_Av:   1.50000000 (init = 1.5)
+    blackbody250_abs_tau:  1.0000e-10 (init = 0)

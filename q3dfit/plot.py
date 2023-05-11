@@ -864,9 +864,55 @@ def plotline(q3do, nx=1, ny=1, line=None, center_obs=None, center_rest=None,
         fig.savefig(outfile[0] + '.jpg')
 
 
+def adjust_ax(ax, fig, fs=20, minor=False):
+        '''CB: Function defined to adjust the sizes of xlabel, ylabel, and the ticklabels (in an inelegant way for the latter)
+
+        Parameters
+        -----
+        ax: matplotlib axis object
+        ax object of the plot you want to adjust
+
+        fig: matplotlib fig object
+        fig object that contains the ax object
+
+        returns
+        -------
+        Nothing
+        '''
+
+        fig.canvas.draw()
+        xlabel = ax.get_xlabel()
+        ylabel = ax.get_ylabel()
+        ax.set_xlabel(xlabel, fontsize=fs)
+        ax.set_ylabel(ylabel, fontsize=fs)
+        ax.tick_params(labelsize=fs-3)
+
+        # -- Trying to prune xtickslabels if increasing the fontsize made them overlap
+        xticks_old = ax.get_xticks()
+        if minor:
+            xticks_old = ax.get_xticks(minor=True)
+
+        xfigsize = fig.get_size_inches()[0]                # in inches
+        textstrlen = len(ax.get_xticklabels()[0]._text.replace('\\mathdefault', ''))    # length of tick labels depends on nr of decimals specified
+        textwidth_inch = textstrlen * (fs-3)*0.7 / 72.    # Assume width of number in text = 0.7* height. Matplotlib uses 72 Points per inch (ppi): https://stackoverflow.com/questions/47633546/relationship-between-dpi-and-figure-size
+
+        if (len(xticks_old)+1)*textwidth_inch > 0.9* xfigsize * ax.get_position().width:
+            xticks_new = np.array([])
+            for i in range(len(xticks_old)):
+                if i%2==1:
+                    xticks_new = np.append(xticks_new, xticks_old[i])
+            if not minor:
+                ax.set_xticks(xticks_new, fontsize=fs-3)
+            else:
+                ax.set_xticks(xticks_new, fontsize=fs-3, minor=True)
+        ax.set_xticklabels(ax.get_xticks(), fontsize=fs-3)
+        ax.tick_params(axis='x', which='both', labelsize=fs-3)
+
+        fig.tight_layout()
+
 
 def plotdecomp(q3do, q3di, savefig=True, outfile=None, templ_mask=[], do_lines=False, show=False,
-             mode='light'):
+             mode='light', ymin=-1, ymax=-1, try_adjust_ax=True):
     wave = q3do.wave
     specstars = q3do.cont_dat
     modstars = q3do.cont_fit
@@ -879,16 +925,17 @@ def plotdecomp(q3do, q3di, savefig=True, outfile=None, templ_mask=[], do_lines=F
 
     if do_lines:
         plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile, 
-            templ_mask=templ_mask, lines=q3do.linelist['lines'], linespec=q3do.line_fit, show=show, mode=mode)
+            templ_mask=templ_mask, lines=q3do.linelist['lines'], linespec=q3do.line_fit, show=show, mode=mode, ymin=ymin, ymax=ymax, 
+            try_adjust_ax=try_adjust_ax)
     else:
         plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile, 
-            templ_mask=templ_mask, show=show, mode=mode)
+            templ_mask=templ_mask, show=show, mode=mode, ymin=ymin, ymax=ymax, try_adjust_ax=try_adjust_ax)
 
 
 
 def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
-            savefig=False, outfile=None, templ_mask=[], lines=[], linespec=[], show=False,
-            mode='light'):
+            savefig=True, outfile=None, templ_mask=[], lines=[], linespec=[], show=False,
+            mode='light', ymin=-1, ymax=-1, try_adjust_ax=True):
 
     # dark mode just for fun:
     if mode == 'dark':
@@ -906,7 +953,7 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
 
     comp_best_fit = ct_coeff['comp_best_fit']
 
-    plot_noext = False
+    plot_noext = False  # Remove dust contribution and plot intrinstic components
 
     if 'plot_decomp' in q3di.argscontfit:
         config_file = questfit_readcf.readcf(q3di.argscontfit['config_file'])
@@ -919,14 +966,14 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
                 continue
 
         fig = plt.figure(figsize=(6, 10))
-        gs = fig.add_gridspec(4,1)
-        ax1 = fig.add_subplot(gs[:3, :])
+        gs = fig.add_gridspec(8,1)
+        ax1 = fig.add_subplot(gs[:6, :])
 
         ax1.plot(MIRgdlambda, MIRgdflux,color='black')
         if len(lines)==0:
-            ax1.plot(MIRgdlambda, MIRcontinuum)
+            ax1.plot(MIRgdlambda, MIRcontinuum, color='r')
         else:
-            ax1.plot(MIRgdlambda, MIRcontinuum + linespec * (1. + zstar))
+            ax1.plot(MIRgdlambda, MIRcontinuum + linespec, color='darkorange')
 
         if len(templ_mask)>0:
           MIRgdlambda_temp = MIRgdlambda[templ_mask]
@@ -992,23 +1039,39 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
         ax1.legend(ncol=2)
         ax1.set_xscale('log')
         ax1.set_yscale('log')
-        ax1.set_xticklabels([])
+
+
         #ax1.set_ylim(1e-5,1e2)
         ax1.set_ylabel('Flux')
+        if try_adjust_ax:
+            adjust_ax(ax1, fig, minor=True)
+        ax1.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False) # turn off major & minor ticks on the x-axis
 
-        ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
+        ax2 = fig.add_subplot(gs[6:7, :], sharex=ax1)
         if len(lines)>=1:
-            ax1.set_ylim(min(MIRcontinuum)/1e3, 3*max(MIRcontinuum + linespec * (1. + zstar)))
-            ax2.plot(MIRgdlambda,MIRgdflux/(MIRcontinuum + linespec * (1. + zstar)),color='black')
+            ax1.set_ylim(min(MIRcontinuum)/1e3, 3*max(MIRcontinuum + linespec))
+            ax2.plot(MIRgdlambda,MIRgdflux/(MIRcontinuum + linespec),color='black')
         else:
-            ax1.set_ylim(min(MIRcontinuum)/1e3, max(MIRcontinuum))
+            ax1.set_ylim(min(MIRcontinuum)/1e3, 3*max(max(MIRgdflux), max(MIRcontinuum)))
             ax2.plot(MIRgdlambda,MIRgdflux/MIRcontinuum,color='black')
+        if ymin>0.:
+            ax1.set_ylim(bottom=ymin)
+        if ymax>0.:
+            ax1.set_ylim(top=ymax)
         ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
         ax2.set_ylabel('Data/Model')
         ax2.set_xlabel('Wavelength [micron]')
+
+        from matplotlib.ticker import ScalarFormatter
+        ax2.xaxis.set_major_formatter(ScalarFormatter()) 
+        ax2.xaxis.set_minor_formatter(ScalarFormatter())
+        ax2.ticklabel_format(style='plain')
+
         gs.update(wspace=0.0, hspace=0.05)
-        if show:
-            plt.show()
+        adjust_ax(ax2, fig)
 
         if savefig and outfile is not None:
-            plt.savefig(outfile[0]+'.jpg')
+            plt.savefig(outfile+'.jpg')
+
+        if show:
+            plt.show()

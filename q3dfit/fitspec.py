@@ -691,7 +691,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             q3do.cont_dat = gdflux.copy()
 
     else:
-
+        q3do.fitstatus = 1
         q3do.cont_dat = gdflux.copy()
 
 

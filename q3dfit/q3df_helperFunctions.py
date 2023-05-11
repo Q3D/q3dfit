@@ -59,7 +59,7 @@ def execute_fitloop(nspax, colarr, rowarr, cube, q3di, linelist, specConv,
                             onefit=onefit, quiet=quiet, logfile=logfile)
             except:
                 continue
-        else:   # Actually crash
+        else:           # Regular run; no continuation in case of crash
             fitloop(ispax, colarr, rowarr, cube, q3di, linelist, specConv,
                             onefit=onefit, quiet=quiet, logfile=logfile)
 

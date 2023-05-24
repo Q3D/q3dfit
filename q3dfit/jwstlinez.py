@@ -2,11 +2,9 @@
 # -*- coding: utf-8 -*-
 import importlib.resources as pkg_resources
 import numpy as np
-import shutil
 from astropy.io import ascii
 from astropy.table import Table, vstack
 from astropy import units as u
-from pathlib import Path
 from q3dfit.data import linelists
 from q3dfit.data import jwst_tables
 
@@ -67,9 +65,11 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit='micron',
         MIRI Inputs:
             Ch1_A, Ch1_B, Ch1_C, Ch2_A, Ch2_B, Ch2_C, Ch3_A, Ch3_B, Ch3_C,
             Ch4_A, Ch4_B, Ch4_C
+    outdir : str, required
+        output directory
     waveunit : str, default='micron'
         Units desired for output tables.
-        Inputs are 'micron' or 'angstrom'
+        Inputs are 'micron' or 'Angstrom'
 
     Returns
     --------
@@ -81,21 +81,18 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit='micron',
 
         Interanlly, everything is processed in microns, so filename inclues
         range values in microns.
-        The units of the table can be angstroms or microns, depending on the
+        The units of the table can be Angstroms or microns, depending on the
         entered value of waveunit.
         Output table contains comments descring data sources
 
 
     """
-    # home = str(Path.home())
     inst = instrument.lower()
     md = mode.lower()
     gf = grat_filt.lower()
-    wu = waveunit.lower()  # test w/o to see if necessary
 
-    # filename variable based on instrument configuration
-
-    if ((wu != 'angstrom') & (wu != 'micron')):
+    # get everything on the user-requested units:
+    if ((waveunit != 'Angstrom') & (waveunit != 'micron')):
         print('Wave unit ', waveunit,
               ' not recognized, proceeding with default, microns\n')
 
@@ -109,9 +106,6 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit='micron',
             newtable = Table.read(p, format='ipac')
             all_tables.append(newtable)
             all_units.append(newtable['lines'].unit)
-    # get everything on the user-requested units:
-    if ((waveunit != 'Angstrom') & (waveunit != 'micron')):
-        print('Wave unit ', waveunit, ' not recognized, returning microns')
     if (waveunit == 'Angstrom'):
         for i, un in enumerate(all_units):
             if (un == 'micron'):
@@ -163,18 +157,18 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit='micron',
 
 
     # converting table to desired units
-    if (wu=='angstrom'):
-        print('angstroms unit selected\n')
+    if (waveunit=='Angstrom'):
+        print('Angstroms unit selected\n')
 
         lines_inrange['lines'] = (lines_inrange['lines']*1.e4).round(decimals = 7)
-        lines_inrange['lines'].unit = 'angstrom'
+        lines_inrange['lines'].unit = 'Angstrom'
 
         lines_inrange['observed'] = (lines_inrange['observed']*1.e4).round(decimals = 7)
-        lines_inrange['observed'].unit = 'angstrom'
+        lines_inrange['observed'].unit = 'Angstrom'
 
         # filename variable determined by units
         filename = 'lines_' + gal + '_' + str(lamb_min * 1.e4) + '_to_' + str(lamb_max * 1.e4) + \
-            '_angstroms_jwst.tbl'
+            '_Angstroms_jwst.tbl'
 
     else:
         # filename for microns default
@@ -223,7 +217,6 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit='micron',
         else:
             ascii.write(lines_inrange, outdir+filename, format='ipac',
                         overwrite=True)
-        # shutil.move((home + '/q3dfit/q3dfit/'+ filename), (home + '/q3dfit/q3dfit/data/linelists'))
 
         print('File written as ' + filename, sep='')
         print('Under the directory : ', outdir)

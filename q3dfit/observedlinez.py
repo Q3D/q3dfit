@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import importlib.resources as pkg_resources
+import numpy as np
+from astropy.io import ascii
+from astropy.table import Table, vstack
+from astropy import units as u
+from q3dfit.data import linelists
 """
 Created on Wed Jun 15 12:07:16 2022
 
 """
 
-import numpy as np
-from astropy.io import ascii
-from astropy.table import Table, vstack
-from astropy import units as u
-from pathlib import Path
-import shutil
-
-def observedlinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
+def observedlinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron',
+                  outdir=None):
     """
     Similar to jwstline(), observedlinez() produces a table with emission lines 
     in the provided range. 
@@ -50,6 +50,8 @@ def observedlinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     lamb_max : flt, required
         maximum <OBSERVED> wavelength of instrument, units determined by waveunit
         value
+    outdir : str, required
+        output directory
     vacuum : bool, optional, default = True
         if false, enables conversion to air wavelengths
     waveunit : str, optional, default = 'micron'
@@ -65,7 +67,7 @@ def observedlinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
         Example Row: H2_43_Q6, 2.98412, H$_2$(4-3) Q(6), 4.282212 
         Interanlly, everything is processed in microns, so filename inclues 
         range values in microns. 
-        The units of the table can be angstroms or microns, depending on the 
+        The units of the table can be Angstroms or microns, depending on the 
         entered value of waveunit.
         
         Output table contains comments descring data sources
@@ -73,16 +75,13 @@ def observedlinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
             
     """
  
-    wu = waveunit.capitalize()
-    home = str(Path.home())
- 
     # sig is a rounding variable, so it must be dependent on unit
-    if ((wu!='Angstrom') & (wu!='micron')):
-        print("possible waveunit inputs are 'micron' or 'angstrom'")
-        print ('Wave unit ',waveunit,' not recognized, returning microns\n')
+    if ((waveunit!='Angstrom') & (waveunit!='micron')):
+        print("possible waveunit inputs are 'micron' or 'Angstrom'")
+        print ('Wave unit ',waveunit,' not recognized, returning micron\n')
         sig = 7
         
-    elif (wu == 'Angstrom'):
+    elif (waveunit == 'Angstrom'):
         # converting A input to microns b/c inrange() relies on micron input
         lamb_max = lamb_max / 1.e4
         lamb_min = lamb_min / 1.e4
@@ -91,22 +90,31 @@ def observedlinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
         
     else:
         sig = 7
-     
-        
-    #add links to more tables here
-    #--------------------------------------------------------------------------
-    lines_H2 = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_H2.tbl',format='ipac')
-    lines_DSNR = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_DSNR_micron.tbl',format='ipac')
-    lines_fine_str = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_fine_str.tbl',format='ipac')
-    lines_TSB = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_TSB.tbl',format='ipac')     
-    lines_PAH = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_PAH.tbl',format='ipac')     
-
-
-    lines = vstack([lines_H2, lines_DSNR, lines_fine_str, lines_TSB, lines_PAH])    
-    #--------------------------------------------------------------------------
-
-    
-    tcol = lines.columns[1]  
+             
+    linetables = ['linelist_DSNR.tbl', 'linelist_H2.tbl', 'linelist_H1.tbl',
+                  'linelist_fine_str.tbl', 'linelist_TSB.tbl',
+                  'linelist_PAH.tbl']
+    all_tables = []
+    all_units = []
+    for llist in linetables:
+        with pkg_resources.path(linelists, llist) as p:
+            newtable = Table.read(p, format='ipac')
+            all_tables.append(newtable)
+            all_units.append(newtable['lines'].unit)
+    # get everything on the user-requested units:
+    if (waveunit == 'Angstrom'):
+        for i, un in enumerate(all_units):
+            if (un == 'micron'):
+                all_tables[i]['lines'] = all_tables[i]['lines']*1e4
+                all_tables[i]['lines'].unit = 'Angstrom'
+    else:
+        for i, un in enumerate(all_units):
+            if (un == 'Angstrom'):
+                all_tables[i]['lines'] = all_tables[i]['lines']*1.e-4
+                all_tables[i]['lines'].unit = 'micron'
+    # now everything is on the same units, let's stack all the tables:
+    lines = vstack(all_tables)
+    tcol = lines.columns[1]
     # Redshifting each entry in tcol (REST wavelengths)
     tcolz = np.multiply(tcol, z+1)
 
@@ -154,16 +162,16 @@ def observedlinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     lines_inrange = tg.groups.filter(inrange)
     
     # converting table to desired units
-    if (wu == 'Angstrom'):
+    if (waveunit == 'Angstrom'):
         lines_inrange['lines'] = (lines_inrange['lines']*1.e4).round(decimals = sig)
-        lines_inrange['lines'].unit = 'angstrom'     
+        lines_inrange['lines'].unit = 'Angstrom'     
         
         lines_inrange['observed'] = (lines_inrange['observed']*1.e4).round(decimals = sig)
-        lines_inrange['observed'].unit = 'angstrom'   
+        lines_inrange['observed'].unit = 'Angstrom'   
          
         # filename variable determined by units
         filename = 'lines_' + gal + '_' + str(lamb_min * 1.e4) + '_to_' + str(lamb_max * 1.e4) + \
-            '_angstroms_ml.tbl'
+            '_Angstroms_ml.tbl'
     else:
         # filename for microns default
         filename = 'lines_' + gal + '_' + str(lamb_min) + '_to_' + str(lamb_max) + \
@@ -206,18 +214,19 @@ def observedlinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron'):
     '   Data Source 1: data from the link',
     '   https://github.com/spacetelescope/jdaviz/blob/main/jdaviz/data/linelists',
     '',]    
-    
-    if (list_len == 0):
+            
+    # writing the table
+    if outdir is not None:
 
-        print('There are no emission lines in the provided sample\nTerminating table save...')
+        if (list_len == 0):
 
-    else:
-        print('There are ' + str(list_len) + ' emission lines in the provided range.\n')
+            print('There are no emission lines in the provided sample\nTerminating table save...')
+
+        else:
+            print('There are ' + str(list_len) + ' emission lines in the provided range.\n')
+
+            ascii.write(lines_inrange, outdir+filename, format = 'ipac',
+                    overwrite=True)
         
-        # writing and moving the table to the linelists folder
-        ascii.write(lines_inrange, filename, format = 'ipac', overwrite=True)
-        shutil.move((home + '/q3dfit/q3dfit/'+ filename), (home + '/q3dfit/q3dfit/data/linelists'))
-        
-
-        print('File written as: ' + filename, sep='')
-        print('under the directory : '+ home + '/q3dfit/data/linelists\n')            
+            print('File written as: ' + filename, sep='')
+            print('under the directory ' + outdir)

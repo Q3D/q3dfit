@@ -283,4 +283,11 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
         # save q3do
         q3do.col = i+1
         q3do.row = j+1
+
+        # update units, etc.
+        q3do.fluxunit = cube.fluxunit_out
+        q3do.waveunit = cube.waveunit_out
+        q3do.fluxnorm = cube.fluxnorm
+        q3do.pixarea_sqas = cube.pixarea_sqas
+        #
         np.save(outlab, q3do)

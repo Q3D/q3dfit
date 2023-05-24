@@ -111,7 +111,7 @@ class Cube:
 
     def __init__(self, infile, datext=1, varext=2, dqext=3, wmapext=4,
                  error=False, fluxunit_in='MJy/sr',
-                 fluxnorm=None, fluxunit_out='erg/s/cm2/micron/sr',
+                 fluxnorm=1., fluxunit_out='erg/s/cm2/micron/sr',
                  invvar=False, linearize=False, logfile=stdout, quiet=False,
                  pixarea_sqas=None, usebunit=False, usecunit=False,
                  vormap=None, waveunit_in='micron', waveunit_out='micron',
@@ -254,6 +254,10 @@ class Cube:
         # set with header if available
         try:
             cunitval = header[CUNIT]
+            # switch from fits header string for microns to
+            # astropy.units string for microns
+            if cunitval == 'um':
+                cunitval = 'micron'
             if cunitval != waveunit_in and not usecunit:
                 if not quiet:
                     print('Cube: Wave units in header (CUNIT) differ from ' +
@@ -373,6 +377,7 @@ class Cube:
             # 1 Jy = 10^-26 W/m^2/Hz
             # first fac: MJy to Jy
             # second fac: 10^-26 W/m^2/Hz / Jy * 10^-4 m^2/cm^-2 * 10^7 erg/s/W
+            #    = 10^-23 erg/cm^-2/s/Hz
             # third fac: c/lambda**2 Hz/micron, with lambda^2 in m*micron
             wave_out = self.wave * u.Unit(self.waveunit_out)
             convert_flux = 1e6 * 1e-23 * c.value / wave_out.to('m').value / \
@@ -404,10 +409,10 @@ class Cube:
         self.var = self.var * convert_flux**2
         self.err = self.err * convert_flux
 
-        if fluxnorm is not None:
-            self.dat = self.dat / fluxnorm
-            self.var = self.var / fluxnorm**2
-            self.err = self.err / fluxnorm
+        self.fluxnorm = fluxnorm
+        self.dat = self.dat / fluxnorm
+        self.var = self.var / fluxnorm**2
+        self.err = self.err / fluxnorm
 
         # linearize in the wavelength direction
         if linearize:

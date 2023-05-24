@@ -78,12 +78,18 @@ class q3dout:
     '''
 
     def __init__(self, wave, spec, spec_err, fitrange=None, col=None, row=None,
-                 gd_indx=None, fitran_indx=None):
+                 gd_indx=None, fitran_indx=None, fluxunit='erg/s/cm^2/micron',
+                 waveunit='micron', fluxnorm=1., pixarea_sqas=None):
 
         self.fitrange = fitrange
         self.wave = np.float32(wave)
         self.spec = np.float32(spec)
         self.spec_err = np.float32(spec_err)
+
+        self.fluxunit = fluxunit
+        self.waveunit = waveunit
+        self.fluxnorm = fluxnorm
+        self.pixarea_sqas = pixarea_sqas
 
         self.fitran_indx = fitran_indx
         self.gd_indx = gd_indx

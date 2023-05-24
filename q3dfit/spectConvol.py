@@ -89,7 +89,7 @@ class spectConvol:
                         iwvln = idispDat['WAVELENGTH'] # wavelength [μm]
                         irsln,idelw = [],[]
                         if 'VELOCITY' in icols:
-                            irsln = 299792/idispDat['VELOCITY']
+                            irsln = 299792./idispDat['VELOCITY']
                         elif 'R' in icols:
                             irsln = idispDat['R']
                             if 'DLAM' in icols:

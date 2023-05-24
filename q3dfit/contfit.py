@@ -295,7 +295,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
              index, z, quiet=True, config_file=None, global_ice_model='None',
              global_ext_model='None', models_dictionary=None,
              template_dictionary=None, fitran=None, convert2Flambda=True,
-             outdir=None, plot_decomp=None):
+             outdir=None, plot_decomp=None, rows=-1, cols=-1):
     '''Function defined to fit the MIR continuum
 
     Parameters
@@ -490,7 +490,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
                     model_temp_template,param_temp_template = questfitfcn.set_up_fit_model_scale([float(model_parameters[1])],[float(model_parameters[2])],name_model,name_model, maxamp=1.05*max(flux[index]) ) #name_model.split('.')[0]template+'_'+str(n_temp)
                 else:
                     minamp = float(model_parameters[1]) / 1.25
-                    maxamp = float(model_parameters[1]) * 1.25
+                    maxamp = float(model_parameters[1]) * 1.25 
                     model_temp_template,param_temp_template = questfitfcn.set_up_fit_model_scale_withpoly([float(model_parameters[1])],[float(model_parameters[2])],name_model,name_model, minamp=minamp, maxamp=maxamp)#1.05*max(flux[index])) #name_model.split('.')[0]template+'_'+str(n_temp)
 
                     testing = False
@@ -616,7 +616,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
 
         # conversion from f_nu to f_lambda: f_lambda = f_nu x c/lambda^2
         c_scale =  constants.c * u.Unit('m').to('micron') /(wlambda)**2 * \
-            1e-23 * 1e10 # [1e-10 erg/s/cm^2/um [/sr]]
+            1e-23 * 1e10 # [1e-10 erg/s/cm^2/um [/sr]] ;  about 1.2 for wlambda=5 [micron] 
 
         # loop over template dictionary, load them in and resample.
         for i in template_dictionary.keys():
@@ -715,7 +715,11 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
                                nan_policy='omit', **{'verbose': 2})
 
         lmfit.report_fit(result.params)
-        with open(outdir+'fit_result.txt', 'w') as fh:
+        if rows >=0 and cols>=0:
+            saveres = 'fit_result__{}_{}.txt'.format(cols, rows)
+        else:
+            saveres = 'fit_result.txt'
+        with open(outdir+saveres, 'w') as fh:
             fh.write(result.fit_report())
             fh.write('\n')
 

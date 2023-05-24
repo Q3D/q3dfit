@@ -29,7 +29,10 @@ def get_linelist(q3di):
 
     '''
     vacuum = q3di.vacuum
-    listlines = linelist(q3di.lines, vacuum=vacuum, **q3di.argslinelist)
+    if hasattr(q3di, 'lines'):
+        listlines = linelist(q3di.lines, vacuum=vacuum, **q3di.argslinelist)
+    else:
+        listlines = [] # linelist(q3di.lines, vacuum=vacuum, **q3di.argslinelist)
     return listlines
 
 

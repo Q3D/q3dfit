@@ -1,0 +1,4 @@
+[col,row]=[20,21] out of [43,45]
+FIT STATUS: 1
+FIT STATUS: 1
+Q3DF: Total time for calculation: 144.31 s.

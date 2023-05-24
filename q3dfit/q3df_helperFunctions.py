@@ -15,7 +15,7 @@ from q3dfit.fitloop import fitloop
 import q3dfit.q3dutil as q3dutil
 
 def execute_fitloop(nspax, colarr, rowarr, cube, q3di, linelist, specConv,
-                    onefit, quiet, logfile=None, core=1):
+                    onefit, quiet, logfile=None, core=1, nocrash=False):
 
     '''
     handle the FITLOOP execution.
@@ -53,12 +53,18 @@ def execute_fitloop(nspax, colarr, rowarr, cube, q3di, linelist, specConv,
     '''
     print('Core '+str(core)+': # spaxels fit='+str(nspax))
     for ispax in range(0, nspax):
-        fitloop(ispax, colarr, rowarr, cube, q3di, linelist, specConv,
-                        onefit=onefit, quiet=quiet, logfile=logfile)
-
+        if nocrash:     # In case of crash, just continue with the next spaxel
+            try:
+                fitloop(ispax, colarr, rowarr, cube, q3di, linelist, specConv,
+                            onefit=onefit, quiet=quiet, logfile=logfile)
+            except:
+                continue
+        else:           # Regular run; no continuation in case of crash
+            fitloop(ispax, colarr, rowarr, cube, q3di, linelist, specConv,
+                            onefit=onefit, quiet=quiet, logfile=logfile)
 
 def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
-                 quiet=True):
+                 quiet=True, nocrash=False):
 
 
     '''
@@ -99,7 +105,7 @@ def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
     nspax, colarr, rowarr = q3dutil.get_spaxels(cube, cols, rows)
     # execute FITLOOP
     execute_fitloop(nspax, colarr, rowarr, cube, q3di,
-                    linelist, specConv, onefit, quiet, logfile=logfile)
+                    linelist, specConv, onefit, quiet, logfile=logfile, nocrash=nocrash)
     if logfile is None:
         from sys import stdout
         logtmp = stdout

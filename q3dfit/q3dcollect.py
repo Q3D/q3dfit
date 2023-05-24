@@ -164,6 +164,9 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True, compsortpar='sigma',
                                              cube.nwave))
             contcube['poly_mod'] = np.zeros((cube.ncols, cube.nrows,
                                              cube.nwave))
+            if q3di.decompose_qso_fit:
+                contcube['all_mod'] = np.zeros((cube.ncols, cube.nrows,
+                                            cube.nwave))
         else:
             contcube['all_mod'] = np.zeros((cube.ncols, cube.nrows,
                                             cube.nwave))

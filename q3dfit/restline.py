@@ -4,15 +4,14 @@
 Created on Wed Jun 15 12:07:16 2022
 
 """
-
+import importlib.resources as pkg_resources
 import numpy as np
 from astropy.io import ascii
 from astropy.table import Table, vstack    
 from astropy import units as u
-from pathlib import Path
-import shutil
+from q3dfit.data import linelists
 
-def restline(gal, lamb_min, lamb_max, waveunit='micron'):
+def restline(gal, lamb_min, lamb_max, waveunit='micron', outdir=None):
     """
     Similar to jwstlinez() and  observedlinez(), restline() produces a table 
     with emission lines in the provided range. 
@@ -46,9 +45,11 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
             waveunit value
     lamb_max : flt, required
         maximum <REST> wavelength of instrument, units determined by waveunit value
+    outdir : str, required
+        output directory
     waveunit : str, optional, default = 'micron'
         determines the unit of input wavelengths and output table
-        acceptable inputs are 'micron' and 'angstrom'
+        acceptable inputs are 'micron' and 'Angstrom'
         
     Returns
     --------
@@ -59,21 +60,18 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
         Example Row: H2_43_Q6, 2.98412, H$_2$(4-3) Q(6), 4.282212 
         Interanlly, everything is processed in microns, so filename inclues 
         range values in microns. 
-        The units of the table can be angstroms or microns, depending on the 
+        The units of the table can be Angstroms or microns, depending on the 
         entered value of waveunit.
         Output table contains comments descring data sources
 
             
     """
  
-    wu = waveunit.lower()
-    home = str(Path.home())
- 
-    if ((wu!='angstrom') & (wu!='micron')):
-        print("possible waveunit inputs are 'micron' or 'angstrom'")
+    if ((waveunit!='Angstrom') & (waveunit!='micron')):
+        print("possible waveunit inputs are 'micron' or 'Angstrom'")
         print ('Wave unit ',waveunit,' not recognized, returning microns\n')
         sig = 7
-    elif (wu == 'angstrom'):
+    elif (waveunit == 'Angstrom'):
         # converting A input to microns
         lamb_max = lamb_max / 1.e4
         lamb_min = lamb_min / 1.e4
@@ -83,18 +81,30 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
         sig = 7
      
         
-    #add directories to more tables here
-    #--------------------------------------------------------------------------
-    lines_H2 = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_H2.tbl',format='ipac')
-    lines_DSNR = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_DSNR_micron.tbl',format='ipac')
-    lines_fine_str = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_fine_str.tbl',format='ipac')
-    lines_TSB = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_TSB.tbl',format='ipac')     
-    lines_PAH = Table.read(home + '/q3dfit/q3dfit/data/linelists/linelist_PAH.tbl',format='ipac')     
-
-    #add table name here for vstack
-    lines = vstack([lines_H2, lines_DSNR, lines_fine_str, lines_TSB, lines_PAH])    
-    #--------------------------------------------------------------------------
-
+    linetables = ['linelist_DSNR.tbl', 'linelist_H2.tbl', 'linelist_H1.tbl',
+                  'linelist_fine_str.tbl', 'linelist_TSB.tbl',
+                  'linelist_PAH.tbl']
+    all_tables = []
+    all_units = []
+    for llist in linetables:
+        with pkg_resources.path(linelists, llist) as p:
+            newtable = Table.read(p, format='ipac')
+            all_tables.append(newtable)
+            all_units.append(newtable['lines'].unit)
+    # get everything on the user-requested units:
+    if (waveunit == 'Angstrom'):
+        for i, un in enumerate(all_units):
+            if (un == 'micron'):
+                all_tables[i]['lines'] = all_tables[i]['lines']*1e4
+                all_tables[i]['lines'].unit = 'Angstrom'
+    else:
+        for i, un in enumerate(all_units):
+            if (un == 'Angstrom'):
+                all_tables[i]['lines'] = all_tables[i]['lines']*1.e-4
+                all_tables[i]['lines'].unit = 'micron'
+    # now everything is on the same units, let's stack all the tables:
+    lines = vstack(all_tables)
+    # Redshifting each entry in tcol (REST wavelengths)
     lines_air_z = lines.columns[1]
     
     #rounds the floats in list CHANGE IF MORE PRECISION NEEDED
@@ -117,13 +127,13 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
     
     
     # converting table to desired units
-    if (wu == 'angstrom'):
+    if (waveunit == 'Angstrom'):
         lines_inrange['lines'] = (lines_inrange['lines']*1.e4).round(decimals = sig)
-        lines_inrange['lines'].unit = 'angstrom' 
+        lines_inrange['lines'].unit = 'Angstrom' 
         
         # filename var determined by units
         filename = 'lines_' + gal + '_' + str(lamb_min * 1.e4) + '_to_' + str(lamb_max * 1.e4) + \
-            '_angstroms_rl.tbl'
+            '_Angstroms_rl.tbl'
 
     else: 
         # filename for microns default
@@ -166,19 +176,18 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron'):
     '   https://github.com/spacetelescope/jdaviz/blob/main/jdaviz/data/linelists',
     '',]
 
- 
-    if (list_len == 0):
-        print('There are no emission lines in the provided sample\nTerminating table save...')
+     # writing the table
+    if outdir is not None:
 
-    else:
-        print('There are ' + str(list_len) + ' emission lines in the provided range.\n')
+        if (list_len == 0):
+
+            print('There are no emission lines in the provided sample\nTerminating table save...')
+
+        else:
+            print('There are ' + str(list_len) + ' emission lines in the provided range.\n')
+
+            ascii.write(lines_inrange, outdir+filename, format = 'ipac',
+                    overwrite=True)
         
-        
-        # writing and moving the table to the linelists folder
-        ascii.write(lines_inrange, filename, format = 'ipac', overwrite=True)
-        shutil.move((home + '/q3dfit/q3dfit/'+ filename), (home + '/q3dfit/q3dfit/data/linelists'))
-        
-        print('File written as: ' + filename, sep='')
-        print('Under the directory : ' + home + '/q3dfit/data/linelists/\n')
-      
-            
+            print('File written as: ' + filename, sep='')
+            print('under the directory ' + outdir)

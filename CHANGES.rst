@@ -1,3 +1,12 @@
+1.1.2 (24 May 2023)
+------------------
+- Bugfix: restline, observedlinez to remove hardcoded paths.
+- Added flux, wavelength information to q3dout class.
+- Optional line flux error computation from residual.
+- Enhanced component sorting in q3dcollect.
+- Hotfix: error in checking nan status of q3do.perror in fitspec.
+- Various changes/fixes related to questfit and MIR plotting.
+
 1.1.1 (6 Apr 2023)
 ------------------
 - Changed checkcomp to check S/N on peak flux rather than total flux.

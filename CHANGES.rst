@@ -1,7 +1,11 @@
-1.1.3-rc1 (25 May 2023)
+1.1.3rc2 (25 May 2023)
+------------------
+- Cleaning up jnb dir and .gitignore.
+
+1.1.3rc1 (25 May 2023)
 ------------------
 - Bugfix in continuum fit arguments, introduced by questfit tweaks
-
+  
 1.1.2 (24 May 2023)
 ------------------
 - Bugfix: restline, observedlinez to remove hardcoded paths.

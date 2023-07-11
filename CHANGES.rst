@@ -1,3 +1,10 @@
+1.1.4 (11 Jul 2023)
+-------------------
+- Reverting lmfit method to least_squares for PG1411 test notebook.
+- Added two least_squares arguments to PG1411 test notebook to improve convergence.
+- Reverting lower bounds on polynomials in qsohostfcn.py back to 0 uniformly, as opposed to alternating no constraint and pos. def.
+- Bugfix: np.float() -> np.float32() 
+
 1.1.3rc2 (25 May 2023)
 ------------------
 - Cleaning up jnb dir and .gitignore.

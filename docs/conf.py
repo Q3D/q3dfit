@@ -22,7 +22,7 @@ copyright = '2023, David Rupke and the Q3D Team'
 author = 'David Rupke and the Q3D Team'
 
 # The full version, including alpha/beta/rc tags
-release = '1.1.3rc2'
+release = '1.1.4'
 
 
 # -- General configuration ---------------------------------------------------
@@ -30,8 +30,7 @@ release = '1.1.3rc2'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = [
-]
+extensions = []
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

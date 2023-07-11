@@ -489,7 +489,7 @@ class Cube:
             sizes = cscale/self.wave
         elif wavescale == 'none':
             sizes = np.ndarray(self.nwave)
-            sizes[:] = np.float(refsize)
+            sizes[:] = np.float32(refsize)
 
         for i in np.arange(0, self.nwave):
             # 2D Gaussian with sigma = 1.5 at long wavelength, 1 at short

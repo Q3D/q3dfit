@@ -59,7 +59,7 @@ def interp_lis(spec_lam, temp_lam_lis, template_lis):
             new_temp[:, i] = interpfunc(spec_lam)
     else:
         interpfunc = \
-            interpolate.interp1d(temp_lam_lis, template_lis, kind='linear', bounds_error=bounds_error, fill_value=np.float(0))
+            interpolate.interp1d(temp_lam_lis, template_lis, kind='linear', bounds_error=bounds_error, fill_value=float(0))
         new_temp = interpfunc(spec_lam)
     return new_temp
 

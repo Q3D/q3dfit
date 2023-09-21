@@ -22,7 +22,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
     doublets64 = Table.read(data_path+'linelists/doublets.tbl', format='ipac')
     doublets = \
         Table(doublets64,
-              dtype=['str', 'str', 'int', 'float32', 'float32', 'float32'])
+              dtype=['str', 'str', 'int', 'float64', 'float64', 'float64'])
 
     dblt_pairs = dict()
     for idx, name in enumerate(doublets['line1']):
@@ -31,14 +31,14 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
 
     # pre-SPECRES object
     #if not specres:
-    #    specres = np.float32(0.)
+    #    specres = np.float64(0.)
     #else:
-    #    specres = np.float32(specres)
+    #    specres = np.float64(specres)
     # A reasonable lower limit of 5d for physicality
     if siglim is None:
-        siglim = np.array([5., 2000.], dtype='float32')
+        siglim = np.array([5., 2000.], dtype='float64')
     else:
-        siglim = np.array(siglim, dtype='float32')
+        siglim = np.array(siglim, dtype='float64')
 
     # converts the astropy.Table structure of linelist into a Python
     # dictionary that is compatible with the code downstream
@@ -90,7 +90,8 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
         if gpar == 'flx' and inrange:
             value = initflux[line.label][comp]
             limited = np.array([1, 0], dtype='uint8')
-            limits = np.array([0., 0.], dtype='float32')
+            limits = np.array([np.finfo(float).eps, np.finfo(float).eps],
+                              dtype='float64')
             # Check if it's a doublet; this will break if weaker line
             # is in list, but stronger line is not
             if line.label in dblt_pairs.keys():
@@ -103,7 +104,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
             limited = np.array([1, 1], dtype='uint8')
             limits = np.array([linelistz[line.label][comp]*0.997,
                                linelistz[line.label][comp]*1.003],
-                              dtype='float32')
+                              dtype='float64')
             # Check if line is tied to something else
             if linetie[line.label] != line.label:
                 linetie_tmp = lmlabel(linetie[line.label])
@@ -116,7 +117,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
         elif gpar == 'sig':
             value = initsig[line.label][comp]
             limited = np.array([1, 1], dtype='uint8')
-            limits = np.array(siglim, dtype='float32')
+            limits = np.array(siglim, dtype='float64')
             if linetie[line.label] != line.label:
                 linetie_tmp = lmlabel(linetie[line.label])
                 tied = f'{linetie_tmp.lmlabel}_{comp}_sig'
@@ -125,7 +126,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
 #            if not inrange:
 #                vary = False
         else:
-            value = np.float32(0.)
+            value = np.float64(np.finfo(float).eps)
             limited = None
             limits = None
             vary = False
@@ -165,7 +166,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
                                 fit_params[f'{lmline1.lmlabel}_{comp}_flx'],
                                 fit_params[f'{lmline2.lmlabel}_{comp}_flx'])
                     lmrat = f'{lmline1.lmlabel}_div_{lmline2.lmlabel}_{comp}'
-                    fit_params.add(lmrat, value=initval.astype('float32'))
+                    fit_params.add(lmrat, value=initval.astype('float64'))
                     # tie second line to first line divided by the ratio
                     fit_params[f'{lmline2.lmlabel}_{comp}_flx'].expr = \
                         f'{lmline1.lmlabel}_{comp}_flx'+'/'+lmrat
@@ -176,34 +177,34 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
                     # apply lower limit?
                     if 'lower' in lineratio.colnames:
                         lower = lineratio['lower'][ilinrat]
-                        fit_params[lmrat].min = lower.astype('float32')
+                        fit_params[lmrat].min = lower.astype('float64')
                     # logic to apply doublet lower limits if in doublets table
                     elif line1 in doublets['line1']:
                         iline1 = np.where(doublets['line1'] == line1)
                         if doublets['line2'][iline1] == line2:
                             lower = doublets['lower'][iline1][0]
-                        fit_params[lmrat].min = lower.astype('float32')
+                        fit_params[lmrat].min = lower.astype('float64')
                     # doublet can be specified in init file in either order
                     # relative to doublets table ...
                     elif line1 in doublets['line2']:
                         iline1 = np.where(doublets['line2'] == line1)
                         if doublets['line1'][iline1] == line2:
                             upper = 1. / doublets['lower'][iline1][0]
-                        fit_params[lmrat].max = upper.astype('float32')
+                        fit_params[lmrat].max = upper.astype('float64')
                     # apply upper limit?
                     if 'upper' in lineratio.colnames:
                         upper = lineratio['upper'][ilinrat]
-                        fit_params[lmrat].max = upper.astype('float32')
+                        fit_params[lmrat].max = upper.astype('float64')
                     elif line1 in doublets['line1']:
                         iline1 = np.where(doublets['line1'] == line1)
                         if doublets['line2'][iline1] == line2:
                             upper = doublets['upper'][iline1][0]
-                        fit_params[lmrat].max = upper.astype('float32')
+                        fit_params[lmrat].max = upper.astype('float64')
                     elif line1 in doublets['line2']:
                         iline1 = np.where(doublets['line2'] == line1)
                         if doublets['line1'][iline1] == line2:
                             lower = 1. / doublets['upper'][iline1][0]
-                        fit_params[lmrat].min = lower.astype('float32')
+                        fit_params[lmrat].min = lower.astype('float64')
 
     # pass siglim_gas back because the default is set here, and it's needed
     # downstream
@@ -212,19 +213,19 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
 
 def set_params(fit_params, NAME, VALUE=None, VARY=True, LIMITED=None,
                TIED=None, LIMITS=None):
-    # we can force the input to float32, but lmfit has values as float64 and
+    # we can force the input to float64, but lmfit has values as float64 and
     # doesn't seem like we can change it. These astypes assume that the
     # VALUE is a numpy object
     if VALUE is not None:
-        fit_params[NAME].set(value=VALUE.astype('float32'))
+        fit_params[NAME].set(value=VALUE.astype('float64'))
     fit_params[NAME].set(vary=VARY)
     if TIED is not None:
         fit_params[NAME].expr = TIED
     if LIMITED is not None and LIMITS is not None:
         if LIMITED[0] == 1:
-            fit_params[NAME].min = LIMITS[0].astype('float32')
+            fit_params[NAME].min = LIMITS[0].astype('float64')
         if LIMITED[1] == 1:
-            fit_params[NAME].max = LIMITS[1].astype('float32')
+            fit_params[NAME].max = LIMITS[1].astype('float64')
     return fit_params
 
 

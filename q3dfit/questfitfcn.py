@@ -5,9 +5,56 @@ import lmfit
 import numpy as np
 
 
-def blackbody(wave,a,T, fitFlambda=True):
+def readcf(filename):
+    ''' Function defnied to read in the configuration file for fitting with questfit
+        in:
+        filename: str
+        out:
+        '''
 
-    '''Function defined for fitting a blackbody model
+    cf = np.loadtxt(filename, dtype='str', comments="#")
+
+    # Leftover from IDL QUESTFIT
+    # numberoftemplates = list(cf.T[0]).count('template')
+    # numberofBB = list(cf.T[0]).count('blackbody')
+    # numberofpl = list(cf.T[0]).count('powerlaw')
+    # numberofext = list(cf.T[0]).count('extinction')
+    # numberofabs = list(cf.T[0]).count('absorption')
+    # numberofsources = list(cf.T[0]).count('source')
+
+    # Cycle throughrows
+    init_questfit = dict()
+    for i in cf:
+        if i[0] == 'template' or i[0] == 'powerlaw' or i[0] == 'blackbody' \
+        or i[0] == 'template_poly':
+            # populate initilization dictionary with
+            # col 0: filename (if nessesary; path hardcoded)
+            # col 1: lower wavelength limit or normalization factor
+            # col 2: upper wavelength limit or fix/free parameter (0 or 1) for normalization
+            # col 3: name of ext. curve or ice feature
+            # col 4: initial guess for Av
+            # col 5: fix/free parameter (0/1) for Av
+            # col 6: S,M = screen or mixed extinction
+            # col 7: initial guess for BB temperature or powerlaw index
+            # col 8: fix/free parameter (0/1) for BB temperature or powerlaw index
+            # col 9: ice name model
+            # col 10: intial guess for ice absorption tau
+            # col 11: fix/free parameter (0/1) for tau
+            init_questfit[i[0]+'_'+i[1]+'_'+i[4]+'_'+i[10]] = i[1:]
+
+        if i[0] == 'absorption' or i[0] == 'extinction':
+            #init_questfit[i[0]+'_'+i[1]+'_'+i[4]+'_'+i[10]] = i[1:]
+            init_questfit[i[4]] = [i[1], i[0]]
+
+        if i[0] == 'source':
+            init_questfit['source'] = i[1:]
+
+    return init_questfit
+
+
+def blackbody(wave, a, T, fitFlambda=True):
+    '''
+    Function defined for fitting a blackbody model
 
     Parameters
     -----
@@ -22,7 +69,6 @@ def blackbody(wave,a,T, fitFlambda=True):
     -------
     BB_model: array
     '''
-
     # Blam = BlackBody(temperature=T*u.K, scale=1.*u.Unit('erg/cm^2/micron/s/sr'))
     # Blamval = Blam(wave*u.micron).value
 
@@ -68,9 +114,10 @@ def set_up_fit_blackbody_model(p,p_fixfree,name):
     blackbody_model = lmfit.Model(blackbody,independent_vars=['wave', 'fitFlambda'],prefix=model_name)
     blackbody_model_parameters = blackbody_model.make_params()
     print(p_fixfree[0])
-    blackbody_model_parameters[model_name+'a'].set(value=p[0],min=0.,vary=p_fixfree[0])
-    blackbody_model_parameters[model_name+'T'].set(value=p[1],min=50.,
-                                                   max=3000.,vary=p_fixfree[1])
+    blackbody_model_parameters[model_name+'a'].\
+        set(value=p[0], min=np.finfo(float).eps, vary=p_fixfree[0])
+    blackbody_model_parameters[model_name+'T'].\
+        set(value=p[1], min=50., max=3000., vary=p_fixfree[1])
 
     return blackbody_model,blackbody_model_parameters
 
@@ -143,7 +190,7 @@ def powerlaw(wave, a, b, fitFlambda):
     return a*powerlaw_model #/(powerlaw_model).max()
 
 
-def set_up_fit_powerlaw_model(p,p_fixfree,name):
+def set_up_fit_powerlaw_model(p, p_fixfree, name):
     '''Function defined to set up fitting powerlaw_model within lmfit
 
         Parameters
@@ -163,7 +210,7 @@ def set_up_fit_powerlaw_model(p,p_fixfree,name):
                     prefix=model_name)
     powerlaw_model_parameters = powerlaw_model.make_params()
     powerlaw_model_parameters[model_name+'a'].\
-        set(value=p[0], min=0., vary=p_fixfree[0])
+        set(value=p[0], min=np.finfo(float).eps, vary=p_fixfree[0])
     powerlaw_model_parameters[model_name+'b'].\
         set(value=p[1], vary=p_fixfree[1])
 
@@ -243,46 +290,46 @@ def model_scale(model,a):
 
 def set_up_fit_extinction(p, p_fixfree, model_name, extinction_model,
                           mixed_or_screen):
-    '''Function defined to set up fitting model_scale within lmfit
+    '''
+    Function defined to set up fitting model_scale within lmfit
 
         Parameters
         -----
         p: list
-        list of initial guess for the model_scale fit
+            list of initial guess ,,.
 
         returns
         -------
-        powerlaw_model_model: lmfit model
-        powerlaw_model_paramters: lmfit model parameters
-        '''
+        model_extinction: lmfit model
+        model_extinction_paramters: lmfit model parameters
+    '''
 
-    model_name = model_name
     if mixed_or_screen == 'M':
-        exp = "1 - exp(-0.4*%s_Av*log10(%s))/(0.4*%s_Av*log10(%s))" \
+        exp = "1. - exp(-0.4*%s_Av*log10(%s))/(0.4*%s_Av*log10(%s))" \
             % (model_name, extinction_model, model_name, extinction_model)
 
     if mixed_or_screen == 'S':
-        exp = "power(10,(-0.4*%s_Av*log10(%s)))" \
+        exp = "power(10.,-0.4*%s_Av*log10(%s))" \
             % (model_name, extinction_model)
-        #exp = "power(10,(-0.4*%s_Av*(%s)))" % (model_name,extinction_model)
 
     model_extinction = \
         ExpressionModel(exp, independent_vars=[extinction_model],
-                        name = model_name)
+                        name=model_name)
 
-    #model_scale_model = lmfit.Model(powerlaw,independent_vars=['extinction_curve'],prefix=model_name)
     model_extinction_parameters = model_extinction.make_params()
     print(p_fixfree[0])
     if mixed_or_screen == 'M':
         model_extinction_parameters[model_name+'_Av'].\
-            set(value=p[0], min=1., max=100., vary=p_fixfree[0])
+            set(value=p[0], min=np.finfo(float).eps, max=100., vary=p_fixfree[0])
     if mixed_or_screen == 'S':
         model_extinction_parameters[model_name+'_Av'].\
-            set(value=p[0], min=0., max=100., vary=p_fixfree[0])
+            set(value=p[0], min=np.finfo(float).eps, max=100., vary=p_fixfree[0])
+
     return model_extinction, model_extinction_parameters
 
 
-def set_up_fit_model_scale(p,p_fixfree,model_name,model, fitFlambda=True, maxamp=None):
+def set_up_fit_model_scale(p, p_fixfree, model_name,model, fitFlambda=True,
+                           maxamp=None):
     '''Function defined to set up fitting model_scale within lmfit
 
         Parameters
@@ -304,9 +351,14 @@ def set_up_fit_model_scale(p,p_fixfree,model_name,model, fitFlambda=True, maxamp
     model_scale_parameters = model_scale_model.make_params()
 
     if maxamp is not None:
-        model_scale_parameters[model+'_amp'].set(value=p[0],min=0., max=maxamp,vary=p_fixfree[0])#,min=0.
+        model_scale_parameters[model+'_amp'].set(value=p[0],
+                                                 min=np.finfo(float).eps,
+                                                 max=maxamp,
+                                                 vary=p_fixfree[0])
     else:
-        model_scale_parameters[model+'_amp'].set(value=p[0],min=0.,vary=p_fixfree[0])#,min=0.
+        model_scale_parameters[model+'_amp'].set(value=p[0],
+                                                 min=np.finfo(float).eps,
+                                                 vary=p_fixfree[0])
 
 
     return model_scale_model,model_scale_parameters
@@ -330,10 +382,11 @@ def set_up_absorption(p,p_fixfree,model_name,abs_model):
         '''
 
 
-    exp = "exp(-1*%s_tau*%s)" % (model_name,abs_model)
+    exp = "exp(-1.*%s_tau*%s)" % (model_name,abs_model)
     model = ExpressionModel(exp,independent_vars=[abs_model],name = model_name)
     abs_model_parameters = model.make_params()
-    abs_model_parameters[model_name+'_tau'].set(value=p[0],min=0.,max=10.,vary=p_fixfree[0])#min=0.
+    abs_model_parameters[model_name+'_tau'].\
+        set(value=p[0], min=np.finfo(float).eps, max=10., vary=p_fixfree[0])
 
 
     return model,abs_model_parameters

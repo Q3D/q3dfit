@@ -9,16 +9,16 @@ q3dfit(q3di, cols=14, rows=11, quiet=False)
 #q3dfit(q3di, cols=[1,17], rows=[1,26], ncores=15)
 
 # Plotting
-# from q3dfit.q3dout import load_q3dout
-# q3do = load_q3dout(q3di, 6, 7, cubedim=3)
+from q3dfit.q3dout import load_q3dout
+q3do = load_q3dout(q3di, 14, 11)
 
-# argsplotline = dict()
-# argsplotline['nx'] = 3
-# argsplotline['ny'] = 2
-# argsplotline['line'] = ['Hbeta', '[OIII]4959', '[NI]5200', '[OI]6300', 'Halpha', '[SII]6716']
-# argsplotline['size'] = [0.01, 0.0125, 0.01, 0.0125, 0.0100, 0.0100]
+argsplotline = dict()
+argsplotline['nx'] = 3
+argsplotline['ny'] = 2
+argsplotline['line'] = ['Hbeta', '[OIII]4959', '[NI]5200', '[OI]6300', 'Halpha', '[SII]6716']
+argsplotline['size'] = [0.01, 0.0125, 0.01, 0.0125, 0.0100, 0.0100]
 
-# q3do.plot_line(plotargs=argsplotline)
+q3do.plot_line(q3di, plotargs=argsplotline)
 
 # argscontplot = dict()
 # argscontplot['xstyle'] = 'lin'

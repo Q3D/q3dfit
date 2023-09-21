@@ -126,11 +126,11 @@ class q3din:
         # check for defined zsys
         if zinit is None:
             if self.zsys_gas is not None:
-                zinit = np.float32(self.zsys_gas)
+                zinit = np.float64(self.zsys_gas)
             else:
                 print('problem!')
         else:
-            zinit = np.float32(zinit)
+            zinit = np.float64(zinit)
 
         self.lines = lines
 
@@ -179,17 +179,18 @@ class q3din:
                                        self.maxncomp, dtype='int')
             self.zinit_gas[line] = np.full((self.ncols, self.nrows,
                                             self.maxncomp), zinit,
-                                           dtype='float32')
+                                           dtype='float64')
             self.siginit_gas[line] = np.full((self.ncols, self.nrows,
                                               self.maxncomp), siginit,
-                                             dtype='float32')
+                                             dtype='float64')
 
     def init_contfit(self, fcncontfit, siginit=50., zinit=None, argscontfit={},
                      argscontplot={}, argsconvtemp={},
                      decompose_qso_fit=False, decompose_ppxf_fit=False,
                      dividecont=False, ebv_star=None,
                      fcncontplot='plotcont', fcnconvtemp=None,
-                     forcefloat64=False, keepstarz=False,
+                     #forcefloat64=False,
+                     keepstarz=False,
                      masksig_secondfit=2., maskwidths=None, maskwidths_def=500.,
                      nolinemask=False, nomaskran=None,
                      startempfile=None, startempvac=True, tweakcntfit=None):
@@ -205,9 +206,9 @@ class q3din:
         fcnconvtemp : str
             Function with which to convolve template before fitting.
             (Not yet implemented.)
-        forcefloat64 : bool
-            If set, force type inputs to continuum fitting function. Default
-            is False, which means float32.
+        #forcefloat64 : bool
+        #    If set, force type inputs to continuum fitting function. Default
+        #    is False, which means float32.
 
         argscontfit : dict
         argsconvtemp : dict
@@ -257,7 +258,7 @@ class q3din:
         self.dividecont = dividecont
         self.ebv_star = ebv_star
         self.fcnconvtemp = fcnconvtemp
-        self.forcefloat64 = forcefloat64
+        #self.forcefloat64 = forcefloat64
         self.keepstarz = keepstarz
         self.maskwidths = maskwidths
         self.maskwidths_def = maskwidths_def
@@ -274,11 +275,11 @@ class q3din:
         # check for defined zsys
         if zinit is None:
             if self.zsys_gas is not None:
-                zinit = np.float32(self.zsys_gas)
+                zinit = np.float64(self.zsys_gas)
             else:
                 print('problem!')
         else:
-            zinit = np.float32(zinit)
+            zinit = np.float64(zinit)
 
         # check that load_cube() has been invoked, or ncols/nrows otherwise
         # defined
@@ -287,9 +288,9 @@ class q3din:
             print('q3di: Loading cube to get ncols, nrows')
 
         self.siginit_stars = np.full((self.ncols, self.nrows), siginit,
-                                     dtype='float32')
+                                     dtype='float64')
         self.zinit_stars = np.full((self.ncols, self.nrows), zinit,
-                                   dtype='float32')
+                                   dtype='float64')
 
     def load_cube(self):
         if not os.path.isfile(self.infile):

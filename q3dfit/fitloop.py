@@ -156,7 +156,7 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
                         listlinesz[line] = \
                             np.array(listlines['lines']
                                      [(listlines['name'] == line)],
-                                     dtype='float32') * \
+                                     dtype='float64') * \
                                 (1. + q3di.zinit_gas[line][i, j, ])
 
             if q3di.docontfit:

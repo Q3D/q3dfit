@@ -82,9 +82,9 @@ class q3dout:
                  waveunit='micron', fluxnorm=1., pixarea_sqas=None):
 
         self.fitrange = fitrange
-        self.wave = np.float32(wave)
-        self.spec = np.float32(spec)
-        self.spec_err = np.float32(spec_err)
+        self.wave = np.float64(wave)
+        self.spec = np.float64(spec)
+        self.spec_err = np.float64(spec_err)
 
         self.fluxunit = fluxunit
         self.waveunit = waveunit
@@ -483,7 +483,7 @@ class q3dout:
             self.qsomod = 0.
             self.hostmod = 0.
             self.polymod_refit = np.zeros(len(self.wave),
-                                          dtype=float)
+                                          dtype='float64')
 
             if q3dii.fcncontfit == 'fitqsohost':
                 if 'qsoord' in q3dii.argscontfit:
@@ -632,7 +632,7 @@ class q3dout:
                 else:
                     outfile = outfile + '_lin',
 
-            if q3di.spect_convol:
+            if q3dii.spect_convol:
                 cube, _ = q3dutil.get_Cube(q3dii)
                 specConv = q3dutil.get_dispersion(q3dii, cube, quiet=True)
             else:

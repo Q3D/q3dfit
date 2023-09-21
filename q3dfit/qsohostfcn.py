@@ -47,14 +47,14 @@ def setup_qso_mult_exp(p):
                     independent_vars=['wave', 'qsotemplate'],
                     prefix=model_name)
     qso_mult_exp_pars = qsotemplate_x_exp.make_params()
-    qso_mult_exp_pars[model_name+'a'].set(value=p[0], min=0.)
-    qso_mult_exp_pars[model_name+'b'].set(value=p[1], min=0.)
-    qso_mult_exp_pars[model_name+'c'].set(value=p[2], min=0.)
-    qso_mult_exp_pars[model_name+'d'].set(value=p[3], min=0.)
-    qso_mult_exp_pars[model_name+'e'].set(value=p[4], min=0.)
-    qso_mult_exp_pars[model_name+'f'].set(value=p[5], min=0.)
-    qso_mult_exp_pars[model_name+'g'].set(value=p[6], min=0.)
-    qso_mult_exp_pars[model_name+'h'].set(value=p[7], min=0.)
+    qso_mult_exp_pars[model_name+'a'].set(value=p[0], min=np.finfo(float).eps)
+    qso_mult_exp_pars[model_name+'b'].set(value=p[1], min=np.finfo(float).eps)
+    qso_mult_exp_pars[model_name+'c'].set(value=p[2], min=np.finfo(float).eps)
+    qso_mult_exp_pars[model_name+'d'].set(value=p[3], min=np.finfo(float).eps)
+    qso_mult_exp_pars[model_name+'e'].set(value=p[4], min=np.finfo(float).eps)
+    qso_mult_exp_pars[model_name+'f'].set(value=p[5], min=np.finfo(float).eps)
+    qso_mult_exp_pars[model_name+'g'].set(value=p[6], min=np.finfo(float).eps)
+    qso_mult_exp_pars[model_name+'h'].set(value=p[7], min=np.finfo(float).eps)
 
     return qsotemplate_x_exp, qso_mult_exp_pars
 
@@ -104,9 +104,11 @@ def setup_qso_mult_leg(p):
     for counter, i in enumerate(['i', 'j', 'k', 'l', 'm',
                                  'n', 'o', 'p', 'q', 'r']):
         if not np.isnan(p[counter]):
-            qso_mult_leg_pars[model_name+i].set(value=p[counter], min=0.)
+            qso_mult_leg_pars[model_name+i].set(value=p[counter],
+                                                min=np.finfo(float).eps)
         else:
-            qso_mult_leg_pars[model_name+i].set(value=0., vary=False)
+            qso_mult_leg_pars[model_name+i].set(value=np.finfo(float).eps,
+                                                vary=False)
 
     return qsotemplate_x_leg, qso_mult_leg_pars
 
@@ -154,9 +156,11 @@ def setup_stars_add_leg(p):
     for counter, i in enumerate(['i', 'j', 'k', 'l', 'm',
                                  'n', 'o', 'p', 'q', 'r']):
         if not np.isnan(p[counter]):
-            stars_add_leg_pars[model_name+i].set(value=p[counter], min=0.)
+            stars_add_leg_pars[model_name+i].set(value=p[counter],
+                                                 min=np.finfo(float).eps)
         else:
-            stars_add_leg_pars[model_name+i].set(value=0., vary=False)
+            stars_add_leg_pars[model_name+i].set(value=np.finfo(float).eps,
+                                                 vary=False)
 
     return stars, stars_add_leg_pars
 
@@ -201,14 +205,14 @@ def setup_stars_add_exp(p):
     stars = lmfit.Model(stars_add_exp, independent_vars=['wave'],
                         prefix=model_name)
     stars_add_exp_pars = stars.make_params()
-    stars_add_exp_pars[model_name+'a'].set(value=p[0], min=0.)
-    stars_add_exp_pars[model_name+'b'].set(value=p[1], min=0.)
-    stars_add_exp_pars[model_name+'c'].set(value=p[2], min=0.)
-    stars_add_exp_pars[model_name+'d'].set(value=p[3], min=0.)
-    stars_add_exp_pars[model_name+'e'].set(value=p[4], min=0.)
-    stars_add_exp_pars[model_name+'f'].set(value=p[5], min=0.)
-    stars_add_exp_pars[model_name+'g'].set(value=p[6], min=0.)
-    stars_add_exp_pars[model_name+'h'].set(value=p[7], min=0.)
+    stars_add_exp_pars[model_name+'a'].set(value=p[0], min=np.finfo(float).eps)
+    stars_add_exp_pars[model_name+'b'].set(value=p[1], min=np.finfo(float).eps)
+    stars_add_exp_pars[model_name+'c'].set(value=p[2], min=np.finfo(float).eps)
+    stars_add_exp_pars[model_name+'d'].set(value=p[3], min=np.finfo(float).eps)
+    stars_add_exp_pars[model_name+'e'].set(value=p[4], min=np.finfo(float).eps)
+    stars_add_exp_pars[model_name+'f'].set(value=p[5], min=np.finfo(float).eps)
+    stars_add_exp_pars[model_name+'g'].set(value=p[6], min=np.finfo(float).eps)
+    stars_add_exp_pars[model_name+'h'].set(value=p[7], min=np.finfo(float).eps)
 
     return stars, stars_add_exp_pars
 
@@ -290,7 +294,8 @@ def qsohostfcn(wave, params_fit=None, qsoflux=None,
             gaussian_model = lmfit.Model(manygauss, prefix=gaussian_name)
             gaussian_model_parameters = gaussian_model.make_params()
             gaussian_model_parameters\
-                [gaussian_name+'flx'].set(value=blrpar[counter], min=0.)
+                [gaussian_name+'flx'].set(value=blrpar[counter],
+                                          min=np.finfo(float).eps)
             gaussian_model_parameters\
                 [gaussian_name+'cwv'].set(value=blrpar[counter + 1],
                                           vary=False)

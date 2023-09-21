@@ -132,14 +132,14 @@ class Cube:
 
         # Data
         try:
-            self.dat = np.array((hdu[datext].data).T, dtype='float32')
+            self.dat = np.array((hdu[datext].data).T, dtype='float64')
         except (IndexError or KeyError):
             raise CubeError('Data extension not properly specified or absent')
 
         # Variance/Error
         if varext is not None:
             try:
-                self.var = np.array((hdu[varext].data).T, dtype='float32')
+                self.var = np.array((hdu[varext].data).T, dtype='float64')
             except (IndexError or KeyError):
                 raise CubeError('Variance extension not properly specified ' +
                                 'or absent', file=logfile)
@@ -339,8 +339,8 @@ class Cube:
                 self.cdelt = header[CD]
             else:
                 raise CubeError('Cannot find or compute wavelengths')
-        # explicitly cast as float32
-        self.wave = self.wave.astype('float32')
+        # explicitly cast as float64
+        self.wave = self.wave.astype('float64')
 
         # convert wavelengths if requested
         if self.waveunit_in != self.waveunit_out:
@@ -370,7 +370,7 @@ class Cube:
 
         # Flux unit conversions
         # default working flux unit is erg/s/cm^2/um/sr or erg/s/cm^2/um
-        convert_flux = np.float32(1.)
+        convert_flux = np.float64(1.)
         if 'MJy' in self.fluxunit_in and 'MJy' not in self.fluxunit_out:
             # IR units: https://coolwiki.ipac.caltech.edu/index.php/Units
             # default input flux unit is MJy/sr
@@ -385,11 +385,11 @@ class Cube:
 
         # case of input flux_lambda cgs units per Angstrom:
         elif '/Angstrom' in self.fluxunit_in:
-            convert_flux = np.float32(1e4)
+            convert_flux = np.float64(1e4)
 
         # case of output flux_lambda cgs units per Angstrom:
         if '/Angstrom' in self.fluxunit_out:
-            convert_flux /= np.float32(1e4)
+            convert_flux /= np.float64(1e4)
 
         # remove /sr or /arcsec2
         if '/sr' in self.fluxunit_in and \
@@ -489,7 +489,7 @@ class Cube:
             sizes = cscale/self.wave
         elif wavescale == 'none':
             sizes = np.ndarray(self.nwave)
-            sizes[:] = np.float32(refsize)
+            sizes[:] = np.float64(refsize)
 
         for i in np.arange(0, self.nwave):
             # 2D Gaussian with sigma = 1.5 at long wavelength, 1 at short

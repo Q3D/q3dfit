@@ -11,25 +11,25 @@ chdir('../jnb/')
 q3di = 'nirspec-j1652/q3di.npy'
 
 # Single spaxel
-#cols=45
-#rows=29
+cols=45
+rows=29
 
 # Run the fit
-#from q3dfit.q3df import q3dfit
-#q3dfit(q3di, cols=cols, rows=rows, quiet=False)
+from q3dfit.q3df import q3dfit
+q3dfit(q3di, cols=cols, rows=rows, quiet=False)
 
 #
 # Plot an example
 #
-# from q3dfit.q3dout import load_q3dout
-# q3do = load_q3dout(q3di, cols, rows)
+from q3dfit.q3dout import load_q3dout
+q3do = load_q3dout(q3di, cols, rows)
 
-# argsplotline = dict()
-# argsplotline['nx'] = 2
-# argsplotline['ny'] = 1
-# argsplotline['line'] = ['Hbeta', '[OIII]5007']
-# argsplotline['size'] = [0.05, 0.07]
-# q3do.plot_line(plotargs=argsplotline)
+argsplotline = dict()
+argsplotline['nx'] = 2
+argsplotline['ny'] = 1
+argsplotline['line'] = ['Hbeta', '[OIII]5007']
+argsplotline['size'] = [0.05, 0.07]
+q3do.plot_line(q3di, plotargs=argsplotline)
 
 # argscontplot = dict()
 # argscontplot['xstyle'] = 'lin'

@@ -81,7 +81,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     err_out = copy.deepcopy(err)
 
     # default sigma for initial guess for emission line widths
-    siginit_gas_def = np.float32(100.)
+    siginit_gas_def = np.float64(100.)
 
     if logfile is None:
         from sys import stdout
@@ -117,7 +117,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     if q3di.fitrange is not None:
-        fitran_tmp = list(map(np.float32, q3di.fitrange))
+        fitran_tmp = list(map(np.float64, q3di.fitrange))
     else:
         fitran_tmp = [wlambda[0], wlambda[len(wlambda)-1]]
     # indices locating good data and data within fit range
@@ -140,8 +140,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     if len(gd_indx_full) > 0:
 
         # limit actual fit range to good data
-        fitran = [np.min(wlambda[gd_indx_full]).astype('float32'),
-                  np.max(wlambda[gd_indx_full]).astype('float32')]
+        fitran = [np.min(wlambda[gd_indx_full]).astype('float64'),
+                  np.max(wlambda[gd_indx_full]).astype('float64')]
 
         # indices locating data within actual fit range
         fitran_indx1 = np.where(wlambda >= fitran[0])[0]
@@ -254,7 +254,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 else:
                     maskwidths = \
                         Table(np.full([q3di.maxncomp, listlines['name'].size],
-                                      q3di.maskwidths_def, dtype='float'),
+                                      q3di.maskwidths_def, dtype='float64'),
                               names=listlines['name'])
             # This loop overwrites nans in the case that ncomp gets lowered
             # by checkcomp; these nans cause masklin to choke
@@ -285,8 +285,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             fcncontfit = getattr(module, q3di.fcncontfit)
 
             if q3di.fcncontfit == 'questfit' or q3di.startempfile is None:
-                templatelambdaz_tmp = b'0'
-                templateflux_tmp = b'0'
+                templatelambdaz_tmp = None
+                templateflux_tmp = None
             else:
                 templatelambdaz_tmp = templatelambdaz
                 templateflux_tmp = template['flux']
@@ -304,10 +304,11 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     argscontfit['err_log'] = gderr_log
                     argscontfit['siginit_stars'] = siginit_stars
 
-            if q3di.forcefloat64:
-                usetype = 'float64'
-            else:
-                usetype = 'float32'
+            #if q3di.forcefloat64:
+            #    usetype = 'float64'
+            #else:
+            #    usetype = 'float32'
+            usetype='float64'
             q3do.cont_fit, q3do.ct_coeff, q3do.zstar = \
                 fcncontfit(gdlambda.astype(usetype),
                            gdflux.astype(usetype),
@@ -430,7 +431,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     if q3di.dolinefit:
 
         q3do.init_linefit(listlines, q3di.lines, q3di.maxncomp,
-                          line_dat=continuum.astype('float32'))
+                          line_dat=continuum.astype('float64'))
 
         # Check that # components being fit to at least one line is > 0
         nonzerocomp = np.where(np.array(list(ncomp.values())) != 0)[0]
@@ -506,15 +507,15 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                         else:
                             peakinit[line] = np.zeros(q3di.maxncomp)
                         # re-cast as float32
-                        peakinit[line] = peakinit[line].astype('float32')
+                        peakinit[line] = peakinit[line].astype('float64')
 
             # Initial guesses for emission line widths
             if siginit_gas is None:
                 siginit_gas = {k: None for k in q3di.lines}
                 for line in q3di.lines:
                     siginit_gas[line] = \
-                        np.zeros(q3di.maxncomp, dtype='float32') + \
-                        np.float32(siginit_gas_def)
+                        np.zeros(q3di.maxncomp, dtype='float64') + \
+                        np.float64(siginit_gas_def)
 
             # Fill out parameter structure with initial guesses and constraints
             impModule = import_module('q3dfit.' + q3di.fcnlineinit)
@@ -571,7 +572,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 else:
                     lmverbose = 2
                 fit_kws['verbose'] = lmverbose
-
 
             lmout = emlmod.fit(q3do.line_dat, q3do.parinit, x=gdlambda,
                                method=method, weights=np.sqrt(gdinvvar_nocnt),

@@ -171,7 +171,8 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     ymod, params = \
         qsohostfcn(wave, params_fit=None, qsoxdr=qsoxdr, qsoonly=qsoonly,
                    qsoord=qsoord, hostonly=hostonly, hostord=hostord,
-                   blronly=blronly, blrpar=blrpar, qsoflux=qsoflux, **kwargs)
+                   blronly=blronly, blrpar=blrpar, qsoflux=qsoflux,
+                   medflux=np.median(iflux), **kwargs)
 
     method = 'least_squares'
     if 'method' in kwargs:

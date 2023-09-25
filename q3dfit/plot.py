@@ -8,7 +8,7 @@ import numpy as np
 from q3dfit.q3dmath import cmplin
 from q3dfit.q3dutil import lmlabel
 from q3dfit.exceptions import InitializationError
-from q3dfit import questfit_readcf
+from q3dfit.questfitfcn import readcf
 from matplotlib import rcParams
 from matplotlib import pyplot as plt
 
@@ -956,7 +956,7 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
     plot_noext = False  # Remove dust contribution and plot intrinstic components
 
     if 'plot_decomp' in q3di.argscontfit:
-        config_file = questfit_readcf.readcf(q3di.argscontfit['config_file'])
+        config_file = readcf(q3di.argscontfit['config_file'])
         global_extinction = False
         for key in config_file:
             try:

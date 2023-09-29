@@ -634,7 +634,7 @@ def questfit(wlambda, flux, weights,
 
     # loop over emission template dictionary, load them in and resample.
     for i in emcomps.keys():
-        if 'sifrom' in i:
+        if 'sifrom' in emcomps[i]:
             tempdir = silicatemodels
         else:
             tempdir = questfit_templates

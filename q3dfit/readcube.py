@@ -650,6 +650,9 @@ class Cube:
         present in original fits file), datext, varext, dqext, and wmapext.
         '''
 
+        print("Output flux units: ", self.fluxunit_out)
+        print("Output wave units: ", self.waveunit_out)
+
         if self.datext != 0:
             # create empty PHU
             hdu1 = fits.PrimaryHDU(header=self.header_phu)
@@ -678,6 +681,9 @@ class Cube:
         Write extracted spectrum to disk. Assumes extension order empty phu (if
         present in original fits file), datext, varext, dqext, and wmapext.
         '''
+
+        print("Output flux units: ", self.fluxunit_out)
+        print("Output wave units: ", self.waveunit_out)
 
         # deal with simplest case for now
         if self.wavext is None:

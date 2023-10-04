@@ -223,7 +223,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
     else:
 
-        gdflux = 0
+        gdflux = np.array((0.))
         q3di.docontfit = False
         q3di.dolinefit = False
         q3do = q3dout.q3dout(0., 0., 0.)

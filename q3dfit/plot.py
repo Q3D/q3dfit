@@ -47,7 +47,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
         pltstyle = 'dark_background'
         dcolor = 'w'
     else:
-        pltstyle = 'seaborn-ticks'
+        pltstyle = 'seaborn-v0_8-ticks'
         dcolor = 'k'
 
     wave = q3do.wave
@@ -924,11 +924,11 @@ def plotdecomp(q3do, q3di, savefig=True, outfile=None, templ_mask=[], do_lines=F
         outfile=q3do.filelab + '_decomp'
 
     if do_lines:
-        plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile, 
-            templ_mask=templ_mask, lines=q3do.linelist['lines'], linespec=q3do.line_fit, show=show, mode=mode, ymin=ymin, ymax=ymax, 
+        plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile,
+            templ_mask=templ_mask, lines=q3do.linelist['lines'], linespec=q3do.line_fit, show=show, mode=mode, ymin=ymin, ymax=ymax,
             try_adjust_ax=try_adjust_ax)
     else:
-        plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile, 
+        plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile,
             templ_mask=templ_mask, show=show, mode=mode, ymin=ymin, ymax=ymax, try_adjust_ax=try_adjust_ax)
 
 
@@ -942,7 +942,7 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
         pltstyle = 'dark_background'
         dcolor = 'w'
     else:
-        pltstyle = 'seaborn-ticks'
+        pltstyle = 'seaborn-v0_8-ticks'
         dcolor = 'k'
 
     plt.style.use(pltstyle)
@@ -1063,7 +1063,7 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
         ax2.set_xlabel('Wavelength [micron]')
 
         from matplotlib.ticker import ScalarFormatter
-        ax2.xaxis.set_major_formatter(ScalarFormatter()) 
+        ax2.xaxis.set_major_formatter(ScalarFormatter())
         ax2.xaxis.set_minor_formatter(ScalarFormatter())
         ax2.ticklabel_format(style='plain')
 

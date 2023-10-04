@@ -211,6 +211,11 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
             print('FIT STATUS: '+str(q3do_init.fitstatus), file=logfile)
             if not quiet:
                 print('FIT STATUS: '+str(q3do_init.fitstatus))
+            # # Abort if no good data
+            # if not q3di.dolinefit and not q3di.docontfit:
+            #     abortfit = True
+            #     if not quiet:
+            #         print('FITLOOP: Aborting fit; no good data to fit.')
 
             # Second fit
 

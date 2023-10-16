@@ -371,7 +371,7 @@ class Cube:
         # Flux unit conversions
         # default working flux unit is erg/s/cm^2/um/sr or erg/s/cm^2/um
         convert_flux = np.float64(1.)
-        if 'MJy' in self.fluxunit_in and 'MJy' not in self.fluxunit_out:
+        if 'Jy' in self.fluxunit_in and 'Jy' not in self.fluxunit_out:
             # IR units: https://coolwiki.ipac.caltech.edu/index.php/Units
             # default input flux unit is MJy/sr
             # 1 Jy = 10^-26 W/m^2/Hz
@@ -380,8 +380,10 @@ class Cube:
             #    = 10^-23 erg/cm^-2/s/Hz
             # third fac: c/lambda**2 Hz/micron, with lambda^2 in m*micron
             wave_out = self.wave * u.Unit(self.waveunit_out)
-            convert_flux = 1e6 * 1e-23 * c.value / wave_out.to('m').value / \
+            convert_flux = 1e-23 * c.value / wave_out.to('m').value / \
                 wave_out.to('micron').value
+            if 'MJy' in self.fluxunit_in:
+                convert_flux *= 1e6
 
         # case of input flux_lambda cgs units per Angstrom:
         elif '/Angstrom' in self.fluxunit_in:
@@ -588,12 +590,6 @@ class Cube:
 
         '''
 
-        #try:
-        #except:
-        #    raise CubeError('specextract is for cubes, not 1d or 2d spectra')
-
-        cent = np.array([row-1., col-1.])
-
         # second dimension of output array
         next = 1
         if self.var is not None:
@@ -606,7 +602,21 @@ class Cube:
 
         # Set extraction to single pixel if zero radius is specified
         # Round col, row to nearest integer first
-        if radius == 0.:
+        if self.nrows == 1:
+            if self.ncols == 1:
+                spec[:, 0] = self.dat / norm
+                if self.var is not None:
+                    spec[:, 1] = self.var / norm / norm
+                if self.dq is not None:
+                    spec[:, 2] = self.dq
+            else:
+                intcol = round(col)
+                spec[:, 0] = self.dat[intcol-1, :] / norm
+                if self.var is not None:
+                    spec[:, 1] = self.var[intcol-1, :] / norm / norm
+                if self.dq is not None:
+                    spec[:, 2] = self.dq[intcol-1, :]
+        elif radius == 0.:
             intcol = round(col)
             introw = round(row)
             spec[:, 0] = self.dat[intcol-1, introw-1, :] / norm
@@ -617,6 +627,7 @@ class Cube:
         else:
             # create circular mask
             if method == 'circle':
+                cent = np.array([row-1., col-1.])
                 aper = photutils.aperture.CircularAperture(cent, radius)
 
             # loop through wavelengths
@@ -640,6 +651,7 @@ class Cube:
 
         if plot:
             plt.plot(self.wave, spec[:, 0])
+            plt.plot(self.wave, spec[:, 1])
             plt.show()
 
         return spec

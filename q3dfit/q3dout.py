@@ -79,7 +79,8 @@ class q3dout:
 
     def __init__(self, wave, spec, spec_err, fitrange=None, col=None, row=None,
                  gd_indx=None, fitran_indx=None, fluxunit='erg/s/cm^2/micron',
-                 waveunit='micron', fluxnorm=1., pixarea_sqas=None):
+                 waveunit='micron', fluxnorm=1., pixarea_sqas=None,
+                 nogood=False):
 
         self.fitrange = fitrange
         self.wave = np.float64(wave)
@@ -96,6 +97,8 @@ class q3dout:
 
         self.docontfit = False
         self.dolinefit = False
+
+        self.nogood = nogood # no good data present
 
         self.col = col
         self.row = row

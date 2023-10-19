@@ -224,9 +224,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     else:
 
         gdflux = np.array((0.))
-        q3di.docontfit = False
-        q3di.dolinefit = False
-        q3do = q3dout.q3dout(0., 0., 0.)
+        q3do = q3dout.q3dout(0., 0., 0.,  nogood=True)
 
     # timer
     fit_time0 = time.time()
@@ -235,7 +233,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # Fit continuum
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    if q3di.docontfit:
+    if q3di.docontfit and not q3do.nogood:
 
         q3do.init_contfit(zstar=zstar)
 
@@ -428,7 +426,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 # Fit emission lines
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    if q3di.dolinefit:
+    if q3di.dolinefit and not q3do.nogood:
 
         q3do.init_linefit(listlines, q3di.lines, q3di.maxncomp,
                           line_dat=continuum.astype('float64'))
@@ -573,6 +571,10 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     lmverbose = 2
                 fit_kws['verbose'] = lmverbose
 
+            if method == 'leastsq':
+                # to get mesg output
+                fit_kws['full_output'] = True
+
             lmout = emlmod.fit(q3do.line_dat, q3do.parinit, x=gdlambda,
                                method=method, weights=np.sqrt(gdinvvar_nocnt),
                                nan_policy='omit', max_nfev=max_nfev,
@@ -590,17 +592,30 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
             # error messages corresponding to LMFIT, plt
             # documentation was not very helpful with the error messages...
-            # This can happen if, e.g., max_nfev is reached. Status message is in
-            # this case not set, so we'll set it by hand.
-            q3do.fitstatus = 1
+            # This can happen if, e.g., max_nfev is reached. Status message
+            # is in this case not set, so we'll set it by hand.
+            #q3do.fitstatus = 1 # default for good fit
             if method == 'least_squares':
+                # https://lmfit.github.io/lmfit-py/model.html#lmfit.model.success
                 if not lmout.success:
                     print('lmfit: '+lmout.message, file=logfile)
                     if not quiet:
                         print('lmfit: '+lmout.message)
-                    q3do.fitstatus = 0
-                else:
-                    q3do.fitstatus = lmout.status
+                q3do.fitstatus = lmout.status
+                '''
+                The reason for algorithm termination:
+            -1 : improper input parameters status returned from MINPACK.
+            0 : the maximum number of function evaluations is exceeded.
+            1 : gtol termination condition is satisfied.
+            2 : ftol termination condition is satisfied.
+            3 : xtol termination condition is satisfied.
+            4 : Both ftol and xtol termination conditions are satisfied.
+                '''
+            if method == 'leastsq':
+                print('lmfit: '+lmout.lmdif_message, file=logfile)
+                if not quiet:
+                    print('lmfit: '+lmout.lmdif_message)
+                q3do.fitstatus = lmout.ier
 
             # Errors from covariance matrix
             q3do.perror = dict()
@@ -691,7 +706,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             q3do.cont_dat = gdflux.copy()
 
     else:
-        q3do.fitstatus = 1
+        #q3do.fitstatus = 1
         q3do.cont_dat = gdflux.copy()
 
 

@@ -208,14 +208,17 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
                                 siginit_gas=siginit_gas,
                                 siginit_stars=siginit_stars,
                                 tweakcntfit=tweakcntfit, logfile=logfile)
-            print('FIT STATUS: '+str(q3do_init.fitstatus), file=logfile)
-            if not quiet:
-                print('FIT STATUS: '+str(q3do_init.fitstatus))
             # Abort if no good data
-            if not q3di.dolinefit and not q3di.docontfit:
+            if q3do_init.nogood:
                 abortfit = True
+                print('FITLOOP: Aborting fit; no good data to fit.',
+                      file=logfile)
                 if not quiet:
                     print('FITLOOP: Aborting fit; no good data to fit.')
+            else:
+                print('FIT STATUS: '+str(q3do_init.fitstatus), file=logfile)
+                if not quiet:
+                    print('FIT STATUS: '+str(q3do_init.fitstatus))
 
             # Second fit
 
@@ -289,14 +292,15 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
             else:
                 dofit = False
 
-        # save q3do
-        q3do.col = i+1
-        q3do.row = j+1
+        if not abortfit:
+            # save q3do
+            q3do.col = i+1
+            q3do.row = j+1
 
-        # update units, etc.
-        q3do.fluxunit = cube.fluxunit_out
-        q3do.waveunit = cube.waveunit_out
-        q3do.fluxnorm = cube.fluxnorm
-        q3do.pixarea_sqas = cube.pixarea_sqas
-        #
-        np.save(outlab, q3do)
+            # update units, etc.
+            q3do.fluxunit = cube.fluxunit_out
+            q3do.waveunit = cube.waveunit_out
+            q3do.fluxnorm = cube.fluxnorm
+            q3do.pixarea_sqas = cube.pixarea_sqas
+            #
+            np.save(outlab, q3do)

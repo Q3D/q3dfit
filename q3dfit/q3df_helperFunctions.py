@@ -61,7 +61,7 @@ def execute_fitloop(nspax, colarr, rowarr, cube, q3di, linelist, specConv,
                 continue
         else:           # Regular run; no continuation in case of crash
             fitloop(ispax, colarr, rowarr, cube, q3di, linelist, specConv,
-                            onefit=onefit, quiet=quiet, logfile=logfile)
+                    onefit=onefit, quiet=quiet, logfile=logfile)
 
 def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
                  quiet=True, nocrash=False):
@@ -105,7 +105,8 @@ def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
     nspax, colarr, rowarr = q3dutil.get_spaxels(cube, cols, rows)
     # execute FITLOOP
     execute_fitloop(nspax, colarr, rowarr, cube, q3di,
-                    linelist, specConv, onefit, quiet, logfile=logfile, nocrash=nocrash)
+                    linelist, specConv, onefit, quiet, logfile=logfile,
+                    nocrash=nocrash)
     if logfile is None:
         from sys import stdout
         logtmp = stdout

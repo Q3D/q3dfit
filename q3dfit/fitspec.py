@@ -594,14 +594,17 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             # documentation was not very helpful with the error messages...
             # This can happen if, e.g., max_nfev is reached. Status message
             # is in this case not set, so we'll set it by hand.
-            #q3do.fitstatus = 1 # default for good fit
+            # q3do.fitstatus = 1 # default for good fit
             if method == 'least_squares':
                 # https://lmfit.github.io/lmfit-py/model.html#lmfit.model.success
                 if not lmout.success:
                     print('lmfit: '+lmout.message, file=logfile)
                     if not quiet:
                         print('lmfit: '+lmout.message)
-                q3do.fitstatus = lmout.status
+                if hasattr(lmout, 'status'):
+                    q3do.fitstatus = lmout.status
+                elif lmout.nfev >= max_nfev:
+                    q3do.fitstatus = 0
                 '''
                 The reason for algorithm termination:
             -1 : improper input parameters status returned from MINPACK.

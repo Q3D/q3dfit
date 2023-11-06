@@ -433,7 +433,21 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
         # Check that # components being fit to at least one line is > 0
         nonzerocomp = np.where(np.array(list(ncomp.values())) != 0)[0]
-        if len(nonzerocomp) > 0:
+
+        # Make sure line within fitrange
+        # To deal with case of truncated data where continuum can be fit but
+        # line not within good data range
+        line_in_good_range = False
+        for line in q3di.lines:
+            if line_in_good_range:
+                break
+            for icomp in range(0, ncomp[line]):
+                if listlinesz[line][icomp] >= min(gdlambda) and \
+                    listlinesz[line][icomp] <= max(gdlambda):
+                    line_in_good_range = True
+                    break
+
+        if len(nonzerocomp) > 0 and line_in_good_range:
 
             # Initial guesses for emission line peak fluxes (above continuum)
             if peakinit is None:

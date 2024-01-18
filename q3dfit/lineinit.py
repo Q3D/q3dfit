@@ -11,9 +11,9 @@ import numpy as np
 import q3dfit.data
 import os
 
-def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, specConv,
-             lineratio=None, siglim=None, sigfix=None, blrcomp=None,
-             blrlines=None, specres=None, waves=None):
+def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
+             specConv, linevary=None, lineratio=None, siglim=None,
+             blrcomp=None, blrlines=None, specres=None, waves=None):
     '''
     Initialize parameters for emission-line fitting.
     '''
@@ -85,8 +85,13 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
         # and gaussian parname
         comp = int(psplit[len(psplit)-2])  # string for line component
         gpar = psplit[len(psplit)-1]  # parameter name in manygauss
+        # If line out of range or something else
+        value = np.float64(np.finfo(float).eps)
+        limited = None
+        limits = None
+        vary = False
+        tied = ''
         # Process input values
-        vary = 'True'
         if gpar == 'flx' and inrange:
             value = initflux[line.label][comp]
             limited = np.array([1, 0], dtype='uint8')
@@ -99,6 +104,14 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
                 tied = f'{dblt_lmline.lmlabel}_{comp}_flx/3.'
             else:
                 tied = ''
+            if linevary is None:
+                vary = 'True'
+            else:
+                try:
+                    vary = linevary[line.label][gpar][comp]
+                except:
+                    print('lineinit: dict vary missing information')
+
         elif gpar == 'cwv':
             value = linelistz[line.label][comp]
             limited = np.array([1, 1], dtype='uint8')
@@ -114,6 +127,14 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
                            linetie_tmp.lmlabel, comp)
             else:
                 tied = ''
+            if linevary is None:
+                vary = 'True'
+            else:
+                try:
+                    vary = linevary[line.label][gpar][comp]
+                except:
+                    print('lineinit: dict vary missing information')
+
         elif gpar == 'sig':
             value = initsig[line.label][comp]
             limited = np.array([1, 1], dtype='uint8')
@@ -123,14 +144,14 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
                 tied = f'{linetie_tmp.lmlabel}_{comp}_sig'
             else:
                 tied = ''
-#            if not inrange:
-#                vary = False
-        else:
-            value = np.float64(np.finfo(float).eps)
-            limited = None
-            limits = None
-            vary = False
-            tied = ''
+            if linevary is None:
+                vary = 'True'
+            else:
+                try:
+                    vary = linevary[line.label][gpar][comp]
+                except:
+                    print('lineinit: dict vary missing information')
+
 
         fit_params = \
             set_params(fit_params, parname, VALUE=value,

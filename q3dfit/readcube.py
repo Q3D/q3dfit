@@ -131,6 +131,8 @@ class Cube:
         self.wmapext = wmapext
 
         # Data
+        # Input assumed to be array (nwave, nrows, ncols)
+        # Transpose turns this into (ncols, nrows, nwave)
         try:
             self.dat = np.array((hdu[datext].data).T, dtype='float64')
         except (IndexError or KeyError):
@@ -146,7 +148,7 @@ class Cube:
             if invvar:
                 self.var = 1./self.var
                 self.err = np.sqrt(self.var)
-            if error:
+            elif error:
                 self.err = self.var
                 self.var = self.var**2.
             else:
@@ -310,7 +312,7 @@ class Cube:
                                   '\ *-?\ *[0-9]+)\ *')
         self.fluxunit_in = re.sub(match_number, '', self.fluxunit_in)
 
-        # reading wavelength from wavelength extention
+        # reading wavelength from wavelength extension
         self.wavext = wavext
         if wavext is not None:
             try:
@@ -651,10 +653,95 @@ class Cube:
 
         if plot:
             plt.plot(self.wave, spec[:, 0])
-            plt.plot(self.wave, spec[:, 1])
+            plt.plot(self.wave, np.sqrt(spec[:, 1]))
             plt.show()
 
         return spec
+
+    def reproject(self, newheader, new2dshape, newpixarea_sqas, parallel=True):
+
+        from reproject import reproject_exact
+
+        '''
+        Reproject cube onto a new WCS.
+
+        Parameters
+        ----------
+        newheader : header object
+            Header containing new WCS information
+        new2dshape : list
+            2-element list containing (nrows, ncols)
+
+        Returns
+        -------
+        obj
+            A modified cube object.
+        '''
+
+        head2d = copy.copy(self.header_dat)
+        if 'NAXIS3' in head2d:
+            for key in list(head2d.keys()):
+                if "3" in key:
+                    head2d.remove(key)
+            head2d['NAXIS'] = 2
+            head2d['WCSAXES'] = 2
+
+        nstack = 1
+        # check for var and dq planes
+        if self.varext is not None:
+            nstack += 1
+        if self.dqext is not None:
+            nstack += 1
+            dqind = 2
+            if self.varext is None:
+                dqind = 1
+        # temporary array has size (nstack, ncols, nrows, nwave)
+        # reproject needs (nrows, ncols), but cube stores data
+        # as (ncols, nrows)
+        stack_in = np.ndarray((nstack,) + (self.ncols, self.nrows) +
+                              (self.nwave,))
+        stack_rp = np.ndarray((nstack,) + new2dshape[::-1] +
+                              (self.nwave,))
+        stack_in[0, :, :, :] = self.dat
+        if self.varext is not None:
+            stack_in[1, :, :, :] = self.var
+        if self.dqext is not None:
+            stack_in[dqind, :, :, :] = self.dq
+        for i in np.arange(self.nwave):
+            # transpose data to (nrows, ncols)
+            tmp_rp, _ = \
+                reproject_exact((
+                    np.transpose(stack_in[:, :, :, i], axes=(0, 2, 1)),
+                    head2d), newheader, shape_out=new2dshape,
+                    parallel=parallel)
+            # transpose back
+            stack_rp[:, :, :, i] = np.transpose(tmp_rp, axes=(0, 2, 1))
+        self.dat = stack_rp[0, :, :, :]
+        if self.varext is not None:
+            self.var = stack_rp[1, :, :, :]
+        if self.dqext is not None:
+            self.dq = stack_rp[dqind, :, :, :]
+        # do surface brightness conversion
+        # reproject expects SB units
+        if self.pixarea_sqas is not None:
+            self.dat /= self.pixarea_sqas / newpixarea_sqas
+            self.var /= (self.pixarea_sqas / newpixarea_sqas)**2
+            self.pixarea_sqas = newpixarea_sqas
+        else:
+            print('WARNING: reproject needs original pixel area in square ' +
+                  'arcseconds to properly calculate flux units. Input as ' +
+                  'pixarea_sqas=VALUE in call to cube if not in header.')
+
+        # store new shape
+        self.nrows = new2dshape[0]
+        self.ncols = new2dshape[1]
+
+        # re-compute error
+        self.err = np.sqrt(self.var)
+
+        # in case we need to write this to disk for later access
+        if 'PIXAR_A2' in self.header_dat:
+            self.header_dat['PIXAR_A2'] = self.pixarea_sqas
 
     def writefits(self, outfile):
         '''
@@ -664,6 +751,9 @@ class Cube:
 
         print("Output flux units: ", self.fluxunit_out)
         print("Output wave units: ", self.waveunit_out)
+
+        if 'BUNIT' in self.header_dat:
+            self.header_dat['BUNIT'] = self.fluxunit_out
 
         if self.datext != 0:
             # create empty PHU

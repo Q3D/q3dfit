@@ -19,7 +19,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
              compcols=None, xstyle='log', ystyle='log',
              waveunit_in='micron',
              waveunit_out='micron',
-             fluxunit_in='flambda',
+             figsize=(10, 5), fluxunit_in='flambda',
              fluxunit_out='flambda',
              mode='light'
              ):
@@ -121,7 +121,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
             # unreadable when saving the figure
             if mode == 'light':
                 rcParams['savefig.facecolor'] = 'white'
-            fig = plt.figure(figsize=(20, 10))
+            fig = plt.figure(figsize=figsize)
             # fig = plt.figure()
             plt.axis('off')  # so the subplots don't share a y-axis
 
@@ -233,7 +233,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
                 xtit = 'Observed Wavelength ($\AA$)'
 
             plt.style.use(pltstyle)
-            fig = plt.figure(figsize=(20, 20))
+            fig = plt.figure(figsize=figsize)
             plt.axis('off')  # so the subplots don't share a y-axis
 
             maximum = 0
@@ -331,7 +331,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
 
         if xstyle == 'log' or ystyle == 'log':
             if IR:
-                fig = plt.figure(figsize=(50, 30))
+                fig = plt.figure(figsize=figsize)
                 gs = fig.add_gridspec(4,1)
                 ax1 = fig.add_subplot(gs[:3, :])
 
@@ -490,7 +490,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
             --nbottom
 
             plt.style.use(pltstyle)
-            fig = plt.figure(figsize=(10, 10))
+            fig = plt.figure(figsize=figsize)
             #fig = plt.figure()
             plt.axis('off')  # so the subplots don't share a y-axis
 
@@ -609,8 +609,9 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
             plt.savefig(outfile[0] + '.jpg')
 
 
-def plotline(q3do, nx=1, ny=1, line=None, center_obs=None, center_rest=None,
-             size=300., savefig=False, outfile=None, specConv=None):
+def plotline(q3do, nx=1, ny=1, figsize=(16,13), line=None, center_obs=None,
+             center_rest=None, size=300., savefig=False, outfile=None,
+             specConv=None):
     """
 
     Plot emission line fit and output to JPG
@@ -706,7 +707,7 @@ def plotline(q3do, nx=1, ny=1, line=None, center_obs=None, center_rest=None,
     off = off.transpose()
 
     plt.style.use('dark_background')
-    fig = plt.figure(figsize=(16, 13))
+    fig = plt.figure(figsize=figsize)
     for i in range(0, nlin):
 
         outer = gridspec.GridSpec(ny, nx, wspace=0.2, hspace=0.2)

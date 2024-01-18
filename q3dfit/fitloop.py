@@ -107,19 +107,32 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
                 (flux != np.nan).any())
     if somedata:
 
+        # Set up N_comp and fix/free (linevary) dictionaries for this spaxel
         ncomp = dict()
+        if q3di.linevary is not None:
+            linevary = dict()
+        else:
+            linevary = None
         if q3di.dolinefit:
-            # Extract # of components specific to this spaxel and
-            # write as dict. Do this outside of while loop because ncomp
-            # may change with another iteration.
-            # Each dict key (line) will have one value (# comp).
+            # Extract # of components and line fix/free specific to this spaxel
+            # and write as dict. Do this outside of while loop because ncomp
+            # may change with another iteration. Not sure how linevary should
+            # change with iteration yet [TODO]
+            # For # comp, each dict key (line) will have one value.
+            # For linevary, each line will have a dict of arrays:
+            #    dict has keys {'flx', 'cwv', 'sig'} with a value for each comp
             for line in q3di.lines:
                 ncomp[line] = q3di.ncomp[line][i, j]
+                if q3di.linevary is not None:
+                    linevary[line] = dict()
+                    linevary[line]['flx'] = q3di.linevary[line]['flx'][i, j, :]
+                    linevary[line]['cwv'] = q3di.linevary[line]['cwv'][i, j, :]
+                    linevary[line]['sig'] = q3di.linevary[line]['sig'][i, j, :]
 
         # First fit
         dofit = True
         abortfit = False
-        while(dofit):
+        while dofit:
 
             # Default values
             listlinesz = None
@@ -204,6 +217,7 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
                 print('FITLOOP: First call to FITSPEC')
             q3do_init = fitspec(cube.wave, flux, err, dq, zstar, listlines,
                                 listlinesz, ncomp, specConv, q3di, quiet=quiet,
+                                linevary=linevary,
                                 siglim_gas=siglim_gas,
                                 siginit_gas=siginit_gas,
                                 siginit_stars=siginit_stars,
@@ -244,12 +258,14 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
                 if not quiet:
                     print('FITLOOP: Second call to FITSPEC')
                 if q3di.fcncontfit == 'questfit' and \
-                   hasattr(q3di,'argscontfit'):
+                    hasattr(q3di,'argscontfit'):
                     q3di.argscontfit['rows'] = j+1
                     q3di.argscontfit['cols'] = i+1
                 q3do = fitspec(cube.wave, flux, err, dq, q3do_init.zstar,
                                listlines, listlinesz, ncomp, specConv, q3di,
-                               quiet=quiet, maskwidths=maskwidths_tmp,
+                               quiet=quiet,
+                               linevary=linevary,
+                               maskwidths=maskwidths_tmp,
                                peakinit=peakinit_tmp,
                                siginit_gas=siginit_gas_tmp,
                                siginit_stars=siginit_stars,
@@ -285,8 +301,8 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
                         print(f'FITLOOP: Repeating the fit of {line} with ' +
                               f'{nc} components.', file=logfile)
                         if not quiet:
-                            print(f'FITLOOP: Repeating the fit of {line} with ' +
-                                  f'{nc} components.')
+                            print(f'FITLOOP: Repeating the fit of {line} ' +
+                                  f'with {nc} components.')
                 else:
                     dofit = False
             else:

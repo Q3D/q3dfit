@@ -83,9 +83,9 @@ class q3din:
                      argscheckcomp={}, argslineinit={}, argslinefit={},
                      argslinelist={}, checkcomp=True,
                      fcnlineinit='lineinit',
-                     fcncheckcomp='checkcomp', noemlinfit=True,
-                     peakinit=None, perror_errspecwin=20, perror_residwin=200,
-                     perror_useresid=False,
+                     fcncheckcomp='checkcomp', linevary=None,
+                     noemlinfit=True, peakinit=None, perror_errspecwin=20,
+                     perror_residwin=200, perror_useresid=False,
                      siglim_gas=None):
         '''
         Initialize line fit.
@@ -170,6 +170,7 @@ class q3din:
 
         # set up dictionaries to hold initial conditions
         self.linetie = {}
+        self.linevary = {}
         self.ncomp = {}
         self.siginit_gas = {}
         self.zinit_gas = {}
@@ -183,6 +184,14 @@ class q3din:
             self.siginit_gas[line] = np.full((self.ncols, self.nrows,
                                               self.maxncomp), siginit,
                                              dtype='float64')
+            self.linevary[line] = dict()
+            # these are the three Gaussian arguments to lineinit.manygauss()
+            self.linevary[line]['flx'] = np.full((self.ncols, self.nrows,
+                                                  self.maxncomp), True)
+            self.linevary[line]['cwv'] = np.full((self.ncols, self.nrows,
+                                                  self.maxncomp), True)
+            self.linevary[line]['sig'] = np.full((self.ncols, self.nrows,
+                                                  self.maxncomp), True)
 
     def init_contfit(self, fcncontfit, siginit=50., zinit=None, argscontfit={},
                      argscontplot={}, argsconvtemp={},

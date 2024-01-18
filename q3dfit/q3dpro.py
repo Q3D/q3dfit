@@ -74,7 +74,7 @@ class Q3Dpro:
         print('getting line data...',LINESELECT)
 
         redshift = self.q3dinit.zsys_gas
-        ncomp = self.q3dinit.ncomp[LINESELECT][0,0]
+        ncomp = np.max(self.q3dinit.ncomp[LINESELECT])
 
         # kpc_arcsec = cosmo.kpc_proper_per_arcmin(redshift).value/60.
         # arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
@@ -84,8 +84,6 @@ class Q3Dpro:
         # cid = -1 # index of the component to plot, -1 is the broadest component
         # central wavelength --> need to get from linereader
         wave0,linetext = self.get_lineprop(LINESELECT, LINEVAC=LINEVAC)
-
-        ncomp = self.q3dinit.ncomp[LINESELECT][0,0]
 
         fluxsum     = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['flux']
         fluxsum_err = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['fluxerr']
@@ -165,7 +163,7 @@ class Q3Dpro:
             print('create linemap:', LINESELECT)
 
         redshift = self.q3dinit.zsys_gas
-        ncomp = self.q3dinit.ncomp[LINESELECT][0,0]
+        ncomp = np.max(self.q3dinit.ncomp[LINESELECT])
 
         kpc_arcsec = cosmo.kpc_proper_per_arcmin(redshift).value/60.
         # arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
@@ -348,7 +346,7 @@ class Q3Dpro:
         li = 0
         for lin in self.linedat.lines:
             if lin in linelist:
-                ncomp = self.q3dinit.ncomp[lin][0,0]
+                ncomp = np.max(self.q3dinit.ncomp[lin])
                 # fluxsum     = self.linedat.get_flux(lin,FLUXSEL='ftot')['flux']
                 # fluxsum_err = self.linedat.get_flux(lin,FLUXSEL='ftot')['fluxerr']
                 wave0,linetext,dataOUT = self.get_linemap(lin,LINEVAC=LINEVAC,APPLYMASK={})
@@ -525,7 +523,7 @@ class Q3Dpro:
         li = 0
         for lin in self.linedat.lines:
             if lin in BPTlines:
-                ncomp = self.q3dinit.ncomp[lin][0,0]
+                ncomp = np.max(self.q3dinit.ncomp[lin])
                 # fluxsum     = self.linedat.get_flux(lin,FLUXSEL='ftot')['flux']
                 # fluxsum_err = self.linedat.get_flux(lin,FLUXSEL='ftot')['fluxerr']
                 wave0,linetext,dataOUT = self.get_linemap(lin,LINEVAC=LINEVAC,APPLYMASK={})
@@ -1089,9 +1087,10 @@ class OneLineData:
 
     Attributes
     ----------
-    line : str
     flux : ndarray(ncols, nrows, maxncomp)
     fpklux : ndarray(ncols, nrows, maxncomp)
+    line : str
+    ncomp : ndarray(ncols, nrows)
     sig : ndarray(ncols, nrows, maxncomp)
     wave : ndarray(ncols, nrows, maxncomp)
 

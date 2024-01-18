@@ -17,8 +17,8 @@ from scipy.interpolate import interp1d
 
 
 def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
-            specConv, q3di, maskwidths=None, peakinit=None, quiet=True,
-            siginit_gas=None, siginit_stars=None, siglim_gas=None,
+            specConv, q3di, linevary=None, maskwidths=None, peakinit=None,
+            quiet=True, siginit_gas=None, siginit_stars=None, siglim_gas=None,
             tweakcntfit=None, logfile=None):
 
     """
@@ -540,6 +540,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 argslineinit['waves'] = gdlambda
             if siglim_gas is not None:
                 argslineinit['siglim'] = siglim_gas
+            if linevary is not None:
+                argslineinit['linevary'] = linevary
             emlmod, q3do.parinit, q3do.siglim = \
                 run_fcnlineinit(listlines, listlinesz, q3di.linetie, peakinit,
                                 siginit_gas, q3di.maxncomp, ncomp, specConv,

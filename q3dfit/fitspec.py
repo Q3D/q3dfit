@@ -136,8 +136,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                                           gd_indx_8, gd_indx_9)
     gd_indx_full = list(gd_indx_full)
 
-    # Check that gd_indx_full is not empty!
-    if len(gd_indx_full) > 0:
+    # Check that gd_indx_full is not empty, and has more than one point
+    if len(gd_indx_full) > 1:
 
         # limit actual fit range to good data
         fitran = [np.min(wlambda[gd_indx_full]).astype('float64'),

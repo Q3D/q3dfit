@@ -73,6 +73,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
     """
 
+
     bad = 1e30  # 1e99  ## CB: Decreased to 1e30 due to overflow issue
 
     flux = copy.deepcopy(flux)
@@ -302,11 +303,13 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     argscontfit['err_log'] = gderr_log
                     argscontfit['siginit_stars'] = siginit_stars
 
-            #if q3di.forcefloat64:
-            #    usetype = 'float64'
-            #else:
-            #    usetype = 'float32'
-            usetype='float64'
+            if q3di.forcefloat64:
+                usetype = 'float64'
+            else:
+                usetype = 'float32'
+
+            if q3di.fcncontfit == 'linfit_plus_FeII':
+                argscontfit['specConv'] = specConv
             q3do.cont_fit, q3do.ct_coeff, q3do.zstar = \
                 fcncontfit(gdlambda.astype(usetype),
                            gdflux.astype(usetype),
@@ -546,6 +549,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 run_fcnlineinit(listlines, listlinesz, q3di.linetie, peakinit,
                                 siginit_gas, q3di.maxncomp, ncomp, specConv,
                                 **argslineinit)
+
 
             # Actual fit
 

@@ -11,9 +11,10 @@ import numpy as np
 import q3dfit.data
 import os
 
-def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
-             specConv, linevary=None, lineratio=None, siglim=None,
-             blrcomp=None, blrlines=None, specres=None, waves=None):
+
+def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, specConv,
+             lineratio=None, siglim=None, sigfix=None, blrcomp=None,
+             blrlines=None, blrsiglim=None, specres=None, waves=None, force_cwv_lines=None):
     '''
     Initialize parameters for emission-line fitting.
     '''
@@ -127,6 +128,11 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
                     format(lines_arr[line.label],
                            lines_arr[linetie[line.label]],
                            linetie_tmp.lmlabel, comp)
+            elif force_cwv_lines is not None:
+                if line.label in force_cwv_lines and comp > 0:
+                    linetie_tmp = lmlabel(linetie[line.label])
+                    tied = '{}_0_cwv'.\
+                            format(linetie_tmp.lmlabel) 
             else:
                 tied = ''
             if linevary is None:
@@ -140,7 +146,12 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
         elif gpar == 'sig':
             value = initsig[line.label][comp]
             limited = np.array([1, 1], dtype='uint8')
-            limits = np.array(siglim, dtype='float64')
+
+            limits = np.array(siglim, dtype='float32')
+            if blrlines is not None and blrcomp is not None and blrsiglim is not None:
+                if line.label in blrlines and comp in blrcomp:
+                    limits = np.array(blrsiglim, dtype='float32')
+
             if linetie[line.label] != line.label:
                 linetie_tmp = lmlabel(linetie[line.label])
                 tied = f'{linetie_tmp.lmlabel}_{comp}_sig'

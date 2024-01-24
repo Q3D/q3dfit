@@ -322,7 +322,10 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
                 plt.suptitle(title, fontsize=40)
 
             if savefig and outfile is not None:
-                plt.savefig(outfile[0] + '.jpg')
+                if len(outfile[0])>1:
+                    plt.savefig(outfile[0] + '.jpg')
+                else:
+                    plt.savefig(outfile + '.jpg')
 
     # for IR spectra fit with questfit:
     else:
@@ -606,7 +609,10 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
             plt.suptitle(title, fontsize=30)
 
         if savefig and outfile is not None:
-            plt.savefig(outfile[0] + '.jpg')
+            if len(outfile[0])>1:
+                plt.savefig(outfile[0] + '.jpg')
+            else:
+                plt.savefig(outfile + '.jpg')
 
 
 def plotline(q3do, nx=1, ny=1, figsize=(16,13), line=None, center_obs=None,
@@ -862,7 +868,10 @@ def plotline(q3do, nx=1, ny=1, figsize=(16,13), line=None, center_obs=None,
     fig.suptitle(xtit, fontsize=25)
 
     if savefig and outfile is not None:
-        fig.savefig(outfile[0] + '.jpg')
+        if len(outfile[0])>1:
+            fig.savefig(outfile[0] + '.jpg')
+        else:
+            fig.savefig(outfile + '.jpg')
 
 
 def adjust_ax(ax, fig, fs=20, minor=False):
@@ -925,18 +934,18 @@ def plotdecomp(q3do, q3di, savefig=True, outfile=None, templ_mask=[], do_lines=F
         outfile=q3do.filelab + '_decomp'
 
     if do_lines:
-        plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile,
-            templ_mask=templ_mask, lines=q3do.linelist['lines'], linespec=q3do.line_fit, show=show, mode=mode, ymin=ymin, ymax=ymax,
-            try_adjust_ax=try_adjust_ax)
+        plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile, 
+            templ_mask=templ_mask, lines=q3do.linelist['lines'], linespec=q3do.line_fit, show=show, mode=mode, ymin=ymin, ymax=ymax, 
+            try_adjust_ax=try_adjust_ax, row=q3do.row, col=q3do.col)
     else:
-        plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile,
-            templ_mask=templ_mask, show=show, mode=mode, ymin=ymin, ymax=ymax, try_adjust_ax=try_adjust_ax)
+        plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile, 
+            templ_mask=templ_mask, show=show, mode=mode, ymin=ymin, ymax=ymax, try_adjust_ax=try_adjust_ax, row=q3do.row, col=q3do.col)
 
 
 
 def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
             savefig=True, outfile=None, templ_mask=[], lines=[], linespec=[], show=False,
-            mode='light', ymin=-1, ymax=-1, try_adjust_ax=True):
+            mode='light', ymin=-1, ymax=-1, try_adjust_ax=True, row=-1, col=-1):
 
     # dark mode just for fun:
     if mode == 'dark':
@@ -954,6 +963,7 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
 
     comp_best_fit = ct_coeff['comp_best_fit']
 
+
     plot_noext = False  # Remove dust contribution and plot intrinstic components
 
     if 'plot_decomp' in q3di.argscontfit:
@@ -966,9 +976,9 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
             except:
                 continue
 
-        fig = plt.figure(figsize=(6, 10))
-        gs = fig.add_gridspec(8,1)
-        ax1 = fig.add_subplot(gs[:6, :])
+        fig = plt.figure(figsize=(6, 9))
+        gs = fig.add_gridspec(6,1, top=0.95, bottom=0.08, left=0.2)
+        ax1 = fig.add_subplot(gs[:5, :])
 
         ax1.plot(MIRgdlambda, MIRgdflux,color='black')
         if len(lines)==0:
@@ -1026,11 +1036,14 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
                 if not ('_ext' in el or '_abs' in el):
                     spec_i = comp_best_fit[el]
                     label_i = el
-                    if plot_noext:
+
+                    if not plot_noext:
                       if el+'_ext' in comp_best_fit.keys():
-                          spec_i = spec_i/comp_best_fit[el+'_ext']
+                          spec_i = spec_i*comp_best_fit[el+'_ext']
                       if el+'_abs' in comp_best_fit.keys():
-                          spec_i = spec_i/comp_best_fit[el+'_abs']
+                          spec_i = spec_i*comp_best_fit[el+'_abs']
+
+
                     if count>len(colour_list)-1:
                       ax1.plot(MIRgdlambda_temp, spec_i, label=label_i,linestyle='--',alpha=0.5)
                     else:
@@ -1048,7 +1061,7 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
             adjust_ax(ax1, fig, minor=True)
         ax1.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False) # turn off major & minor ticks on the x-axis
 
-        ax2 = fig.add_subplot(gs[6:7, :], sharex=ax1)
+        ax2 = fig.add_subplot(gs[5:6, :], sharex=ax1)
         if len(lines)>=1:
             ax1.set_ylim(min(MIRcontinuum)/1e3, 3*max(MIRcontinuum + linespec))
             ax2.plot(MIRgdlambda,MIRgdflux/(MIRcontinuum + linespec),color='black')
@@ -1068,11 +1081,19 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
         ax2.xaxis.set_minor_formatter(ScalarFormatter())
         ax2.ticklabel_format(style='plain')
 
+        if row>-1 and col>-1:
+            ax1.set_title('Spaxel [{}, {}]'.format(col, row), fontsize=20)
+
         gs.update(wspace=0.0, hspace=0.05)
         adjust_ax(ax2, fig)
 
         if savefig and outfile is not None:
-            plt.savefig(outfile+'.jpg')
+            if len(outfile[0])>1:
+                plt.savefig(outfile[0]+'.jpg')
+            else:
+                plt.savefig(outfile+'.jpg')
+        else:
+            fig.savefig(outfile + '.jpg')
 
         if show:
             plt.show()

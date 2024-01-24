@@ -156,8 +156,8 @@ def set_up_fit_model_scale_withpoly(p,p_fixfree,model_name,model, minamp=0., max
         model_scale_parameters[model+'_amp'].set(value=p[0],min=minamp,vary=p_fixfree[0])#,min=0.
 
     model_scale_parameters[model+'_multpolyA'].set(value=1.,min=0., max=2., vary=p_fixfree[0])#,min=0.
-    model_scale_parameters[model+'_multpolyB'].set(value=1.,min=0., max=2., vary=p_fixfree[0])#,min=0.
-    model_scale_parameters[model+'_multpolyC'].set(value=0.1,min=0., max=2., vary=p_fixfree[0])#,min=0.
+    model_scale_parameters[model+'_multpolyB'].set(value=1.,min=0., max=1., vary=p_fixfree[0])#,min=0.
+    model_scale_parameters[model+'_multpolyC'].set(value=0.1,min=0., max=1., vary=p_fixfree[0])#,min=0.
 
     return model_scale_model,model_scale_parameters
 

@@ -6,9 +6,15 @@
 ./jnb/XID2028/
 ./jnb/NGC7469/
 ./jnb/J1652/
+./jnb/J1652_Ch3/
 ./jnb/q3dfit_XID2028_MIR.ipynb 
 ./jnb/q3dfit_J1652_MIR.ipynb
 ./jnb/q3dfit_from_npy_file.py 
+./jnb/q3dfit_J1652_Ch3_script.py
+./jnb/q3dfit_J1652_MIR_Ch3.ipynb
+./jnb/q3dfit_J1652_MIR_stripesub.ipynb
+./jnb/q3dfit_J1652_script.py
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

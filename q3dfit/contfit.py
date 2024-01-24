@@ -20,9 +20,10 @@ from q3dfit.qsohostfcn import qsohostfcn
 from q3dfit.interptemp import interptemp
 from scipy import constants, interpolate
 
+from lmfit.models import LinearModel
 
 def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index, zstar,
-            fitord=3, quiet=False, refit=False):
+            fitord=3, quiet=False, refit=False, **kwargs):
     ilam=lam[index]
     iflux=flux[index]
     #the fitter I used puts weights in 1/sigma so I took the square root to make the data correct
@@ -94,6 +95,79 @@ def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index, zstar,
             ct_poly[tmp_ind] += np.poly1d(tmp_parsparam, variable='lambda')
 
     return continuum, ct_coeff, zstar
+
+
+
+def linfit_plus_FeII(lam,flux,weight, template_wave, template_flux, index, zstar, specConv, outdir=None,
+            quiet=False, refit=False, rows=-1, cols=-1, Fe_FWHM=-1, **kwargs):
+
+    flux_cut = flux[index]
+    lam_cut = lam[index]
+
+    models_dictionary = {'x': lam_cut}
+
+    temp_fe = '../q3dfit/data/questfit_templates/fe_optical.txt'
+    data1 = np.loadtxt(temp_fe)
+    wave_fe = 10**data1[:,0] * (1. + zstar) /1e4
+    ind_Balmer = np.where((lam_cut > 0.3686 * (1. + zstar)) & (lam_cut < 0.7484 * (1. + zstar)), True, False)
+    F_fe = data1[:,1]/np.max(data1[:,1])
+
+    if Fe_FWHM<0.:
+        print('\n\nFitting with FeII template, but no broadening applied. Please supply Fe_FWHM to argscontfit... Halting.')
+        import sys; sys.exit()
+    sig_conv = np.sqrt(Fe_FWHM ** 2 - 900.0 ** 2) / 2. / np.sqrt(2. * np.log(2.))  # in km/s. 900 km/s is the FWHM of the Vestergaard & Wilkes 2001 template.  # sig_tot_BLR = (sig_temp^2+sig_add_broadening^2)^0.5  
+
+    sig_pix = sig_conv / 106.3  # 106.3 km/s is the dispersion for the BG92 FeII template subsequently used in Vestergaard & Wilkes 2001
+    xx = np.arange(0, 2*np.round(3.5*sig_pix+1, 0), 1) - np.round(3.5*sig_pix+1, 0)
+    kernel = np.exp(-xx ** 2 / (2 * sig_pix ** 2))
+    kernel = kernel / np.sum(kernel)
+    F_Fe_conv_intermed = np.convolve(F_fe, kernel, 'same')
+    F_Fe_conv = F_Fe_conv_intermed
+    F_Fe_conv = specConv.spect_convolver(wave_fe, F_Fe_conv_intermed, 0.4861*(1. + zstar)) # cwv)
+    F_fe_rebin = np.zeros(len(lam_cut))
+    F_fe_rebin[ind_Balmer] = interp_temp_quest.interp_lis(lam_cut[ind_Balmer], wave_fe, F_Fe_conv)
+    models_dictionary['temp_fe'] = F_fe_rebin
+
+    p_init = [0.5]
+    p_vary = [True]
+    model_fe_template, param_fe_template = questfitfcn.set_up_fit_model_scale(p_init, p_vary, 'temp_fe', 'temp_fe', maxamp=1.05*max(flux[index]) ) 
+
+    model_linfit = LinearModel(independent_vars=['x'], prefix='lincont', nan_policy='raise', **kwargs)
+    pars_lin = model_linfit.make_params(intercept=np.nanmedian(flux), slope=0)
+
+    model = model_linfit + model_fe_template
+    param = pars_lin + param_fe_template
+
+    result = model.fit(flux_cut, param, **models_dictionary,
+                               max_nfev=int(1e5), method='least_squares',
+                               nan_policy='omit', **{'verbose': 2})
+    print(result.fit_report())
+
+    models_dictionary['x']= lam
+    models_dictionary['temp_fe'] = interp_temp_quest.interp_lis(lam, wave_fe, F_Fe_conv)
+    continuum = result.eval(**models_dictionary)
+    comp_best_fit = result.eval_components(**models_dictionary)
+    
+
+    ct_coeff = {'params_best_fit': result.params,
+                    'comp_best_fit': comp_best_fit}
+
+    if isinstance(rows, list) or isinstance(rows, np.ndarray):
+        rows = rows[0]        
+    if isinstance(cols, list) or isinstance(cols, np.ndarray):
+        cols = cols[0]        
+    if rows >=0 and cols>=0:
+        saveres = 'fit_result__{}_{}.txt'.format(cols, rows)
+    else:
+        saveres = 'fit_result.txt'
+    with open(outdir+saveres, 'w') as fh:
+        fh.write(result.fit_report())
+        fh.write('\n')
+
+    return continuum, ct_coeff, zstar
+
+
+
 
 def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
                zstar, quiet=True, blrpar=None, qsoxdr=None,
@@ -346,6 +420,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
         flux = flux[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
         wlambda = wlambda[ np.logical_and(wlambda>=fitran[0]), np.logical_and(wlambda<=fitran[1]) ]
 
+
     if singletemplatelambda!=b'0':
         print('Trying to pass a single separate template to questfit, which is not implemented ... Halting.')
         import sys; sys.exit()
@@ -493,41 +568,6 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
                     maxamp = float(model_parameters[1]) * 1.25 
                     model_temp_template,param_temp_template = questfitfcn.set_up_fit_model_scale_withpoly([float(model_parameters[1])],[float(model_parameters[2])],name_model,name_model, minamp=minamp, maxamp=maxamp)#1.05*max(flux[index])) #name_model.split('.')[0]template+'_'+str(n_temp)
 
-                    testing = False
-                    if testing:
-                        with pkg_resources.path(
-                                questfit_templates,
-                                'miri_qsotemplate_flex.npy') as p:
-                            temp_model = np.load(p, allow_pickle=True)
-                        temp_model = temp_model[()]
-                        wave_ex = temp_model['wave']
-                        flux_ex = temp_model['flux']
-                        c_scale =  constants.c * u.Unit('m').to('micron') /(wave_ex)**2 *1e-23  *1e10      # [1e-10 erg/s/cm^2/um/sr]]
-                        flux_ex = flux_ex * c_scale
-                        flux_ex = flux_ex/flux_ex.max()
-                        c2 = [1., 0., 0.]
-                        c2 = [0.116, 0.224, 147.71]
-                        c2 = [0.213, 0.024, 75.794]
-                        c2 = [1, 100., 500.71]
-                        m1 = model_temp_template.eval(template_0=flux_ex , wave=wave_ex, template_0_amp=1.,template_0_multpolyA=1.,template_0_multpolyB=2.,template_0_multpolyC = 3. )
-                        m2 = model_temp_template.eval(template_0=flux_ex , wave=wave_ex, template_0_amp=1.,template_0_multpolyA=c2[0],template_0_multpolyB=c2[1],template_0_multpolyC = c2[2] )
-
-                        ex_poly = lambda lam, p0,p1,p2:  (p0+p1*lam+p2*lam**2)/max(p0+p1*lam+p2*lam**2)
-                        ex_poly2 = lambda lam, p0,p1,p2:  (p0+p1*lam+p2*lam**7)/max(p0+p1*lam+p2*lam**7)
-                        ex_poly = lambda lam, p0,p1,p2:  (p0+p1*lam+p2*lam**2)/max(p0+p1*lam+p2*lam**2)
-                        lin_poly = lambda lam, p0,p1,p2:  (p0+p1*np.arange(len(lam)))/max((p0+p1*np.arange(len(lam))))
-                        plt.figure()
-                        plt.plot(wave_ex, flux_ex, label='orig', color='k', linewidth=2.5)
-                        plt.plot(wave_ex, m1, linewidth=1, label='model.eval() with  A=1, B=2, C=3 (and Amp=1)')
-                        plt.plot(wave_ex, m2, linewidth=1, label='model.eval() with  A={}, B={}, C={} (and Amp=1)'.format(c2[0], c2[1], c2[2]))
-                        plt.xlabel(r'$\lambda$')
-                        plt.ylabel('F_norm')
-                        plt.legend()
-                        plt.show()
-
-                        breakpoint()
-
-
                 if 'si' in i:
                     #config_file[i][0].split('.')[0]
                     template_dictionary[name_model] = \
@@ -606,7 +646,11 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
             temp_wave = []
             temp_value = []
 
-            temp_wave=temp_model['WAVE']*(1.+z)
+            try:
+                temp_wave=temp_model['WAVE']*(1.+z)
+            except:
+                temp_model = temp_model[()]
+                temp_wave=temp_model['WAVE']*(1.+z)
             temp_value=temp_model['FLUX']
 
             temp_value_rebin = \

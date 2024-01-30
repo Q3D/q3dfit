@@ -1,0 +1,18 @@
+- dr03 = Draine 2003, R_V = 3.1
+
+- ch06 = Chiar & Tielens 2006. File gives A_lam/A_K, and ch06 use
+  A_K/A_V = 0.09. So multiply each line by 0.09 to get A_lam/A_V.
+
+- ch06rescale = ch06, scaled up to match dr03 at about 2.5um
+
+- dr03+ch06+f08 = dr03 to 2.5um, rescaled ch06 to about 8um, above
+  that template derived from Spitzer observations of F08572+3214
+
+- dr03+ch06+f08mod = same as above, but an unknown modification
+  between 8 and 15um. Looks like F08752 9.8um silicate shape was
+  scaled up in Alam/AV and shifted to better match ch06 in this
+  region. (DSNR -- I seem to recall some exploration of this for
+  Veilleux+2009 Spitzer paper.)
+
+
+

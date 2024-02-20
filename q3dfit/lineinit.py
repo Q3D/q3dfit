@@ -101,7 +101,9 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             # is in list, but stronger line is not
             if line.label in dblt_pairs.keys():
                 dblt_lmline = lmlabel(dblt_pairs[line.label])
-                tied = f'{dblt_lmline.lmlabel}_{comp}_flx/3.'
+                idx_line = np.where(doublets['line1']==dblt_lmline.lmlabel.replace('lb', '[').replace('rb', ']'))[0]
+                ratio = doublets['ratio'][idx_line].value[0]
+                tied = f'{dblt_lmline.lmlabel}_{comp}_flx/(1.*{ratio})'
             else:
                 tied = ''
             if linevary is None:

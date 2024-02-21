@@ -562,7 +562,7 @@ class Cube:
         np.save(outpy, qsotemplate)
 
     def specextract(self, col, row, method='circle', norm=1., plot=True,
-                    radius=1.):
+                    radius=1., ylim=None):
 
         import matplotlib.pyplot as plt
         import photutils
@@ -654,6 +654,8 @@ class Cube:
         if plot:
             plt.plot(self.wave, spec[:, 0])
             plt.plot(self.wave, np.sqrt(spec[:, 1]))
+            if ylim is not None:
+                plt.ylim(ylim)
             plt.show()
 
         return spec

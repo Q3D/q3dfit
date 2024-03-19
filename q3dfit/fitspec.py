@@ -189,7 +189,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         # to-do: log rebin dq and apply here?
         zerinf_indx_log = np.unique(np.hstack([zerinf_indx_1, zerinf_indx_2,
                                                zerinf_indx_3, zerinf_indx_4]))
-
         # good indices for log arrays
         ctfitran = len(gdflux_log)
         gd_indx_log = np.arange(ctfitran)
@@ -204,7 +203,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             gderr[zerinf_indx] = np.nan
             gdinvvar[zerinf_indx] = np.nan
             if not quiet:
-                print('{:s}{:0f}{:s}'.
+                print('{:s}{:d}{:s}'.
                       format('FITLOOP: Setting ', int(ctzerinf),
                              ' points from zero/inf flux or ' +
                              'neg/zero/inf error to np.nan'))

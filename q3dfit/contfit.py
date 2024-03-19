@@ -54,7 +54,6 @@ def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index, zstar,
     polymod1= models.Polynomial1D(deg1)
     polymod2= models.Polynomial1D(deg2)
 
-
     #creating fluxfit
     fluxfit = fitter(polymod1, ilam, iflux, weights=iweight)
     fluxfitparam=fluxfit.parameters
@@ -97,9 +96,101 @@ def fitpoly(lam,flux,weight,template_lambdaz, template_flux, index, zstar,
     return continuum, ct_coeff, zstar
 
 
+def Fe_flux_balmer(Fe_FWHM, zstar, specConv):
+    temp_fe = '../q3dfit/data/questfit_templates/fe_optical.txt'
+    data1 = np.loadtxt(temp_fe)
+    wave_fe = 10**data1[:,0] * (1. + zstar) /1e4
+    F_fe = data1[:,1]/np.max(data1[:,1])
+    sig_conv = np.sqrt(Fe_FWHM ** 2 - 900.0 ** 2) / 2. / np.sqrt(2. * np.log(2.))  # in km/s. 900 km/s is the FWHM of the Vestergaard & Wilkes 2001 template.  # sig_tot_BLR = (sig_temp^2+sig_add_broadening^2)^0.5  
+    sig_pix = sig_conv / 106.3  # 106.3 km/s is the dispersion for the BG92 FeII template used by Vestergaard & Wilkes 2001
+    xx = np.arange(0, 2*np.round(3.5*sig_pix+1, 0), 1) - np.round(3.5*sig_pix+1, 0)
+    kernel = np.exp(-xx ** 2 / (2 * sig_pix ** 2))
+    kernel = kernel / np.sum(kernel)
+    F_Fe_conv_intermed = np.convolve(F_fe, kernel, 'same')
+    F_Fe_opt_conv = F_Fe_conv_intermed
+    F_Fe_opt_conv = specConv.spect_convolver(wave_fe, F_Fe_conv_intermed, 0.4861*(1. + zstar)) # cwv)
+    return F_Fe_opt_conv, wave_fe
+
+def Fe_flux_UV(Fe_FWHM, zstar, specConv):
+    temp_fe_uv = '../q3dfit/data/questfit_templates/fe_uv.txt'
+    data2 = np.loadtxt(temp_fe_uv)
+    wave_fe = 10**data2[:,0] * (1. + zstar) /1e4
+    F_fe = data2[:,1]/np.max(data2[:,1])
+    sig_conv = np.sqrt(Fe_FWHM ** 2 - 900.0 ** 2) / 2. / np.sqrt(2. * np.log(2.))  # in km/s. 900 km/s is the FWHM of the Vestergaard & Wilkes 2001 template.  # sig_tot_BLR = (sig_temp^2+sig_add_broadening^2)^0.5  
+    sig_pix = sig_conv / 106.3  # 106.3 km/s is the dispersion for the BG92 FeII template used by Vestergaard & Wilkes 2001
+    xx = np.arange(0, 2*np.round(3.5*sig_pix+1, 0), 1) - np.round(3.5*sig_pix+1, 0)
+    kernel = np.exp(-xx ** 2 / (2 * sig_pix ** 2))
+    kernel = kernel / np.sum(kernel)
+    F_Fe_conv_intermed = np.convolve(F_fe, kernel, 'same')
+    F_Fe_opt_conv = F_Fe_conv_intermed
+    F_Fe_opt_conv = specConv.spect_convolver(wave_fe, F_Fe_conv_intermed, 0.2800*(1. + zstar)) # cwv)
+    return F_Fe_opt_conv, wave_fe
+
+
 
 def linfit_plus_FeII(lam,flux,weight, template_wave, template_flux, index, zstar, specConv, outdir=None,
-            quiet=False, refit=False, rows=-1, cols=-1, Fe_FWHM=-1, **kwargs):
+            quiet=False, refit=False, rows=-1, cols=-1, Fe_FWHM=-1, Fe_FWHM_UV=-1, **kwargs):
+    """
+    This function fits the continuum as a superposition of a linear fit and an FeII template. 
+    * Optical FeII template:  taken from Vestergaard & Wilkes (2001).
+    * UV FeII template: following the PyQSOFit code (Guo et al. 2018): template by Shen et al. (2019) - composite of Vestergaard & Wilkes (2001), Tsuzuki et al. (2006) and Salviander et al. (2007)
+    The UV and optical FeII templates are scaled up/down separately from each other.
+
+    Parameters
+    -----
+    lam: array
+        wavelength
+
+    flux: array
+        Flux values to be fit
+
+    weight: array
+        Weights of each individual pixel to be fit
+
+    template_wave: array
+        Wavelength array of the stellar template used as model for
+        stellar continuum
+
+    template_flux: array
+        Flux of the stellar template used as model for stellar continuum
+
+    index: array
+        Pixels used in the fit
+
+    zstar: float
+        redshift of the stellar continuum
+
+    specConv: instance of the spectConvol class
+        specifying the instrumental spectral resolution convolution
+
+    outdir: string
+        directory for saving the output log
+
+    quiet: bool
+        not used in this function
+
+    refit: bool
+        not used in this function
+
+    rows, cols: int
+        row(s) and column(s) of the input cube in which the fitting is done. Used only to define the name of the output log
+
+    Fe_FWHM: float
+        Defines the smoothing of the FeII template in km/s. FWHM of the Gaussian smoothing that will be applied. Needs to be >900 km/s (FWHM of template).
+
+
+    returns
+    -------
+    continuum: array
+        best fit continuum model
+
+    ct_coeff: dictionary or lmfit best fit params structure
+        best fit parameters
+
+    zstar: float
+        best fit stellar redshift
+    """
+
 
     flux_cut = flux[index]
     lam_cut = lam[index]
@@ -107,46 +198,59 @@ def linfit_plus_FeII(lam,flux,weight, template_wave, template_flux, index, zstar
     models_dictionary = {'x': lam_cut}
 
     temp_fe = '../q3dfit/data/questfit_templates/fe_optical.txt'
-    data1 = np.loadtxt(temp_fe)
-    wave_fe = 10**data1[:,0] * (1. + zstar) /1e4
-    ind_Balmer = np.where((lam_cut > 0.3686 * (1. + zstar)) & (lam_cut < 0.7484 * (1. + zstar)), True, False)
-    F_fe = data1[:,1]/np.max(data1[:,1])
+    temp_fe_uv = '../q3dfit/data/questfit_templates/fe_uv.txt'
+    ind_opt = (lam_cut > 0.3686*(1.+zstar))&(lam_cut < 0.7484*(1.+zstar))
+    ind_UV = (lam_cut > 0.120*(1.+zstar))&(lam_cut < 0.350*(1.+zstar))
 
     if Fe_FWHM<0.:
-        print('\n\nFitting with FeII template, but no broadening applied. Please supply Fe_FWHM to argscontfit... Halting.')
+        print('\n\nFitting with FeII template, but no broadening applied. Please supply argscontfit with Fe_FWHM... Halting.')
         import sys; sys.exit()
-    sig_conv = np.sqrt(Fe_FWHM ** 2 - 900.0 ** 2) / 2. / np.sqrt(2. * np.log(2.))  # in km/s. 900 km/s is the FWHM of the Vestergaard & Wilkes 2001 template.  # sig_tot_BLR = (sig_temp^2+sig_add_broadening^2)^0.5  
-
-    sig_pix = sig_conv / 106.3  # 106.3 km/s is the dispersion for the BG92 FeII template subsequently used in Vestergaard & Wilkes 2001
-    xx = np.arange(0, 2*np.round(3.5*sig_pix+1, 0), 1) - np.round(3.5*sig_pix+1, 0)
-    kernel = np.exp(-xx ** 2 / (2 * sig_pix ** 2))
-    kernel = kernel / np.sum(kernel)
-    F_Fe_conv_intermed = np.convolve(F_fe, kernel, 'same')
-    F_Fe_conv = F_Fe_conv_intermed
-    F_Fe_conv = specConv.spect_convolver(wave_fe, F_Fe_conv_intermed, 0.4861*(1. + zstar)) # cwv)
-    F_fe_rebin = np.zeros(len(lam_cut))
-    F_fe_rebin[ind_Balmer] = interp_temp_quest.interp_lis(lam_cut[ind_Balmer], wave_fe, F_Fe_conv)
-    models_dictionary['temp_fe'] = F_fe_rebin
-
-    p_init = [0.5]
-    p_vary = [True]
-    model_fe_template, param_fe_template = questfitfcn.set_up_fit_model_scale(p_init, p_vary, 'temp_fe', 'temp_fe', maxamp=1.05*max(flux[index]) ) 
 
     model_linfit = LinearModel(independent_vars=['x'], prefix='lincont', nan_policy='raise', **kwargs)
     pars_lin = model_linfit.make_params(intercept=np.nanmedian(flux), slope=0)
 
-    model = model_linfit + model_fe_template
-    param = pars_lin + param_fe_template
+    model = model_linfit
+    param = pars_lin
+
+    if np.sum(ind_opt)>0:
+        F_fe_rebin = np.zeros(len(lam_cut))
+        F_Fe_opt_conv, wave_fe = Fe_flux_balmer(Fe_FWHM, zstar, specConv)
+        F_fe_rebin[ind_opt] = interp_temp_quest.interp_lis(lam_cut[ind_opt], wave_fe, F_Fe_opt_conv)
+        models_dictionary['temp_fe_opt'] = F_fe_rebin
+        p_init = [0.5]
+        p_vary = [True]
+        model_fe_templ_opt, param_fe_templ_opt = questfitfcn.set_up_fit_model_scale(p_init, p_vary, 'temp_fe_opt', 'temp_fe_opt', maxamp=1.05*max(flux[index]) ) 
+        model += model_fe_templ_opt
+        param += param_fe_templ_opt
+
+    if np.sum(ind_UV)>0:
+        if Fe_FWHM_UV<0:    Fe_FWHM_UV = Fe_FWHM
+        F_Fe_rebin_UV = np.zeros(len(lam_cut))
+        F_Fe_UV_conv, wave_fe_UV = Fe_flux_UV(Fe_FWHM_UV, zstar, specConv)
+        F_Fe_rebin_UV[ind_UV] = interp_temp_quest.interp_lis(lam_cut[ind_UV], wave_fe_UV, F_Fe_UV_conv)
+        models_dictionary['temp_fe_UV'] = F_Fe_rebin_UV
+        p_init = [0.5]
+        p_vary = [True]
+        model_fe_templ_UV, param_fe_templ_UV = questfitfcn.set_up_fit_model_scale(p_init, p_vary, 'temp_fe_UV', 'temp_fe_UV', maxamp=1.05*max(flux[index]) ) 
+        model += model_fe_templ_UV
+        param += param_fe_templ_UV
 
     result = model.fit(flux_cut, param, **models_dictionary,
                                max_nfev=int(1e5), method='least_squares',
                                nan_policy='omit', **{'verbose': 2})
     print(result.fit_report())
 
-    models_dictionary['x']= lam
-    models_dictionary['temp_fe'] = interp_temp_quest.interp_lis(lam, wave_fe, F_Fe_conv)
-    continuum = result.eval(**models_dictionary)
-    comp_best_fit = result.eval_components(**models_dictionary)
+
+    models_dictionary_B = {'x': lam}    # extrapolate result to full wavelength vector
+    if np.sum(ind_opt)>0:
+        F_Fe_opt_all = interp_temp_quest.interp_lis(lam, wave_fe, F_Fe_opt_conv)
+        models_dictionary_B['temp_fe_opt'] = F_Fe_opt_all
+    if np.sum(ind_UV)>0:
+        F_Fe_UV_all = interp_temp_quest.interp_lis(lam, wave_fe_UV, F_Fe_UV_conv)
+        models_dictionary_B['temp_fe_UV'] = F_Fe_UV_all
+
+    continuum = result.eval(**models_dictionary_B)
+    comp_best_fit = result.eval_components(**models_dictionary_B)
     
 
     ct_coeff = {'params_best_fit': result.params,
@@ -156,13 +260,15 @@ def linfit_plus_FeII(lam,flux,weight, template_wave, template_flux, index, zstar
         rows = rows[0]        
     if isinstance(cols, list) or isinstance(cols, np.ndarray):
         cols = cols[0]        
-    if rows >=0 and cols>=0:
+    if rows is not None and cols is not None and rows >=0 and cols>=0:
         saveres = 'fit_result__{}_{}.txt'.format(cols, rows)
     else:
         saveres = 'fit_result.txt'
-    with open(outdir+saveres, 'w') as fh:
-        fh.write(result.fit_report())
-        fh.write('\n')
+
+    if outdir is not None:
+        with open(outdir+saveres, 'w') as fh:
+            fh.write(result.fit_report())
+            fh.write('\n')
 
     return continuum, ct_coeff, zstar
 

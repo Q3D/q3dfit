@@ -1484,6 +1484,8 @@ def set_figSize(dim,plotsize,SQUARE=False):
     dim = np.array(dim, dtype='float')
     xy = [12.,14.]
     figSIZE = 5.*np.round(np.array(plotsize, dtype='float')/5.)[0:2]
+    if figSIZE[0]==0 and figSIZE[1]==0:
+        figSIZE = plotsize
     figSIZE = figSIZE/np.min(figSIZE)
     if dim[0] == dim[1] :
         if figSIZE[0] >= figSIZE[1]:

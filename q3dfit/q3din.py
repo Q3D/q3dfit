@@ -78,6 +78,7 @@ class q3din:
         self.docontfit = False
         self.dolinefit = False
 
+
     def init_linefit(self, lines, linetie=None, maxncomp=1, siginit=50.,
                      zinit=None,
                      argscheckcomp={}, argslineinit={}, argslinefit={},

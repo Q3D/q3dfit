@@ -242,6 +242,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
 
     # pass siglim_gas back because the default is set here, and it's needed
     # downstream
+
     return totmod, fit_params, siglim
 
 

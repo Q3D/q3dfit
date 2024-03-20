@@ -13,7 +13,7 @@ import os
 
 
 def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, specConv,
-             lineratio=None, siglim=None, sigfix=None, blrcomp=None,
+             lineratio=None, siglim=None, blrcomp=None, linevary=None,
              blrlines=None, blrsiglim=None, specres=None, waves=None, force_cwv_lines=None):
     '''
     Initialize parameters for emission-line fitting.
@@ -147,10 +147,10 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
             value = initsig[line.label][comp]
             limited = np.array([1, 1], dtype='uint8')
 
-            limits = np.array(siglim, dtype='float32')
+            limits = np.array(siglim, dtype='float64')
             if blrlines is not None and blrcomp is not None and blrsiglim is not None:
                 if line.label in blrlines and comp in blrcomp:
-                    limits = np.array(blrsiglim, dtype='float32')
+                    limits = np.array(blrsiglim, dtype='float64')
 
             if linetie[line.label] != line.label:
                 linetie_tmp = lmlabel(linetie[line.label])

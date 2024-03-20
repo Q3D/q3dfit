@@ -203,7 +203,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             gderr[zerinf_indx] = np.nan
             gdinvvar[zerinf_indx] = np.nan
             if not quiet:
-                print('{:s}{:d}{:s}'.
+                print('{:s}{:0f}{:s}'.
                       format('FITLOOP: Setting ', int(ctzerinf),
                              ' points from zero/inf flux or ' +
                              'neg/zero/inf error to np.nan'))
@@ -302,13 +302,15 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     argscontfit['err_log'] = gderr_log
                     argscontfit['siginit_stars'] = siginit_stars
 
-            if q3di.forcefloat64:
-                usetype = 'float64'
-            else:
-                usetype = 'float32'
+            #if q3di.forcefloat64:
+            #    usetype = 'float64'
+            #else:
+            #    usetype = 'float32'
+            usetype='float64'
 
             if q3di.fcncontfit == 'linfit_plus_FeII':
                 argscontfit['specConv'] = specConv
+
             q3do.cont_fit, q3do.ct_coeff, q3do.zstar = \
                 fcncontfit(gdlambda.astype(usetype),
                            gdflux.astype(usetype),

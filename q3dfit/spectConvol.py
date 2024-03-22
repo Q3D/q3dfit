@@ -21,7 +21,7 @@ spectOUT = spConv.gauss_convolve(waveIN,fluxIN,INST='nirspec',GRATING='G140M/F07
 - Will need to set the paths to the dispersion files correctly
 
 JWST provides NIRSpec dispersion files. By default, the dispersion data files are used to set the resolution
-MIRI is not provided. Instead, I take a linear interpolation based on the curves in the Jdocs website.
+MIRI is not provided. Instead, I take a Cubic Spline interpolation based on the curves in the Jdocs website.
 
 EDIT:
 - Fixed typos
@@ -40,7 +40,7 @@ from astropy.io import fits
 import glob
 import copy
 from scipy.ndimage import gaussian_filter1d
-from scipy.interpolate import interp1d
+from scipy.interpolate import CubicSpline
 import q3dfit.data.dispersion_files
 
 
@@ -127,7 +127,7 @@ class spectConvol:
         return
 
     # now do the convolutions -- CALL THIS
-    def spect_convolver(self,wvlIN,fluxIN,wvlcen):#,quiet=True):#,#INST=None,GRATING='PRISM/CLEAR',quiet=False):
+    def spect_convolver(self,wvlIN,fluxIN,wvlcen,upsample=False):#,quiet=True):#,#INST=None,GRATING='PRISM/CLEAR',quiet=False):
         '''
         METHOD 0 = flat convolution by wavelength bins
         METHOD 1 = convolution by dispersion curves: loop through each pixel element)
@@ -211,7 +211,7 @@ class spectConvol:
             #idatIN = fluxIN
             #print(min(igwave),max(igwave),'--',min(wvlIN),max(wvlIN),'--',min(iwvIN),max(iwvIN))
 
-            func1 = interp1d(igwave,igdwvn)#,fill_value=0)#,fill_value="extrapolate")
+            func1 = CubicSpline(igwave,igdwvn)#,fill_value=0)#,fill_value="extrapolate")
             igdisp2 = func1(iwvIN)
 
             iR_datconv = np.zeros(len(ww))
@@ -224,7 +224,8 @@ class spectConvol:
                 iR_datconv = idatIN
             elif self.init_meth == 2:
                 #print('method 2')
-                iR_datconv = self.gaussian_filter1d_ppxf(iwvIN,idatIN,igdisp2)
+                iR_datconv = \
+                    self.gaussian_filter1d_ppxf(iwvIN,idatIN,igdisp2,upsample=upsample)
             #wvnOUT = np.concatenate((wvlIN[w1x],iwvIN,wvlIN[w2x]))
             datOUT = np.concatenate((fluxIN[w1x],iR_datconv,fluxIN[w2x]))
             #datOUT = iR_datconv
@@ -279,11 +280,23 @@ class spectConvol:
         return wvOUT,dcOUT
 
     # METHOD 2
-    def gaussian_filter1d_ppxf(self,wvlIN,flxIN,DISP_INFO):
-        spec = copy.deepcopy(flxIN)
-        fwhm = DISP_INFO
-        #print(fwhm)
+    def gaussian_filter1d_ppxf(self,wvlIN,flxIN,DISP_INFO, upsample=False):
+
         wdiff = wvlIN[1]-wvlIN[0]
+
+        # option to upsample by factor of 10 before convolution
+        if upsample:
+            specint = CubicSpline(wvlIN, flxIN)
+            fwhmint = CubicSpline(wvlIN, DISP_INFO)
+            ss = 10
+            nwvl = wvlIN.shape[0]
+            nwvlss = (nwvl-1)*ss+1
+            wvlss = np.arange(nwvlss)*(wdiff/float(ss)) + wvlIN[0]
+            spec = specint(wvlss)
+            fwhm = fwhmint(wvlss)
+        else:
+            spec = copy.deepcopy(flxIN)
+            fwhm = DISP_INFO
 
         sigma =  np.divide(fwhm,2.355)/wdiff
 
@@ -298,7 +311,14 @@ class spectConvol:
 
         gau = np.exp(-x2[:,None]/(2*sigma**2))
         gau = np.divide(gau,np.sum(gau,0)[None,:])
-        conv_spectrum = np.sum(np.multiply(a,gau),0)
+
+        if upsample:
+            conv_spectrumss = np.sum(np.multiply(a,gau),0)
+            conv_spectrumint = CubicSpline(wvlss, conv_spectrumss)
+            conv_spectrum = conv_spectrumint(wvlIN)
+        else:
+            conv_spectrum = np.sum(np.multiply(a,gau),0)
+
         return conv_spectrum
 
 class dispFile:
@@ -308,8 +328,8 @@ class dispFile:
         return
 
     def make_custom_dispersion(self,wavelen,R=None,KMS=None,DLAMBDA=None,FILENAME='',OVERWRITE=False):
-        if R is None and KMS is None and DLBMDA is None:
-            return foo
+        #if R is None and KMS is None and DLBMDA is None:
+        #    return foo
         import time
         c1 = fits.Column(name='WAVELENGTH', format='E', array=wavelen)
         clist = [c1]
@@ -351,7 +371,7 @@ class dispFile:
         gwvln = np.linspace(xrange[0], xrange[1],10000)
         c1 = fits.Column(name='WAVELENGTH', format='E', array=gwvln)
 
-        yy = interp1d(xrange, yrange)
+        yy = CubicSpline(xrange, yrange)
         yintp = yy(gwvln)
         clist = [c1]
         ig = TYPE.lower()

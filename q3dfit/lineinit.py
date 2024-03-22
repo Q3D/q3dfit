@@ -120,7 +120,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
             limited = np.array([1, 1], dtype='uint8')
             limits = np.array([linelistz[line.label][comp]*0.997,
                                linelistz[line.label][comp]*1.003],
-                              dtype='float64')
+                              dtype='float32')
             # Check if line is tied to something else
             if linetie[line.label] != line.label:
                 linetie_tmp = lmlabel(linetie[line.label])
@@ -132,7 +132,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
                 if line.label in force_cwv_lines and comp > 0:
                     linetie_tmp = lmlabel(linetie[line.label])
                     tied = '{}_0_cwv'.\
-                            format(linetie_tmp.lmlabel) 
+                            format(linetie_tmp.lmlabel)
             else:
                 tied = ''
             if linevary is None:
@@ -272,7 +272,14 @@ def manygauss(x, flx, cwv, sig, SPECRES=None):
     sigs = sig / c.to('km/s').value * cwv
     gaussian = flx * np.exp(-np.power((x - cwv) / sigs, 2.)/2.)
     if SPECRES is not None:
-        datconv = SPECRES.spect_convolver(x, gaussian, cwv)
+        # resample spectrum on much smaller grid before convolution if
+        # sigma less than 1 pixel
+        # presently only set up for METHOD 2
+        if np.mean(sigs) <= (x[1]-x[0])*1.:
+            upsample=True
+        else:
+            upsample=False
+        datconv = SPECRES.spect_convolver(x, gaussian, cwv, upsample=upsample)
         return datconv
     #maskval = np.float64(1e-4*max(gaussian))
     #maskind = np.asarray(gaussian < maskval).nonzero()[0]

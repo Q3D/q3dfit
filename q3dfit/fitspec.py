@@ -155,7 +155,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         igdfz2 = np.where(gd_indx_full_rezero <= max_gd_indx_full_rezero)[0]
         i_gd_indx_full_rezero = np.intersect1d(igdfz1, igdfz2)
         # Final index for addressing ALL "good" pixels
-        # these address only the fitted data range; i.e., they address gdflux, etc.
+        # these address only the fitted data range; i.e., they address gdflux,
+        # etc.
         gd_indx = gd_indx_full_rezero[i_gd_indx_full_rezero]
 
         # Limit data to fit range

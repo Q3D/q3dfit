@@ -6,7 +6,8 @@ import numpy as np
 
 
 def readcf(filename):
-    ''' Function defnied to read in the configuration file for fitting with questfit
+    ''' Function defnied to read in the configuration file for
+        fitting with questfit
         in:
         filename: str
         out:

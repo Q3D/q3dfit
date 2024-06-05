@@ -319,4 +319,4 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
             q3do.fluxnorm = cube.fluxnorm
             q3do.pixarea_sqas = cube.pixarea_sqas
             #
-            np.save(outlab, q3do)
+            np.save(outlab, q3do, allow_pickle=True)

@@ -98,6 +98,23 @@ class Cube:
     nwave : int
         Dimensions of the cube.
 
+    Methods
+    -------
+    about()
+        Print information about the cube.
+    convolve()
+        Spatially smooth the cube.
+    makeqsotemplate()
+        Extract the quasar spectrum.
+    specextract()
+        Extract a spectrum.
+    reproject()
+        Reproject the cube onto a new WCS.
+    writefits()
+        Write the cube to a FITS file.
+    writespec()
+        Write a spectrum to a FITS file.
+
     Examples
     --------
     >>> from q3dfit import readcube
@@ -138,26 +155,31 @@ class Cube:
         except (IndexError or KeyError):
             raise CubeError('Data extension not properly specified or absent')
 
-        # Variance/Error
+        # Uncertainty
+        # This could be one of three expressions of uncertainty:
+        # variance, error, or inverse variance.
         if varext is not None:
             try:
-                self.var = np.array((hdu[varext].data).T, dtype='float64')
+                uncert = np.array((hdu[varext].data).T, dtype='float64')
             except (IndexError or KeyError):
                 raise CubeError('Variance extension not properly specified ' +
                                 'or absent', file=logfile)
+            # convert expression of uncertainty to variance and error
+            # if uncert = inverse variance:
             if invvar:
-                self.var = 1./self.var
-                self.err = np.sqrt(self.var)
+                self.var = 1./copy.copy(uncert)
+                self.err = 1./copy.copy(uncert) ** 0.5
+            # if uncert = error:
             elif error:
-                self.err = self.var
-                self.var = self.var**2.
+                self.err = copy.copy(uncert)
+                self.var = copy.copy(uncert) ** 2.
+            # if uncert = variance:
             else:
-                badvar = np.where(self.var < 0)
-                if np.size(badvar) > 0:
+                if np.where(self.var < 0).any():
                     print('Cube: Negative values encountered in variance ' +
                           'array. Taking absolute value.', file=logfile)
-                self.var = np.abs(self.var)
-                self.err = np.array(copy.copy(self.var) ** 0.5)
+                self.var = np.abs(copy.copy(uncert))
+                self.err = copy.copy(uncert) ** 0.5
         else:
             self.var = None
             self.err = None
@@ -317,12 +339,14 @@ class Cube:
         if wavext is not None:
             try:
                 self.wave = hdu[wavext].data
+                print("Assuming constant dispersion.")
             except (IndexError or KeyError):
                 raise CubeError('Wave extension not properly specified ' +
                                 'or absent')
             self.crval = 0
             self.crpix = 1
-            self.cdelt = 1
+            # assume constant dispersion
+            self.cdelt = self.wave[1]-self.wave[0]
         else:
             try:
                 self.crval = header[CRVAL]
@@ -408,7 +432,7 @@ class Cube:
             convert_flux *= self.pixarea_sqas
             if '/arcsec2' in self.fluxunit_out:
                 self.fluxunit_out = self.fluxunit_out.replace('/arcsec2', '')
-
+        
         self.dat = self.dat * convert_flux
         self.var = self.var * convert_flux**2
         self.err = self.err * convert_flux
@@ -417,7 +441,7 @@ class Cube:
         self.dat = self.dat / fluxnorm
         self.var = self.var / fluxnorm**2
         self.err = self.err / fluxnorm
-
+        
         # linearize in the wavelength direction
         if linearize:
             waveold = copy.copy(self.wave)
@@ -445,15 +469,24 @@ class Cube:
         hdu.close()
 
     def about(self):
-        print("Size of data cube: [", self.ncols, ",", self.nrows, ",",
-              self.nwave, "]")
-        print("Wavelength range: [", self.wave[0], ",",
-              self.wave[self.nwave-1], "] ", self.waveunit_out)
-        print("Input flux units: ", self.fluxunit_in)
-        print("Input wave units: ", self.waveunit_in)
-        print("Output flux units: ", self.fluxunit_out)
-        print("Output wave units: ", self.waveunit_out)
-        print("NB: q3dfit uses output units for internal calculations.")
+        '''
+        Print information about the cube.
+
+        Returns
+        -------
+        None
+
+        '''
+        print(f"Size of data cube: [{self.ncols}, {self.nrows}, {self.nwave}]")
+        print(f"Wavelength range: [{self.wave[0]:0.5f},",
+              f"{self.wave[self.nwave-1]:0.5f}]",
+              f"{self.waveunit_out}")
+        print(f"Dispersion: {self.cdelt:0.5f} {self.waveunit_out}")
+        print(f"Input flux units: {self.fluxunit_in}")
+        print(f"Input wave units: {self.waveunit_in}")
+        print(f"Output flux units: {self.fluxunit_out}")
+        print(f"Output wave units: {self.waveunit_out}")
+        print(f"NB: q3dfit uses output units for internal calculations.")
 
     def convolve(self, refsize, wavescale='none', method='circle'):
 
@@ -474,8 +507,8 @@ class Cube:
 
         Returns
         -------
-        obj
-            A modified cube object.
+        None
+
         '''
 
         # check for flux/err = inf/nan or bad dq
@@ -518,8 +551,8 @@ class Cube:
 
     def makeqsotemplate(self, outpy, col=None, row=None, norm=1., plot=True,
                         radius=1.):
-
-        '''Extract the quasar spectrum
+        '''
+        Extract the quasar spectrum
 
         Parameters
         ----------
@@ -537,8 +570,8 @@ class Cube:
 
         Returns
         -------
-        dictionary
-            {wave,flux,dq}
+        None
+
         '''
 
         if col is None and row is None:
@@ -676,8 +709,7 @@ class Cube:
 
         Returns
         -------
-        obj
-            A modified cube object.
+        None
         '''
 
         head2d = copy.copy(self.header_dat)
@@ -749,6 +781,16 @@ class Cube:
         '''
         Write cube to file outfile. Assumes extension order empty phu (if
         present in original fits file), datext, varext, dqext, and wmapext.
+
+        Parameters
+        ----------
+        outfile : string
+            Name of output file.
+
+        Returns
+        -------
+        None
+
         '''
 
         print("Output flux units: ", self.fluxunit_out)
@@ -784,6 +826,19 @@ class Cube:
         '''
         Write extracted spectrum to disk. Assumes extension order empty phu (if
         present in original fits file), datext, varext, dqext, and wmapext.
+
+        Parameters
+        ----------
+        spec : ndarray
+            Array of size nwave x (1-3), including data and var and/or dq if
+            present.
+        outfile : string
+            Name of output file.
+        
+        Returns
+        -------
+        None
+
         '''
 
         print("Output flux units: ", self.fluxunit_out)

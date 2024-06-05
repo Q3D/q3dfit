@@ -98,7 +98,7 @@ def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
         logfile = None
 
     cube, vormap = q3dutil.get_Cube(q3di, quiet=quiet, logfile=logfile)
-    specConv = q3dutil.get_dispersion(q3di, cube, quiet=quiet)
+    specConv = q3dutil.get_dispersion(q3di)
     if cols and rows and vormap:
         cols = q3dutil.get_voronoi(cols, rows, vormap)
         rows = 1
@@ -157,7 +157,7 @@ def q3df_multiCore(rank, size, inobj, cols=None, rows=None,
         logfile = None
 
     cube, vormap = q3dutil.get_Cube(q3di, quiet=quiet, logfile=logfile)
-    specConv = q3dutil.get_dispersion(q3di, cube, quiet=quiet)
+    specConv = q3dutil.get_dispersion(q3di)
     if cols and rows and vormap:
         cols = q3dutil.get_voronoi(cols, rows, vormap)
         rows = 1

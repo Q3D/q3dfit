@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-@author: Caroline Bertemes, based on q3da by hadley
+@author: Caroline Bertemes, based on q3da (now q3di) by Hadley Lim
 """
 
 import copy
 import numpy as np
 import q3dfit.q3dutil as q3dutil
 
+from astropy.constants import c
+from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.table import Table
 from importlib import import_module
 from ppxf.ppxf_util import log_rebin
@@ -23,23 +25,20 @@ def load_q3dout(q3di, col, row, cubedim=None):
 
     Parameters
     ----------
-    Parameters
-    ----------
     q3di : object
-        DESCRIPTION.
+        q3dinit object.
     col : int
-        DESCRIPTION.
+        Column index.
     row : int
-        DESCRIPTION.
+        Row index.
     cubedim : int, optional
-        DESCRIPTION. The default is None.
+        Dimension of cube (1, 2, or 3). If None, will try to get from q3di or 
+        cube itself.
 
     Returns
     -------
     q3dout : object
-        DESCRIPTION.
-    filelab : str
-        DESCRIPTION.
+        q3dout object.
 
     """
 
@@ -75,13 +74,162 @@ class q3dout:
     spaxel.
 
     (For multi-spaxel processing instead, please see q3dpro.)
+
+    Attributes
+    ----------
+    wave : ndarray
+        Wavelength array.
+    spec : ndarray
+        Flux array.
+    spec_err : ndarray
+        Error array.
+    fitrange : ndarray
+        Wavelength range for fitting.
+    col : int
+        Column index.
+    row : int
+        Row index.
+    gd_indx : ndarray
+        Good data indices.
+    fitran_indx : ndarray
+        Fit range indices.
+    fluxunit : str
+        Flux unit.
+    waveunit : str
+        Wavelength unit.
+    fluxnorm : float
+        Flux normalization.
+    pixarea_sqas : float
+        Pixel area in square arcseconds.
+    nogood : bool
+        No good data present.
+    docontfit : bool
+        Do continuum fit.
+    dolinefit : bool
+        Do line fit.
+    linelist : dict
+        List of emission line rest-frame wavelengths.
+    linelabel : dict
+        Line labels.
+    fitstatus : dict
+        Fit status.
+    maxncomp : int
+        Maximum number of components.
+    nfev : int
+        Number of function evaluations.
+    noemlinmask : dict
+        Mask for regions with emission lines.
+    redchisq : float
+        Reduced chi-squared.
+    param : dict
+        Best-fit parameters.
+    parinit : dict
+        Initial parameters.
+    perror : dict
+        Parameter errors.
+    perror_resid : dict
+        Parameter errors from residuals.
+    perror_errspec : dict
+        Parameter errors from error spectrum.
+    siglim : float
+        Sigma limits for emission lines.
+    covar : ndarray
+        Covariance matrix. Added/updated by init_linefit().
+    dof : int
+        Degrees of freedom. Added/updated by init_linefit().
+    line_dat : dict
+        Line data. Added/updated by init_linefit().
+    line_fit : dict
+        Line fit. Added/updated by init_linefit().
+    cont_dat : dict
+        Continuum data.  Added/updated by init_contfit().
+    cont_fit : dict
+        Continuum fit. Added/updated by init_contfit().
+    ct_method : str
+        Continuum fit method. Added/updated by init_contfit().
+    ct_coeff : dict
+        Continuum fit coefficients. Added/updated by init_contfit().
+    ct_ebv : float
+        E(B-V) value from continuum fit. Added/updated by init_contfit().
+    ct_add_poly_weights : dict
+        Additive polynomial weights for continuum fit. Added/updated by
+    ct_ppxf_sigma : float
+        Best-fit sigma from ppxf. Added/updated by init_contfit().
+    ct_ppxf_sigma_err : float
+        Error in best-fit sigma from ppxf. Added/updated by init_contfit().    
+    ct_rchisq : float
+        Reduced chi-squared from continuum fit. Added/updated by init_contfit().
+    ct_indx : ndarray
+        Continuum fit indices. Added/updated by init_contfit().
+    zstar : float
+        Best-fit zstar. Added/updated by init_contfit().
+    zstar_err : float
+        Error in best-fit zstar. Added/updated by init_contfit().
+    add_poly_degree : int
+        Degree of additive polynomial for continuum fit. Added/updated by
+    cont_fit_poly : ndarray
+        Polynomial component of continuum fit. Added/updated by sepcontpars().
+    cont_fit_stel : ndarray
+        Stellar component of continuum fit. Added/updated by sepcontpars().
+    qsomod : float
+        QSO component of continuum fit. Added/updated by sepcontpars().
+    hostmod : float
+        Host component of continuum fit. Added/updated by sepcontpars().
+    polymod_refit : ndarray
+        Polynomial component of continuum fit, if refit with fitqsohost. 
+        Added/updated by sepcontpars().
+    blrpar : dict
+        BLR fit parameters, if using fitqsohost. Added/updated by sepcontpars().
+    line_fitpars : dict
+        Line fit parameters. Added/updated by sepfitpars().
+    tflux : dict
+        Total fluxes of emission lines. Added/updated by sepfitpars().
+    tfluxerr : dict
+        Total flux errors of emission lines. Added/updated by sepfitpars().
+    filelab : str
+        File label for plotting methods. Added/updated by load_q3dout().
+    
+    Methods
+    -------
+    init_linefit(linelist, linelabel, maxncomp, covar=None, dof=None,
+                fitstatus=None, line_dat=None, line_fit=None, nfev=None,
+                noemlinmask=None, redchisq=None, param=None, parinit=None,
+                perror=None, perror_resid=None, perror_errspec=None, siglim=None)
+        Initialize line fit parameters.
+
+    init_contfit(ct_method='CONTINUUM SUBTRACTED', ct_coeff=None, ct_ebv=None,
+                ct_add_poly_weights=None, ct_ppxf_sigma=None, ct_ppxf_sigma_err=None,
+                ct_rchisq=None, cont_dat=None, cont_fit=None, ct_indx=None,
+                zstar=None, zstar_err=None)
+        Initialize continuum fit parameters.
+    
+    sepfitpars(waveran=None, doublets=None, ignoreres=False)
+        Convert output of LMFIT, with best-fit line parameters in a single
+        array, into a dictionary with separate arrays for different line
+        parameters. Compute total line fluxes from the best-fit line
+        parameters.
+        :no-index:
+
+    sepcontpars(q3di)
+        Compute PPXF components: additive polynomial and stellar fit.
+
+    plot_linefit(q3di, q3dout, line, comp, ax=None, fig=None, show=True,
+                save=False, savepath=None, saveformat='pdf', **kwargs)
+        Plot line fit.
+
+    plot_contfit(q3di, q3dout, ax=None, fig=None, show=True, save=False,
+                savepath=None, saveformat='pdf', **kwargs)
+        Plot continuum fit.
+        
     '''
 
     def __init__(self, wave, spec, spec_err, fitrange=None, col=None, row=None,
                  gd_indx=None, fitran_indx=None, fluxunit='erg/s/cm^2/micron',
                  waveunit='micron', fluxnorm=1., pixarea_sqas=None,
                  nogood=False):
-
+        '''
+        Initialize q3dout object.
+        '''
         self.fitrange = fitrange
         self.wave = np.float64(wave)
         self.spec = np.float64(spec)
@@ -158,37 +306,27 @@ class q3dout:
         # gd_indx is applied, and then ct_indx
         self.ct_indx = ct_indx
 
-    def sepfitpars(self, waveran=None, tflux=False, doublets=None):
+    def sepfitpars(self, waveran=None, doublets=None, ignoreres=False):
         """
         Convert output of LMFIT, with best-fit line parameters in a single
-        array, into a structure with separate arrays for different line
+        array, into a dictionary with separate arrays for different line
         parameters. Compute total line fluxes from the best-fit line
         parameters.
 
         Parameters
         ----------
-        self.linelist : dict
-            List of emission line rest-frame wavelengths.
-        param : ndarray, shape (N,)
-            Best-fit parameter array output by MPFIT.
-        perror : ndarray, shape (N,)
-            Errors in best fit parameters, output by MPFIT.
-        parinfo : dict (the old version's type is structure)
-            Dictionary input into MPFIT. Each tag has N values,
-            one per parameter.
-            Used to sort param and perror arrays.
-        waveran: ndarray, shape (2,), optional
+        waveran: ndarray, optional
             Set to upper and lower limits to return line parameters only
             for lines within the given wavelength range. Lines outside this
             range have fluxes set to 0.
+        doublets: dict, optional
+            Dictionary of doublet lines for which to combine fluxes.
+        ignoreres: bool, optional
+            Ignore spectral resolution in computing observed sigmas and peak 
+            fluxes. This is mainly for backward compatibility with old versions,
+            which did not store the spectral resolution in an easily accessible
+            way in the specConv object.
 
-        Returns
-        -------
-        dict
-            A structure with separate hashes for different line parameters.
-            The dictionaries
-            are indexed by line, and each value is an array over components.
-            Tags: flux, fluxerr, fluxpk, fluxpkerr, nolines, wave, and sigma.
         """
 
         # pass on if no lines were fit
@@ -229,22 +367,71 @@ class q3dout:
                     ifluxpk = f'{lmline.lmlabel}_{i}_flx'
                     isigma = f'{lmline.lmlabel}_{i}_sig'
                     iwave = f'{lmline.lmlabel}_{i}_cwv'
-                    #ispecres = f'{lmline.lmlabel}_{i}_srsigslam'
+                    ispecres = f'{lmline.lmlabel}_{i}_SPECRES'
 
                     # make sure the line was fit -- necessary if, e.g., #
                     # components reset to 0 by checkcomp
                     if iwave in self.param.keys():
+
                         wave[line][i] = self.param[iwave]
                         sigma[line][i] = self.param[isigma]
                         fluxpk[line][i] = self.param[ifluxpk]
-                        sigma_obs[line][i] = self.param[isigma]
-                        fluxpk_obs[line][i] = self.param[ifluxpk]
 
                         waveerr[line][i] = self.perror[iwave]
                         sigmaerr[line][i] = self.perror[isigma]
-                        sigmaerr_obs[line][i] = self.perror[isigma]
                         fluxpkerr[line][i] = self.perror[ifluxpk]
-                        fluxpkerr_obs[line][i] = self.perror[ifluxpk]
+
+                        specres = self.param[ispecres]
+
+                        # Check to see if line went to 0 boundary; possibly
+                        # relevant only for leastsq. When this happens with 
+                        # leastsq, uncertainties don't get calculated and code
+                        # to calculate observed sigma and fluxes will fail.
+                        # Setting flux to 0 and fluxerr to 0 will allow 
+                        # checkcomp to ignore this line.
+                        zeroflux = False
+                        if np.allclose(fluxpk[line][i], self.parinit[ifluxpk].min):
+                            zeroflux = True
+                            fluxpk[line][i] = 0.
+                            fluxpkerr[line][i] = 0.
+
+                        # Check to see if uncertainties estimated. If not, there
+                        # was a problem in leastsq (or perhaps another fitting 
+                        # routine) and we should set flux to 0 and fluxerr to 0.
+                        # This will allow checkcomp to ignore this line.
+                        nouncert = False
+                        if np.isnan((waveerr[line][i], 
+                                     sigmaerr[line][i], 
+                                     fluxpkerr[line][i])).any():
+                            nouncert = True
+                            fluxpk[line][i] = 0.
+                            fluxpkerr[line][i] = 0.
+
+                        # Compute observed sigma and fluxpk, taking into account
+                        # spectral resolution.
+                        if specres is not None and ignoreres is False and \
+                            zeroflux is False and nouncert is False:    
+                            if specres.init_meth == 0:
+                                Ruse = specres.R
+                            elif specres.init_meth == 2:
+                                Ruse = \
+                                    specres.R[np.argmin(np.abs(self.wave -
+                                    self.param[iwave]))]
+
+                            sigma_obs[line][i] = \
+                                np.sqrt(self.param[isigma]**2 +
+                                        (c.to('km/s').value/Ruse/
+                                         gaussian_sigma_to_fwhm)**2)
+                            sigmaerr_obs[line][i] = self.perror[isigma] * \
+                                sigma_obs[line][i]/sigma[line][i]
+                            fluxpk_obs[line][i] = self.param[ifluxpk] * \
+                                sigma[line][i]/sigma_obs[line][i]
+                            fluxpkerr_obs[line][i] = self.perror[ifluxpk]
+                        else:
+                            sigma_obs[line][i] = sigma[line][i]
+                            sigmaerr_obs[line][i] = sigmaerr[line][i]
+                            fluxpk_obs[line][i] = fluxpk[line][i]
+                            fluxpkerr_obs[line][i] = fluxpkerr[line][i]
 
                 # Because of the way these lines are tied to others (with a division!) they
                 # can yield NaNs in components that aren't fit. Correct this.
@@ -636,8 +823,8 @@ class q3dout:
                     outfile = outfile + '_lin',
 
             if q3dii.spect_convol:
-                cube, _ = q3dutil.get_Cube(q3dii)
-                specConv = q3dutil.get_dispersion(q3dii, cube, quiet=True)
+                # instantiate specConv object
+                specConv = q3dutil.get_dispersion(q3dii)
             else:
                 specConv = None
 

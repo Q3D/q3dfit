@@ -73,9 +73,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
     """
 
-
-    bad = 1e30  # 1e99  ## CB: Decreased to 1e30 due to overflow issue
-
     flux = copy.deepcopy(flux)
     err = copy.deepcopy(err)
     flux_out = copy.deepcopy(flux)
@@ -210,9 +207,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                              'neg/zero/inf error to np.nan'))
 
         if ctzerinf_log > 0:
-            gdflux_log[zerinf_indx_log] = bad
-            gderr_log[zerinf_indx_log] = bad
-            # gdinvvar_log[zerinf_indx_log] = bad
+            gdflux_log[zerinf_indx_log] = np.nan
+            gderr_log[zerinf_indx_log] = np.nan
+            # gdinvvar_log[zerinf_indx_log] = np.nan
 
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -596,6 +593,10 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             if method == 'leastsq':
                 # to get mesg output
                 fit_kws['full_output'] = True
+                # increase number of max iterations; this is the default for this algorithm
+                # https://github.com/lmfit/lmfit-py/blob/7710da6d7e878ffee0dc90a85286f1ec619fc20f/lmfit/minimizer.py#L1624
+                max_nfev = 2000*(len(q3do.parinit)+1)
+
 
             lmout = emlmod.fit(q3do.line_dat, q3do.parinit, x=gdlambda,
                                method=method, weights=np.sqrt(gdinvvar_nocnt),
@@ -612,10 +613,19 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             q3do.redchisq = lmout.redchi
             q3do.nfev = lmout.nfev
 
-            # error messages corresponding to LMFIT, plt
-            # documentation was not very helpful with the error messages...
-            # This can happen if, e.g., max_nfev is reached. Status message
-            # is in this case not set, so we'll set it by hand.
+            '''
+            error messages corresponding to LMFIT, plt
+            documentation was not very helpful with the error messages...
+            This can happen if, e.g., max_nfev is reached. Status message
+            is in this case not set, so we'll set it by hand.
+            The reason for algorithm termination (in least_squaares):
+            -1 : improper input parameters status returned from MINPACK.
+            0 : the maximum number of function evaluations is exceeded.
+            1 : gtol termination condition is satisfied.
+            2 : ftol termination condition is satisfied.
+            3 : xtol termination condition is satisfied.
+            4 : Both ftol and xtol termination conditions are satisfied.
+            '''
             # q3do.fitstatus = 1 # default for good fit
             if method == 'least_squares':
                 # https://lmfit.github.io/lmfit-py/model.html#lmfit.model.success
@@ -627,16 +637,22 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     q3do.fitstatus = lmout.status
                 elif lmout.nfev >= max_nfev:
                     q3do.fitstatus = 0
-                '''
-                The reason for algorithm termination:
-            -1 : improper input parameters status returned from MINPACK.
-            0 : the maximum number of function evaluations is exceeded.
-            1 : gtol termination condition is satisfied.
-            2 : ftol termination condition is satisfied.
-            3 : xtol termination condition is satisfied.
-            4 : Both ftol and xtol termination conditions are satisfied.
-                '''
+
             if method == 'leastsq':
+            # Return values from scipy.optimize.leastsq for fit status
+            # https://github.com/scipy/scipy/blob/44e4ebaac992fde33f04638b99629d23973cb9b2/scipy/optimize/_minpack_py.py#L446
+            # success = 1-4, failure=4-8
+            # Possible lmfit error messages here:
+            # Presently, fit is aborting with messaage "Fit aborted" if max_nfev is reached
+            # setting ier=-1.
+            # I don't understand why this is happening, as I can't find the code that
+            # actually sets result.aborted to True in the lmfit code.
+            # See here for where ier is set in this case:
+            # https://github.com/lmfit/lmfit-py/blob/7710da6d7e878ffee0dc90a85286f1ec619fc20f/lmfit/minimizer.py#L1653
+                if not lmout.success:
+                    print('lmfit: '+lmout.message, file=logfile)
+                    if not quiet:
+                        print('lmfit: '+lmout.message)
                 print('lmfit: '+lmout.lmdif_message, file=logfile)
                 if not quiet:
                     print('lmfit: '+lmout.lmdif_message)

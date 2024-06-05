@@ -12,11 +12,60 @@ import q3dfit.data
 import os
 
 
-def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, specConv,
-             lineratio=None, siglim=None, blrcomp=None, linevary=None,
-             blrlines=None, blrsiglim=None, specres=None, waves=None, force_cwv_lines=None):
+def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
+             specConv, lineratio=None, siglim=None, blrcomp=None, 
+             linevary=None, blrlines=None, blrsiglim=None, waves=None):
     '''
+
     Initialize parameters for emission-line fitting.
+
+    Parameters
+    ----------
+    linelist : astropy Table
+        Table of emission lines.
+    linelistz : dict
+        Dictionary of line redshifts.
+    linetie : dict
+        Dictionary of line ties.
+    initflux : dict
+        Dictionary of initial fluxes.
+    initsig : dict
+        Dictionary of initial sigmas.
+    maxncomp : int
+        Maximum number of components.
+    ncomp : dict
+        Dictionary of number of components.
+    specConv : object
+        Spectral resolution object.
+    lineratio : astropy Table, optional
+        Table of line ratio constraints, beyond those in the doublets table.
+    siglim : list, optional
+        Sigma limits. The default is to set a lower limit of 5 and an upper
+        limit of 2000 km/s.
+    blrcomp : list, optional
+        List of components for broad-line region scattered component fit in fitqsohost. 
+        The default is None.
+    linevary : dict, optional
+        Dictionary of line parameter vary flags (fix/free). The default is to set
+        all parameters to free.
+    blrlines : list, optional
+        List of broad-line region scattered lines in fitqsohost. The default is None.
+    blrsiglim : list, optional
+        Sigma limits for broad-line region scattered component fit in fitqsohost.
+        The default is None.
+    waves : array, optional
+        Wavelength array for determining if a line is in the fit range. The default
+        is None.
+    
+    Returns
+    -------
+    totmod : lmfit Model
+        Total model object for fitting.
+    fit_params : lmfit Parameters
+        Fit parameter object
+    siglim : list
+        Sigma limits.
+
     '''
     # Get fixed-ratio doublet pairs for tying intensities
     data_path = os.path.abspath(q3dfit.data.__file__)[:-11]
@@ -30,11 +79,6 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
         if doublets['fixed_ratio'][idx] == 1:
             dblt_pairs[doublets['line2'][idx]] = doublets['line1'][idx]
 
-    # pre-SPECRES object
-    #if not specres:
-    #    specres = np.float64(0.)
-    #else:
-    #    specres = np.float64(specres)
     # A reasonable lower limit of 5d for physicality
     if siglim is None:
         siglim = np.array([5., 2000.], dtype='float64')
@@ -128,11 +172,12 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
                     format(lines_arr[line.label],
                            lines_arr[linetie[line.label]],
                            linetie_tmp.lmlabel, comp)
-            elif force_cwv_lines is not None:
-                if line.label in force_cwv_lines and comp > 0:
-                    linetie_tmp = lmlabel(linetie[line.label])
-                    tied = '{}_0_cwv'.\
-                            format(linetie_tmp.lmlabel)
+            # This is pretty odd; it's a very special case
+            # elif force_cwv_lines is not None:
+            #     if line.label in force_cwv_lines and comp > 0:
+            #         linetie_tmp = lmlabel(linetie[line.label])
+            #         tied = '{}_0_cwv'.\
+            #                 format(linetie_tmp.lmlabel)
             else:
                 tied = ''
             if linevary is None:
@@ -248,6 +293,34 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp, s
 
 def set_params(fit_params, NAME, VALUE=None, VARY=True, LIMITED=None,
                TIED=None, LIMITS=None):
+    '''
+
+    Set parameters for the lmfit model using the lmfit Parameters object.
+
+    Parameters
+    ----------
+    fit_params : lmfit Parameters
+        Fit parameter object.
+    NAME : str
+        Parameter name.
+    VALUE : float, optional
+        Initial value. The default is None.
+    VARY : bool, optional
+        Vary flag. The default is True.
+    LIMITED : list, optional
+        Whether or not to limit the parameter. The default is to set no limits.
+    TIED : str, optional
+        Expression for tying the parameter to another. The default is None.
+    LIMITS : list, optional
+        Limits for the parameter. The default is None.
+    
+    Returns
+    -------
+    fit_params : lmfit Parameters
+        Modified fit parameter object.
+    
+    '''
+
     # we can force the input to float64, but lmfit has values as float64 and
     # doesn't seem like we can change it. These astypes assume that the
     # VALUE is a numpy object
@@ -265,24 +338,47 @@ def set_params(fit_params, NAME, VALUE=None, VARY=True, LIMITED=None,
 
 
 def manygauss(x, flx, cwv, sig, SPECRES=None):
-    # param 0 flux
-    # param 1 central wavelength
-    # param 2 sigma
-    # sigs = np.sqrt(np.power((sig/c)*cwv, 2.) + np.power(srsigslam, 2.))
+    '''
+    Generate a Gaussian model for a given set of parameters.
+
+    Parameters
+    ----------
+    x : array
+        Wavelength array.
+    flx : array
+        Flux array.
+    cwv : float
+        Central wavelength.
+    sig : float
+        Sigma.
+    SPECRES : object, optional
+        Spectral resolution object, for convolving the Gaussian with the spectral 
+        resolution. The default is None.
+    
+    Returns
+    -------
+    gaussian : array
+        Gaussian model.
+    
+    '''
+    
     sigs = sig / c.to('km/s').value * cwv
     gaussian = flx * np.exp(-np.power((x - cwv) / sigs, 2.)/2.)
     if SPECRES is not None:
         # resample spectrum on much smaller grid before convolution if
         # sigma less than 1 pixel
         # presently only set up for METHOD 2
+        upsample = False
         if np.mean(sigs) <= (x[1]-x[0])*1.:
-            upsample=True
-        else:
-            upsample=False
-        datconv = SPECRES.spect_convolver(x, gaussian, cwv, upsample=upsample)
+            upsample = True
+        datconv = SPECRES.spect_convolver(x, gaussian, wvlcen=cwv,
+                                          upsample=upsample)
+        #maskval = np.float64(1e-4*max(datconv))
+        #maskind = np.asarray(datconv < maskval).nonzero()[0]
+        #datconv[maskind] = np.float64(0.)
         return datconv
-    #maskval = np.float64(1e-4*max(gaussian))
-    #maskind = np.asarray(gaussian < maskval).nonzero()[0]
-    #gaussian[maskind] = np.float64(0.)
     else:
+        #maskval = np.float64(1e-4*max(gaussian))
+        #maskind = np.asarray(gaussian < maskval).nonzero()[0]
+        #gaussian[maskind] = np.float64(0.)
         return gaussian

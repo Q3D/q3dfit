@@ -131,7 +131,8 @@ def modelmultpoly(template_0, wave, amp, multpolyA, multpolyB, multpolyC):
     return amp * polymodel/polymodel.max()
 
 
-def set_up_fit_model_scale_withpoly(p,p_fixfree,model_name,model, minamp=0., maxamp=None):
+def set_up_fit_model_scale_withpoly(p,p_fixfree,model_name,model, minamp=0., 
+                                    maxamp=None):
 
     '''Function defined to set up fitting model_scale within lmfit
 
@@ -366,28 +367,26 @@ def set_up_fit_model_scale(p, p_fixfree, model_name,model, fitFlambda=True,
 
 
 
-def set_up_absorption(p,p_fixfree,model_name,abs_model):
+def set_up_absorption(p, p_fixfree, model_name, abs_model):
     '''Function defined to set up fitting model_scale within lmfit
 
-        Parameters
-        -----
-        p: list
+    Parameters
+    -----
+    p: list
         list of initial guess for the absorption model
+    p_fixfree: list
+        list of fix/free values (0/1) for the absorption model
 
+    Returns
+    -------
+    absorption_model: lmfit model
+    absorption_paramters: lmfit model parameters
+    '''
 
-
-        returns
-        -------
-        absorption_model: lmfit model
-        absorption_paramters: lmfit model parameters
-        '''
-
-
-    exp = "exp(-1.*%s_tau*%s)" % (model_name,abs_model)
-    model = ExpressionModel(exp,independent_vars=[abs_model],name = model_name)
+    exp = "exp(-1.*%s_tau*%s)" % (model_name, abs_model)
+    model = ExpressionModel(exp,independent_vars=[abs_model], name = model_name)
     abs_model_parameters = model.make_params()
     abs_model_parameters[model_name+'_tau'].\
         set(value=p[0], min=np.finfo(float).eps, max=10., vary=p_fixfree[0])
-
 
     return model,abs_model_parameters

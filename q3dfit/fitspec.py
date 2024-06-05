@@ -85,7 +85,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
         from sys import stdout
         logfile = stdout
 
-    if q3di.startempfile is not None and q3di.fcncontfit != 'questfit':
+    if q3di.startempfile is not None and \
+        zstar is not None and \
+        q3di.fcncontfit != 'questfit':
 
         # Get stellar templates
         startempfile = q3di.startempfile
@@ -309,18 +311,24 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             if q3di.fcncontfit == 'linfit_plus_FeII':
                 argscontfit['specConv'] = specConv
 
-            q3do.cont_fit, q3do.ct_coeff, q3do.zstar = \
+            if zstar is None:
+                zstarin = np.nan
+            else:
+                zstarin = copy.copy(zstar)
+            q3do.cont_fit, q3do.ct_coeff, zstarout = \
                 fcncontfit(gdlambda.astype(usetype),
                            gdflux.astype(usetype),
                            gdinvvar.astype(usetype),
                            templatelambdaz_tmp,
                            templateflux_tmp, q3do.ct_indx,
-                           zstar.astype(usetype),
+                           zstarin.astype(usetype),
                            quiet=quiet, **argscontfit)
+            if zstarout is not None:
+                q3do.zstar = copy.copy(zstarout)
 
             if 'refit' in argscontfit.keys():
                 if argscontfit['refit'] == 'ppxf':
-                    q3do.ppxf_sigma = q3do.ct_coeff['ppxf_sigma']
+                    q3do.ct_ppxf_sigma = q3do.ct_coeff['ppxf_sigma']
 
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         # # Option 2: PPXF
@@ -370,7 +378,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
             q3do.ct_rchisq = pp.chi2
             solerr *= np.sqrt(pp.chi2)
             q3do.zstar_err = (np.exp(solerr[0]/c.to('km/s').value))-1.
-            q3do.ppxf_sigma_err = solerr[1]
+            q3do.ct_ppxf_sigma_err = solerr[1]
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Option to tweak cont. fit with local polynomial fits

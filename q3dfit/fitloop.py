@@ -140,7 +140,7 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
             siginit_gas = None
             siginit_stars = 50.
             tweakcntfit = None
-            zstar = np.nan
+            zstar = None
 
             # Are we doing a line fit?
             if q3di.dolinefit:

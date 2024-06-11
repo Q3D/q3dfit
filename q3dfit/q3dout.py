@@ -400,9 +400,9 @@ class q3dout:
                         # routine) and we should set flux to 0 and fluxerr to 0.
                         # This will allow checkcomp to ignore this line.
                         nouncert = False
-                        if np.isnan((waveerr[line][i], 
+                        if np.isnan([waveerr[line][i], 
                                      sigmaerr[line][i], 
-                                     fluxpkerr[line][i])).any():
+                                     fluxpkerr[line][i]]).any():
                             nouncert = True
                             fluxpk[line][i] = 0.
                             fluxpkerr[line][i] = 0.
@@ -411,13 +411,8 @@ class q3dout:
                         # spectral resolution.
                         if specres is not None and ignoreres is False and \
                             zeroflux is False and nouncert is False:    
-                            if specres.init_meth == 0:
-                                Ruse = specres.R
-                            elif specres.init_meth == 2:
-                                Ruse = \
-                                    specres.R[np.argmin(np.abs(self.wave -
-                                    self.param[iwave]))]
-
+                            # Get spectral resolution
+                            Ruse = specres.get_R(wave[line][i])
                             sigma_obs[line][i] = \
                                 np.sqrt(self.param[isigma]**2 +
                                         (c.to('km/s').value/Ruse/

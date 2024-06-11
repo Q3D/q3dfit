@@ -163,7 +163,9 @@ class Cube:
                 uncert = np.array((hdu[varext].data).T, dtype='float64')
             except (IndexError or KeyError):
                 raise CubeError('Variance extension not properly specified ' +
-                                'or absent', file=logfile)
+                                'or absent')
+                print('Variance extension not properly specified ' +
+                    'or absent', file=logfile)
             # convert expression of uncertainty to variance and error
             # if uncert = inverse variance:
             if invvar:
@@ -171,15 +173,18 @@ class Cube:
                 self.err = 1./copy.copy(uncert) ** 0.5
             # if uncert = error:
             elif error:
-                self.err = copy.copy(uncert)
-                self.var = copy.copy(uncert) ** 2.
+                if (uncert < 0).any():
+                    print('Cube: Negative values encountered in error ' +
+                          'array. Taking absolute value.', file=logfile)
+                self.err = np.abs(copy.copy(uncert))
+                self.var = np.abs(copy.copy(uncert)) ** 2.
             # if uncert = variance:
             else:
-                if np.where(self.var < 0).any():
-                    print('Cube: Negative values encountered in variance ' +
+                if (uncert < 0).any():
+                    print('Cube: Negative values encountered in variance ' + 
                           'array. Taking absolute value.', file=logfile)
                 self.var = np.abs(copy.copy(uncert))
-                self.err = copy.copy(uncert) ** 0.5
+                self.err = np.abs(copy.copy(uncert)) ** 0.5
         else:
             self.var = None
             self.err = None
@@ -230,7 +235,7 @@ class Cube:
             nwave = (datashape)[2]
             if np.max([nrows, ncols]) > nwave:
                 raise CubeError('Data cube dimensions not in ' +
-                                '[nwave, nrows, ncols] format', file=logfile)
+                                '[nwave, nrows, ncols] format.')
             CDELT = 'CDELT3'
             CRVAL = 'CRVAL3'
             CRPIX = 'CRPIX3'
@@ -386,8 +391,10 @@ class Cube:
                 ivor = np.where(vormap == i+1)
                 xyvor = [ivor[0][0], ivor[0][1]]
                 vordat[i, 0, :] = self.dat[xyvor[0], xyvor[1], :]
-                vorvar[i, 0, :] = self.var[xyvor[0], xyvor[1], :]
-                vordq[i, 0, :] = self.dq[xyvor[0], xyvor[1], :]
+                if self.var is not None:
+                    vorvar[i, 0, :] = self.var[xyvor[0], xyvor[1], :]
+                if self.dq is not None:
+                    vordq[i, 0, :] = self.dq[xyvor[0], xyvor[1], :]
                 vorcoords[i, :] = xyvor
                 nvor[i] = (np.shape(ivor))[1]
             self.dat = vordat
@@ -434,13 +441,17 @@ class Cube:
                 self.fluxunit_out = self.fluxunit_out.replace('/arcsec2', '')
         
         self.dat = self.dat * convert_flux
-        self.var = self.var * convert_flux**2
-        self.err = self.err * convert_flux
+        if self.var is not None:
+            self.var = self.var * convert_flux**2
+        if self.err is not None:
+            self.err = self.err * convert_flux
 
         self.fluxnorm = fluxnorm
         self.dat = self.dat / fluxnorm
-        self.var = self.var / fluxnorm**2
-        self.err = self.err / fluxnorm
+        if self.var is not None:
+            self.var = self.var / fluxnorm**2
+        if self.err is not None:
+            self.err = self.err / fluxnorm
         
         # linearize in the wavelength direction
         if linearize:
@@ -452,18 +463,49 @@ class Cube:
             self.cdelt = (waveold[-1]-waveold[0]) / (self.nwave-1)
             wave = np.linspace(waveold[0], waveold[-1], num=self.nwave)
             self.wave = wave
-            spldat = interpolate.splrep(waveold, datold, s=0)
-            self.dat = interpolate.splev(waveold, spldat, der=0)
-            splvar = interpolate.splrep(waveold, varold, s=0)
-            self.var = interpolate.splev(waveold, splvar, der=0)
-            spldq = interpolate.splrep(waveold, dqold, s=0)
-            self.dq = interpolate.splev(waveold, spldq, der=0)
+            if self.cubedim == 1:
+                spldat = interpolate.splrep(waveold, datold, s=0)
+                self.dat = interpolate.splev(wave_in, spldat, der=0)
+                splvar = interpolate.splrep(waveold, varold, s=0)
+                self.var = interpolate.splev(wave, splvar, der=0)
+                spldq = interpolate.splrep(waveold, dqold, s=0)
+                self.dq = interpolate.splev(wave, spldq, der=0)
+            elif self.cubedim == 2:
+                for i in np.arange(self.ncols):
+                    spldat = interpolate.splrep(waveold, datold[i, :], s=0)
+                    self.dat[i, :] = interpolate.splev(wave, spldat, der=0)
+                    if self.var is not None:
+                        splvar = interpolate.splrep(waveold, varold[i, :], s=0)
+                        self.var[i, :] = interpolate.splev(wave, splvar, der=0)
+                    if self.dq is not None:
+                        spldq = interpolate.splrep(waveold, dqold[i, :], s=0)
+                        self.dq[i, :] = interpolate.splev(wave, spldq, der=0)
+            elif self.cubedim == 3:
+                for i in np.arange(self.ncols):
+                    for j in np.arange(self.nrows):
+                        spldat = interpolate.splrep(waveold, datold[i, j, :],
+                            s=0)
+                        self.dat[i, j, :] = interpolate.splev(wave, spldat,
+                            der=0)
+                        if self.var is not None:
+                            splvar = interpolate.splrep(waveold, varold[i, j, :],
+                                s=0)
+                            self.var[i, j, :] = interpolate.splev(wave, splvar,
+                                der=0)
+                        if self.dq is not None:
+                            spldq = interpolate.splrep(waveold, dqold[i, j, :],
+                                s=0)
+                            self.dq[i, j, :] = interpolate.splev(wave, spldq,
+                                der=0)
             if not quiet:
                 print('Cube: Interpolating DQ; values > 0.01 set to 1.',
                       file=logfile)
-            ibd = np.where(self.dq > 0.01)
-            if np.size(ibd) > 0:
-                self.dq[ibd] = 1
+            if self.dq is not None:
+                ibd = np.where(self.dq > 0.01)
+                if np.size(ibd) > 0:
+                    self.dq[ibd] = 1
+            if self.var is not None:
+                self.err = copy.copy(self.var)**0.5
 
         # close the fits file
         hdu.close()

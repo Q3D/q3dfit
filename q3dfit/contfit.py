@@ -96,7 +96,7 @@ def fitpoly(lam, flux, weight, unused1, unused2, index, unused3,
     # https://numpy.org/doc/stable/reference/generated/numpy.poly1d.html
     ct_poly = np.poly1d(ct_coeff, variable='lambda')
     continuum = ct_poly(lam)
-    icontinuum = continuum(index)
+    icontinuum = continuum[index]
 
     if refit is not None:
         for i in range (0, np.size(refit['ord']) - 1):

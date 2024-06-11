@@ -109,7 +109,7 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
 
         # Set up N_comp and fix/free (linevary) dictionaries for this spaxel
         ncomp = dict()
-        if q3di.linevary is not None:
+        if q3di.linevary is not None and q3di.dolinefit:
             linevary = dict()
         else:
             linevary = None
@@ -123,7 +123,7 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
             #    dict has keys {'flx', 'cwv', 'sig'} with a value for each comp
             for line in q3di.lines:
                 ncomp[line] = q3di.ncomp[line][i, j]
-                if q3di.linevary is not None:
+                if linevary is not None:
                     linevary[line] = dict()
                     linevary[line]['flx'] = q3di.linevary[line]['flx'][i, j, :]
                     linevary[line]['cwv'] = q3di.linevary[line]['cwv'][i, j, :]
@@ -274,6 +274,12 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
                 print('FIT STATUS: '+str(q3do.fitstatus), file=logfile)
                 if not quiet:
                     print('FIT STATUS: '+str(q3do.fitstatus))
+
+            elif onefit and not abortfit:
+
+                if q3do_init.dolinefit:
+                    q3do_init.sepfitpars()
+                q3do = q3do_init
 
             else:
 

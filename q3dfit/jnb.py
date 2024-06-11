@@ -50,6 +50,7 @@ def download_files(files, output_directory, force=False):
         filenames.append(file[1])
         if force:
             print('Downloading {}...'.format(file[1]))
+            # https://docs.astropy.org/en/stable/api/astropy.utils.data.download_file.html
             demo_file = download_file(file[0], cache='update')
             # Make a symbolic link using a local name for convenience
             if not os.path.islink(os.path.join(output_directory, file[1])):

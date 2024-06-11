@@ -54,7 +54,7 @@ def get_dispersion(q3di):
     if not q3di.spect_convol:
         return None
     else:
-        return spectConvol.spectConvol(q3di)
+        return spectConvol.spectConvol(q3di.spect_convol)
 
 
 def get_Cube(q3di, quiet=True, logfile=None):

@@ -73,6 +73,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
     """
 
+    usetype='float64'
+
     flux = copy.deepcopy(flux)
     err = copy.deepcopy(err)
     flux_out = copy.deepcopy(flux)
@@ -140,8 +142,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     if len(gd_indx_full) > 1:
 
         # limit actual fit range to good data
-        fitran = [np.min(wlambda[gd_indx_full]).astype('float64'),
-                  np.max(wlambda[gd_indx_full]).astype('float64')]
+        fitran = [np.min(wlambda[gd_indx_full]).astype(usetype),
+                  np.max(wlambda[gd_indx_full]).astype(usetype)]
 
         # indices locating data within actual fit range
         fitran_indx1 = np.where(wlambda >= fitran[0])[0]
@@ -209,8 +211,9 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                              'neg/zero/inf error to np.nan'))
 
         if ctzerinf_log > 0:
-            gdflux_log[zerinf_indx_log] = np.nan
-            gderr_log[zerinf_indx_log] = np.nan
+            # can't just use np.nan because ppxf will choke on it
+            gdflux_log[zerinf_indx_log] = 0.
+            gderr_log[zerinf_indx_log] = 100.*max(gderr_log)
             # gdinvvar_log[zerinf_indx_log] = np.nan
 
 
@@ -252,7 +255,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                 else:
                     maskwidths = \
                         Table(np.full([q3di.maxncomp, listlines['name'].size],
-                                      q3di.maskwidths_def, dtype='float64'),
+                                      q3di.maskwidths_def, dtype=usetype),
                               names=listlines['name'])
             # This loop overwrites nans in the case that ncomp gets lowered
             # by checkcomp; these nans cause masklin to choke
@@ -301,12 +304,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                     argscontfit['flux_log'] = gdflux_log
                     argscontfit['err_log'] = gderr_log
                     argscontfit['siginit_stars'] = siginit_stars
-
-            #if q3di.forcefloat64:
-            #    usetype = 'float64'
-            #else:
-            #    usetype = 'float32'
-            usetype='float64'
 
             if q3di.fcncontfit == 'linfit_plus_FeII':
                 argscontfit['specConv'] = specConv
@@ -439,7 +436,7 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     if q3di.dolinefit and not q3do.nogood:
 
         q3do.init_linefit(listlines, q3di.lines, q3di.maxncomp,
-                          line_dat=continuum.astype('float64'))
+                          line_dat=continuum.astype(usetype))
 
         # Check that # components being fit to at least one line is > 0
         nonzerocomp = np.where(np.array(list(ncomp.values())) != 0)[0]
@@ -461,16 +458,18 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
             # Initial guesses for emission line peak fluxes (above continuum)
             if peakinit is None:
-                if q3di.peakinit is not None:
+                if q3di.peakinit is not None and isinstance(q3di.peakinit, dict):
                     peakinit = q3di.peakinit
                 else:
-                    peakinit = {line: None for line in q3di.lines}
+                    # initialize peakinit
+                    peakinit = {line: np.zeros(q3di.maxncomp) for line in q3di.lines}
                     # apply some light filtering
                     # https://stackoverflow.com/questions/20618804/how-to-smooth-a-curve-in-the-right-way/20642478
                     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html
                     from scipy.signal import savgol_filter
-#                    from scipy.ndimage import gaussian_filter
-                    line_dat_sm = savgol_filter(q3do.line_dat, 11, 3)#gaussian_filter(q3do.line_dat,1)
+                    # from scipy.ndimage import gaussian_filter
+                    line_dat_sm = savgol_filter(q3do.line_dat, 11, 3)
+                    # gaussian_filter(q3do.line_dat,1)
                     # fline = interp1d(gdlambda, line_dat_sm, kind='linear')
                     for line in q3di.lines:
                         # Check that line wavelength is in data range
@@ -479,7 +478,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                             listlinesz[line][0] <= max(gdlambda):
                             # peakinit[line] = fline(listlinesz[line][0:ncomp[line]])
                             # look for peak within dz = +/-0.001
-                            peakinit[line] = np.zeros(q3di.maxncomp)
                             for icomp in range(0, ncomp[line]):
                                 # https://stackoverflow.com/questions/12141150/from-list-of-integers-get-number-closest-to-a-given-value
                                 lamwin = \
@@ -516,7 +514,8 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
 
                                 # If the smoothed version gives all nans, try
                                 # unsmoothed
-                                if np.isnan(peakinit[line][icomp]):
+                                if np.isnan(peakinit[line][icomp]) and \
+                                    q3do.line_dat is not None:
                                     peakinit[line][icomp] = \
                                     np.nanmax(q3do.line_dat[ilamwin[0]:ilamwin[1]])
                                 # if it's still all nans, just set to 0.
@@ -526,18 +525,14 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
                             # fitter from choking (since we limit peak to be >= 0)
                             peakinit[line] = \
                                 np.where(peakinit[line] < 0., 0., peakinit[line])
-                        else:
-                            peakinit[line] = np.zeros(q3di.maxncomp)
                         # re-cast as float32
-                        peakinit[line] = peakinit[line].astype('float64')
+                        peakinit[line] = peakinit[line].astype(usetype)
 
             # Initial guesses for emission line widths
             if siginit_gas is None:
-                siginit_gas = {k: None for k in q3di.lines}
-                for line in q3di.lines:
-                    siginit_gas[line] = \
-                        np.zeros(q3di.maxncomp, dtype='float64') + \
-                        np.float64(siginit_gas_def)
+                siginit_gas = \
+                    {k: np.zeros(q3di.maxncomp, dtype=usetype) + 
+                        np.float64(siginit_gas_def) for k in q3di.lines}                        
 
             # Fill out parameter structure with initial guesses and constraints
             impModule = import_module('q3dfit.' + q3di.fcnlineinit)
@@ -757,7 +752,6 @@ def fitspec(wlambda, flux, err, dq, zstar, listlines, listlinesz, ncomp,
     else:
         #q3do.fitstatus = 1
         q3do.cont_dat = gdflux.copy()
-
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 #  Finish

@@ -74,7 +74,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
         if fitran is not None:
             xran = fitran
         else:
-            xran = q3do.fitran
+            xran = q3do.fitrange
 
         if waveunit_in == 'Angstrom' and waveunit_out == 'micron':
             # convert angstrom to microns

@@ -6,7 +6,6 @@ from astropy.table import QTable, Table
 from lmfit import Model
 from q3dfit.q3dutil import lmlabel
 from q3dfit.exceptions import InitializationError
-import copy
 import numpy as np
 import q3dfit.data
 import os
@@ -152,7 +151,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             else:
                 tied = ''
             if linevary is None:
-                vary = 'True'
+                vary = True
             else:
                 try:
                     vary = linevary[line.label][gpar][comp]
@@ -181,7 +180,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             else:
                 tied = ''
             if linevary is None:
-                vary = 'True'
+                vary = True
             else:
                 try:
                     vary = linevary[line.label][gpar][comp]
@@ -203,7 +202,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             else:
                 tied = ''
             if linevary is None:
-                vary = 'True'
+                vary = True
             else:
                 try:
                     vary = linevary[line.label][gpar][comp]
@@ -365,14 +364,15 @@ def manygauss(x, flx, cwv, sig, SPECRES=None):
     sigs = sig / c.to('km/s').value * cwv
     gaussian = flx * np.exp(-np.power((x - cwv) / sigs, 2.)/2.)
     if SPECRES is not None:
-        # resample spectrum on much smaller grid before convolution if
-        # sigma less than 1 pixel
-        # presently only set up for METHOD 2
-        upsample = False
-        if np.mean(sigs) <= (x[1]-x[0])*1.:
-            upsample = True
-        datconv = SPECRES.spect_convolver(x, gaussian, wvlcen=cwv,
-                                          upsample=upsample)
+        # resample spectrum on smaller grid before convolution if
+        # sigma less than 1 pixel. Note that this doesn't assume
+        # constant dispersion, which I *think* is okay for the 
+        # ppxf_util.varsmooth() algorithm. But I'm not sure.
+        oversample = 1
+        if np.mean(sigs) <= np.mean(x[1:-1]-x[0:-2])*1.:
+            oversample = 10
+        datconv = SPECRES.spect_convolver(x, gaussian, wavecen=cwv,
+            oversample=oversample)
         #maskval = np.float64(1e-4*max(datconv))
         #maskind = np.asarray(datconv < maskval).nonzero()[0]
         #datconv[maskind] = np.float64(0.)

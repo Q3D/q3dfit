@@ -301,7 +301,8 @@ def qsohostfcn(wave, params_fit=None, qsoflux=None,
             #                                max=6000. / c.to('km/s').value *
             #                                blrpar[counter + 1])
 
-            gaussian_model = lmfit.Model(manygauss, prefix=gaussian_name)
+            gaussian_model = lmfit.Model(manygauss, prefix=gaussian_name, 
+                                         SPECRES=None)
             gaussian_model_parameters = gaussian_model.make_params()
             gaussian_model_parameters\
                 [gaussian_name+'flx'].set(value=blrpar[counter],

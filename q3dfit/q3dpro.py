@@ -55,6 +55,8 @@ class Q3Dpro:
     map_bkg : str
         Background color for the maps. Default is 'white'. Added/updated by 
         :method:init.
+    zsys_gas : float
+        Systemic redshift of the galaxy. Added/updated by :method:init.
     
     Methods
     -------
@@ -72,7 +74,8 @@ class Q3Dpro:
     '''
 
     def __init__(self, q3di, SILENT=True, NOCONT=False, NOLINE=False,
-                 PLATESCALE=0.15, BACKGROUND='white', BAD=np.nan):
+                 PLATESCALE=0.15, BACKGROUND='white', BAD=np.nan, 
+                 zsys_gas=None):
         '''
         Initialize the Q3Dpro object.
 
@@ -104,7 +107,34 @@ class Q3Dpro:
             self.linedat = LineData(self.q3dinit)
         self.map_bkg = BACKGROUND
 
+        self.zsys_gas = zsys_gas
+
         return
+
+
+    def get_zsys_gas(self):
+        '''
+        Get the systemic redshift of the galaxy from the zsys_gas attribute
+        or q3dinit object, in that order.
+
+        Returns
+        -------
+        redshift : float
+            Systemic redshift of the galaxy.
+
+        '''
+        if self.zsys_gas is None:
+            if self.q3dinit.zsys_gas is None:
+                raise ValueError('Redshift not set in q3dinit or q3dpro ' +
+                                 'objects. Please use zsys_gas parameter ' +
+                                 'in q3dpro to set the systemic redshift ' +
+                                 'of the galaxy for computing line properties.')
+            else:
+                redshift = self.q3dinit.zsys_gas
+        else:
+            redshift = self.zsys_gas
+        return redshift
+    
 
     def get_lineprop(self, LINESELECT):
         '''
@@ -142,7 +172,7 @@ class Q3Dpro:
         '''
         print('getting line data...',LINESELECT)
 
-        redshift = self.q3dinit.zsys_gas
+        redshift = self.get_zsys_gas()
         ncomp = np.max(self.q3dinit.ncomp[LINESELECT])
 
         # kpc_arcsec = cosmo.kpc_proper_per_arcmin(redshift).value/60.
@@ -226,12 +256,24 @@ class Q3Dpro:
                      XYSTYLE=None, PLTNUM=1, CMAP=None,
                      VCOMP=None,
                      SAVEDATA=False):
+        '''
+        Create maps of properties of an emission line.
+
+        Parameters
+        ----------
+        LINESELECT : str
+            Name of the line for which to create maps.
+        SNRCUT : float
+            SNR cut for the data. Default is 5.
+        xyCenter : list
+            Center of the map. Default is None.
+        '''
 
         print('Plotting emission line maps')
         if self.silent is False:
             print('create linemap:', LINESELECT)
 
-        redshift = self.q3dinit.zsys_gas
+        redshift = self.get_zsys_gas()
         ncomp = np.max(self.q3dinit.ncomp[LINESELECT])
 
         kpc_arcsec = cosmo.kpc_proper_per_arcmin(redshift).value/60.
@@ -413,7 +455,7 @@ class Q3Dpro:
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         linelist = {lineA:None,lineB:None}
 
-        redshift = self.q3dinit.zsys_gas
+        redshift = self.get_zsys_gas()
 
         arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
         mshaps = [None,None]
@@ -589,7 +631,7 @@ class Q3Dpro:
                     '[SII]6716':None,
                     '[SII]6731':None}
 
-        redshift = self.q3dinit.zsys_gas
+        redshift = self.get_zsys_gas()
 
         arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
         mshaps = [None,None]

@@ -3,69 +3,68 @@
 """
 @author: Yuzo Ishikawa
 
-Convolves an input spectrum by the JWST NIRSPEC + MIRI grating resolution. By
-default, this will convolve the input spectrum with a wavelength dependent
-dispersion relation. The user also can choose alternative methods.
-
-METHOD 0 = flat convolution by wavelength bins (takes median resolving power
-    at middle of wavelength bin)
-METHOD 1 = NOT IMPLEMENTED. Convolution by dispersion curve by looping through
-    each pixel element
-METHOD 2 = DEFAULT. Convolution by dispersion curve using Cappellari method
-
-How to run:
-> import spectConvol
-Create a spectConvol object for fitting:
-> spConv = spectConvol.spectConvol()
-
-Within the code itself, to convolve:
-> spectOUT = spConv.gauss_convolve(waveIN, fluxIN, INST='nirspec',
-                                   GRATING='G140M/F070LP', METHOD=2)
-This requires a wrapper that calls gauss_convolve() and organizes the
-convolved spectra.
-
-JWST provides NIRSpec dispersion files. However, MIRI is not provided. Instead,
-we take a Cubic Spline interpolation based on the curves in the Jdocs website.
-
 """
 
+#import copy
+import glob
 import numpy as np
 import os
 import re
 from astropy.constants import c
 from astropy.io import fits
 from astropy.stats import gaussian_sigma_to_fwhm
-import glob
-import copy
-from scipy.ndimage import gaussian_filter1d
+from ppxf.ppxf_util import varsmooth
+#from scipy.ndimage import gaussian_filter1d
 from scipy.interpolate import CubicSpline
 import q3dfit.data.dispersion_files
 
 
 class spectConvol:
+    '''
+    Convolve an input spectrum by grating resolution.
+    
+    JWST provides NIRSpec dispersion files. However, MIRI is not provided. 
+    Instead, we take a Cubic Spline interpolation based on the curves in 
+    the Jdocs website.
 
-    def __init__(self, q3di, overwrite=False):
+    Attributes
+    ----------
+    dispdir : str
+        Full directory of dispersion files in the repository.
+    InstGratObjs : dict
+        Nested dictionary whose keys are instrument/grating combinations.
+        The values are dispersion objects.
+       
+    Methods
+    -------
+    spect_convolver(wave, flux, wavecen=None, oversample=1)
+        Convolves an input spectrum by the spectral resolution.
+    selectInstGrat(wavecen=None)
+        Make a list of inst/grat objects for convolution.
+    get_InstGrat_waveDlam(InstGratSelect)
+        Get wavelength and dlambda for selected grating(s).
+    get_R(wave)
+        Compute resolving power for a wavelength, interpolated from
+        dispersion curves.
+    '''
+
+
+    def __init__(self, spect_convol):
         '''
-        Instantiate the spectConvol class.
+        Instantiate the spectConvol class. The requested dispersion curves
+        are either loaded from a file, created from a flat dispersion curve,
+        or computed from a formula in the case of MRS.
 
         Parameters
         ----------
-        q3di : object
-            q3dinit class
-        overwrite : bool, optional
-            Overwrite custom dispersion files.
+        spect_convol : dict
+            Dictionary with the following keys:
+            - ws_instrum : dict
+                Nested dictionary of instrument/grating combinations.
+            - dispdir : str, optional
+                Directory of dispersion files. Default is None. If not
+                specified, the q3dfit dispersion_file directory is used.
 
-        Attributes
-        ----------
-        datDIR : str
-            Full directory of dispersion files in the repository.
-        init_inst : dict
-            Dictionary of dictionaries to hold the dispersion data.
-        init_meth : int
-            Method of convolution.
-        R : array
-            Resolution of the instrument; added / updated by spect_convolver().
-        
         Raises
         ------
         SystemExit
@@ -77,524 +76,644 @@ class spectConvol:
         '''
 
         # full directory of dispersion files in repo
-        self.datDIR = os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],
-                                   'dispersion_files')
-        # Default to method 2
-        if 'ws_method' not in q3di.spect_convol:
-            q3di.spect_convol['ws_method'] = 2
-        if q3di.spect_convol['ws_method'] != 0 and \
-            q3di.spect_convol['ws_method'] != 2:
-            raise SystemExit('spect_convol: Please specify Method 0 or 2. ' +
-                             'Method 1 is not yet implemented.')
-        self.init_meth = q3di.spect_convol['ws_method']
+        #self.dispdir = os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],
+        #    'dispersion_files')
 
-        # get list of acutal files in repo
-        dispfiles = [dfile.split('/')[-1] for dfile in
-                          glob.glob(os.path.join(self.datDIR, '*.fits'))]
+        # Check if dispersion directory is specified in the input dictionary.
+        # If not, use the default q3dfit directory.
+        if 'dispdir' not in spect_convol:
+            self.dispdir = \
+                os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],
+                'dispersion_files')
+        else:
+            self.dispdir = spect_convol['dispdir']
 
-        # create the empty dictionary-of-dictionaries to hold the
-        # dispersion data
-        self.init_inst = {}
+        # create the nested dictionaries to hold the dispersion objects
+        self.InstGratObjs = {}
         # inst is a telescope+instrument string
         # gratlist is dictionary of grating strings
-        for inst, gratdict in q3di.spect_convol['ws_instrum'].items():
-            self.init_inst[inst.upper()] = {}
-            for grat in gratdict:
-                self.init_inst[inst.upper()][grat.upper()] = None
-
-        # load dispersion files and get dispersion data
-        for inst, gratlist in self.init_inst.items():
-            # For MIRI, use resolution vs. wavelength from Jones et al. 2023
-            # https://ui.adsabs.harvard.edu/abs/2023MNRAS.523.2519J/abstract
-            if inst != 'JWST_MIRI':
-                # cycle through gratings and look for corresponding file
+        if 'ws_instrum' not in spect_convol:
+            raise SystemExit('No ws_instrum dictionary found in ' +
+                'q3dinit.spect_convol.')
+        try:
+            for inst, gratlist in spect_convol['ws_instrum'].items():
+                self.InstGratObjs[inst.upper()] = {}
                 for grat in gratlist:
-                    dfile = '_'.join([inst, grat]).lower() + '_disp.fits'
-                    if dfile in dispfiles:
-                        self.init_inst[inst][grat] = \
-                            self.get_dispersion_data(dfile)
-                    # if no file is found, try to make one
-                    elif inst == 'flat':
+                    self.InstGratObjs[inst.upper()][grat.upper()] = None
+        except:
+            raise SystemExit('Error in loading spect_convol dictionary ' +
+                'in q3dinit.')
+    
+        # Create and populate the dispersion objects
+        for inst, gratlist in self.InstGratObjs.items():
+            for grat in gratlist:
+                if inst != 'JWST_MIRI':
+                    if inst.upper() == 'FLAT':
                         # look for convolution method and dispersion
                         # in grating name
-                        convmethod = ''.join(re.findall("[a-zA-Z]", grat))
-                        dispvalue = '.'.join(re.findall("\d+", grat))
-                        # create new dispersion file
-                        dobj = dispFile()
-                        newfile = \
-                            dobj.make_dispersion(dispvalue, TYPE=convmethod)
-                        # get data from file
-                        self.init_inst[inst][grat] = \
-                            self.get_dispersion_data(newfile)
+                        flattype = ''.join(re.findall("[a-zA-Z]", grat))
+                        flatdisp = '.'.join(re.findall("\d+", grat))
+                        self.InstGratObjs[inst][grat] = \
+                            FlatDispersion(float(flatdisp), flattype)
                     else:
-                        print('WARNING: no dispersion file found or created ' +
-                              'for ' + inst + grat + ' combination. No ' +
-                              'convolution performed.')
-        return
+                        self.InstGratObjs[inst][grat] = \
+                            InstGratDispersion(inst, grat, dispdir=self.dispdir)
+                        self.InstGratObjs[inst][grat].readInstGrat()
+                else:
+                    self.InstGratObjs[inst][grat] = \
+                        InstGratDispersion(inst, grat, dispdir=self.dispdir)
+                    self.InstGratObjs[inst][grat].get_MRS_Rdlam()
 
-    def get_dispersion_data(self, dispfile):
-        '''
-        Get dispersion data from a dispersion file(s).
 
-        Parameters
-        ----------
-        dispfile : str
-            Filename of the dispersion file to load.
-        
-        Returns
-        -------
-        outdict : dict
-            Dictionary of dispersion data.
-
-        '''
-
-        fullfilepath = os.path.join(self.datDIR, dispfile)
-        idispDat = fits.open(fullfilepath)[1].data
-        icols = idispDat.columns.names
-        # lists of wavelength, resolution R, and delta_lambda
-        iwvln = idispDat['WAVELENGTH']  # wavelength [μm]
-        irsln, idelw = [], []
-        if 'VELOCITY' in icols:
-            irsln = c.to('km/s').value/idispDat['VELOCITY']
-            idelw = iwvln/irsln
-        elif 'R' in icols:
-            irsln = idispDat['R']
-            if 'DLAM' in icols:
-                idelw = idispDat['DLAM']
-            else:
-                idelw = iwvln/irsln
-        elif 'DLAM' in icols:
-            idelw = idispDat['DLAM']
-            if 'R' in icols:
-                irsln = idispDat['R']
-            else:
-                irsln = iwvln/idelw
-        # median wavelength and resolution at median wavelength
-        gwvln_med = np.median(iwvln)
-        # technically argmin returns first wavelength if
-        # the median is between two wavelength points
-        grsln_med = irsln[np.argmin(np.abs(iwvln - gwvln_med))]
-        outdict = {'gwave': iwvln,
-                   'gdwvn': idelw,
-                   'gres': irsln,
-                   'glamC': gwvln_med,
-                   'gResC': grsln_med,
-                   'gwvRng': [min(iwvln), max(iwvln)]}
-        return outdict
-
-    def spect_convolver(self, wvlIN, fluxIN, wvlcen=None, upsample=False):
+    def spect_convolver(self, wave, flux, wavecen=None, oversample=1):
         '''
         Convolves an input spectrum by the spectral resolution.
 
         Parameters
         ----------
-        wvlIN : array
+        wave : array
             Wavelength array of input spectrum
-        fluxIN : array
+        flux : array
             Flux array of input spectrum
-        wvlcen : float, optional
+        wavecen : float, optional
             Central wavelength of a spectral feature, to check if it falls in the range
             of a grating. Default is None.
-        upsample : bool, optional
-            Upsample the spectrum by a factor of 10 before convolution. Default is False.
-
-        Adds/updates the following attributes:
-        R : array
-            Resolution of the instrument
+        oversample : int, optional
+            Oversample the spectrum by this factor before convolution. 
 
         Returns
         -------
-        datOUT : array
+        fluxconv : array
             Convolved spectrum
+
+        '''
+
+        # select the instrument/grating combinations that cover the 
+        # input wavelength of interest; if no wavelength is specified,
+        # all instrument/grating combinations are used
+        InstGratSelect = self.selectInstGrat(wavecen=wavecen)
+        #
+        gwave, gdlam = self.get_InstGrat_waveDlam(InstGratSelect)
+
+        # If MRS ever has grating dispersion files, we just have to comment out
+        # this block and remove the if/else statement.
+        if gwave is None or gdlam is None:
+
+            iwave = wave
+            iflux = flux
+            _, idlam = MRS_dispersion(wave)
+
+        else:
+
+            # find the indices of the input wavelengths that are within the
+            # range of the grating
+            w1 = np.where(wave >= min(gwave))[0]
+            w2 = np.where(wave <= max(gwave))[0]
+            ww = np.intersect1d(w1, w2)
+            # indices of the input wavelengths that are outside the range of 
+            # the grating
+            w1x = np.where(wave < min(gwave))[0]
+            w2x = np.where(wave > max(gwave))[0]
+            # wavelengths and fluxes that are within the range of the grating
+            iwave= wave[ww]
+            iflux = flux[ww]
+
+            # interpolate the dispersion curve to the input wavelengths
+            dlam_interp_fcn = CubicSpline(gwave, gdlam)
+            idlam = dlam_interp_fcn(iwave)
+
+        idsig = idlam/gaussian_sigma_to_fwhm
+        fluxconv = varsmooth(iwave, iflux, idsig, oversample=oversample)
+
+        if self.is_dispobj_mrs(InstGratSelect[0]):
+            return fluxconv
+        else:
+            return np.concatenate((flux[w1x], fluxconv, flux[w2x]))
+
+
+    def selectInstGrat(self, wavecen=None):
+        '''
+        Make a list of instrument/grating combinations to use for convolution.
+        If wavecen is not specified, all instrument/grating combinations are
+        used. The length of the output list must be 1 or 2.
+        
+        If it's 2, the gratings may need to have some overlap in wavelength. 
+        (See get_InstGrat_waveDlam for more details.) Should probably do a check
+        for this ...
+        
+        Parameters
+        ----------
+        wavecen : float, optional
+            Wavelength to check. Default is None, which means all
+            instrument/grating combinations are used.
+        
+        Returns
+        -------
+        InstGratSelect : list
+            List of inst/grat objects to use for convolution. Must
+            have a length of 1 or 2.
 
         Raises
         ------
         SystemExit
+        '''
+        InstGratSelect = list()
+        for inst, gratlist in self.InstGratObjs.items():
+            for grat in gratlist:
+                gwave = self.InstGratObjs[inst][grat].wave
+                if wavecen is None:
+                    InstGratSelect.append(self.InstGratObjs[inst][grat])
+                else:
+                    if (wavecen > gwave[0]) and (wavecen < gwave[-1]):
+                        InstGratSelect.append(self.InstGratObjs[inst][grat])
+                
 
+        # Not sure if this deserves a SystemExit, but it's a way to
+        # catch the length errors.
+        if InstGratSelect.__len__() == 0:
+            raise SystemExit('spectConvol.selectInstGrat: ' +
+                'No specified inst/grat combination covers the line ' +
+                'at ' + wavecen.__str__() + ' μm.')
+        elif InstGratSelect.__len__() > 2:
+            if wavecen is None:
+                raise SystemExit('spectConvol.selectInstGrat: ' +
+                    'More than 2 inst/grat combinations are specified.')
+            else:
+                raise SystemExit('spectConvol.selectInstGrat: ' +
+                    'More than 2 inst/grat combinations cover the line ' +
+                    'at ' + wavecen.__str__() + ' μm.')
+
+        return InstGratSelect
+    
+
+    def get_InstGrat_waveDlam(self, InstGratSelect):
+        '''
+        Get wavelength and dlambda for selected grating(s). If one grating,
+        return the wavelength and dlambda. If two gratings, return the
+        combined wavelength and dlambda, with the overlap region split
+        between the two gratings. If MRS is used, return None for both, 
+        as we calculate the dispersion from a formula.
+
+        Parameters
+        ----------
+        InstGratSelect : list
+            List of instrument/grating combinations. The length of the list is 
+            1 or 2. If 2 are specified, they must have overlapping wavelengths.
+        
+        Returns
+        -------
+        gwave : array
+            Wavelength of the grating(s).
+        dlam : float
+            Delta lambda of the grating(s).
         '''
 
-        # This assumes that the spectrum has a discrete feature with
-        # central wavelength wvlcen, and checks to see if it's in the
-        # wavelength range of one (or two) of the gratings specified
-        if wvlcen is not None:
-            instList = []
-            for inst, gratlist in self.init_inst.items():
-                if inst != 'JWST_MIRI':
-                    for grat in gratlist:
-                        wvrng = self.init_inst[inst][grat]['gwvRng']
-                        if (wvlcen > wvrng[0]) and (wvlcen < wvrng[1]):
-                            instList.append([inst, grat, wvrng])
-                        else:
-                            raise SystemExit('spectConvol.spect_convolver: ' +
-                                             'no specified tel/inst/grating ' +
-                                             'combination covers the line ' +
-                                             'at ' + wvlcen)
-                else:
-                    instList.append([inst, 'n/a',
-                                     [wvlIN[0], wvlIN[len(wvlIN)-1]]])
+        # Case of one or two MRS gratings covering the same wavelength.
+        # Then no interpolation is necessary, we just reapply the formula at the
+        # input wavelength(s).
+        # If MRS ever has grating dispersion files, we just have to comment out
+        # this block and remove the if/else statement.
+        if self.is_dispobj_mrs(InstGratSelect[0]):
 
-        # case MIRI
-        if instList[0][0] == 'JWST_MIRI':
-
-            # https://jwst-docs.stsci.edu/jwst-mid-infrared-instrument/miri-observing-modes/miri-medium-resolution-spectroscopy#MIRIMediumResolutionSpectroscopy-wavelengthMRSwavelengthcoverageandspectralresolution
-            R = 4603. - 128. * wvlIN + 10.**(-7.4 * wvlIN)
-            igdisp2 = wvlIN / R
-            igResM = np.median(R)
-            iwvIN = wvlIN
-            idatIN = fluxIN
+            gwave, gdlam = None, None
 
         else:
-
-            # grating wavelength overlap check --> take the middle point and
-            # stitch together
-            if len(instList) == 2:
-                wvmin, wvmax = 0, 0
-                jwvrng, jgwave, jgdwvn, jgResM = [], [], [], []
-                for instoverlap in instList:
-                    jinst = instoverlap[0]
-                    jigrat = instoverlap[1]
-                    jwvrng.append(instoverlap[2])
-                    jgwave.append(self.init_inst[jinst][jigrat]['gwave'])
-                    jgdwvn.append(self.init_inst[jinst][jigrat]['gdwvn'])
-                    jgResM.append(self.init_inst[jinst][jigrat]['gResC'])
-                jmin, jmax = [jwvrng[0][0], jwvrng[1][0]], \
-                    [jwvrng[0][1], jwvrng[1][1]]
-                wvmin = np.max(jmin)
-                wvmax = np.min(jmax)
-                wvmid = np.median([wvmin, wvmax])
-                wlo = np.where(jmin == wvmin)[0][0]
-                wup = np.where(jmax == wvmax)[0][0]
-                wj1 = np.where(jgwave[wlo] < wvmid)[0]
-                wj2 = np.where(jgwave[wup] > wvmid)[0]
-                igwave = np.concatenate((jgwave[wlo][wj1], jgwave[wup][wj2]))
-                igdwvn = np.concatenate((jgdwvn[wlo][wj1],  jgdwvn[wup][wj2]))
-                igResM = np.median(jgResM)
-
+            # Case of two gratings; must have overlapping wavelengths
+            if len(InstGratSelect) == 2:
+                # arrays to hold wavelength ranges, wavelengths, and dlambda for
+                # each grating
+                gwaveranges, gwaves, gdlams = [], [], []
+                # loop through each grating and populate thse arrays
+                for overlap in InstGratSelect:
+                    #iinst = overlap[0]
+                    #igrat = instoverlap[1]
+                    gwaveranges.append([overlap.wave[0], overlap.wave[-1]])
+                    gwaves.append(overlap.wave)
+                    gdlams.append(overlap.dlam)
+                    # these are the minima and maxima of the wavelength ranges
+                    gwavemins, gwavemaxs = [gwaveranges[0][0], gwaveranges[1][0]], \
+                        [gwaveranges[0][1], gwaveranges[1][1]]
+                    # the max of the range mins is the overlap minimum, the min of the 
+                    # range maxes is the overlap maximum. The indices of these will
+                    # pick out the correct grating to use for the lower and
+                    # upper halves of the overlap region
+                    overlapmin, igratingslo = np.max(gwavemins), np.amax(gwavemins)
+                    overlapmax, igratingshi = np.min(gwavemaxs), np.amin(gwavemaxs)
+                    # the median of these is the overlap midpoint
+                    overlapmid = np.median([overlapmin, overlapmax])
+                    # indices of the wavelengths that are less than the overlap
+                    igwaveslo = np.where(gwaves[igratingslo] < overlapmid)[0]
+                    # indices of the wavelengths that are greater than the overlap
+                    igwaveshi = np.where(gwaves[igratingshi] >= overlapmid)[0]
+                    # combined, single array of grating wavelengths and dlambda
+                    gwave = np.concatenate((gwaves[igratingslo][igwaveslo], 
+                        gwaves[igratingshi][igwaveshi]))
+                    gdlam = np.concatenate((gdlams[igratingslo][igwaveslo], 
+                        gdlams[igratingshi][igwaveshi]))
+            # Case of one grating
             else:
 
-                jinst = instList[0][0]
-                jigrat = instList[0][1]
-                igwave = self.init_inst[jinst][jigrat]['gwave']
-                igdwvn = self.init_inst[jinst][jigrat]['gdwvn']
-                igResM = self.init_inst[jinst][jigrat]['gResC']
+                gwave = InstGratSelect[0].wave
+                gdlam = InstGratSelect[0].dlam
 
-            w1 = np.where(wvlIN >= min(igwave))[0]
-            w1x = np.where(wvlIN < min(igwave))[0]
-            w2 = np.where(wvlIN <= max(igwave))[0]
-            w2x = np.where(wvlIN > max(igwave))[0]
-            ww = np.intersect1d(w1, w2)
-            iwvIN = wvlIN[ww]
-            idatIN = fluxIN[ww]
+        return gwave, gdlam
 
-            func1 = CubicSpline(igwave, igdwvn)
-            igdisp2 = func1(iwvIN)
 
-            #iR_datconv = np.zeros(len(ww))
-
-        if self.init_meth == 0:
-            iR_datconv = \
-                self.flat_convolve(iwvIN, idatIN, igResM, WCEN=None)
-            self.R = igResM
-        # elif self.init_meth == 1:  # needs debugging
-        #     iR_datconv = \
-        #         self.gaussian_filter1d_looper(iwvIN, idatIN, igdisp)
-        elif self.init_meth == 2:
-            iR_datconv = \
-                self.gaussian_filter1d_ppxf(iwvIN, idatIN, igdisp2,
-                                            upsample=upsample)
-            self.R = iwvIN / igdisp2
-
-        if instList[0][0] == 'JWST_MIRI':
-            datOUT = iR_datconv
-        else:
-            datOUT = np.concatenate((fluxIN[w1x], iR_datconv, fluxIN[w2x]))
-
-        return datOUT
-
-    # METHOD 0
-    def flat_convolve(self, wvlIN, fluxIN, Rspec, WCEN=None):
+    def get_R(self, wave):
         '''
-        Convolves an input spectrum by a flat resolution R.
+        Interpolate a dispersion curve to a new wavelength(s). This is
+        used to get the resolving power at a new wavelength.
 
         Parameters
         ----------
-        wvlIN : array
-            Wavelength array of input spectrum 
-        fluxIN : array
-            Flux array of input spectrum
-        Rspec : float
-            Resolution of the instrument
-        WCEN : float, optional
-            Central wavelength of a spectral feature. Default is None.
-        
-        Returns
-        -------
-        datconvol : array
-            Convolved spectrum
-
+        wave : float or array
+            Wavelength(s) to which to interpolate.
         '''
 
-        wdiff = wvlIN[1]-wvlIN[0]
-        mw = WCEN
-        if WCEN is None:
-            mw = np.median(wvlIN)
-        fwhm = (mw/Rspec)  # km/s
-        sigma = fwhm/gaussian_sigma_to_fwhm/wdiff
-        datconvol = gaussian_filter1d(fluxIN, sigma)
-        return datconvol
-
-    '''
-    # METHOD 1
-    def gaussian_filter1d_looper(self, wvlIN, flxIN, DISP_INFO):
-        
-        Convolves an input spectrum by ...
-
-        Parameters
-        ----------
-        wvlIN : array
-            Wavelength array of input spectrum
-        flxIN : array
-            Flux array of input spectrum
-        DISP_INFO : array
-
-        Returns
-        -------
-        dcOUT : array
-            Convolved spectrum
-
-        wdiff = wvlIN[1]-wvlIN[0]
-        fwhm = DISP_INFO[1]
-        sigma = fwhm/gaussian_sigma_to_fwhm/wdiff
-        pwvn = []
-        pdat = []
-        psig = []
-        ww = np.where(wvlIN >= min(DISP_INFO[0]))[0]
-        cwvn = wvlIN[ww]
-        cflx = flxIN[ww]
-
-        wpix = 5
-        wi = 0
-        while cwvn[wi+wpix] <= max(DISP_INFO[0]):
-            iwvn = cwvn[wi:wi+wpix]
-            idat = cflx[wi:wi+wpix]
-            isig = sigma[wi:wi+wpix]
-            pwvn.append(iwvn)
-            pdat.append(idat)
-            psig.append(np.median(isig))
-            wi += wpix
-
-        datconvol = []
-        for ip in range(len(pwvn)):
-            iflx = pdat[ip]
-            gg = gaussian_filter1d(iflx, psig[ip], mode='constant',
-                                   cval=pdat[ip][0])
-            datconvol.append(gg)
-        dcOUT = np.array(datconvol).flatten()
-        wvOUT = np.array(pwvn).flatten()
-        return wvOUT, dcOUT
-    '''
-   
-    # METHOD 2
-    def gaussian_filter1d_ppxf(self, wvlIN, flxIN, DISP_INFO, upsample=False):
-        '''
-        Convolves an input spectrum by a wavelength dependent dispersion curve.
-        
-        Parameters
-        ----------
-        wvlIN : array
-            Wavelength array of input spectrum
-        flxIN : array
-            Flux array of input spectrum
-        DISP_INFO : array
-            Dispersion information
-        upsample : bool, optional
-            Upsample the spectrum by a factor of 10 before convolution. Default is False.
-        
-        Returns
-        -------
-        conv_spectrum : array
-            Convolved spectrum
-        
-        '''
-
-        wdiff = wvlIN[1]-wvlIN[0]
-
-        # option to upsample by factor of 10 before convolution
-        if upsample:
-            specint = CubicSpline(wvlIN, flxIN)
-            fwhmint = CubicSpline(wvlIN, DISP_INFO)
-            ss = 10
-            nwvl = wvlIN.shape[0]
-            nwvlss = (nwvl-1)*ss+1
-            wvlss = np.arange(nwvlss)*(wdiff/float(ss)) + wvlIN[0]
-            spec = specint(wvlss)
-            fwhm = fwhmint(wvlss)
+        instgrat = self.selectInstGrat(wavecen=wave)
+        if self.is_dispobj_mrs(instgrat[0]):
+            R, _ = MRS_dispersion(wave)
         else:
-            spec = copy.deepcopy(flxIN)
-            fwhm = DISP_INFO
+            gwave, gdlam = self.get_InstGrat_waveDlam(instgrat)
+            dlamint = CubicSpline(gwave, gdlam)
+            R = wave/dlamint(wave)
+        return R
 
-        sigma = np.divide(fwhm, (2*np.sqrt(2*np.log(2))))/wdiff
 
-        p = int(np.ceil(np.max(3*sigma)))
-        m = 2*p + 1
-        x2 = np.linspace(-p, p, m)**2
-        n = spec.size
-        a = np.zeros((m, n))
-
-        for j in range(m):
-            a[j, p:-p] = spec[j:n-m+j+1]
-
-        gau = np.exp(-x2[:, None]/(2*sigma**2))
-        gau = np.divide(gau, np.sum(gau, 0)[None, :])
-
-        if upsample:
-            conv_spectrumss = np.sum(np.multiply(a, gau), 0)
-            conv_spectrumint = CubicSpline(wvlss, conv_spectrumss)
-            conv_spectrum = conv_spectrumint(wvlIN)
+    def is_dispobj_mrs(self, InstGratObj):
+        '''
+        Convenience method to check if the dispersion object is for MRS.
+        '''
+        if isinstance(InstGratObj, InstGratDispersion):
+            if InstGratObj.inst == 'JWST_MIRI':
+                return True
+            else:
+                return False
         else:
-            conv_spectrum = np.sum(np.multiply(a, gau), 0)
-
-        return conv_spectrum
+            return False
 
 
-class dispFile:
+class dispersion(object):
     '''
-    Class with methods to write dispersion files. Methods output files.
+    Class to carry dispersion information.
 
     Attributes
     ----------
-    saveDIR : str
-        Directory to save dispersion files.
+    wave : array
+        Wavelength.
+    R : array
+        Resolving power.
+    dlam : array
+        Delta lambda.
+    dispdir : str
+        Directory that holds the file of the dispersion data, if any.
+    filename : str
+        Filename of the dispersion data file, if any.
+    
+    Methods:
+    --------
+    setdir(dispdir=None)
+        Set the directory of the associated dispersion file.
+    
     
     '''
 
     def __init__(self):
         '''
-        Instantiate the dispFile class.
+        Instantiate the dispersion class.
         '''
-        self.saveDIR = \
-            os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],
-                         'dispersion_files')
-        return
+        self.wave = None
+        self.R = None
+        self.dlam = None
 
-    def make_custom_dispersion(self, wavelen, R=None, KMS=None, DLAMBDA=None,
-                               FILENAME=None, OVERWRITE=False):
+        self.dispdir = None
+        self.filename = None
+
+    def setdir(self, dispdir=None):
         '''
-        Create dispersion file from array of R, KMS, or DLAMBDA.
+        Set the directory of the associated dispersion file.
+        '''
+        if dispdir is not None:
+            self.dispdir = dispdir
+        # Don't hardwire in the q3dfit directory.
+        #else:
+        #    self.dispdir = \
+        #        os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],
+        #        'dispersion_files')
+
+    def read(self, filename):
+        '''
+        Get dispersion data from a dispersion file(s). The file must be in
+        FITS format. The dispersion file must have a wavelength array and
+        a dispersion array. The dispersion array can be either R, dlambda,
+        or dvel (delta velocity). The method chooses from these in order
+        of preference dvel, R, dlambda, if more than one is present.
+        It then computes R and dlambda and adds these to the object.
 
         Parameters
         ----------
-        wavelen : array
-            Wavelength array
-        R : array, optional
-            Resolving power array. Default is None.
-        KMS : array, optional
-            Velocity array. Default is None.
-        DLAMBDA : array, optional
-            Delta lambda array. Default is None.
-        FILENAME : str, optional
-            Filename of the output dispersion file. Default is timestamped 
-            custom_disp.fits.
-        OVERWRITE : bool, optional
+        filename : str
+            Filename and path of the dispersion file to load. 
+        
+        Returns
+        -------
+        None.
+        '''
+
+        with fits.open(filename) as hdul:
+            indisp = hdul[1].data
+
+        # Some methods here assume wavelength is in increasing order
+        # Should really do a check here for that ...
+        try: 
+            self.wave = indisp['WAVELENGTH']  # wavelength [μm]
+        except:
+            raise SystemExit("dispersion.read: no wavelength array found in " +
+                "dispersion file.")
+        
+        # types of dispersion, in order of preference
+        # if more than one is present, the first one is used
+        types = ['DVEL', 'R', 'DLAMBDA']
+        type = None # default
+         # get the column names to look for the dispersion type
+        cols = indisp.columns.names
+        for t in types:
+            if t in cols:
+                disp = indisp[t]
+                type = t
+                break
+        if type is None:
+            raise SystemExit("dispersion.read: no viable type found in " +
+                "dispersion file. Options are 'R', 'DVEL', or 'DLAMBDA'.")
+
+        # Compute R and dlam from the dispersion array. This will read
+        # wavelength from the object.
+        self.compute_Rdlam(disp, type=type)
+
+
+    def write(self, filename, wave=None, disp=None, type='R', 
+              overwrite=False):
+        '''
+        Write dispersion file from dispersion data. Can specify the
+        dispersion quantity (disp) and type (type) to write. If not
+        specified, the method uses the dispersion data in the object, 
+        starting with R, then dlambda.
+
+        Parameters
+        ----------
+        filename : str
+            Filename and full path of the output dispersion file.
+        wave : array, optional
+            Wavelength array. Take from the object if not provided.
+        disp : array, optional
+            Dispersion array; either R, dlambda, or dvel. If not 
+            specified, the method uses the dispersion data in the object.
+        type : str, optional
+            Type of dispersion. Options are 'R', 'DVEL', or 'DLAMBDA'.
+            Default is 'R'.
+        overwrite : bool, optional
             Overwrite existing dispersion file. Default is False.
         
         Returns
         -------
-        filepath : str
-            Full path of the output dispersion file.
-        
+        None
+
         Raises
         ------
         SystemExit
 
         '''
-        c1 = fits.Column(name='WAVELENGTH', format='E', array=wavelen)
-        clist = [c1]
-        if R is not None:
-            clist.append(fits.Column(name='R', format='E', array=R))
-        elif DLAMBDA is not None:
-            clist.append(fits.Column(name='DLAM', format='E', array=DLAMBDA))
-        elif KMS is not None:
-            clist.append(fits.Column(name='VELOCITY', format='E', array=KMS))
 
+        if wave is None:
+            if self.wave is None:
+                raise SystemExit("dispersion.write: no wavelength array " +
+                                 "provided.")
+            wave = self.wave
+        if type is None:
+            raise SystemExit("dispersion.write: no dispersion type " +
+                                 "provided.")
+        c1 = fits.Column(name='WAVELENGTH', format='E', array=wave)
+        clist = [c1]
+        # If no dispersion array is provided, use the one in the object.
+        # Start with R, then dlambda.
+        if disp is None:
+            if self.R is None:
+                if self.dlam is None:
+                    raise SystemExit("dispersion.write: no dispersion array " +
+                                 "provided.")
+                else:
+                    disp = self.dlam
+                    type = 'DLAMBDA'
+            else:
+                disp = self.R
+                type = 'R'
+        clist.append(fits.Column(name=type, format='E', array=disp))
         cols = fits.ColDefs(clist)
         tbhdu = fits.BinTableHDU.from_columns(cols)
+        tbhdu.writeto(filename, overwrite=overwrite)
 
-        if FILENAME is None:
-            import time
-            filename = 'custom_'+str(int(time.time()))+'_disp.fits'
-        else:
-            filename = FILENAME+'_disp.fits'
-        filepath = os.path.join(self.saveDIR, filename)
-        print('writing dispersion to: ', filepath)
-        tbhdu.writeto(filepath, overwrite=OVERWRITE)
 
-        return filepath
-
-    def make_dispersion(self, dispValue, WAVELEN=[0.05, 100.], TYPE='R',
-                        OVERWRITE=True):
+    def compute_Rdlam(self, disp, type=None, wave=None):
         '''
-        Create dispersion file with constant R, KMS, or DLAMBDA.
+        Compute R and dlam for the dispersion curve from dispersion 
+        value(s). If wave is not given, and the object does not have
+        a wavelength array, the method uses a default wavelength array.
+
+        The attributes R, dlam, and wave are updated.
 
         Parameters
         ----------
-        dispValue : float
-            Dispersion value
-        WAVELEN : array, optional
-            Wavelength range. Default is [0.05, 100.], in micron.
-        TYPE : str, optional
-            Type of dispersion. Default is 'R'.
-        OVERWRITE : bool, optional
-            Overwrite existing dispersion file. Default is True.
+        disp : float or array
+            Dispersion values.
+        type : str, optional
+            Type of dispersion. Options are 'R', 'DVEL', or 'DLAMBDA'.
+        wave : array, optional
+            Wavelength array.
         
         Returns
         -------
-        filepath : str
-            Full path of the output dispersion file.
-
-        Raises
-        ------
-        SystemExit
+        None
 
         '''
-        if not isinstance(dispValue, (int, float)):
-            raise SystemExit("dispFile.make_dispersion: incorrect syntax. " +
-                             "dispValue must be a real number.")
 
-        yrange = dispValue
-        if type(yrange) is not tuple or type(yrange) is not list:
-            yrange = [yrange, yrange]
-
-        gwvln = np.linspace(WAVELEN[0], WAVELEN[1], 10000)
-        c1 = fits.Column(name='WAVELENGTH', format='E', array=gwvln)
-
-        yy = CubicSpline(WAVELEN, yrange)
-        yintp = yy(gwvln)
-        clist = [c1]
-        ig = TYPE.lower()
-        if TYPE.upper() == 'R':
-            print("R = ", dispValue)
-            grsln = yintp
-            clist.append(fits.Column(name='R', format='E', array=grsln))
-        elif TYPE.upper() == 'DLAMBDA':
-            print("dlambda [Å] = ", dispValue)
-            dlambda = yintp * 1e-4   # convert from Angstrom to micron
-            gdisp = dlambda
-            clist.append(fits.Column(name='DLAM', format='E', array=gdisp))
-        elif TYPE.upper() == 'KMS':
-            print("velocity = ", dispValue, "km/s")
-            vel = yintp
-            clist.append(fits.Column(name='VELOCITY', format='E', array=vel))
+        if wave is None:
+            # Get it from the object if it's already there
+            if self.wave is None:
+                # Default wavelength array is 0.05 to 100 micron,
+                # spacing of 0.01 micron = 100 Angstrom
+                self.wave = np.linspace(0.05, 100., int((100.-0.05)/0.01))
         else:
-            raise SystemExit("dispFile.make_dispersion: incorrect syntax. " +
+            self.wave = wave
+
+        # Match dispersion length to wavelength length
+        if isinstance(disp, (int, float)):
+            disparr = np.full(self.wave.__len__(), disp)
+        elif disp.__len__() != self.wave.__len__():
+            raise SystemExit("dispersion.compute_Rdlam: dispersion and " + 
+                             "wavelength arrays must have the same length.")
+        else:
+            disparr = disp
+
+        if type is None:
+            raise SystemExit("dispersion.compute_Rdlam: incorrect syntax. " +
                              "TYPE must be 'R', 'kms' , or 'dlambda'")
+        elif type.upper() == 'R':
+            self.R = disparr
+            self.dlam = self.wave/self.R
+        elif type.upper() == 'DVEL':
+            self.R = c.to('km/s').value/disparr
+            self.dlam = self.wave/self.R
+        elif type.upper() == 'DLAMBDA':
+            self.dlam = disparr
+            self.R = self.wave/self.dlam
 
-        cols = fits.ColDefs(clist)
-        tbhdu = fits.BinTableHDU.from_columns(cols)
 
-        filename = 'flat_'+ig+str(dispValue)+'_disp.fits'
-        filepath = os.path.join(self.saveDIR, filename)
-        print('Writing dispersion to: ', filename)
-        tbhdu.writeto(filepath, overwrite=OVERWRITE)
+class InstGratDispersion(dispersion):
 
-        return filepath
+    def __init__(self, inst, grat, dispdir=None):
+        '''
+        Instantiate the InstGratDispersion class. This is a subclass of
+        dispersion, specifically designed for instruments/gratings
+        with dispersion files. This sets the inst/grat values and defines
+        the filename of the dispersion file. It also sets the directory.
+
+        Parameters
+        ----------
+        inst : str
+            Instrument name.
+        grat : str
+            Grating name.
+
+        Returns
+        -------
+        None
+
+        '''
+
+        super().__init__()
+        self.inst = inst
+        self.grat = grat
+        self.filename = '_'.join([inst, grat]).lower() + '_disp.fits'
+        self.setdir(dispdir)
+    
+    def readInstGrat(self):
+        '''
+        Read the dispersion file.
+        '''
+        try:
+            self.read(os.path.join(self.dispdir, self.filename))
+        except:
+            raise SystemExit('The instrument/grating ' +
+                'combination ' + self.inst + '/' + self.grat + 
+                ' cannot be read.')
+        
+
+    def writeInstGrat(self, wave=None, disp=None, type='R', overwrite=False):
+        '''
+        Write the dispersion file.
+
+        Parameters
+        ----------
+        wave : array, optional
+            Wavelength array. Default is None, which means the object's
+            wavelength array is used.
+        disp : array, optional
+            Dispersion array. Default is None, which means the object's
+            dispersion array is used.
+        type : str, optional
+            Type of dispersion. Default is 'R'. Options are 'R', 'DVEL',
+            or 'DLAMBDA'.
+
+        '''
+        self.write(os.path.join(self.dispdir, self.filename), 
+                   wave=wave, disp=disp, type=type, overwrite=overwrite)
+    
+
+    def get_MRS_Rdlam(self):
+        '''
+        Populate the dispersion object with the MRS dispersion curve.
+        Analogous to readInstGrat, but for the MRS grating. Won't be
+        needed if MRS dispersion files are provided.
+
+        This updates attributes R and dlam, and wave if self.wave is None.
+        '''
+        if self.wave is None:
+            # Default range. This is the range of the MRS.
+            # Spacing of 0.01 micron.
+            self.wave = np.linspace(5.0, 28.8, int((28.8-5.0)/0.01))
+        self.R, self.dlam = MRS_dispersion(self.wave)
+
+
+class FlatDispersion(dispersion):
+
+    def __init__(self, disp, type, wave=None):
+        '''
+        Instantiate the FlatDispersion class. This is a subclass of
+        dispersion, specifically designed for flat dispersion curves --
+        i.e. that have a constant dispersion value R, dlambda, or dvel.
+        This sets the flat dispersion value and type, and computes
+        R and dlambda.
+
+        Parameters
+        ----------
+        disp : value
+        type : str
+        wave : array, optional
+
+        Returns
+        -------
+        None
+
+        '''
+        super().__init__()
+        self.flatdisp = disp
+        self.flattype = type
+        self.compute_Rdlam(disp, type, wave=wave)
+
+
+    def writeFlat(self, dispdir=None, wave=None, overwrite=False):
+        '''
+        Write the flat dispersion file.
+
+        Parameters
+        ----------
+        dispdir : str, optional
+            Directory to write the dispersion file. Default is None.
+        wave : array, optional
+            Wavelength array. Default is None, which means the object's
+            wavelength array is used.
+        overwrite : bool, optional
+            Overwrite existing dispersion file. Default is False.
+        '''
+    
+        self.filename = 'flat_'+self.flattype.lower()+ \
+            str(self.flatdisp)+'_disp.fits'
+        self.setdir(dispdir)
+        self.write(os.path.join(self.dispdir, self.filename), 
+                   wave=wave, disp=self.flatdisp, type=self.flattype, 
+                   overwrite=overwrite)
+
+
+def MRS_dispersion(wave):
+    '''
+    Calculate resolution vs. wavelength from Jones et al. 2023
+    https://ui.adsabs.harvard.edu/abs/2023MNRAS.523.2519J/abstract
+    https://jwst-docs.stsci.edu/jwst-mid-infrared-instrument/miri-observing-modes/miri-medium-resolution-spectroscopy#MIRIMediumResolutionSpectroscopy-wavelengthMRSwavelengthcoverageandspectralresolution
+
+    Parameters
+    ----------
+    wave : array
+        Wavelength array.
+    
+    Returns
+    -------
+    R : array
+        Resolving power
+    dlam : array
+        Delta lambda
+    '''
+
+    R = 4603. - 128. * wave + 10.**(-7.4 * wave)
+    dlam = wave / R
+
+    return R, dlam

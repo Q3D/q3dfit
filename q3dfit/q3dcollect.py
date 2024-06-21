@@ -32,7 +32,8 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True, compsortpar='sigma',
     quiet: in, optional, type=boolean
         Print error and progress messages. Propagates to most/all subroutines.
     compsortpar: in, optional, type=string, default='sigma'
-        Parameter by which to sort components. Options are 'sigma' and 'flux'.
+        Parameter by which to sort components. Options are 'sigma', 'flux', 
+        'wave'.
     compsortdir: in, optional, type=string, default='up'
         Direction in which to sort components. Options are 'up' and 'down'.
     ignoreres: in, optional, type=boolean, default=False

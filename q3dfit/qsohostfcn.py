@@ -47,15 +47,15 @@ def setup_qso_mult_exp(p):
                     independent_vars=['wave', 'qsotemplate'],
                     prefix=model_name)
     qso_mult_exp_pars = qsotemplate_x_exp.make_params()
-    qso_mult_exp_pars[model_name+'a'].set(value=p[0], min=np.finfo(float).eps)
-    qso_mult_exp_pars[model_name+'b'].set(value=p[1], min=np.finfo(float).eps)
-    qso_mult_exp_pars[model_name+'c'].set(value=p[2], min=np.finfo(float).eps)
-    qso_mult_exp_pars[model_name+'d'].set(value=p[3], min=np.finfo(float).eps)
-    qso_mult_exp_pars[model_name+'e'].set(value=p[4], min=np.finfo(float).eps)
-    qso_mult_exp_pars[model_name+'f'].set(value=p[5], min=np.finfo(float).eps)
-    qso_mult_exp_pars[model_name+'g'].set(value=p[6], min=np.finfo(float).eps)
-    qso_mult_exp_pars[model_name+'h'].set(value=p[7], min=np.finfo(float).eps)
-    qso_mult_exp_pars[model_name+'i'].set(value=p[8], min=np.finfo(float).eps)
+    
+    for counter, i in enumerate(['a', 'b', 'c', 'd', 'e',
+                                 'f', 'g', 'h', 'i']):
+        if not np.isnan(p[counter]):
+            qso_mult_exp_pars[model_name+i].set(value=p[counter],
+                                                min=np.finfo(float).eps)
+        else:
+            qso_mult_exp_pars[model_name+i].set(value=np.finfo(float).eps,
+                                                vary=False)
 
     return qsotemplate_x_exp, qso_mult_exp_pars
 

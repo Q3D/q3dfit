@@ -175,11 +175,11 @@ class Cube:
                 self.var = copy.copy(uncert) ** 2.
             # if uncert = variance:
             else:
-                if np.where(self.var < 0).any():
+                if (uncert < 0).any():
                     print('Cube: Negative values encountered in variance ' +
                           'array. Taking absolute value.', file=logfile)
                 self.var = np.abs(copy.copy(uncert))
-                self.err = copy.copy(uncert) ** 0.5
+                self.err = np.abs(copy.copy(uncert)) ** 0.5
         else:
             self.var = None
             self.err = None

@@ -530,11 +530,11 @@ class Cube:
         print(f"Output wave units: {self.waveunit_out}")
         print(f"NB: q3dfit uses output units for internal calculations.")
 
-    def convolve(self, refsize, wavescale='none', method='circle'):
+    def convolve(self, refsize, wavescale=False, method='circle'):
 
         import photutils
-        from scipy.ndimage import convolve  # gaussian_filter, median_filter
-
+        from astropy.convolution import convolve, Box2DKernel, Gaussian2DKernel, \
+            Tophat2DKernel
         '''
         Spatially smooth a cube.
 
@@ -542,10 +542,10 @@ class Cube:
         ----------
         refsize : float
             Pixel size for smoothing algorithm.
-        wavescale : str, optional
-            Option to scale smoothing size with wavelength
-        method : str, optional
-            Smoothing method.
+        wavescale : bool, optional
+            Option to scale smoothing size with wavelength. Default is False.
+        method : str, optional; default='circle'
+            Smoothing method. Options are 'circle', 'Gaussian', and 'boxcar'.
 
         Returns
         -------
@@ -553,43 +553,42 @@ class Cube:
 
         '''
 
-        # check for flux/err = inf/nan or bad dq
-        indx_bd = (np.isnan(self.dat) | np.isinf(self.dat) |
-                   np.isnan(self.var) | np.isinf(self.var) |
+        # check for flux/err = inf or bad dq
+        # set to nan, as convolve will deal with nans
+        # set dq to 1 to flag as bad
+        # [astropy.convolve can interpolate over nans;
+        # does this mean we don't need to set dq to 1?]
+        indx_bd = (np.isinf(self.dat) | np.isinf(self.var) |
                    (self.dq != 0)).nonzero()
-        self.dat[indx_bd] = 0.
-        self.err[indx_bd] = 0.
-        self.var[indx_bd] = 0.
+        indx_bd = (np.isinf(self.dat) | np.isinf(self.var) |
+                   (self.dq != 0)).nonzero()
+        self.dat[indx_bd] = np.nan
+        self.err[indx_bd] = np.nan
+        self.var[indx_bd] = np.nan
         self.dq[indx_bd] = 1
 
         # decreasing convolution size with increasing wavelength
-        if wavescale == 'diff':
+        # reference size is at the longest wavelength
+        if wavescale:
             cscale = refsize/max(self.wave)
             sizes = cscale/self.wave
-        elif wavescale == 'none':
+        else:
             sizes = np.ndarray(self.nwave)
             sizes[:] = np.float64(refsize)
 
         for i in np.arange(0, self.nwave):
-            # 2D Gaussian with sigma = 1.5 at long wavelength, 1 at short
-            #if method == 'Gaussian':
-            #   cube_convolved[:,:,i] = gaussian_filter(cube_convolved[:,:,i],
-            #                                           1+sizes[i])
-            #if method == 'median-circular':
-            #    cube_convolved[:,:,i] = median_filter(cube_convolved[:,:,i],
-            #                                          footprint=circular_mask(10))
             if method == 'circle':
-                # mask = circular_mask(np.int(sizes[i]))
-                mask = \
-                    ((photutils.aperture.CircularAperture(
-                        (0., 0.), sizes[i])).to_mask()).data
-                self.dat[:, :, i] = convolve(self.dat[:, :, i], mask)
-                self.var[:, :, i] = convolve(self.var[:, :, i], mask)
-        #if method == 'boxcar':
-        #    cube_convolved[:,:,i] = convolve(cube_convolved[:,:,i],box_mask(2+np.int(sizes[i])))
+                mask = Tophat2DKernel(sizes[i])
+            if method == 'Gaussian':
+                mask = Gaussian2DKernel(sizes[i])
+            if method == 'boxcar':
+                mask = Box2DKernel(sizes[i])
+            self.dat[:, :, i] = convolve(self.dat[:, :, i], mask)
+            self.var[:, :, i] = convolve(self.var[:, :, i], mask)
 
         # re-compute error
         self.err = np.sqrt(self.var)
+
 
     def makeqsotemplate(self, outpy, col=None, row=None, norm=1., plot=True,
                         radius=1.):

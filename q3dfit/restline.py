@@ -193,3 +193,4 @@ def restline(gal, lamb_min, lamb_max, waveunit='micron', outdir=None):
             print('File written as: ' + filename, sep='')
             print('under the directory ' + outdir)
 
+

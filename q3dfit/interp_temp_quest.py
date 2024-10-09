@@ -108,3 +108,4 @@ def example_interp():
 
     wave_noNaN, temp_flux_NoNaN = cutoff_NaNs(source1['WAVE'], temp_flux)
 
+

@@ -1,42 +1,52 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+__all__ = ['checkcomp']
+
+from typing import Any
 import numpy as np
 
 
-def checkcomp(linepars, linetie, ncomp, siglim, sigcut=3., subone=False, ignore=[]):
+def checkcomp(linepars: dict[str, Any], 
+              linetie: dict[str, str], 
+              ncomp: dict[str, int], 
+              siglim: dict[str, np.ndarray],
+              sigcut: float=3., 
+              subone: bool=False, 
+              ignore: list[str]=[]) \
+                -> dict[str, int]:
     """
     Automatically search for "good" components.
 
     Parameters
     ----------
-    linepars: dicts
-        line_fitpars attribute of a q3dout object
-    linetie: dict
-        linetie attribute of a q3din object
-    ncomp: dict
-        # of components for each fitted line
-    siglim: float
+    linepars
+        :py:attr:`~q3dfit.q3dout.q3dout.line_fitpars` attribute of 
+        :py:class:`~q3dfit.q3dout.q3dout`
+    linetie
+        :py:attr:`~qrdfit.q3din.q3din.linetie` attribute of
+        :py:class:`~q3dfit.q3din.q3din`
+    ncomp
+        # of components for each fitted line.
+    siglim
         Sigma limits for emission lines.
-    sigcut: float, optional, default=3.
-        Sigma threshold in flux for rejection of a component
-    subone: bool, optional, default=False
-        Remove only one component if multiple lines are found to be
+    sigcut
+        Optional. Sigma threshold in flux for rejection of a component.
+        Default is 3.
+    subone
+        Optional. If True, remove only one component if multiple lines are found to be
         insignificant. Useful when degeneracy between components
         lowers significance for all components, but some components
-        still exist.
-    ignore: array, optional
-        Array of lines to ignore in looking for good copmonents,
-        array of string-typed elements.
+        still exist. Default is False.
+    ignore
+        Optional. Array of lines to ignore in looking for good copmonents,
+        array of string-typed elements. Default is empty list.
 
     Returns
     -------
-    newncomp: dict
-        dictionary of # of components for each unique linetie anchor.
-        The input dictionary ncomp is also updated to reflect correct new # of
-        components.
-
-    Notes
-    -----
+    dict[str, int]
+        # of good components for each unique linetie anchor. The input ncomp is also 
+        updated to reflect correct new # of components.
 
     """
 
@@ -50,7 +60,7 @@ def checkcomp(linepars, linetie, ncomp, siglim, sigcut=3., subone=False, ignore=
     # each key consisting of the tied lines.
     newlinetie = dict()
     # Find unique anchors
-    uanchors = np.unique(sorted(linetie.values()))
+    uanchors = np.unique(sorted(linetie.values())) # type: ignore
     for key in uanchors:
         newlinetie[key] = list()
     for key, val in linetie.items():
@@ -59,7 +69,7 @@ def checkcomp(linepars, linetie, ncomp, siglim, sigcut=3., subone=False, ignore=
     # Loop through anch
     for key, tiedlist in newlinetie.items():
         if ncomp[key] > 0:
-            goodcomp = np.zeros(ncomp[key], dtype=int)
+            goodcomp = np.zeros(ncomp[key], dtype=np.int8)
             # badcomp = np.zeros(ncomp[key], dtype=int) + 1
             # Loop through lines tied to each anchor,
             # looking for good components
@@ -81,9 +91,11 @@ def checkcomp(linepars, linetie, ncomp, siglim, sigcut=3., subone=False, ignore=
                         (linepars['fluxpk_obs'][line][:ncomp[line]] >
                          sigcut*linepars['fluxpkerr_obs'][line][:ncomp[line]])
                     igdsiglo = \
-                        (linepars['sigma'][line][:ncomp[line]] > siglim[0])
+                        (linepars['sigma'][line][:ncomp[line]] > 
+                         siglim[line][:ncomp[line],0])
                     igdsighi = \
-                        (linepars['sigma'][line][:ncomp[line]] < siglim[1])
+                        (linepars['sigma'][line][:ncomp[line]] < 
+                         siglim[line][:ncomp[line],1])
                     igd = igdflx & igdsiglo & igdsighi
                     # Removing this criterion fixes issues where
                     # fitter can't return parameter errors; focusing on
@@ -103,4 +115,4 @@ def checkcomp(linepars, linetie, ncomp, siglim, sigcut=3., subone=False, ignore=
                 for line in tiedlist:
                     ncomp[line] = newncomp[key]
 
-    return(newncomp)
+    return newncomp

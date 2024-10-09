@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>q3dfit.q3dcollect &mdash; q3dfit 1.1.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=00f267c6"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            q3dfit
+          </a>
+              <div class="version">
+                1.1.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">q3dfit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fitting.html">Fitting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../MIR-configuration.html">MIR Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html">User modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#classes">Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#internal-modules">Internal modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">q3dfit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">q3dfit.q3dcollect</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for q3dfit.q3dcollect</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="kn">import</span> <span class="nn">copy</span> <span class="k">as</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">importlib.resources</span> <span class="k">as</span> <span class="nn">pkg_resources</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span> <span class="nn">astropy.table</span> <span class="kn">import</span> <span class="n">Table</span>
+
+<span class="kn">from</span> <span class="nn">q3dfit.data</span> <span class="kn">import</span> <span class="n">linelists</span>
+<span class="kn">import</span> <span class="nn">q3dfit.q3dutil</span> <span class="k">as</span> <span class="nn">q3dutil</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">q3din</span><span class="p">,</span> <span class="n">q3dout</span>
+
+
+<div class="viewcode-block" id="q3dcollect">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.q3dcollect.q3dcollect">[docs]</a>
+<span class="k">def</span> <span class="nf">q3dcollect</span><span class="p">(</span><span class="n">q3di</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">q3din</span><span class="o">.</span><span class="n">q3din</span><span class="p">,</span>
+               <span class="n">cols</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="nb">list</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">rows</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="nb">list</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">quiet</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+               <span class="n">compsortpar</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;flux&#39;</span><span class="p">,</span><span class="s1">&#39;sigma&#39;</span><span class="p">,</span><span class="s1">&#39;wave&#39;</span><span class="p">]</span><span class="o">=</span><span class="s1">&#39;sigma&#39;</span><span class="p">,</span>
+               <span class="n">compsortdir</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;down&#39;</span><span class="p">,</span><span class="s1">&#39;up&#39;</span><span class="p">]</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span>
+               <span class="n">ignoreres</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Collate spaxel information together. As input, it requires a</span>
+<span class="sd">    :py:class:`~q3dfit.q3din.q3din&#39; object and the :py:class:`~q3dfit.q3dout.q3dout` </span>
+<span class="sd">    objects output by the fit.</span>
+
+<span class="sd">    Nothing is returned, but the result is saved to {0.outdir}{0.label}&#39;.format(q3dii)+&#39;.line.npz&#39;</span>
+
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    q3di</span>
+<span class="sd">        :py:class:`~q3dfit.q3din.q3din` object or file name.</span>
+<span class="sd">    cols</span>
+<span class="sd">        Optional. Column values for spaxels to be collated. Default is None, which means</span>
+<span class="sd">        all columns will be collated. If a scalar, only that column will be collated. If a</span>
+<span class="sd">        2-element list, the elements are the starting and ending columns to be</span>
+<span class="sd">        collated. Unity-offset values assumed.</span>
+<span class="sd">    rows</span>
+<span class="sd">        Optional. Column values for spaxels to be collated. Default is None, which means</span>
+<span class="sd">        all columns will be collated. If a scalar, only that column will be collated. If a</span>
+<span class="sd">        2-element list, the elements are the starting and ending columns to be</span>
+<span class="sd">        collated. Unity-offset values assumed.</span>
+<span class="sd">    quiet</span>
+<span class="sd">        Optional. If True, suppresses output to stdout. Default is True.</span>
+<span class="sd">    compsortpar</span>
+<span class="sd">        Optional. Parameter by which to sort components. Options are &#39;sigma&#39;, &#39;flux&#39;,</span>
+<span class="sd">        &#39;wave&#39;. Default is &#39;sigma&#39;.</span>
+<span class="sd">    compsortdir</span>
+<span class="sd">        Optional. Direction in which to sort components. Options are &#39;up&#39; and &#39;down&#39;.</span>
+<span class="sd">        Default is &#39;up&#39;.</span>
+<span class="sd">    ignoreres</span>
+<span class="sd">        Optional. Parameter passed to :py:meth:`~q3dfit.q3dout.q3dout.sepfitpars`. </span>
+<span class="sd">        If True, ignore spectral resolution in computing observed sigmas and peak fluxes. </span>
+<span class="sd">        This is mainly for backward compatibility with old versions, which did not store the </span>
+<span class="sd">        spectral resolution in an easily accessible way in the specConv object. </span>
+<span class="sd">        Default is False.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#load initialization object</span>
+    <span class="n">q3dii</span><span class="p">:</span> <span class="n">q3din</span><span class="o">.</span><span class="n">q3din</span> <span class="o">=</span> <span class="n">q3dutil</span><span class="o">.</span><span class="n">get_q3dio</span><span class="p">(</span><span class="n">q3di</span><span class="p">)</span>
+
+    <span class="c1"># set up linelist</span>
+    <span class="k">if</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">dolinefit</span><span class="p">:</span>
+
+        <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Sorting components by </span><span class="si">{</span><span class="n">compsortpar</span><span class="si">}</span><span class="s1"> in the </span><span class="si">{</span><span class="n">compsortdir</span><span class="si">}</span><span class="s1">ward direction.&#39;</span><span class="p">,</span>
+                          <span class="n">q3dii</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="p">)</span>
+
+        <span class="n">linelist</span> <span class="o">=</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">get_linelist</span><span class="p">()</span>
+
+        <span class="c1"># table with doublets to combine</span>
+        <span class="k">with</span> <span class="n">pkg_resources</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="n">linelists</span><span class="p">,</span> <span class="s1">&#39;doublets.tbl&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">p</span><span class="p">:</span>
+            <span class="n">doublets</span> <span class="o">=</span> <span class="n">Table</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;ipac&#39;</span><span class="p">)</span>
+        <span class="c1"># make a copy of singlet list</span>
+        <span class="n">lines_with_doublets</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">q3dii</span><span class="o">.</span><span class="n">lines</span><span class="p">)</span>
+        <span class="c1"># append doublet names to singlet list</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">name1</span><span class="p">,</span> <span class="n">name2</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">doublets</span><span class="p">[</span><span class="s1">&#39;line1&#39;</span><span class="p">],</span> <span class="n">doublets</span><span class="p">[</span><span class="s1">&#39;line2&#39;</span><span class="p">]):</span>
+            <span class="k">if</span> <span class="n">name1</span> <span class="ow">in</span> <span class="n">linelist</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">name2</span> <span class="ow">in</span> <span class="n">linelist</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]:</span>
+                <span class="n">lines_with_doublets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name1</span><span class="o">+</span><span class="s1">&#39;+&#39;</span><span class="o">+</span><span class="n">name2</span><span class="p">)</span>
+
+    <span class="c1"># READ DATA</span>
+    <span class="n">cube</span> <span class="o">=</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">load_cube</span><span class="p">(</span><span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+
+    <span class="c1"># process col, row specifications</span>
+    <span class="n">nspax</span><span class="p">,</span> <span class="n">colarr</span><span class="p">,</span> <span class="n">rowarr</span> <span class="o">=</span> \
+        <span class="n">q3dutil</span><span class="o">.</span><span class="n">get_spaxels</span><span class="p">(</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="n">cols</span><span class="p">,</span> <span class="n">rows</span><span class="o">=</span><span class="n">rows</span><span class="p">)</span>
+    <span class="c1"># TODO</span>
+    <span class="c1"># if q3dii.vormap is not None:</span>
+    <span class="c1">#     vormap = q3dii.vromap</span>
+    <span class="c1">#     nvorcols = max(vormap)</span>
+    <span class="c1">#     vorcoords = np.zeros(nvorcols, 2)</span>
+    <span class="c1">#     for i in range(0, nvorcols):</span>
+    <span class="c1">#         xyvor = np.where(vormap == i).nonzero()</span>
+    <span class="c1">#         vorcoords[:, i] = xyvor</span>
+
+
+    <span class="c1"># Create output line dictionaries</span>
+    <span class="k">if</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">dolinefit</span><span class="p">:</span>
+        <span class="n">emlwav</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">emlwaverr</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">emlsig</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">emlsigerr</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">emlweq</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">emlflx</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">emlflxerr</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">emlncomp</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">emlweq</span><span class="p">[</span><span class="s1">&#39;ftot&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">emlflx</span><span class="p">[</span><span class="s1">&#39;ftot&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">emlflxerr</span><span class="p">[</span><span class="s1">&#39;ftot&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">maxncomp</span><span class="p">):</span>
+            <span class="n">cstr</span> <span class="o">=</span> <span class="s1">&#39;c&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">emlwav</span><span class="p">[</span><span class="n">cstr</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="n">emlwaverr</span><span class="p">[</span><span class="n">cstr</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="n">emlsig</span><span class="p">[</span><span class="n">cstr</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="n">emlsigerr</span><span class="p">[</span><span class="n">cstr</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="n">emlweq</span><span class="p">[</span><span class="s1">&#39;f&#39;</span> <span class="o">+</span> <span class="n">cstr</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="n">emlflx</span><span class="p">[</span><span class="s1">&#39;f&#39;</span> <span class="o">+</span> <span class="n">cstr</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="n">emlflxerr</span><span class="p">[</span><span class="s1">&#39;f&#39;</span> <span class="o">+</span> <span class="n">cstr</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="n">emlflx</span><span class="p">[</span><span class="s1">&#39;f&#39;</span> <span class="o">+</span> <span class="n">cstr</span> <span class="o">+</span> <span class="s1">&#39;pk&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="n">emlflxerr</span><span class="p">[</span><span class="s1">&#39;f&#39;</span> <span class="o">+</span> <span class="n">cstr</span> <span class="o">+</span> <span class="s1">&#39;pk&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines_with_doublets</span><span class="p">:</span>
+            <span class="n">emlncomp</span><span class="p">[</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+            <span class="n">emlweq</span><span class="p">[</span><span class="s1">&#39;ftot&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">),</span>
+                                            <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">emlflx</span><span class="p">[</span><span class="s1">&#39;ftot&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">),</span>
+                                            <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">emlflxerr</span><span class="p">[</span><span class="s1">&#39;ftot&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">),</span>
+                                               <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">maxncomp</span><span class="p">):</span>
+                <span class="n">cstr</span> <span class="o">=</span> <span class="s1">&#39;c&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="n">emlwav</span><span class="p">[</span><span class="n">cstr</span><span class="p">][</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">),</span>
+                                              <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="n">emlwaverr</span><span class="p">[</span><span class="n">cstr</span><span class="p">][</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">),</span>
+                                                 <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="n">emlsig</span><span class="p">[</span><span class="n">cstr</span><span class="p">][</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">),</span>
+                                              <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="n">emlsigerr</span><span class="p">[</span><span class="n">cstr</span><span class="p">][</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">),</span>
+                                                 <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="n">emlweq</span><span class="p">[</span><span class="s1">&#39;f&#39;</span><span class="o">+</span><span class="n">cstr</span><span class="p">][</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">),</span>
+                                                  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="n">emlflx</span><span class="p">[</span><span class="s1">&#39;f&#39;</span><span class="o">+</span><span class="n">cstr</span><span class="p">][</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">),</span>
+                                                  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="n">emlflxerr</span><span class="p">[</span><span class="s1">&#39;f&#39;</span><span class="o">+</span><span class="n">cstr</span><span class="p">][</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">),</span>
+                                                     <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="n">emlflx</span><span class="p">[</span><span class="s1">&#39;f&#39;</span><span class="o">+</span><span class="n">cstr</span><span class="o">+</span><span class="s1">&#39;pk&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> \
+                    <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">),</span>
+                             <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="n">emlflxerr</span><span class="p">[</span><span class="s1">&#39;f&#39;</span><span class="o">+</span><span class="n">cstr</span><span class="o">+</span><span class="s1">&#39;pk&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> \
+                    <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">),</span>
+                             <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="c1"># create output cubes</span>
+    <span class="k">if</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">docontfit</span><span class="p">:</span>
+        <span class="n">hostcube</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;dat&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nwave</span><span class="p">)),</span>
+                    <span class="s1">&#39;err&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nwave</span><span class="p">)),</span>
+                    <span class="s1">&#39;dq&#39;</span><span class="p">:</span>  <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nwave</span><span class="p">)),</span>
+                    <span class="s1">&#39;norm_div&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+                                          <span class="n">cube</span><span class="o">.</span><span class="n">nwave</span><span class="p">)),</span>
+                    <span class="s1">&#39;norm_sub&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+                                          <span class="n">cube</span><span class="o">.</span><span class="n">nwave</span><span class="p">))}</span>
+        <span class="n">contcube</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;npts&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">))</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s1">&#39;stel_rchisq&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">))</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s1">&#39;stel_z&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">))</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s1">&#39;stel_z_err&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s1">&#39;stel_ebv&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">))</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s1">&#39;stel_ebv_err&#39;</span><span class="p">:</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s1">&#39;stel_sigma&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">))</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s1">&#39;stel_sigma_err&#39;</span><span class="p">:</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">decompose_ppxf_fit</span><span class="p">:</span>
+            <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;all_mod&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+                                            <span class="n">cube</span><span class="o">.</span><span class="n">nwave</span><span class="p">))</span>
+            <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;stel_mod&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+                                             <span class="n">cube</span><span class="o">.</span><span class="n">nwave</span><span class="p">))</span>
+            <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;poly_mod&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+                                             <span class="n">cube</span><span class="o">.</span><span class="n">nwave</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">decompose_qso_fit</span><span class="p">:</span>
+            <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;qso_mod&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+                                            <span class="n">cube</span><span class="o">.</span><span class="n">nwave</span><span class="p">))</span>
+            <span class="c1"># contcube[&#39;qso_poly_mod&#39;] = np.zeros((cube.ncols, cube.nrows,</span>
+            <span class="c1">#                                      cube.nwave))</span>
+            <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;host_mod&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+                                             <span class="n">cube</span><span class="o">.</span><span class="n">nwave</span><span class="p">))</span>
+            <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;poly_mod&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+                                             <span class="n">cube</span><span class="o">.</span><span class="n">nwave</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">decompose_qso_fit</span><span class="p">:</span>
+                <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;all_mod&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+                                            <span class="n">cube</span><span class="o">.</span><span class="n">nwave</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;all_mod&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+                                            <span class="n">cube</span><span class="o">.</span><span class="n">nwave</span><span class="p">))</span>
+
+    <span class="c1"># LOOP THROUGH SPAXELS</span>
+
+    <span class="c1"># track first continuum fit</span>
+    <span class="n">firstcontfit</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">for</span> <span class="n">ispax</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">nspax</span><span class="p">):</span>
+
+        <span class="n">i</span> <span class="o">=</span> <span class="n">colarr</span><span class="p">[</span><span class="n">ispax</span><span class="p">]</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="n">rowarr</span><span class="p">[</span><span class="n">ispax</span><span class="p">]</span>
+
+        <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Column </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1"> of </span><span class="si">{</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="p">)</span>
+
+        <span class="c1"># set up labeling</span>
+
+        <span class="c1"># set this to false unless we&#39;re using Voronoi binning</span>
+        <span class="c1"># and the tiling is missing</span>
+        <span class="c1"># vortile = True</span>
+        <span class="n">labin</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{0.outdir}{0.label}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">q3dii</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cube</span><span class="o">.</span><span class="n">dat</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">flux</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">dat</span>
+            <span class="n">err</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">err</span>
+            <span class="n">dq</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">dq</span>
+            <span class="n">labout</span> <span class="o">=</span> <span class="n">labin</span>
+        <span class="k">elif</span> <span class="n">cube</span><span class="o">.</span><span class="n">dat</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">flux</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">dat</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">err</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">err</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">dq</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">dq</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">labin</span> <span class="o">+=</span> <span class="s1">&#39;_</span><span class="si">{:04d}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">labout</span> <span class="o">=</span> <span class="n">labin</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;    Row </span><span class="si">{</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1"> of </span><span class="si">{</span><span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="p">)</span>
+
+            <span class="c1"># TODO</span>
+            <span class="c1"># if q3dii.vormap is not None:</span>
+            <span class="c1">#    if np.isfinite(q3dii.vormap[i][j]) and \</span>
+            <span class="c1">#            q3dii.vormap[i][j] is not np.nan:</span>
+            <span class="c1">#        iuse = vorcoords[q3dii.vormap[i][j] - 1, 0]</span>
+            <span class="c1">#        juse = vorcoords[q3dii.vormap[i][j] - 1, 1]</span>
+            <span class="c1">#    else:</span>
+            <span class="c1">#        vortile = False</span>
+            <span class="c1">#else:</span>
+            <span class="n">iuse</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="n">juse</span> <span class="o">=</span> <span class="n">j</span>
+
+            <span class="c1">#if vortile:</span>
+            <span class="n">flux</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">dat</span><span class="p">[</span><span class="n">iuse</span><span class="p">,</span> <span class="n">juse</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+            <span class="n">err</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">err</span><span class="p">[</span><span class="n">iuse</span><span class="p">,</span> <span class="n">juse</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+            <span class="n">dq</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">dq</span><span class="p">[</span><span class="n">iuse</span><span class="p">,</span> <span class="n">juse</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+            <span class="n">labin</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{0.outdir}{0.label}</span><span class="s1">_</span><span class="si">{1:04d}</span><span class="s1">_</span><span class="si">{2:04d}</span><span class="s1">&#39;</span><span class="o">.</span>\
+                <span class="nb">format</span><span class="p">(</span><span class="n">q3dii</span><span class="p">,</span> <span class="n">iuse</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">juse</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">labout</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{0.outdir}{0.label}</span><span class="s1">_</span><span class="si">{1:04d}</span><span class="s1">_</span><span class="si">{2:04d}</span><span class="s1">&#39;</span><span class="o">.</span>\
+                <span class="nb">format</span><span class="p">(</span><span class="n">q3dii</span><span class="p">,</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Restore fit after a couple of sanity checks</span>
+        <span class="c1"># if vortile:</span>
+        <span class="n">infile</span> <span class="o">=</span> <span class="n">labin</span> <span class="o">+</span> <span class="s1">&#39;.npy&#39;</span>
+        <span class="n">nodata</span> <span class="o">=</span> <span class="n">flux</span><span class="o">.</span><span class="n">nonzero</span><span class="p">()</span>
+        <span class="n">ct</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">nodata</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="c1"># else:</span>
+        <span class="c1">#    ct = 0</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">infile</span><span class="p">):</span>
+            <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;No data for [</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">]&#39;</span><span class="p">,</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="c1"># load fit object</span>
+            <span class="n">q3do</span><span class="p">:</span> <span class="n">q3dout</span><span class="o">.</span><span class="n">q3dout</span> <span class="o">=</span> <span class="n">q3dutil</span><span class="o">.</span><span class="n">get_q3dio</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+
+            <span class="c1"># Restore original error.</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">spec_err</span> <span class="o">=</span> <span class="n">err</span><span class="p">[</span><span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">q3do</span><span class="o">.</span><span class="n">dolinefit</span><span class="p">:</span>
+
+                <span class="c1"># process line fit parameters</span>
+                <span class="n">q3do</span><span class="o">.</span><span class="n">sepfitpars</span><span class="p">(</span><span class="n">doublets</span><span class="o">=</span><span class="n">doublets</span><span class="p">,</span> <span class="n">ignoreres</span><span class="o">=</span><span class="n">ignoreres</span><span class="p">)</span>
+
+                <span class="c1"># get correct number of components in this spaxel</span>
+                <span class="n">thisncomp</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">thisncompline</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines_with_doublets</span><span class="p">:</span>
+                    <span class="n">sigtmp</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">line_fitpars</span><span class="p">[</span><span class="s1">&#39;sigma&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span>
+                    <span class="n">fluxtmp</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">line_fitpars</span><span class="p">[</span><span class="s1">&#39;flux&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span>
+                    <span class="c1"># TODO</span>
+                    <span class="n">igd</span> <span class="o">=</span> <span class="p">[</span><span class="n">idx</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sigtmp</span><span class="p">))</span> <span class="k">if</span>
+                           <span class="p">(</span><span class="n">sigtmp</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span>
+                            <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">sigtmp</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span> <span class="ow">and</span>
+                            <span class="n">fluxtmp</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span>
+                            <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">fluxtmp</span><span class="p">[</span><span class="n">idx</span><span class="p">]))]</span>
+                    <span class="n">ctgd</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">igd</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">ctgd</span> <span class="o">&gt;</span> <span class="n">thisncomp</span><span class="p">:</span>
+                        <span class="n">thisncomp</span> <span class="o">=</span> <span class="n">ctgd</span>
+                        <span class="n">thisncompline</span> <span class="o">=</span> <span class="n">line</span>
+
+                    <span class="c1"># assign total fluxes</span>
+                    <span class="k">if</span> <span class="n">ctgd</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">emlflx</span><span class="p">[</span><span class="s1">&#39;ftot&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> \
+                            <span class="n">q3do</span><span class="o">.</span><span class="n">line_fitpars</span><span class="p">[</span><span class="s1">&#39;tflux&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span>
+                        <span class="n">emlflxerr</span><span class="p">[</span><span class="s1">&#39;ftot&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> \
+                            <span class="n">q3do</span><span class="o">.</span><span class="n">line_fitpars</span><span class="p">[</span><span class="s1">&#39;tfluxerr&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span>
+
+                    <span class="c1"># assign to output dictionary</span>
+                    <span class="n">emlncomp</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">ctgd</span>
+
+                <span class="k">if</span> <span class="n">thisncomp</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">isort</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">elif</span> <span class="n">thisncomp</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="n">igd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">thisncomp</span><span class="p">)</span>
+                    <span class="n">sortpars</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">line_fitpars</span><span class="p">[</span><span class="n">compsortpar</span><span class="p">][</span><span class="n">thisncompline</span><span class="p">]</span>
+                    <span class="n">isort</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">sortpars</span><span class="p">[</span><span class="n">igd</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="n">compsortdir</span> <span class="o">==</span> <span class="s1">&#39;down&#39;</span><span class="p">:</span>
+                        <span class="n">isort</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">isort</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">thisncomp</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines_with_doublets</span><span class="p">:</span>
+                        <span class="n">kcomp</span> <span class="o">=</span> <span class="mi">1</span>
+                        <span class="k">for</span> <span class="n">sindex</span> <span class="ow">in</span> <span class="n">isort</span><span class="p">:</span>
+                            <span class="n">cstr</span> <span class="o">=</span> <span class="s1">&#39;c&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">kcomp</span><span class="p">)</span>
+                            <span class="n">emlwav</span><span class="p">[</span><span class="n">cstr</span><span class="p">][</span><span class="n">line</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> \
+                                <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">line_fitpars</span><span class="p">[</span><span class="s1">&#39;wave&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">sindex</span><span class="p">]</span>
+                            <span class="n">emlwaverr</span><span class="p">[</span><span class="n">cstr</span><span class="p">][</span><span class="n">line</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> \
+                                <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">line_fitpars</span><span class="p">[</span><span class="s1">&#39;waveerr&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">sindex</span><span class="p">]</span>
+                            <span class="n">emlsig</span><span class="p">[</span><span class="n">cstr</span><span class="p">][</span><span class="n">line</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> \
+                                <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">line_fitpars</span><span class="p">[</span><span class="s1">&#39;sigma&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">sindex</span><span class="p">]</span>
+                            <span class="n">emlsigerr</span><span class="p">[</span><span class="n">cstr</span><span class="p">][</span><span class="n">line</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> \
+                                <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">line_fitpars</span><span class="p">[</span><span class="s1">&#39;sigmaerr&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">sindex</span><span class="p">]</span>
+<span class="c1">#                            emlweq[&#39;f&#39; + cstr][line][i, j] \</span>
+<span class="c1">#                                = lineweqs[&#39;comp&#39;][line].data[sindex]</span>
+                            <span class="n">emlflx</span><span class="p">[</span><span class="s1">&#39;f&#39;</span> <span class="o">+</span> <span class="n">cstr</span><span class="p">][</span><span class="n">line</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> \
+                                <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">line_fitpars</span><span class="p">[</span><span class="s1">&#39;flux&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">sindex</span><span class="p">]</span>
+                            <span class="n">emlflxerr</span><span class="p">[</span><span class="s1">&#39;f&#39;</span> <span class="o">+</span> <span class="n">cstr</span><span class="p">][</span><span class="n">line</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> \
+                                <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">line_fitpars</span><span class="p">[</span><span class="s1">&#39;fluxerr&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">sindex</span><span class="p">]</span>
+                            <span class="n">emlflx</span><span class="p">[</span><span class="s1">&#39;f&#39;</span> <span class="o">+</span> <span class="n">cstr</span> <span class="o">+</span> <span class="s1">&#39;pk&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> \
+                                <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">line_fitpars</span><span class="p">[</span><span class="s1">&#39;fluxpk&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">sindex</span><span class="p">]</span>
+                            <span class="n">emlflxerr</span><span class="p">[</span><span class="s1">&#39;f&#39;</span> <span class="o">+</span> <span class="n">cstr</span> <span class="o">+</span> <span class="s1">&#39;pk&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> \
+                                <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">line_fitpars</span><span class="p">[</span><span class="s1">&#39;fluxpkerr&#39;</span><span class="p">][</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">sindex</span><span class="p">]</span>
+                            <span class="n">kcomp</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="c1"># Collate continuum data</span>
+            <span class="k">if</span> <span class="n">q3do</span><span class="o">.</span><span class="n">docontfit</span><span class="p">:</span>
+
+
+                <span class="c1"># Add wavelength to output cubes</span>
+                <span class="k">if</span> <span class="n">firstcontfit</span><span class="p">:</span>
+                    <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;wave&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">wave</span>
+                    <span class="n">firstcontfit</span> <span class="o">=</span> <span class="kc">False</span>
+
+                <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;npts&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">)</span>
+
+                <span class="c1"># process continuum parameters</span>
+                <span class="n">q3do</span><span class="o">.</span><span class="n">sepcontpars</span><span class="p">(</span><span class="n">q3dii</span><span class="p">)</span>
+
+                <span class="n">hostcube</span><span class="p">[</span><span class="s1">&#39;dat&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">cont_dat</span>
+                <span class="n">hostcube</span><span class="p">[</span><span class="s1">&#39;err&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span> <span class="o">=</span> <span class="n">err</span><span class="p">[</span><span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span>
+                <span class="n">hostcube</span><span class="p">[</span><span class="s1">&#39;dq&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span> <span class="o">=</span> <span class="n">dq</span><span class="p">[</span><span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span>
+                <span class="n">hostcube</span><span class="p">[</span><span class="s1">&#39;norm_div&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span> \
+                    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">q3do</span><span class="o">.</span><span class="n">cont_dat</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">cont_fit</span><span class="p">)</span>
+                <span class="n">hostcube</span><span class="p">[</span><span class="s1">&#39;norm_sub&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span> \
+                    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">q3do</span><span class="o">.</span><span class="n">cont_dat</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">cont_fit</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">decompose_ppxf_fit</span><span class="p">:</span>
+                    <span class="c1"># Total flux from different components</span>
+                    <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;all_mod&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">cont_fit</span>
+                    <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;stel_mod&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span> <span class="o">=</span> \
+                        <span class="n">q3do</span><span class="o">.</span><span class="n">cont_fit_stel</span>
+                    <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;poly_mod&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span> <span class="o">=</span> \
+                        <span class="n">q3do</span><span class="o">.</span><span class="n">cont_fit_poly</span>
+                    <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;stel_sigma&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">ct_ppxf_sigma</span>
+                    <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;stel_z&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">zstar</span>
+
+                    <span class="k">if</span> <span class="n">q3do</span><span class="o">.</span><span class="n">ct_ppxf_sigma_err</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;stel_sigma_err&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> \
+                            <span class="n">q3do</span><span class="o">.</span><span class="n">ct_ppxf_sigma_err</span>
+                    <span class="k">if</span> <span class="n">q3do</span><span class="o">.</span><span class="n">zstar_err</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;stel_z_err&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">zstar_err</span>
+
+                <span class="k">elif</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">decompose_qso_fit</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">fcncontfit</span> <span class="o">==</span> <span class="s1">&#39;fitqsohost&#39;</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="s1">&#39;refit&#39;</span> <span class="ow">in</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">argscontfit</span> <span class="ow">and</span> \
+                            <span class="s1">&#39;args_questfit&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">argscontfit</span><span class="p">:</span>
+
+                            <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;stel_sigma&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> \
+                                <span class="n">q3do</span><span class="o">.</span><span class="n">ct_coeff</span><span class="p">[</span><span class="s1">&#39;ppxf_sigma&#39;</span><span class="p">]</span>
+                            <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;stel_z&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">zstar</span>
+
+                            <span class="k">if</span> <span class="n">q3do</span><span class="o">.</span><span class="n">ct_ppxf_sigma_err</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                                <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;stel_sigma_err&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="p">:]</span> \
+                                    <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">ct_ppxf_sigma_err</span>
+                            <span class="k">if</span> <span class="n">q3do</span><span class="o">.</span><span class="n">zstar_err</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                                <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;stel_z_err&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="p">:]</span> \
+                                    <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">zstar_err</span>
+
+                    <span class="k">elif</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">fcncontfit</span> <span class="o">==</span> <span class="s1">&#39;questfit&#39;</span><span class="p">:</span>
+
+                        <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;all_mod&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span> <span class="o">=</span> \
+                            <span class="n">q3do</span><span class="o">.</span><span class="n">cont_fit</span>
+                        <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;stel_z&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">zstar</span>
+                        <span class="k">if</span> <span class="n">q3do</span><span class="o">.</span><span class="n">zstar_err</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;stel_z_err&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">zstar_err</span>
+
+                <span class="c1"># continuum attenuation</span>
+                <span class="k">if</span> <span class="n">q3do</span><span class="o">.</span><span class="n">ct_ebv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;stel_ebv&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">ct_ebv</span>
+
+                <span class="k">if</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">decompose_qso_fit</span><span class="p">:</span>
+
+                    <span class="n">hostcube</span><span class="p">[</span><span class="s1">&#39;dat&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span> \
+                        <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">cont_dat</span> <span class="o">-</span> <span class="n">q3do</span><span class="o">.</span><span class="n">qsomod</span>
+                    <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;qso_mod&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span> <span class="o">=</span> \
+                        <span class="n">q3do</span><span class="o">.</span><span class="n">qsomod</span>
+                    <span class="c1"># contcube[&#39;qso_poly_mod&#39;][i, j, q3do.fitran_indx] = \</span>
+                    <span class="c1">#     q3do.qsomod_polynorm</span>
+                    <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;host_mod&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span> <span class="o">=</span> \
+                        <span class="n">q3do</span><span class="o">.</span><span class="n">hostmod</span>
+                    <span class="n">contcube</span><span class="p">[</span><span class="s1">&#39;poly_mod&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">fitran_indx</span><span class="p">]</span> <span class="o">=</span> \
+                        <span class="n">q3do</span><span class="o">.</span><span class="n">polymod_refit</span>
+
+                <span class="c1"># if &#39;remove_scattered&#39; in q3dii:</span>
+                <span class="c1">#     contcube[&#39;host_mod&#39;][i, j, q3do.fitran_indx] -= \</span>
+                <span class="c1">#         q3do.polymod_refit</span>
+
+    <span class="c1"># Save emission line and continuum dictionaries</span>
+    <span class="k">if</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">dolinefit</span><span class="p">:</span>
+        <span class="n">outfile</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{0.outdir}{0.label}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">q3dii</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;.line.npz&#39;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span>
+                 <span class="n">emlwav</span><span class="o">=</span><span class="n">emlwav</span><span class="p">,</span> <span class="n">emlwaverr</span><span class="o">=</span><span class="n">emlwaverr</span><span class="p">,</span>
+                 <span class="n">emlsig</span><span class="o">=</span><span class="n">emlsig</span><span class="p">,</span> <span class="n">emlsigerr</span><span class="o">=</span><span class="n">emlsigerr</span><span class="p">,</span>
+                 <span class="n">emlflx</span><span class="o">=</span><span class="n">emlflx</span><span class="p">,</span> <span class="n">emlflxerr</span><span class="o">=</span><span class="n">emlflxerr</span><span class="p">,</span>
+                 <span class="n">emlweq</span><span class="o">=</span><span class="n">emlweq</span><span class="p">,</span> <span class="n">emlncomp</span><span class="o">=</span><span class="n">emlncomp</span><span class="p">,</span>
+                 <span class="n">ncols</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">nrows</span><span class="o">=</span><span class="n">cube</span><span class="o">.</span><span class="n">nrows</span><span class="p">)</span>
+        <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Saving emission-line fit results into </span><span class="si">{</span><span class="n">outfile</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">docontfit</span><span class="p">:</span>
+        <span class="n">outfile</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{0.outdir}{0.label}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">q3dii</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;.cont.npy&#39;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">contcube</span><span class="p">)</span>
+        <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Saving continuum fit results into </span><span class="si">{</span><span class="n">outfile</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">q3dii</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, David Rupke and the Q3D Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

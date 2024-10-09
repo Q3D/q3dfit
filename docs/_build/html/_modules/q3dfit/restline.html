@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>q3dfit.restline &mdash; q3dfit 1.1.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=00f267c6"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            q3dfit
+          </a>
+              <div class="version">
+                1.1.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">q3dfit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fitting.html">Fitting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../MIR-configuration.html">MIR Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html">checkcomp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.contfit">contfit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.cube_bin">cube_bin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.exceptions">q3dfit.exceptions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.fitloop">q3dfit.fitloop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.fitspec">q3dfit.fitspec</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.gdtemp">q3dfit.gdtemp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.interp_temp_quest">q3dfit.interp_temp_quest</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.interptemp">q3dfit.interptemp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.jnb">q3dfit.jnb</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.jwstlinez">q3dfit.jwstlinez</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.lineinit">q3dfit.lineinit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.linelist">q3dfit.linelist</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.masklin">q3dfit.masklin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#q3dfit-mk-npy-templ">q3dfit.mk_npy_templ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.nonJWST_datacube_converter">q3dfit.nonJWST_datacube_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.observedlinez">q3dfit.observedlinez</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.plot">q3dfit.plot</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#q3dfit-psf-sub">q3dfit.psf_sub</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3dcollect">q3dfit.q3dcollect</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3df">q3dfit.q3df</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3df_helperFunctions">q3dfit.q3df_helperFunctions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3din">q3dfit.q3din</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3dmath">q3dfit.q3dmath</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3dout">q3dfit.q3dout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3dpro">q3dfit.q3dpro</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3dutil">q3dfit.q3dutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.qsohostfcn">q3dfit.qsohostfcn</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.questfitfcn">q3dfit.questfitfcn</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.readcube">q3dfit.readcube</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.readtemp">q3dfit.readtemp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.rebin">q3dfit.rebin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.restline">q3dfit.restline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#q3dfit-sdi">q3dfit.sdi</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.select_spaxels">q3dfit.select_spaxels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.spectConvol">q3dfit.spectConvol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.writeout_quest">q3dfit.writeout_quest</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit">Module contents</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">q3dfit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">q3dfit.restline</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for q3dfit.restline</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Wed Jun 15 12:07:16 2022</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">importlib.resources</span> <span class="k">as</span> <span class="nn">pkg_resources</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">ascii</span>
+<span class="kn">from</span> <span class="nn">astropy.table</span> <span class="kn">import</span> <span class="n">Table</span><span class="p">,</span> <span class="n">vstack</span>    
+<span class="kn">from</span> <span class="nn">astropy</span> <span class="kn">import</span> <span class="n">units</span> <span class="k">as</span> <span class="n">u</span>
+<span class="kn">from</span> <span class="nn">q3dfit.data</span> <span class="kn">import</span> <span class="n">linelists</span>
+
+<div class="viewcode-block" id="restline">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.restline.restline">[docs]</a>
+<span class="k">def</span> <span class="nf">restline</span><span class="p">(</span><span class="n">gal</span><span class="p">,</span> <span class="n">lamb_min</span><span class="p">,</span> <span class="n">lamb_max</span><span class="p">,</span> <span class="n">waveunit</span><span class="o">=</span><span class="s1">&#39;micron&#39;</span><span class="p">,</span> <span class="n">outdir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Similar to jwstlinez() and  observedlinez(), restline() produces a table </span>
+<span class="sd">    with emission lines in the provided range. </span>
+<span class="sd">    Unlike the other 2 linelist functions, this function has REST wavelength</span>
+<span class="sd">    lamb_min and lamb_max inputs. </span>
+<span class="sd">    This function is useful for identifying various emissions in a rest</span>
+<span class="sd">    spectrum for fitting and analysis.</span>
+<span class="sd">    In this way, the funtion operates a lot like a search function.  </span>
+<span class="sd">    </span>
+<span class="sd">    All input wavelengths are assumed to be in the REST FRAME!</span>
+<span class="sd">    </span>
+<span class="sd">    References stored under q3dfit/linelists are .tbl of filenames:</span>
+<span class="sd">            </span>
+<span class="sd">        lines_H2.tbl</span>
+<span class="sd">        lines_DSNR_micron.tbl   </span>
+<span class="sd">        lines_TSB.tbl</span>
+<span class="sd">        lines_ref.tbl</span>
+<span class="sd">        </span>
+<span class="sd">    More tables can be added manually if saved in the linelists folder and </span>
+<span class="sd">    called in this function definition.</span>
+<span class="sd">    </span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    gal : str, required</span>
+<span class="sd">        Galaxy name for filenaming. </span>
+<span class="sd">        Can also be customized for any other desired filename designations</span>
+<span class="sd">    lamb_min : flt, required</span>
+<span class="sd">        minimum &lt;REST&gt; wavelength value of instrument, units determined by </span>
+<span class="sd">            waveunit value</span>
+<span class="sd">    lamb_max : flt, required</span>
+<span class="sd">        maximum &lt;REST&gt; wavelength of instrument, units determined by waveunit value</span>
+<span class="sd">    outdir : str, required</span>
+<span class="sd">        output directory</span>
+<span class="sd">    waveunit : str, optional, default = &#39;micron&#39;</span>
+<span class="sd">        determines the unit of input wavelengths and output table</span>
+<span class="sd">        acceptable inputs are &#39;micron&#39; and &#39;Angstrom&#39;</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    --------</span>
+<span class="sd">        </span>
+<span class="sd">    lines_...tbl : astropy table</span>
+<span class="sd">        An astropy table of emission lines with keywords &#39;name&#39;, &#39;lines&#39;, </span>
+<span class="sd">        &#39;linelab&#39;</span>
+<span class="sd">        Example Row: H2_43_Q6, 2.98412, H$_2$(4-3) Q(6), 4.282212 </span>
+<span class="sd">        Interanlly, everything is processed in microns, so filename inclues </span>
+<span class="sd">        range values in microns. </span>
+<span class="sd">        The units of the table can be Angstroms or microns, depending on the </span>
+<span class="sd">        entered value of waveunit.</span>
+<span class="sd">        Output table contains comments descring data sources</span>
+
+<span class="sd">            </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+ 
+    <span class="k">if</span> <span class="p">((</span><span class="n">waveunit</span><span class="o">!=</span><span class="s1">&#39;Angstrom&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">waveunit</span><span class="o">!=</span><span class="s1">&#39;micron&#39;</span><span class="p">)):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;possible waveunit inputs are &#39;micron&#39; or &#39;Angstrom&#39;&quot;</span><span class="p">)</span>
+        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;Wave unit &#39;</span><span class="p">,</span><span class="n">waveunit</span><span class="p">,</span><span class="s1">&#39; not recognized, returning microns</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">sig</span> <span class="o">=</span> <span class="mi">7</span>
+    <span class="k">elif</span> <span class="p">(</span><span class="n">waveunit</span> <span class="o">==</span> <span class="s1">&#39;Angstrom&#39;</span><span class="p">):</span>
+        <span class="c1"># converting A input to microns</span>
+        <span class="n">lamb_max</span> <span class="o">=</span> <span class="n">lamb_max</span> <span class="o">/</span> <span class="mf">1.e4</span>
+        <span class="n">lamb_min</span> <span class="o">=</span> <span class="n">lamb_min</span> <span class="o">/</span> <span class="mf">1.e4</span>
+        <span class="n">sig</span> <span class="o">=</span> <span class="mi">3</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Angstroms unit selected</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">sig</span> <span class="o">=</span> <span class="mi">7</span>
+     
+        
+    <span class="n">linetables</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;linelist_DSNR.tbl&#39;</span><span class="p">,</span> <span class="s1">&#39;linelist_H2.tbl&#39;</span><span class="p">,</span> <span class="s1">&#39;linelist_H1.tbl&#39;</span><span class="p">,</span>
+                  <span class="s1">&#39;linelist_fine_str.tbl&#39;</span><span class="p">,</span> <span class="s1">&#39;linelist_TSB.tbl&#39;</span><span class="p">,</span>
+                  <span class="s1">&#39;linelist_PAH.tbl&#39;</span><span class="p">]</span>
+    <span class="n">all_tables</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">all_units</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">llist</span> <span class="ow">in</span> <span class="n">linetables</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">pkg_resources</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="n">linelists</span><span class="p">,</span> <span class="n">llist</span><span class="p">)</span> <span class="k">as</span> <span class="n">p</span><span class="p">:</span>
+            <span class="n">newtable</span> <span class="o">=</span> <span class="n">Table</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;ipac&#39;</span><span class="p">)</span>
+            <span class="n">all_tables</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">newtable</span><span class="p">)</span>
+            <span class="n">all_units</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">newtable</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unit</span><span class="p">)</span>
+    <span class="c1"># get everything on the user-requested units:</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">waveunit</span> <span class="o">==</span> <span class="s1">&#39;Angstrom&#39;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">un</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">all_units</span><span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">un</span> <span class="o">==</span> <span class="s1">&#39;micron&#39;</span><span class="p">):</span>
+                <span class="n">all_tables</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">all_tables</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">1e4</span>
+                <span class="n">all_tables</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unit</span> <span class="o">=</span> <span class="s1">&#39;Angstrom&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">un</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">all_units</span><span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">un</span> <span class="o">==</span> <span class="s1">&#39;Angstrom&#39;</span><span class="p">):</span>
+                <span class="n">all_tables</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">all_tables</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">1.e-4</span>
+                <span class="n">all_tables</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unit</span> <span class="o">=</span> <span class="s1">&#39;micron&#39;</span>
+    <span class="c1"># now everything is on the same units, let&#39;s stack all the tables:</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="n">vstack</span><span class="p">(</span><span class="n">all_tables</span><span class="p">)</span>
+    <span class="c1"># Redshifting each entry in tcol (REST wavelengths)</span>
+    <span class="n">lines_air_z</span> <span class="o">=</span> <span class="n">lines</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="c1">#rounds the floats in list CHANGE IF MORE PRECISION NEEDED</span>
+    <span class="n">round_lines</span> <span class="o">=</span> <span class="n">lines_air_z</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">decimals</span> <span class="o">=</span> <span class="n">sig</span><span class="p">)</span>
+        <span class="c1">#adds column to lines table corresponding w/ redshifted wavelengths</span>
+    <span class="n">lines</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">round_lines</span>
+ 
+ 
+    <span class="c1">#helper function to identify lines in instrument range</span>
+    <span class="k">def</span> <span class="nf">inrange</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">key_colnames</span><span class="p">):</span>
+         <span class="n">colnames</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">colnames</span> <span class="k">if</span> <span class="n">name</span>  <span class="ow">in</span> <span class="n">key_colnames</span><span class="p">]</span>
+         <span class="k">for</span> <span class="n">colname</span> <span class="ow">in</span> <span class="n">colnames</span><span class="p">:</span>
+             <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">table</span><span class="p">[</span><span class="n">colname</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">lamb_min</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">table</span><span class="p">[</span><span class="n">colname</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">lamb_max</span><span class="p">):</span>
+                 <span class="k">return</span> <span class="kc">False</span>
+             <span class="k">return</span> <span class="kc">True</span>
+ 
+    <span class="c1">#grouping by wavelength then filtering by inrange()</span>
+    <span class="n">tg</span> <span class="o">=</span> <span class="n">lines</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="s1">&#39;lines&#39;</span><span class="p">)</span>
+    <span class="n">lines_inrange</span> <span class="o">=</span> <span class="n">tg</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">inrange</span><span class="p">)</span>
+    
+    
+    <span class="c1"># converting table to desired units</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">waveunit</span> <span class="o">==</span> <span class="s1">&#39;Angstrom&#39;</span><span class="p">):</span>
+        <span class="n">lines_inrange</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">lines_inrange</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">1.e4</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">decimals</span> <span class="o">=</span> <span class="n">sig</span><span class="p">)</span>
+        <span class="n">lines_inrange</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unit</span> <span class="o">=</span> <span class="s1">&#39;Angstrom&#39;</span> 
+        
+        <span class="c1"># filename var determined by units</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;lines_&#39;</span> <span class="o">+</span> <span class="n">gal</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lamb_min</span> <span class="o">*</span> <span class="mf">1.e4</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;_to_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lamb_max</span> <span class="o">*</span> <span class="mf">1.e4</span><span class="p">)</span> <span class="o">+</span> \
+            <span class="s1">&#39;_Angstroms_rl.tbl&#39;</span>
+
+    <span class="k">else</span><span class="p">:</span> 
+        <span class="c1"># filename for microns default</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;lines_&#39;</span> <span class="o">+</span> <span class="n">gal</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lamb_min</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;_to_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lamb_max</span><span class="p">)</span> <span class="o">+</span> \
+            <span class="s1">&#39;_microns_rl.tbl&#39;</span>            
+       
+    
+    <span class="c1"># var used to determine if a list has &gt;0 entries along with printing length</span>
+    <span class="n">list_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines_inrange</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">])</span>
+
+    <span class="c1">#comments for each generated table    </span>
+    <span class="n">lines_inrange</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]</span> <span class="o">=</span> \
+    <span class="p">[</span><span class="s1">&#39;Tables generated from reference tables created by Nadia Zakamska and Ryan&#39;</span><span class="p">,</span>
+    <span class="s1">&#39; McCrory&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;All wavelengths are assumed to be in VACUUM&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;&gt;LINELIST_TSB:&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   Data Source 1: Storchi-Bergmann et al. 2009, MNRAS, 394, 1148&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   Data Source 2: Glikman et al. 2006, ApJ, 640, 579 (but looked up on NIST)&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;&gt;LINELIST_H2:&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   Data Source 1: JWST H_2 lines between 1 and 2.5 microns from this link:&#39;</span><span class="p">,</span> 
+    <span class="s1">&#39;   https://github.com/spacetelescope/jdaviz/tree/main/jdaviz/data/linelists&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   H2_alt.csv file; one typo corrected (the line marked as 2-9 Q(1)&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   replaced with 2-0 Q(1))&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   Data Source 2: ISO H_2 lines from 2.5 microns onwards from this link:&#39;</span><span class="p">,</span> 
+    <span class="s1">&#39;   https://www.mpe.mpg.de/ir/ISO/linelists, file H2.html&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;&gt;LINELIST_FINE_STR&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   Data Source 1: ISO list of fine structure lines at 2-205 micron&#39;</span><span class="p">,</span> 
+    <span class="s1">&#39;   https://www.mpe.mpg.de/ir/ISO/linelists/FSlines.html&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;&gt;LINELIST_DSNR_MICRON:&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   Data Sources: line lists by David S.N. Rupke created both in vacuum&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   and in air and recomputed on the common vacuum grid using Morton 1991.&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   Morton is only accurate above 2000A, so the six lines with air&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   wavelengths under 2000A are explicitly fixed based on NIST database.&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   A handful of previousy missing Latex labels were added by hand to the&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   original two tables before combining.&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   Original table converted to microns to align with program standard&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   measurements&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;&gt;LINELIST_PAH:&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   Data Source 1: data from the link&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;   https://github.com/spacetelescope/jdaviz/blob/main/jdaviz/data/linelists&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;&#39;</span><span class="p">,]</span>
+
+     <span class="c1"># writing the table</span>
+    <span class="k">if</span> <span class="n">outdir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">list_len</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;There are no emission lines in the provided sample</span><span class="se">\n</span><span class="s1">Terminating table save...&#39;</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;There are &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">list_len</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; emission lines in the provided range.</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+            <span class="n">ascii</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">lines_inrange</span><span class="p">,</span> <span class="n">outdir</span><span class="o">+</span><span class="n">filename</span><span class="p">,</span> <span class="nb">format</span> <span class="o">=</span> <span class="s1">&#39;ipac&#39;</span><span class="p">,</span>
+                    <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;File written as: &#39;</span> <span class="o">+</span> <span class="n">filename</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;under the directory &#39;</span> <span class="o">+</span> <span class="n">outdir</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, David Rupke and the Q3D Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

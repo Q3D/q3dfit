@@ -1,25 +1,34 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import math
-import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import gridspec, rcParams
 
-from q3dfit.q3dmath import cmplin
-from q3dfit.q3dutil import lmlabel
+from q3dfit.contfit import readcf
 from q3dfit.exceptions import InitializationError
-from q3dfit.questfitfcn import readcf
-from matplotlib import rcParams
-from matplotlib import pyplot as plt
+from q3dfit.q3dutil import lmlabel
 
 
-def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
-             compspec=None, comptitles=None, ps=None,
-             title=None, fitran=None, yranminmax=None, IR=False,
-             compcols=None, xstyle='log', ystyle='log',
+def plotcont(q3do,
+             savefig=False,
+             outfile=None,
+             ct_coeff=None,
+             q3di=None,
+             compspec=None,
+             comptitles=None,
+             ps=None,
+             title=None,
+             fitran=None,
+             yranminmax=None,
+             IR=False,
+             compcols=None,
+             xstyle='log',
+             ystyle='log',
              waveunit_in='micron',
              waveunit_out='micron',
-             figsize=(10, 5), fluxunit_in='flambda',
+             figsize=(10, 5),
+             fluxunit_in='flambda',
              fluxunit_out='flambda',
              mode='light'
              ):
@@ -41,6 +50,8 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
         mode = light or dark
         The first options are the defaults.
     '''
+
+    rcParamsOrig = rcParams.copy()
 
     # dark mode just for fun:
     if mode == 'dark':
@@ -327,6 +338,8 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
                 else:
                     plt.savefig(outfile + '.jpg')
 
+            plt.show()
+
     # for IR spectra fit with questfit:
     else:
 
@@ -595,7 +608,6 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
                                     spec_out *= comp_best_fit[comp_i+'_abs']
                                 plt.plot(MIRgdlambda, spec_out, label=comp_i,linestyle='--',alpha=0.5)
 
-
                     if group == 1:
                         ax.legend(loc='upper right',bbox_to_anchor=(1.22, 1),prop={'size': 10})
 
@@ -614,9 +626,21 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
             else:
                 plt.savefig(outfile + '.jpg')
 
+        plt.show()
 
-def plotline(q3do, nx=1, ny=1, figsize=(16,13), line=None, center_obs=None,
-             center_rest=None, size=300., savefig=False, outfile=None,
+    rcParams.update(rcParamsOrig)
+
+
+def plotline(q3do,
+             nx=1,
+             ny=1,
+             figsize=(16,13),
+             line=None,
+             center_obs=None,
+             center_rest=None,
+             size=300.,
+             savefig=False,
+             outfile=None,
              specConv=None):
     """
 
@@ -639,6 +663,9 @@ def plotline(q3do, nx=1, ny=1, figsize=(16,13), line=None, center_obs=None,
         Full path and name of output plot.
 
     """
+
+    rcParamsOrig = rcParams.copy()
+
     ncomp = q3do.maxncomp
     colors = ['Magenta', 'Green', 'Orange', 'Teal']
 
@@ -814,7 +841,8 @@ def plotline(q3do, nx=1, ny=1, figsize=(16,13), line=None, center_obs=None,
                     if refwav >= xran[0] and refwav <= xran[1]:
                         if f'{lmline.lmlabel}_{j}_cwv' in \
                             q3do.param.keys():
-                            flux = cmplin(q3do, line, j, velsig=True)
+                            flux = q3do.cmplin(line, j)
+                            #import pdb; pdb.set_trace()
                             if specConv is not None:
                                 conv = specConv.spect_convolver(wave, flux, refwav)
                             else:
@@ -872,6 +900,10 @@ def plotline(q3do, nx=1, ny=1, figsize=(16,13), line=None, center_obs=None,
             fig.savefig(outfile[0] + '.jpg')
         else:
             fig.savefig(outfile + '.jpg')
+
+    plt.show()
+
+    rcParams.update(rcParamsOrig)
 
 
 def adjust_ax(ax, fig, fs=20, minor=False):
@@ -946,6 +978,8 @@ def plotdecomp(q3do, q3di, savefig=True, outfile=None, templ_mask=[], do_lines=F
 def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
             savefig=True, outfile=None, templ_mask=[], lines=[], linespec=[], show=False,
             mode='light', ymin=-1, ymax=-1, try_adjust_ax=True, row=-1, col=-1):
+
+    rcParamsOrig = rcParams.copy()
 
     # dark mode just for fun:
     if mode == 'dark':
@@ -1097,3 +1131,5 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
 
         if show:
             plt.show()
+
+    rcParams.update(rcParamsOrig)

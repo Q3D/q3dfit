@@ -1,11 +1,6 @@
 q3dfit
 ======
 	
-.. image:: Q3D_logo.png
-  :width: 200
-  :align: left
-  :alt: Q3D logo
-
 ``q3dfit`` is custom software for scientific analysis of integral
 field unit (IFU) spectroscopy of quasars and their host galaxies,
 specifically aimed at producing science-ready measurements from James
@@ -17,13 +12,29 @@ host galaxy. Host galaxy emission is carefully fit with a combination
 of stellar continuum, emission and absorption of dust and ices, and
 ionic and molecular emission lines.
 
-``q3dfit`` has been tested on both ground-based data and NIRSpec-IFU
-ERS data of the quasar SDSSJ165202.64+172852.3 from the Q3D program
-(`Wylezalek et al. 2022
-<https://ui.adsabs.harvard.edu/abs/2022arXiv221010074W/abstract>`_). Testing
-with MIRI-IFU data is pending future Q3D observations.
+.. image:: Q3D_logo.png
+  :width: 200
+  :align: left
+  :alt: Q3D logo
 
-``q3dfit`` developers are:
+``q3dfit`` originated with the JWST Early Release Science program
+`Imaging Spectroscopy of Quasar Hosts with JWST analyzed with a
+powerful new PSF Decomposition and Spectral Analysis
+Package <https://q3d.github.io/>`_, or *Q3D*. *Q3D* targeted three
+quasars at redshifts 0.435, 1.593, 2.949 with both NIRSpec and
+MIRI-MRS.
+
+Descriptions of the use of ``q3dfit`` can be found in the *Q3D* papers:
+
+- J1652 (z=2.949) NIRSpec: `Wylezalek et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...940L...7W/abstract>`_, `Vayner et al. 2023 <https://ui.adsabs.harvard.edu/abs/2023ApJ...955...92V/abstract>`_, and `Vayner et al. 2024 <https://ui.adsabs.harvard.edu/abs/2024ApJ...960..126V/abstract>`_
+
+- J1652 MIRI: `Bertemes et al. 2024, submitted <https://ui.adsabs.harvard.edu/abs/2024arXiv240414475B/abstract>`_
+
+- XID 2028 (z=1.593) NIRSpec: `Veilleux et al. 2023 <https://ui.adsabs.harvard.edu/abs/2023ApJ...953...56V/abstract>`_
+  
+- F2M1106 (z=0.435) MIRI: `Rupke et al. 2024 <https://ui.adsabs.harvard.edu/abs/2023ApJ...953L..26R/abstract>`_
+
+The developers of ``q3dfit`` are:
 * David Rupke (Rhodes College, software lead)
 * Dominika Wylezalek (University of Heidelberg, PI)
 * Nadia Zakamska (Johns Hopkins University, CoPI)
@@ -38,14 +49,29 @@ with MIRI-IFU data is pending future Q3D observations.
 * Anna Murphree (Rhodes College and University of Hawai'i, contributor)
 * Lillian Whitesell (Rhodes College, contributor)
   
-.. note::
-   If you find a bug or have a feature request, please
-   `submit an issue <https://github.com/Q3D/q3dfit/issues>`_.
+.. note:: Please use ``q3dfit`` and let us know if you find a bug or
+   have a feature request. To do so, `submit an issue on GitHub
+   <https://github.com/Q3D/q3dfit/issues>`_.
 
-Our papers describing ``q3dfit`` and all its functionalities are
-currently in preparation and the links will be posted here. If you use
-this package before these papers are published, kindly cite the
-following references:
+The ``q3dfit`` paper is in preparation. In the meantime, please cite
+`Rupke et
+al. 2023 <https://ui.adsabs.harvard.edu/abs/2023ascl.soft10004R/abstract>`_:
+
+.. code-block:: none
+
+   @software{2023ascl.soft10004R,
+   author = {{Rupke}, David and {Wylezalek}, Dominika and {Zakamska}, Nadia and {Veilleux}, Sylvain and {Vayner}, Andrey and {Bertemes}, Caroline and {Ishikawa}, Yuzo and {Liu}, Weizhe and {Lim}, Hui Xian Grace and {Murphree}, Grey and {Whitesell}, Lillian and {McCrory}, Ryan and {Anicetti}, Carlos},
+   title = "{q3dfit: PSF decomposition and spectral analysis for JWST-IFU spectroscopy}",
+   howpublished = {Astrophysics Source Code Library, record ascl:2310.004},
+   year = 2023,
+   month = oct,
+   eid = {ascl:2310.004},
+   adsurl = {https://ui.adsabs.harvard.edu/abs/2023ascl.soft10004R},
+   adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+   }
+
+You may also wish to cite the IDL-based direct ancestors of
+``q3dfit``:
 
 .. code-block:: none
 
@@ -77,16 +103,11 @@ following references:
    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
    }
 
-The software is being developed in part as a contribution to the JWST
-Early Release Science program *Imaging Spectroscopy of Quasar Hosts
-with JWST analyzed with a powerful new PSF Decomposition and Spectral
-Analysis Package*. The website for the project is `available here
-<https://q3d.github.io/>`_. We
-acknowledge funding provided by NASA through a contract issued by
+We acknowledge funding provided by NASA through a contract issued by
 Space Telescope Science Institute for support of Early Release Science
-observations with JWST and in-kind contributions by leading and
-contributing members at the University of Heidelberg, Rhodes College,
-Johns Hopkins University, and University of Maryland College Park.
+observations with JWST and in-kind contributions by contributors at
+the University of Heidelberg, Rhodes College, Johns Hopkins
+University, and University of Maryland College Park.
 
 .. image:: https://img.shields.io/badge/license-GNU%20GPL%20v.3.0-blue
   :alt: license GNU GPL v.3.0
@@ -103,7 +124,12 @@ Johns Hopkins University, and University of Maryland College Park.
 
    MIR-configuration
 
-   modules
+   Module index <source/q3dfit>
    
 ..   examples/one_spaxel
 
+Indices and tables
+==================
+   * :ref:`genindex`
+   * :ref:`modindex`
+   * :ref:`search`

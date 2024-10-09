@@ -2,88 +2,52 @@
 """
 @author: Caroline Bertemes, based on q3da (now q3di) by Hadley Lim
 """
+from __future__ import annotations
 
 import copy
 import numpy as np
-import q3dfit.q3dutil as q3dutil
+from typing import Literal, Optional
+
+from numpy.typing import ArrayLike
 
 from astropy.constants import c
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.table import Table
 from importlib import import_module
 from ppxf.ppxf_util import log_rebin
-from q3dfit.q3dmath import gaussflux
-from q3dfit.q3dutil import lmlabel
-from q3dfit.qsohostfcn import qsohostfcn
 from scipy import constants
 from scipy.interpolate import interp1d
 
-
-def load_q3dout(q3di, col, row, cubedim=None):
-    """
-    Load object after it's been saved to a file.
-
-    Parameters
-    ----------
-    q3di : object
-        q3dinit object.
-    col : int
-        Column index.
-    row : int
-        Row index.
-    cubedim : int, optional
-        Dimension of cube (1, 2, or 3). If None, will try to get from q3di or 
-        cube itself.
-
-    Returns
-    -------
-    q3dout : object
-        q3dout object.
-
-    """
-
-    # convert from string to object if necessary.
-    q3dii = q3dutil.get_q3dio(q3di)
-
-    filelab = '{0.outdir}{0.label}'.format(q3dii)
-    if cubedim is None:
-        if hasattr(q3dii, 'cubedim'):
-            cubedim = q3dii.cubedim
-        else:
-            print('load_q3dout: q3di has no attribute cubedim, loading cube')
-            cube, vormap = q3dutil.get_Cube(q3dii)
-            cubedim = cube.dat.ndim
-    if cubedim > 1:
-        filelab += '_{:04d}'.format(col)
-    if cubedim > 2:
-        filelab += '_{:04d}'.format(row)
-    infile = filelab + '.npy'
-
-    # this should work for both q3di and q3do
-    q3dout = q3dutil.get_q3dio(infile)
-    # add file label to object
-    q3dout.filelab = filelab
-    return q3dout
+from . import q3dutil, q3din
+from q3dfit.qsohostfcn import qsohostfcn
 
 
 class q3dout:
     '''
-    This class defines a q3dout object, which is created by q3df when
-    running on any single spaxel. It collects all the output of
-    q3df/fitspec and contains functions to generate plots for a single
+    This object is created by :py:mod:`~q3dfit.q3df' when running on any single spaxel. 
+    It collects the output and contains functions to generate plots for a single
     spaxel.
 
-    (For multi-spaxel processing instead, please see q3dpro.)
+    For multi-spaxel post-processing, see :py:class:`~q3dfit.q3dpro.q3dpro`.
+
+    Parameters
+    ----------
+    wave
+        Wavelength array of data (limited to the fit range by 
+        :py:func:`~q3dfit.fitspec.fitspec`). Also updates :py:attr:`~q3dfit.q3dout.q3dout.wave`.
+    spec
+        Flux array (limited to the fit range by 
+        :py:func:`~q3dfit.fitspec.fitspec`). 
+        Also updates :py:attr:`~q3dfit.q3dout.q3dout.spec`.
+    spec_err
+        Flux error array (limited to the fit range by 
+        :py:func:`~q3dfit.fitspec.fitspec`). 
+        Also updates :py:attr:`~q3dfit.q3dout.q3dout.spec_err`.
+
 
     Attributes
     ----------
-    wave : ndarray
-        Wavelength array.
-    spec : ndarray
-        Flux array.
-    spec_err : ndarray
-        Error array.
-    fitrange : ndarray
+    fitrange: np.ndarray
         Wavelength range for fitting.
     col : int
         Column index.
@@ -131,8 +95,6 @@ class q3dout:
         Parameter errors from residuals.
     perror_errspec : dict
         Parameter errors from error spectrum.
-    siglim : float
-        Sigma limits for emission lines.
     covar : ndarray
         Covariance matrix. Added/updated by init_linefit().
     dof : int
@@ -145,8 +107,6 @@ class q3dout:
         Continuum data.  Added/updated by init_contfit().
     cont_fit : dict
         Continuum fit. Added/updated by init_contfit().
-    ct_method : str
-        Continuum fit method. Added/updated by init_contfit().
     ct_coeff : dict
         Continuum fit coefficients. Added/updated by init_contfit().
     ct_ebv : float
@@ -187,53 +147,29 @@ class q3dout:
     tfluxerr : dict
         Total flux errors of emission lines. Added/updated by sepfitpars().
     filelab : str
-        File label for plotting methods. Added/updated by load_q3dout().
-    
-    Methods
-    -------
-    init_linefit(linelist, linelabel, maxncomp, covar=None, dof=None,
-                fitstatus=None, line_dat=None, line_fit=None, nfev=None,
-                noemlinmask=None, redchisq=None, param=None, parinit=None,
-                perror=None, perror_resid=None, perror_errspec=None, siglim=None)
-        Initialize line fit parameters.
-
-    init_contfit(ct_method='CONTINUUM SUBTRACTED', ct_coeff=None, ct_ebv=None,
-                ct_add_poly_weights=None, ct_ppxf_sigma=None, ct_ppxf_sigma_err=None,
-                ct_rchisq=None, cont_dat=None, cont_fit=None, ct_indx=None,
-                zstar=None, zstar_err=None)
-        Initialize continuum fit parameters.
-    
-    sepfitpars(waveran=None, doublets=None, ignoreres=False)
-        Convert output of LMFIT, with best-fit line parameters in a single
-        array, into a dictionary with separate arrays for different line
-        parameters. Compute total line fluxes from the best-fit line
-        parameters.
-        :no-index:
-
-    sepcontpars(q3di)
-        Compute PPXF components: additive polynomial and stellar fit.
-
-    plot_linefit(q3di, q3dout, line, comp, ax=None, fig=None, show=True,
-                save=False, savepath=None, saveformat='pdf', **kwargs)
-        Plot line fit.
-
-    plot_contfit(q3di, q3dout, ax=None, fig=None, show=True, save=False,
-                savepath=None, saveformat='pdf', **kwargs)
-        Plot continuum fit.
-        
+        File label for plotting methods. Added/updated by load_q3dout().        
     '''
 
-    def __init__(self, wave, spec, spec_err, fitrange=None, col=None, row=None,
-                 gd_indx=None, fitran_indx=None, fluxunit='erg/s/cm^2/micron',
-                 waveunit='micron', fluxnorm=1., pixarea_sqas=None,
+    def __init__(self,
+                 wave: ArrayLike,
+                 spec: ArrayLike,
+                 spec_err: ArrayLike,
+                 fitrange: Optional[ArrayLike]=None,
+                 col=None,
+                 row=None,
+                 gd_indx=None,
+                 fitran_indx=None,
+                 fluxunit='erg/s/cm^2/micron',
+                 waveunit='micron',
+                 fluxnorm=1.,
+                 pixarea_sqas=None,
                  nogood=False):
-        '''
-        Initialize q3dout object.
-        '''
+        
+        self.wave = np.array(wave, dtype=np.float64)
+        self.spec = np.array(spec, dtype=np.float64)
+        self.spec_err = np.array(spec_err, dtype=np.float64)
+
         self.fitrange = fitrange
-        self.wave = np.float64(wave)
-        self.spec = np.float64(spec)
-        self.spec_err = np.float64(spec_err)
 
         self.fluxunit = fluxunit
         self.waveunit = waveunit
@@ -251,12 +187,23 @@ class q3dout:
         self.col = col
         self.row = row
 
-    def init_linefit(self, linelist, linelabel, maxncomp, covar=None,
-                     dof=None, fitstatus=None,
-                     line_dat=None, line_fit=None, nfev=None,
-                     noemlinmask=None, redchisq=None, param=None,
-                     parinit=None, perror=None, perror_resid=None,
-                     perror_errspec=None, siglim=None):
+    def init_linefit(self,
+                     linelist,
+                     linelabel,
+                     maxncomp,
+                     covar=None,
+                     dof=None,
+                     fitstatus=None,
+                     line_dat=None,
+                     line_fit=None,
+                     nfev=None,
+                     noemlinmask=None,
+                     redchisq=None,
+                     param: Optional[dict, float]=None,
+                     parinit=None,
+                     perror=None,
+                     perror_resid=None,
+                     perror_errspec=None):
 
         self.dolinefit = True
 
@@ -277,14 +224,31 @@ class q3dout:
         self.perror_errspec = perror_errspec
         self.perror_resid = perror_resid
         self.redchisq = redchisq
-        self.siglim = siglim
 
-    def init_contfit(self, ct_method='CONTINUUM SUBTRACTED',
-                     ct_coeff=None, ct_ebv=None, ct_add_poly_weights=None,
-                     ct_ppxf_sigma=None, ct_ppxf_sigma_err=None,
-                     ct_rchisq=None, cont_dat=None, cont_fit=None,
-                     ct_indx=None, zstar=None, zstar_err=None):
+    def init_contfit(self,
+                     ct_method: Literal['subtract','divide']='subtract',
+                     ct_coeff=None,
+                     ct_ebv=None,
+                     ct_add_poly_weights=None,
+                     ct_ppxf_sigma=None,
+                     ct_ppxf_sigma_err=None,
+                     ct_rchisq=None,
+                     cont_dat=None,
+                     cont_fit=None,
+                     ct_indx=None,
+                     zstar=None,
+                     zstar_err=None):
                      # cont_fit_pretweak=None
+        '''
+        Initialize continuum fit parameters.
+
+        Parameters
+        ----------
+        ct_method
+            Optional. Method for continuum fit. Default is 'subtract'. Set on 
+            initialization of :py:class:`~q3dfit.q3din.q3din` by
+            :py:attr:`~q3dfit.q3din.q3din.dividecont`.
+        '''
 
         self.docontfit = True
 
@@ -305,6 +269,53 @@ class q3dout:
 
         # gd_indx is applied, and then ct_indx
         self.ct_indx = ct_indx
+
+
+    def cmplin(self,
+               line: str,
+               comp: int) -> np.ndarray:
+        '''
+        Return the model flux for all fitted wavelengths in a given line and component, 
+        from the best-fit parameters in :py:attr:`~q3dfit.q3dout.q3dout.param`.
+
+        Parameters
+        ----------
+        line
+            Emission line for which to compute flux.
+        comp
+            Component (0-indexed) for which to compute flux.
+
+        Returns
+        -------
+        np.ndarray
+            Model flux evaluated at the wavelengths in :py:attr:`~q3dfit.q3dout.q3dout.wave`.
+        '''
+
+        lmline = q3dutil.lmlabel(line)
+        mName = '{0}_{1}_'.format(lmline.lmlabel, comp)
+        gausspar = np.zeros(3)
+        gausspar[0] = self.param[mName+'flx']
+        gausspar[1] = self.param[mName+'cwv']
+        gausspar[2] = self.param[mName+'sig']
+        # convert sigma to wavelength space from km/s, since the model is in wavelength space
+        gausspar[2] = gausspar[2] * gausspar[1]/c.to('km/s').value
+
+        def gaussian(xi: np.ndarray,
+                     parms: np.ndarray) -> np.ndarray:
+            a = parms[0]  # amp
+            b = parms[1]  # mean
+            c = parms[2]  # standard dev
+
+            # Anything higher-precision than this (e.g., float64) slows things down
+            # a bunch. longdouble completely chokes on lack of memory.
+            arg = np.array(-0.5 * ((xi - b)/c)**2, dtype=np.float32)
+            g = a * np.exp(arg)
+            return g
+
+        flux = gaussian(self.wave, gausspar)
+
+        return flux
+
 
     def sepfitpars(self, waveran=None, doublets=None, ignoreres=False):
         """
@@ -328,6 +339,21 @@ class q3dout:
             way in the specConv object.
 
         """
+
+        def gaussflux(norm: float,
+                      sigma: float,
+                      normerr: float,
+                      sigerr: float) -> dict[Literal['flux', 'flux_err'], float]:
+            '''
+            Compute total Gaussian flux and error from normalization
+            and sigma.
+            '''
+            flux = norm * sigma * np.sqrt(2. * np.pi)
+            fluxerr = 0.
+            if normerr is not None and sigerr is not None:
+                fluxerr = flux*np.sqrt((normerr/norm)**2. + (sigerr/sigma)**2.)
+            outstr = {'flux': flux, 'flux_err': fluxerr}
+            return outstr
 
         # pass on if no lines were fit
         if not self.dolinefit:
@@ -363,7 +389,7 @@ class q3dout:
                 for i in range(0, self.maxncomp):
 
                     # indices
-                    lmline = lmlabel(line)
+                    lmline = q3dutil.lmlabel(line)
                     ifluxpk = f'{lmline.lmlabel}_{i}_flx'
                     isigma = f'{lmline.lmlabel}_{i}_sig'
                     iwave = f'{lmline.lmlabel}_{i}_cwv'
@@ -547,8 +573,8 @@ class q3dout:
                                 gaussflux(fluxpk[line][i],
                                           sigma[line][i] /
                                           (constants.c / 1.e3) * wave[line][i],
-                                          normerr=fluxpkerr[line][i],
-                                          sigerr=sigmaerr[line][i] /
+                                          fluxpkerr[line][i],
+                                          sigmaerr[line][i] /
                                           (constants.c / 1.e3) * wave[line][i])
                         else:
                             gflux = {'flux': 0., 'flux_err': 0.}
@@ -630,6 +656,7 @@ class q3dout:
                                  'fluxpk_obs': fluxpk_obs,
                                  'fluxpkerr_obs': fluxpkerr_obs,
                                  'tflux': tf, 'tfluxerr': tfe}
+
 
     def sepcontpars(self, q3di):
         '''
@@ -819,7 +846,7 @@ class q3dout:
 
             if q3dii.spect_convol:
                 # instantiate specConv object
-                specConv = q3dutil.get_dispersion(q3dii)
+                specConv = q3dii.get_dispersion()
             else:
                 specConv = None
 
@@ -965,3 +992,63 @@ class q3dout:
 
         else:
             print('plot_cont: no continuum to plot!')
+
+
+
+
+def load_q3dout(q3di: str | q3din.q3din,
+                col: Optional[int]=None,
+                row: Optional[int]=None,
+                cubedim: Optional[int]=None,
+                quiet: bool=False) -> q3dout:
+    """
+    Load :py:class:`~q3dfit.q3dout.q3dout` after it's been saved to a file.
+
+    Parameters
+    ----------
+    q3di
+        :py:class:`~q3dfit.q3din.q3din` object or file name.
+    col
+        Optional. Column index. None assumes 1D spectrum fits input.
+        If None and cubedim > 1, will throw ValueError. Default is None.
+    row
+        Optional. Row index. None assumes 1D or 2D spectrum fits input.
+        If None and cubedim > 2, will throw ValueError. Default is None.
+    cubedim
+        Optional. Dimension of cube (1, 2, or 3). If None, will try to get from q3di or 
+        cube itself. Default is None.
+    quiet
+        Optional. Suppress messages. Default is False.
+
+    Returns
+    -------
+    q3dout
+
+    """
+
+    # convert from string to object if necessary.
+    q3dii = q3dutil.get_q3dio(q3di)
+
+    filelab = '{0.outdir}{0.label}'.format(q3dii)
+    if cubedim is None:
+        if hasattr(q3dii, 'cubedim'):
+            cubedim = q3dii.cubedim
+        else:
+            q3dutil.write_msg('load_q3dout: q3di has no attribute cubedim, loading cube',
+                              q3dii.logfile, quiet)
+            cube = q3dii.load_cube() #, vormap
+            cubedim = cube.dat.ndim
+    if cubedim > 1:
+        if col is None:
+            raise ValueError('load_q3dout: col must be set for 2D or 3D cube')
+        filelab += '_{:04d}'.format(col)
+        if cubedim > 2:
+            if row is None:
+                raise ValueError('load_q3dout: row must be set for 3D cube')
+            filelab += '_{:04d}'.format(row)
+    infile = filelab + '.npy'
+
+    q3dout = q3dutil.get_q3dio(infile)
+    # add file label to object
+    q3dout.filelab = filelab
+    return q3dout

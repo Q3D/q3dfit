@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>q3dfit.fitspec &mdash; q3dfit 1.1.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=00f267c6"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            q3dfit
+          </a>
+              <div class="version">
+                1.1.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">q3dfit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fitting.html">Fitting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../MIR-configuration.html">MIR Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html">User modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#classes">Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#internal-modules">Internal modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">q3dfit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">q3dfit.fitspec</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for q3dfit.fitspec</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">from</span> <span class="nn">importlib</span> <span class="kn">import</span> <span class="n">import_module</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span> <span class="nn">astropy.constants</span> <span class="kn">import</span> <span class="n">c</span>
+<span class="kn">from</span> <span class="nn">astropy.table</span> <span class="kn">import</span> <span class="n">Table</span>
+<span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+<span class="kn">from</span> <span class="nn">ppxf.ppxf</span> <span class="kn">import</span> <span class="n">ppxf</span>
+<span class="kn">from</span> <span class="nn">ppxf.ppxf_util</span> <span class="kn">import</span> <span class="n">log_rebin</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">q3din</span><span class="p">,</span> <span class="n">q3dmath</span><span class="p">,</span> <span class="n">q3dout</span>
+<span class="kn">from</span> <span class="nn">q3dfit.q3dutil</span> <span class="kn">import</span> <span class="n">lmlabel</span><span class="p">,</span> <span class="n">write_msg</span>
+<span class="kn">from</span> <span class="nn">q3dfit.spectConvol</span> <span class="kn">import</span> <span class="n">spectConvol</span>
+
+
+<div class="viewcode-block" id="fitspec">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.fitspec.fitspec">[docs]</a>
+<span class="k">def</span> <span class="nf">fitspec</span><span class="p">(</span><span class="n">wlambda</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">flux</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">err</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">dq</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+            <span class="n">q3di</span><span class="p">:</span> <span class="n">q3din</span><span class="o">.</span><span class="n">q3din</span><span class="p">,</span> 
+            <span class="n">zstar</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">listlines</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Table</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">listlinesz</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">ncomp</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">linevary</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+            <span class="n">maskwidths</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Table</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+            <span class="n">peakinit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Table</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">siginit_gas</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">siginit_stars</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">siglim_gas</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">specConv</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">spectConvol</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+            <span class="n">fluxunit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">waveunit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">quiet</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span>
+            <span class="c1">#tweakcntfit=None,</span>
+            <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">q3dout</span><span class="o">.</span><span class="n">q3dout</span><span class="p">:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function is the core routine to fit the continuum and emission</span>
+<span class="sd">    lines of a spectrum.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    wlambda</span>
+<span class="sd">        Spectrum, observed-frame wavelengths.</span>
+<span class="sd">    flux</span>
+<span class="sd">        Spectrum, fluxes.</span>
+<span class="sd">    err</span>
+<span class="sd">        Spectrum, flux errors.</span>
+<span class="sd">    q3di</span>
+<span class="sd">        Instance of :py:class:`~q3dfit.q3din.q3din` initializing the fit.</span>
+<span class="sd">    zstar</span>
+<span class="sd">        Optional. Initial guess for stellar redshift. Use None if no continuum</span>
+<span class="sd">        fit is done.</span>
+<span class="sd">    siginit_stars</span>
+<span class="sd">        Optional. Initial guess for stellar line widths for fitting. It is created</span>
+<span class="sd">        by :py:func:`~q3dfit.q3din.init_contfit` or specified on input. Set to None</span>
+<span class="sd">        if no continuum fit is done.</span>
+<span class="sd">    listlines</span>
+<span class="sd">        Optional. Emission line labels and rest frame wavelengths, as part of an astropy </span>
+<span class="sd">        Table output by :py:func:`~q3dfit.linelist.linelist`. Use None if no emission-line </span>
+<span class="sd">        fit is done.</span>
+<span class="sd">    listlinesz</span>
+<span class="sd">        Optional. Initial guess for emission line observed frame wavelengths. Use</span>
+<span class="sd">        None if no emission-line fit is done.</span>
+<span class="sd">    ncomp</span>
+<span class="sd">        Optional. Number of components fit to each line. Use None if no emission-line</span>
+<span class="sd">        fit is done.</span>
+<span class="sd">    linevary</span>
+<span class="sd">        Optional. Dictionary specifying which parameters to vary for each line.</span>
+<span class="sd">        Nested dictionary with line names as keys, and dictionaries as values.</span>
+<span class="sd">        These dictionaries have keys &#39;flx&#39;, &#39;cen&#39;, and &#39;sig&#39;, with boolean arrays</span>
+<span class="sd">        as values. Default is None, which if emission-line fit is done,</span>
+<span class="sd">        means varying all parameters.</span>
+<span class="sd">    maskwidths</span>
+<span class="sd">        Optional. Widths, in km/s, of emission-line regions to mask from continuum fit. </span>
+<span class="sd">        If set to None, routine will look for `maskwidths` attribute in </span>
+<span class="sd">        :py:class:`~q3dfit.q3din.q3din`. If this is None and both continuum and emission-</span>
+<span class="sd">        line fits are attempted, routine defaults to value </span>
+<span class="sd">        set in `maskwidths_def` attribute of :py:class:`~q3dfit.q3din.q3din`.</span>
+<span class="sd">    peakinit</span>
+<span class="sd">        Optional. Initial guess for peak emission-line flux densities. If set to </span>
+<span class="sd">        None, routine will look for `peakinit` attribute in </span>
+<span class="sd">        :py:class:`~q3dfit.q3din.q3din`. If this is None and line fit is done, </span>
+<span class="sd">        routine estimates from data.</span>
+<span class="sd">    siginit_gas</span>
+<span class="sd">        Optional. Initial guess for emission line widths for fitting. It is created</span>
+<span class="sd">        by :py:func:`~q3dfit.q3din.init_linefit` or specified on input. Set to None</span>
+<span class="sd">        if no emission-line fit is done.</span>
+<span class="sd">    siglim_gas</span>
+<span class="sd">        Optional. Sigma limits for line fitting. It is created by</span>
+<span class="sd">        :py:func:`~q3dfit.q3din.init_linefit` or specified on input. Set to None</span>
+<span class="sd">        if no emission-line fit is done.</span>
+<span class="sd">    specConv</span>
+<span class="sd">        Optional. Instance of :py:class:`~q3dfit.spectConvol.spectConvol` specifying </span>
+<span class="sd">        the instrumental spectral resolution convolution. If None, no convolution</span>
+<span class="sd">        is done.</span>
+<span class="sd">    fluxunit</span>
+<span class="sd">        Optional. Units of flux density defined in :py:class:`~q3dfit.readcube.Cube`.</span>
+<span class="sd">        Default is None.</span>
+<span class="sd">    waveunit</span>
+<span class="sd">        Optional. Units of wavelength defined in :py:class:`~q3dfit.readcube.Cube`.</span>
+<span class="sd">        Default is None.</span>
+<span class="sd">    quiet</span>
+<span class="sd">        Optional. If False, some progress messages are written to stdout. </span>
+<span class="sd">        Default is True. </span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    q3dout.q3dout</span>
+<span class="sd">        Instance of :py:class:`~q3dfit.q3dout.q3dout` containing the fit results.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">usetype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span>
+
+    <span class="n">flux</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">flux</span><span class="p">)</span>
+    <span class="n">err</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+
+    <span class="c1"># Some of this logic may be duplicative</span>
+    <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">docontfit</span> <span class="ow">and</span> \
+        <span class="n">q3di</span><span class="o">.</span><span class="n">startempfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> \
+        <span class="n">zstar</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> \
+        <span class="n">q3di</span><span class="o">.</span><span class="n">fcncontfit</span> <span class="o">!=</span> <span class="s1">&#39;questfit&#39;</span><span class="p">:</span>
+
+        <span class="c1"># Get stellar templates</span>
+        <span class="n">startempfile</span> <span class="o">=</span> <span class="n">q3di</span><span class="o">.</span><span class="n">startempfile</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">startempfile</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+            <span class="n">startempfile</span> <span class="o">=</span> <span class="n">startempfile</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">startempfile</span><span class="p">,</span> <span class="n">allow_pickle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="c1"># Redshift stellar templates</span>
+        <span class="n">templatelambdaz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">template</span><span class="p">[</span><span class="s1">&#39;lambda&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">q3di</span><span class="o">.</span><span class="n">keepstarz</span><span class="p">:</span>
+            <span class="n">templatelambdaz</span> <span class="o">*=</span> <span class="mf">1.</span> <span class="o">+</span> <span class="n">zstar</span>
+        <span class="c1"># Need option for when template is in vac and data in air ...</span>
+        <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">vacuum</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">q3di</span><span class="o">.</span><span class="n">startempvac</span><span class="p">:</span>
+            <span class="n">templatelambdaz</span> <span class="o">=</span> <span class="n">airtovac</span><span class="p">(</span><span class="n">templatelambdaz</span><span class="p">,</span> <span class="n">logfile</span><span class="o">=</span><span class="n">q3di</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+        <span class="c1"># if &#39;waveunit&#39; in q3di:</span>
+        <span class="c1">#     templatelambdaz *= q3di[&#39;waveunit&#39;]</span>
+        <span class="c1"># Template convolution with the spectral resolution is not yet implemented</span>
+        <span class="c1">#if q3di.fcnconvtemp is not None:</span>
+        <span class="c1">#    impModule = import_module(&#39;q3dfit.&#39;+q3di.fcnconvtemp)</span>
+        <span class="c1">#    fcnconvtemp = getattr(impModule, q3di.fcnconvtemp)</span>
+        <span class="c1">#    newtemplate = fcnconvtemp(templatelambdaz, template,</span>
+        <span class="c1">#                              **q3di.argsconvtemp)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">templatelambdaz</span> <span class="o">=</span> <span class="n">wlambda</span>
+
+<span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+<span class="c1"># # Pick out regions to fit</span>
+<span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+
+    <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">fitrange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fitran_tmp</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">q3di</span><span class="o">.</span><span class="n">fitrange</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fitran_tmp</span> <span class="o">=</span> <span class="p">[</span><span class="n">wlambda</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">wlambda</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">wlambda</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+    <span class="c1"># indices locating good data and data within fit range</span>
+    <span class="c1"># these index the full data range.</span>
+    <span class="n">gd_indx_1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">flux</span> <span class="o">!=</span> <span class="mf">0.</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">gd_indx_2</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">err</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">gd_indx_3</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">flux</span><span class="p">))[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">gd_indx_4</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">err</span><span class="p">))[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">gd_indx_5</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">dq</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">gd_indx_6</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">wlambda</span> <span class="o">&gt;=</span> <span class="nb">min</span><span class="p">(</span><span class="n">templatelambdaz</span><span class="p">))[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">gd_indx_7</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">wlambda</span> <span class="o">&lt;=</span> <span class="nb">max</span><span class="p">(</span><span class="n">templatelambdaz</span><span class="p">))[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">gd_indx_8</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">wlambda</span> <span class="o">&gt;=</span> <span class="n">fitran_tmp</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">gd_indx_9</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">wlambda</span> <span class="o">&lt;=</span> <span class="n">fitran_tmp</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">gd_indx_full</span> <span class="o">=</span> <span class="n">gd_indx_1</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">gd_indx_2</span><span class="p">,</span> <span class="n">gd_indx_3</span><span class="p">,</span> <span class="n">gd_indx_4</span><span class="p">,</span>
+                                          <span class="n">gd_indx_5</span><span class="p">,</span> <span class="n">gd_indx_6</span><span class="p">,</span> <span class="n">gd_indx_7</span><span class="p">,</span>
+                                          <span class="n">gd_indx_8</span><span class="p">,</span> <span class="n">gd_indx_9</span><span class="p">)</span>
+    <span class="n">gd_indx_full</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">gd_indx_full</span><span class="p">)</span>
+
+    <span class="c1"># Check that gd_indx_full is not empty, and has more than one point</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">gd_indx_full</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+
+        <span class="c1"># limit actual fit range to good data</span>
+        <span class="n">fitran</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">wlambda</span><span class="p">[</span><span class="n">gd_indx_full</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">usetype</span><span class="p">),</span>
+                  <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">wlambda</span><span class="p">[</span><span class="n">gd_indx_full</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">usetype</span><span class="p">)]</span>
+
+        <span class="c1"># indices locating data within actual fit range</span>
+        <span class="n">fitran_indx1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">wlambda</span> <span class="o">&gt;=</span> <span class="n">fitran</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">fitran_indx2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">wlambda</span> <span class="o">&lt;=</span> <span class="n">fitran</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">fitran_indx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">intersect1d</span><span class="p">(</span><span class="n">fitran_indx1</span><span class="p">,</span> <span class="n">fitran_indx2</span><span class="p">)</span>
+        <span class="c1"># indices locating good regions within wlambda[fitran_indx]</span>
+        <span class="n">gd_indx_full_rezero</span> <span class="o">=</span> <span class="n">gd_indx_full</span> <span class="o">-</span> <span class="n">fitran_indx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">max_gd_indx_full_rezero</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">fitran_indx</span><span class="p">)</span> <span class="o">-</span> <span class="n">fitran_indx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">igdfz1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">gd_indx_full_rezero</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">igdfz2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">gd_indx_full_rezero</span> <span class="o">&lt;=</span> <span class="n">max_gd_indx_full_rezero</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">i_gd_indx_full_rezero</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">intersect1d</span><span class="p">(</span><span class="n">igdfz1</span><span class="p">,</span> <span class="n">igdfz2</span><span class="p">)</span>
+        <span class="c1"># Final index for addressing ALL &quot;good&quot; pixels</span>
+        <span class="c1"># these address only the fitted data range; i.e., they address gdflux,</span>
+        <span class="c1"># etc.</span>
+        <span class="n">gd_indx</span> <span class="o">=</span> <span class="n">gd_indx_full_rezero</span><span class="p">[</span><span class="n">i_gd_indx_full_rezero</span><span class="p">]</span>
+
+        <span class="c1"># Limit data to fit range</span>
+        <span class="n">gdflux</span> <span class="o">=</span> <span class="n">flux</span><span class="p">[</span><span class="n">fitran_indx</span><span class="p">]</span>
+        <span class="n">gdlambda</span> <span class="o">=</span> <span class="n">wlambda</span><span class="p">[</span><span class="n">fitran_indx</span><span class="p">]</span>
+        <span class="n">gderr</span> <span class="o">=</span> <span class="n">err</span><span class="p">[</span><span class="n">fitran_indx</span><span class="p">]</span>
+        <span class="n">gddq</span> <span class="o">=</span> <span class="n">dq</span><span class="p">[</span><span class="n">fitran_indx</span><span class="p">]</span>
+        <span class="n">gdinvvar</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">gderr</span><span class="p">,</span> <span class="mf">2.</span><span class="p">)</span>  <span class="c1"># inverse variance</span>
+
+        <span class="c1"># Log rebin galaxy spectrum for PPXF</span>
+        <span class="n">gdflux_log</span><span class="p">,</span> <span class="n">gdlambda_log</span><span class="p">,</span> <span class="n">velscale</span> <span class="o">=</span> <span class="n">log_rebin</span><span class="p">(</span><span class="n">fitran</span><span class="p">,</span> <span class="n">gdflux</span><span class="p">)</span>
+        <span class="n">gderrsq_log</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">log_rebin</span><span class="p">(</span><span class="n">fitran</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">gderr</span><span class="p">,</span> <span class="mf">2.</span><span class="p">))</span>
+        <span class="n">gderr_log</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">gderrsq_log</span><span class="p">)</span>
+        <span class="c1"># gdinvvar_log = 1./np.power(gderr_log, 2.)</span>
+
+        <span class="c1"># Find where flux is &lt;= 0 or error is &lt;= 0 or infinite or NaN or dq != 0</span>
+        <span class="c1"># these index the fitted data range</span>
+        <span class="n">zerinf_indx_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">gdflux</span> <span class="o">==</span> <span class="mf">0.</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">zerinf_indx_2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">gderr</span> <span class="o">&lt;=</span> <span class="mf">0.</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">zerinf_indx_3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">gdflux</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">zerinf_indx_4</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">gderr</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">zerinf_indx_5</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">gddq</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">zerinf_indx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">zerinf_indx_1</span><span class="p">,</span> <span class="n">zerinf_indx_2</span><span class="p">,</span>
+                                           <span class="n">zerinf_indx_3</span><span class="p">,</span> <span class="n">zerinf_indx_4</span><span class="p">,</span>
+                                           <span class="n">zerinf_indx_5</span><span class="p">]))</span>
+
+        <span class="n">zerinf_indx_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">gdflux_log</span> <span class="o">==</span> <span class="mf">0.</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">zerinf_indx_2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">gderr_log</span> <span class="o">&lt;=</span> <span class="mf">0.</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">zerinf_indx_3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">gdflux_log</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">zerinf_indx_4</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">gderr_log</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="c1"># to-do: log rebin dq and apply here?</span>
+        <span class="n">zerinf_indx_log</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">zerinf_indx_1</span><span class="p">,</span> <span class="n">zerinf_indx_2</span><span class="p">,</span>
+                                               <span class="n">zerinf_indx_3</span><span class="p">,</span> <span class="n">zerinf_indx_4</span><span class="p">]))</span>
+        <span class="c1"># good indices for log arrays</span>
+        <span class="n">ctfitran</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">gdflux_log</span><span class="p">)</span>
+        <span class="n">gd_indx_log</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">ctfitran</span><span class="p">)</span>
+        <span class="n">ctzerinf_log</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">zerinf_indx_log</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ctzerinf_log</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">gd_indx_log</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">setdiff1d</span><span class="p">(</span><span class="n">gd_indx_log</span><span class="p">,</span> <span class="n">zerinf_indx_log</span><span class="p">)</span>
+
+        <span class="c1"># Set bad points to nan so lmfit will ignore</span>
+        <span class="n">ctzerinf</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">zerinf_indx</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ctzerinf</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">gdflux</span><span class="p">[</span><span class="n">zerinf_indx</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">gderr</span><span class="p">[</span><span class="n">zerinf_indx</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">gdinvvar</span><span class="p">[</span><span class="n">zerinf_indx</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{:s}{:0f}{:s}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;FITLOOP: Setting &#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">ctzerinf</span><span class="p">),</span>
+                <span class="s1">&#39; points from zero/inf flux or neg/zero/inf error to np.nan&#39;</span><span class="p">),</span> 
+                <span class="n">file</span><span class="o">=</span><span class="n">q3di</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">ctzerinf_log</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># can&#39;t just use np.nan because ppxf will choke on it</span>
+            <span class="n">gdflux_log</span><span class="p">[</span><span class="n">zerinf_indx_log</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+            <span class="n">gderr_log</span><span class="p">[</span><span class="n">zerinf_indx_log</span><span class="p">]</span> <span class="o">=</span> <span class="mf">100.</span><span class="o">*</span><span class="nb">max</span><span class="p">(</span><span class="n">gderr_log</span><span class="p">)</span>
+            <span class="c1"># gdinvvar_log[zerinf_indx_log] = np.nan</span>
+
+
+<span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+<span class="c1"># Initialize fit</span>
+<span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+
+        <span class="n">q3do</span> <span class="o">=</span> <span class="n">q3dout</span><span class="o">.</span><span class="n">q3dout</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">,</span> <span class="n">gdflux</span><span class="p">,</span> <span class="n">gderr</span><span class="p">,</span> <span class="n">fitrange</span><span class="o">=</span><span class="n">fitran</span><span class="p">,</span>
+                             <span class="n">gd_indx</span><span class="o">=</span><span class="n">gd_indx</span><span class="p">,</span> <span class="n">fitran_indx</span><span class="o">=</span><span class="n">fitran_indx</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="n">gdflux</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="mf">0.</span><span class="p">))</span>
+        <span class="n">q3do</span> <span class="o">=</span> <span class="n">q3dout</span><span class="o">.</span><span class="n">q3dout</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span>  <span class="n">nogood</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># timer</span>
+    <span class="n">fit_time0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+<span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+<span class="c1"># Fit continuum</span>
+<span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+
+    <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">docontfit</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">q3do</span><span class="o">.</span><span class="n">nogood</span><span class="p">:</span>
+
+        <span class="n">q3do</span><span class="o">.</span><span class="n">init_contfit</span><span class="p">(</span><span class="n">zstar</span><span class="o">=</span><span class="n">zstar</span><span class="p">)</span>
+
+        <span class="c1"># Some defaults. These only apply in case of fitting with stellar model</span>
+        <span class="c1"># + additive polynomial.</span>
+        <span class="c1"># stel_mod = 0.</span>
+        <span class="c1"># poly_mod = 0.</span>
+
+        <span class="c1"># Mask emission lines</span>
+        <span class="c1"># Column names are line labels, rows are components</span>
+        <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">dolinefit</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">q3di</span><span class="o">.</span><span class="n">nolinemask</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">maskwidths</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">maskwidths</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">maskwidths</span> <span class="o">=</span> <span class="n">q3di</span><span class="o">.</span><span class="n">maskwidths</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">maskwidths</span> <span class="o">=</span> \
+                        <span class="n">Table</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">([</span><span class="n">q3di</span><span class="o">.</span><span class="n">maxncomp</span><span class="p">,</span> <span class="n">listlines</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">],</span>
+                                      <span class="n">q3di</span><span class="o">.</span><span class="n">maskwidths_def</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">usetype</span><span class="p">),</span>
+                              <span class="n">names</span><span class="o">=</span><span class="n">listlines</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">])</span>
+            <span class="c1"># This loop overwrites nans in the case that ncomp gets lowered</span>
+            <span class="c1"># by checkcomp; these nans cause masklin to choke</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">listlines</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]:</span>
+                <span class="k">for</span> <span class="n">comp</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ncomp</span><span class="p">[</span><span class="n">line</span><span class="p">],</span> <span class="n">q3di</span><span class="o">.</span><span class="n">maxncomp</span><span class="p">):</span>
+                    <span class="n">maskwidths</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">comp</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+                    <span class="n">listlinesz</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">comp</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+            <span class="c1"># Convert maskwidths to a Table if it&#39;s input as a dict in q3din</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">maskwidths</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">maskwidths</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span><span class="n">maskwidths</span><span class="p">)</span>
+            <span class="c1"># Mask emission lines in linear space</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">ct_indx</span> <span class="o">=</span> <span class="n">masklin</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">,</span> <span class="n">listlinesz</span><span class="p">,</span> <span class="n">maskwidths</span><span class="p">,</span>
+                                    <span class="n">nomaskran</span><span class="o">=</span><span class="n">q3di</span><span class="o">.</span><span class="n">nomaskran</span><span class="p">)</span>
+            <span class="c1"># Mask emission lines in log space</span>
+            <span class="n">ct_indx_log</span> <span class="o">=</span> <span class="n">masklin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">gdlambda_log</span><span class="p">),</span> <span class="n">listlinesz</span><span class="p">,</span>
+                                  <span class="n">maskwidths</span><span class="p">,</span> <span class="n">nomaskran</span><span class="o">=</span><span class="n">q3di</span><span class="o">.</span><span class="n">nomaskran</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">ct_indx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">))</span>
+            <span class="n">ct_indx_log</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">gdlambda_log</span><span class="p">))</span>
+
+        <span class="n">q3do</span><span class="o">.</span><span class="n">ct_indx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">intersect1d</span><span class="p">(</span><span class="n">q3do</span><span class="o">.</span><span class="n">ct_indx</span><span class="p">,</span> <span class="n">gd_indx</span><span class="p">)</span>
+        <span class="n">ct_indx_log</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">intersect1d</span><span class="p">(</span><span class="n">ct_indx_log</span><span class="p">,</span> <span class="n">gd_indx_log</span><span class="p">)</span>
+
+    <span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+    <span class="c1"># # Option 1: Input function that is not ppxf</span>
+    <span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+
+        <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">fcncontfit</span> <span class="o">!=</span> <span class="s1">&#39;ppxf&#39;</span><span class="p">:</span>
+
+            <span class="c1"># get fitting function</span>
+            <span class="n">module</span> <span class="o">=</span> <span class="n">import_module</span><span class="p">(</span><span class="s1">&#39;q3dfit.contfit&#39;</span><span class="p">)</span>
+            <span class="n">fcncontfit</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">q3di</span><span class="o">.</span><span class="n">fcncontfit</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">argscontfit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">argscontfit</span> <span class="o">=</span> <span class="n">q3di</span><span class="o">.</span><span class="n">argscontfit</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">argscontfit</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">fcncontfit</span> <span class="o">==</span> <span class="s1">&#39;fitqsohost&#39;</span><span class="p">:</span>
+                <span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;template_wave&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">templatelambdaz</span>
+                <span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;template_flux&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">template</span><span class="p">[</span><span class="s1">&#39;flux&#39;</span><span class="p">]</span>
+                <span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;fitran&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fitran</span>
+                <span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;zstar&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">zstar</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">usetype</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">fcncontfit</span> <span class="o">==</span> <span class="s1">&#39;questfit&#39;</span><span class="p">:</span>
+                <span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;fluxunit&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fluxunit</span>
+                <span class="c1">#argscontfit[&#39;waveunit&#39;] = waveunit</span>
+            <span class="k">if</span> <span class="s1">&#39;refit&#39;</span> <span class="ow">in</span> <span class="n">argscontfit</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;refit&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;ppxf&#39;</span><span class="p">:</span>
+                    <span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;index_log&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ct_indx_log</span>
+                    <span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;flux_log&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gdflux_log</span>
+                    <span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;err_log&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gderr_log</span>
+                    <span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;siginit_stars&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">siginit_stars</span>
+                <span class="k">if</span> <span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;refit&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;questfit&#39;</span><span class="p">:</span>
+                    <span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;fluxunit&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fluxunit</span>
+                    <span class="c1">#argscontfit[&#39;waveunit&#39;] = waveunit</span>
+            <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">fcncontfit</span> <span class="o">==</span> <span class="s1">&#39;linfit_plus_FeII&#39;</span><span class="p">:</span>
+                <span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;specConv&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">specConv</span>
+            <span class="c1">#if zstar is None:</span>
+            <span class="c1">#    zstarin = np.nan</span>
+            <span class="c1">#else:</span>
+            <span class="c1">#    zstarin = copy.copy(zstar)</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">cont_fit</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">ct_coeff</span><span class="p">,</span> <span class="n">zstarout</span> <span class="o">=</span> \
+                <span class="n">fcncontfit</span><span class="p">(</span><span class="n">gdlambda</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">usetype</span><span class="p">),</span>
+                           <span class="n">gdflux</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">usetype</span><span class="p">),</span>
+                           <span class="n">gdinvvar</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">usetype</span><span class="p">),</span>
+                           <span class="n">q3do</span><span class="o">.</span><span class="n">ct_indx</span><span class="p">,</span> <span class="n">logfile</span><span class="o">=</span><span class="n">q3di</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span>
+                           <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">,</span> <span class="o">**</span><span class="n">argscontfit</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">zstarout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">q3do</span><span class="o">.</span><span class="n">zstar</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">zstarout</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="s1">&#39;refit&#39;</span> <span class="ow">in</span> <span class="n">argscontfit</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;refit&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;ppxf&#39;</span><span class="p">:</span>
+                    <span class="n">q3do</span><span class="o">.</span><span class="n">ct_ppxf_sigma</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">ct_coeff</span><span class="p">[</span><span class="s1">&#39;ppxf_sigma&#39;</span><span class="p">]</span>
+
+        <span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+        <span class="c1"># # Option 2: PPXF</span>
+        <span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+
+        <span class="k">elif</span> <span class="n">q3di</span><span class="o">.</span><span class="n">startempfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+
+            <span class="c1"># Interpolate template to same grid as data</span>
+            <span class="n">temp_log</span> <span class="o">=</span> <span class="n">q3dmath</span><span class="o">.</span><span class="n">interptemp</span><span class="p">(</span><span class="n">gdlambda_log</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">templatelambdaz</span><span class="p">),</span>
+                                  <span class="n">template</span><span class="p">[</span><span class="s1">&#39;flux&#39;</span><span class="p">])</span>
+
+            <span class="c1"># Check polynomial degree</span>
+            <span class="n">add_poly_degree</span> <span class="o">=</span> <span class="mi">4</span>
+            <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">argscontfit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s1">&#39;add_poly_degree&#39;</span> <span class="ow">in</span> <span class="n">q3di</span><span class="o">.</span><span class="n">argscontfit</span><span class="p">:</span>
+                    <span class="n">add_poly_degree</span> <span class="o">=</span> <span class="n">q3di</span><span class="o">.</span><span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;add_poly_degree&#39;</span><span class="p">]</span>
+
+            <span class="c1"># run ppxf</span>
+            <span class="n">pp</span> <span class="o">=</span> <span class="n">ppxf</span><span class="p">(</span><span class="n">temp_log</span><span class="p">,</span> <span class="n">gdflux_log</span><span class="p">,</span> <span class="n">gderr_log</span><span class="p">,</span> <span class="n">velscale</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">siginit_stars</span><span class="p">],</span> <span class="n">goodpixels</span><span class="o">=</span><span class="n">ct_indx_log</span><span class="p">,</span>
+                      <span class="n">degree</span><span class="o">=</span><span class="n">add_poly_degree</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">,</span>
+                      <span class="n">reddening</span><span class="o">=</span><span class="n">q3di</span><span class="o">.</span><span class="n">ebv_star</span><span class="p">)</span>
+            <span class="c1"># poly_mod = pp.apoly</span>
+            <span class="n">continuum_log</span> <span class="o">=</span> <span class="n">pp</span><span class="o">.</span><span class="n">bestfit</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">ct_add_poly_weights</span> <span class="o">=</span> <span class="n">pp</span><span class="o">.</span><span class="n">polyweights</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">ct_coeff</span> <span class="o">=</span> <span class="n">pp</span><span class="o">.</span><span class="n">weights</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">ct_ebv</span> <span class="o">=</span> <span class="n">pp</span><span class="o">.</span><span class="n">reddening</span>
+            <span class="n">sol</span> <span class="o">=</span> <span class="n">pp</span><span class="o">.</span><span class="n">sol</span>
+            <span class="n">solerr</span> <span class="o">=</span> <span class="n">pp</span><span class="o">.</span><span class="n">error</span>
+
+            <span class="c1"># Resample the best fit into linear space</span>
+            <span class="n">cinterp</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">gdlambda_log</span><span class="p">,</span> <span class="n">continuum_log</span><span class="p">,</span>
+                               <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;cubic&#39;</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="s2">&quot;extrapolate&quot;</span><span class="p">)</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">cont_fit</span> <span class="o">=</span> <span class="n">cinterp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">))</span>
+
+            <span class="c1"># Adjust stellar redshift based on fit</span>
+            <span class="c1"># From ppxf docs:</span>
+            <span class="c1"># IMPORTANT: The precise relation between the output pPXF velocity</span>
+            <span class="c1"># and redshift is Vel = c*np.log(1 + z).</span>
+            <span class="c1"># See Section 2.3 of Cappellari (2017) for a detailed explanation.</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">zstar</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">sol</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">c</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;km/s&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="p">)</span><span class="o">-</span><span class="mf">1.</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">ct_ppxf_sigma</span> <span class="o">=</span> <span class="n">sol</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="c1"># From PPXF docs:</span>
+            <span class="c1"># These errors are meaningless unless Chi^2/DOF~1.</span>
+            <span class="c1"># However if one *assumes* that the fit is good ...</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">ct_rchisq</span> <span class="o">=</span> <span class="n">pp</span><span class="o">.</span><span class="n">chi2</span>
+            <span class="n">solerr</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">pp</span><span class="o">.</span><span class="n">chi2</span><span class="p">)</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">zstar_err</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">solerr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">c</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;km/s&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="p">))</span><span class="o">-</span><span class="mf">1.</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">ct_ppxf_sigma_err</span> <span class="o">=</span> <span class="n">solerr</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+<span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+<span class="c1"># # Option to tweak cont. fit with local polynomial fits</span>
+<span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+        <span class="c1"># if q3di.tweakcntfit is not None:</span>
+        <span class="c1">#     q3do.cont_fit_pretweak = q3do.cont_fit.copy()</span>
+        <span class="c1"># # Arrays holding emission-line-masked data</span>
+        <span class="c1">#     ct_lambda = gdlambda[q3do.ct_indx]</span>
+        <span class="c1">#     ct_flux = gdflux[q3do.ct_indx]</span>
+        <span class="c1">#     ct_err = gderr[q3do.ct_indx]</span>
+        <span class="c1">#     ct_cont = q3do.cont_fit[q3do.ct_indx]</span>
+        <span class="c1">#     for i in range(len(tweakcntfit[0,:])):</span>
+        <span class="c1">#     # Indices into full data</span>
+        <span class="c1">#         tmp_ind1 = np.where(gdlambda &gt;= tweakcntfit[i,0])[0]</span>
+        <span class="c1">#         tmp_ind2 = np.where(gdlambda &lt;= tweakcntfit[i,1])[0]</span>
+        <span class="c1">#         tmp_ind = np.intersect1d(tmp_ind1,tmp_ind2)</span>
+        <span class="c1">#         ct_ind = len(tmp_ind)</span>
+        <span class="c1">#     # Indices into masked data</span>
+        <span class="c1">#         tmp_ctind1 = np.where(ct_lambda &gt;= tweakcntfit[i,0])[0]</span>
+        <span class="c1">#         tmp_ctind2 = np.where(ct_lambda &lt;= tweakcntfit[i,1])[0]</span>
+        <span class="c1">#         tmp_ctind = np.intersect1d(tmp_ctind1,tmp_ctind2)</span>
+        <span class="c1">#         ct_ctind = len(tmp_ctind)</span>
+
+        <span class="c1">#         if ct_ind &gt; 0 and ct_ctind &gt; 0:</span>
+        <span class="c1">#             parinfo =  list(np.repeat({&#39;value&#39;:0.},tweakcntfit[2,i]+1))</span>
+        <span class="c1">#             # parinfo = replicate({value:0d},tweakcntfit[2,i]+1)</span>
+        <span class="c1">#             pass # this is just a placeholder for now</span>
+        <span class="c1">#             # tmp_pars = mpfitfun(&#39;poly&#39;,ct_lambda[tmp_ctind],$</span>
+        <span class="c1">#             #                     ct_flux[tmp_ctind] - ct_cont[tmp_ctind],$</span>
+        <span class="c1">#             #                     ct_err[tmp_ctind],parinfo=parinfo,/quiet)</span>
+        <span class="c1">#             # continuum[tmp_ind] += poly(gdlambda[tmp_ind],tmp_pars)</span>
+        <span class="c1"># else:</span>
+        <span class="c1">#     continuum_pretweak = continuum.copy()</span>
+
+        <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">dividecont</span><span class="p">:</span>
+            <span class="n">continuum</span> <span class="o">=</span> <span class="n">gdflux</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="o">/</span> <span class="n">q3do</span><span class="o">.</span><span class="n">cont_fit</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">gdinvvar_nocnt</span> <span class="o">=</span> <span class="n">gdinvvar</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">q3do</span><span class="o">.</span><span class="n">cont_fit</span><span class="p">,</span> <span class="mf">2.</span><span class="p">)</span>
+            <span class="c1"># gderr_nocnt = gderr / continuum</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">ct_method</span> <span class="o">=</span> <span class="s1">&#39;divide&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">continuum</span> <span class="o">=</span> <span class="n">gdflux</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="o">-</span> <span class="n">q3do</span><span class="o">.</span><span class="n">cont_fit</span>
+            <span class="n">gdinvvar_nocnt</span> <span class="o">=</span> <span class="n">gdinvvar</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">ct_method</span> <span class="o">=</span> <span class="s1">&#39;subtract&#39;</span>
+
+        <span class="n">fit_time1</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{:s}{:0.1f}{:s}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;FITSPEC: Continuum fit took &#39;</span><span class="p">,</span>
+            <span class="n">fit_time1</span><span class="o">-</span><span class="n">fit_time0</span><span class="p">,</span> <span class="s1">&#39; s.&#39;</span><span class="p">),</span> <span class="n">file</span><span class="o">=</span><span class="n">q3di</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="n">continuum</span> <span class="o">=</span> <span class="n">gdflux</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+
+<span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+<span class="c1"># Fit emission lines</span>
+<span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+
+    <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">dolinefit</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">q3do</span><span class="o">.</span><span class="n">nogood</span><span class="p">:</span>
+
+        <span class="n">q3do</span><span class="o">.</span><span class="n">init_linefit</span><span class="p">(</span><span class="n">listlines</span><span class="p">,</span> <span class="n">q3di</span><span class="o">.</span><span class="n">lines</span><span class="p">,</span> <span class="n">q3di</span><span class="o">.</span><span class="n">maxncomp</span><span class="p">,</span>
+                          <span class="n">line_dat</span><span class="o">=</span><span class="n">continuum</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">usetype</span><span class="p">))</span>
+
+        <span class="c1"># Check that # components being fit to at least one line is &gt; 0</span>
+        <span class="n">nonzerocomp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">ncomp</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Make sure line within fitrange</span>
+        <span class="c1"># To deal with case of truncated data where continuum can be fit but</span>
+        <span class="c1"># line not within good data range</span>
+        <span class="n">line_in_good_range</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">q3di</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">line_in_good_range</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="k">for</span> <span class="n">icomp</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ncomp</span><span class="p">[</span><span class="n">line</span><span class="p">]):</span>
+                <span class="k">if</span> <span class="n">listlinesz</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">icomp</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="nb">min</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">)</span> <span class="ow">and</span> \
+                    <span class="n">listlinesz</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">icomp</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="nb">max</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">):</span>
+                    <span class="n">line_in_good_range</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">break</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonzerocomp</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">line_in_good_range</span><span class="p">:</span>
+
+            <span class="c1"># Initial guesses for emission line peak fluxes (above continuum)</span>
+            <span class="k">if</span> <span class="n">peakinit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1">#if q3di.peakinit is not None and isinstance(q3di.peakinit, Table):</span>
+                <span class="c1">#    peakinit = q3di.peakinit</span>
+                <span class="c1">#else:</span>
+                <span class="c1"># initialize peakinit</span>
+                <span class="n">peakinit</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">([</span><span class="n">q3di</span><span class="o">.</span><span class="n">maxncomp</span><span class="p">,</span> <span class="n">listlines</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">],</span>
+                                    <span class="mf">0.</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">usetype</span><span class="p">),</span> <span class="n">names</span><span class="o">=</span><span class="n">listlines</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">])</span>
+                <span class="c1"># peakinit = {line: np.zeros(q3di.maxncomp) for line in q3di.lines}</span>
+                <span class="c1"># apply some light filtering</span>
+                <span class="c1"># https://stackoverflow.com/questions/20618804/how-to-smooth-a-curve-in-the-right-way/20642478</span>
+                <span class="c1"># https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html</span>
+                <span class="kn">from</span> <span class="nn">scipy.signal</span> <span class="kn">import</span> <span class="n">savgol_filter</span>
+                <span class="c1"># from scipy.ndimage import gaussian_filter</span>
+                <span class="n">line_dat_sm</span> <span class="o">=</span> <span class="n">savgol_filter</span><span class="p">(</span><span class="n">q3do</span><span class="o">.</span><span class="n">line_dat</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+                <span class="c1"># gaussian_filter(q3do.line_dat,1)</span>
+                <span class="c1"># fline = interp1d(gdlambda, line_dat_sm, kind=&#39;linear&#39;)</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">q3di</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+                    <span class="c1"># Check that line wavelength is in data range</span>
+                    <span class="c1"># Use first component as a proxy for all components</span>
+                    <span class="k">if</span> <span class="n">listlinesz</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="nb">min</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">)</span> <span class="ow">and</span> \
+                        <span class="n">listlinesz</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="nb">max</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">):</span>
+                        <span class="c1"># peakinit[line] = fline(listlinesz[line][0:ncomp[line]])</span>
+                        <span class="c1"># look for peak within dz = +/-0.001</span>
+                        <span class="k">for</span> <span class="n">icomp</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ncomp</span><span class="p">[</span><span class="n">line</span><span class="p">]):</span>
+                            <span class="c1"># https://stackoverflow.com/questions/12141150/from-list-of-integers-get-number-closest-to-a-given-value</span>
+                            <span class="n">lamwin</span> <span class="o">=</span> \
+                                <span class="p">[</span><span class="nb">min</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span>
+                                    <span class="nb">abs</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">listlinesz</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">icomp</span><span class="p">]</span><span class="o">*</span><span class="mf">0.999</span><span class="p">)),</span>
+                                    <span class="nb">min</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span>
+                                        <span class="nb">abs</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">listlinesz</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">icomp</span><span class="p">]</span><span class="o">*</span><span class="mf">1.001</span><span class="p">))]</span>
+                            <span class="n">ilamwin</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">gdlambda</span> <span class="o">==</span> <span class="n">lamwin</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
+                                        <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">gdlambda</span> <span class="o">==</span> <span class="n">lamwin</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]]</span>
+                            <span class="c1"># e.g. in the MIR, the wavelength range spanned by</span>
+                            <span class="c1"># (listlinesz[line][icomp]*0.999,</span>
+                            <span class="c1"># listlinesz[line][icomp]*1.001) can be smaller</span>
+                            <span class="c1"># than one spectral element</span>
+                            <span class="k">if</span> <span class="n">ilamwin</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">ilamwin</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+                                <span class="n">dlam</span> <span class="o">=</span> \
+                                    <span class="n">gdlambda</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">ilamwin</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span>
+                                                        <span class="n">ilamwin</span><span class="p">[</span><span class="mi">1</span><span class="p">]))]</span>\
+                                    <span class="o">-</span> <span class="n">gdlambda</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">ilamwin</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span>
+                                                        <span class="n">ilamwin</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                                <span class="n">lamwin</span> <span class="o">=</span> \
+                                    <span class="p">[</span><span class="nb">min</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span>
+                                            <span class="nb">abs</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="p">(</span><span class="n">listlinesz</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">icomp</span><span class="p">]</span> <span class="o">-</span>
+                                                    <span class="mf">5.</span><span class="o">*</span><span class="n">dlam</span><span class="p">))),</span>
+                                        <span class="nb">min</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span>
+                                            <span class="nb">abs</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="p">(</span><span class="n">listlinesz</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">icomp</span><span class="p">]</span> <span class="o">+</span>
+                                                    <span class="mf">5.</span><span class="o">*</span><span class="n">dlam</span><span class="p">)))]</span>
+                                <span class="n">ilamwin</span> <span class="o">=</span> \
+                                    <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">gdlambda</span> <span class="o">==</span> <span class="n">lamwin</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
+                                        <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">gdlambda</span> <span class="o">==</span> <span class="n">lamwin</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]]</span>
+
+                            <span class="n">peakinit</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">icomp</span><span class="p">]</span> <span class="o">=</span> \
+                                <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">line_dat_sm</span>
+                                            <span class="p">[</span><span class="n">ilamwin</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">ilamwin</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+
+                            <span class="c1"># If the smoothed version gives all nans, try</span>
+                            <span class="c1"># unsmoothed</span>
+                            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">peakinit</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">icomp</span><span class="p">])</span> <span class="ow">and</span> \
+                                <span class="n">q3do</span><span class="o">.</span><span class="n">line_dat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                                <span class="n">peakinit</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">icomp</span><span class="p">]</span> <span class="o">=</span> \
+                                <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">q3do</span><span class="o">.</span><span class="n">line_dat</span><span class="p">[</span><span class="n">ilamwin</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">ilamwin</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+                            <span class="c1"># if it&#39;s still all nans, just set to 0.</span>
+                            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">peakinit</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">icomp</span><span class="p">]):</span>
+                                <span class="n">peakinit</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">icomp</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+                        <span class="c1"># If initial guess is negative, set to 0 to prevent</span>
+                        <span class="c1"># fitter from choking (since we limit peak to be &gt;= 0)</span>
+                        <span class="n">peakinit</span><span class="p">[</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> \
+                            <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">peakinit</span><span class="p">[</span><span class="n">line</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="n">peakinit</span><span class="p">[</span><span class="n">line</span><span class="p">])</span>
+                    <span class="c1"># re-cast if needed</span>
+                    <span class="n">peakinit</span><span class="p">[</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">peakinit</span><span class="p">[</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">usetype</span><span class="p">)</span>
+
+            <span class="c1"># Fill out parameter structure with initial guesses and constraints</span>
+            <span class="n">impModule</span> <span class="o">=</span> <span class="n">import_module</span><span class="p">(</span><span class="s1">&#39;q3dfit.&#39;</span> <span class="o">+</span> <span class="n">q3di</span><span class="o">.</span><span class="n">fcnlineinit</span><span class="p">)</span>
+            <span class="n">run_fcnlineinit</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">impModule</span><span class="p">,</span> <span class="n">q3di</span><span class="o">.</span><span class="n">fcnlineinit</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">argslineinit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">argslineinit</span> <span class="o">=</span> <span class="n">q3di</span><span class="o">.</span><span class="n">argslineinit</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">argslineinit</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">fcnlineinit</span> <span class="o">==</span> <span class="s1">&#39;lineinit&#39;</span><span class="p">:</span>
+                <span class="n">argslineinit</span><span class="p">[</span><span class="s1">&#39;waves&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gdlambda</span>
+            <span class="c1"># Note that if we do a line fit, siginit_gas, siglim_gas, ncomp</span>
+            <span class="c1"># are set up by fitloop</span>
+            <span class="n">emlmod</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">parinit</span> <span class="o">=</span> \
+                <span class="n">run_fcnlineinit</span><span class="p">(</span><span class="n">listlines</span><span class="p">,</span> <span class="n">listlinesz</span><span class="p">,</span> <span class="n">q3di</span><span class="o">.</span><span class="n">linetie</span><span class="p">,</span> <span class="n">linevary</span><span class="p">,</span> 
+                                <span class="n">peakinit</span><span class="p">,</span> <span class="n">siginit_gas</span><span class="p">,</span> <span class="n">siglim_gas</span><span class="p">,</span> <span class="n">ncomp</span><span class="p">,</span> <span class="n">specConv</span><span class="o">=</span><span class="n">specConv</span><span class="p">,</span>
+                                <span class="o">**</span><span class="n">argslineinit</span><span class="p">)</span>
+
+
+            <span class="c1"># Actual fit</span>
+
+            <span class="c1"># Collect keywords to pass to the minimizer routine via lmfit</span>
+            <span class="n">fit_kws</span> <span class="o">=</span> <span class="p">{}</span>
+
+            <span class="c1"># Maximum # evals cannot be specified as a keyword to the minimzer,</span>
+            <span class="c1"># as it&#39;s a parameter of the fit method. Default for &#39;least_squares&#39;</span>
+            <span class="c1"># with &#39;trf&#39; method (which is what lmfit assumes)</span>
+            <span class="c1"># is 100*npar, but lmfit changes this to 2000*(npar+1)</span>
+            <span class="c1"># https://github.com/lmfit/lmfit-py/blob/b930ddef320d93f984181db19fec8e9c9a41be8f/lmfit/minimizer.py#L1526</span>
+            <span class="c1"># We&#39;ll change default to 200*(npar+1).</span>
+            <span class="c1"># Note that lmfit method &#39;least_squares’ with default least_squares</span>
+            <span class="c1"># method &#39;lm&#39; counts function calls in</span>
+            <span class="c1"># Jacobian estimation if numerical Jacobian is used (again the default)</span>
+            <span class="n">max_nfev</span> <span class="o">=</span> <span class="mi">200</span><span class="o">*</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">q3do</span><span class="o">.</span><span class="n">parinit</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">iter_cb</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;least_squares&#39;</span>
+
+            <span class="c1"># Add more using &#39;argslinefit&#39; dict in init file</span>
+            <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">argslinefit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">q3di</span><span class="o">.</span><span class="n">argslinefit</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="c1"># max_nfev goes in as parameter to fit method instead</span>
+                    <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;max_nfev&#39;</span><span class="p">:</span>
+                        <span class="n">max_nfev</span> <span class="o">=</span> <span class="n">val</span>
+                    <span class="c1"># iter_cb goes in as parameter to fit method instead</span>
+                    <span class="k">elif</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;iter_cb&#39;</span><span class="p">:</span>
+                        <span class="n">iter_cb</span> <span class="o">=</span> <span class="nb">globals</span><span class="p">()[</span><span class="n">val</span><span class="p">]</span>
+                    <span class="k">elif</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;method&#39;</span><span class="p">:</span>
+                        <span class="n">method</span> <span class="o">=</span> <span class="n">val</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">fit_kws</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+
+            <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;least_squares&#39;</span><span class="p">:</span>
+                <span class="c1"># verbosity for scipy.optimize.least_squares</span>
+                <span class="k">if</span> <span class="n">quiet</span><span class="p">:</span>
+                    <span class="n">lmverbose</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">lmverbose</span> <span class="o">=</span> <span class="mi">2</span>
+                <span class="n">fit_kws</span><span class="p">[</span><span class="s1">&#39;verbose&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lmverbose</span>
+
+            <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;leastsq&#39;</span><span class="p">:</span>
+                <span class="c1"># to get mesg output</span>
+                <span class="n">fit_kws</span><span class="p">[</span><span class="s1">&#39;full_output&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="c1"># increase number of max iterations; this is the default for this algorithm</span>
+                <span class="c1"># https://github.com/lmfit/lmfit-py/blob/7710da6d7e878ffee0dc90a85286f1ec619fc20f/lmfit/minimizer.py#L1624</span>
+                <span class="n">max_nfev</span> <span class="o">=</span> <span class="mi">2000</span><span class="o">*</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">q3do</span><span class="o">.</span><span class="n">parinit</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+
+            <span class="n">lmout</span> <span class="o">=</span> <span class="n">emlmod</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">q3do</span><span class="o">.</span><span class="n">line_dat</span><span class="p">,</span> <span class="n">q3do</span><span class="o">.</span><span class="n">parinit</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">gdlambda</span><span class="p">,</span>
+                               <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">gdinvvar_nocnt</span><span class="p">),</span>
+                               <span class="n">nan_policy</span><span class="o">=</span><span class="s1">&#39;omit&#39;</span><span class="p">,</span> <span class="n">max_nfev</span><span class="o">=</span><span class="n">max_nfev</span><span class="p">,</span>
+                               <span class="n">fit_kws</span><span class="o">=</span><span class="n">fit_kws</span><span class="p">,</span> <span class="n">iter_cb</span><span class="o">=</span><span class="n">iter_cb</span><span class="p">)</span>
+
+            <span class="n">q3do</span><span class="o">.</span><span class="n">line_fit</span> <span class="o">=</span> <span class="n">emlmod</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">lmout</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">gdlambda</span><span class="p">)</span>
+            <span class="n">write_msg</span><span class="p">(</span><span class="n">lmout</span><span class="o">.</span><span class="n">fit_report</span><span class="p">(</span><span class="n">show_correl</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span> <span class="n">file</span><span class="o">=</span><span class="n">q3di</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+
+            <span class="n">q3do</span><span class="o">.</span><span class="n">param</span> <span class="o">=</span> <span class="n">lmout</span><span class="o">.</span><span class="n">best_values</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">covar</span> <span class="o">=</span> <span class="n">lmout</span><span class="o">.</span><span class="n">covar</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">dof</span> <span class="o">=</span> <span class="n">lmout</span><span class="o">.</span><span class="n">nfree</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">redchisq</span> <span class="o">=</span> <span class="n">lmout</span><span class="o">.</span><span class="n">redchi</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">nfev</span> <span class="o">=</span> <span class="n">lmout</span><span class="o">.</span><span class="n">nfev</span>
+
+<span class="w">            </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">            error messages corresponding to LMFIT, plt</span>
+<span class="sd">            documentation was not very helpful with the error messages...</span>
+<span class="sd">            This can happen if, e.g., max_nfev is reached. Status message</span>
+<span class="sd">            is in this case not set, so we&#39;ll set it by hand.</span>
+<span class="sd">            The reason for algorithm termination (in least_squaares):</span>
+<span class="sd">            -1 : improper input parameters status returned from MINPACK.</span>
+<span class="sd">            0 : the maximum number of function evaluations is exceeded.</span>
+<span class="sd">            1 : gtol termination condition is satisfied.</span>
+<span class="sd">            2 : ftol termination condition is satisfied.</span>
+<span class="sd">            3 : xtol termination condition is satisfied.</span>
+<span class="sd">            4 : Both ftol and xtol termination conditions are satisfied.</span>
+<span class="sd">            &#39;&#39;&#39;</span>
+            <span class="c1"># q3do.fitstatus = 1 # default for good fit</span>
+            <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;least_squares&#39;</span><span class="p">:</span>
+                <span class="c1"># https://lmfit.github.io/lmfit-py/model.html#lmfit.model.success</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">lmout</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+                    <span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;lmfit: &#39;</span><span class="o">+</span><span class="n">lmout</span><span class="o">.</span><span class="n">message</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">q3di</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">lmout</span><span class="p">,</span> <span class="s1">&#39;status&#39;</span><span class="p">):</span>
+                    <span class="n">q3do</span><span class="o">.</span><span class="n">fitstatus</span> <span class="o">=</span> <span class="n">lmout</span><span class="o">.</span><span class="n">status</span>
+                <span class="k">elif</span> <span class="n">lmout</span><span class="o">.</span><span class="n">nfev</span> <span class="o">&gt;=</span> <span class="n">max_nfev</span><span class="p">:</span>
+                    <span class="n">q3do</span><span class="o">.</span><span class="n">fitstatus</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;leastsq&#39;</span><span class="p">:</span>
+            <span class="c1"># Return values from scipy.optimize.leastsq for fit status</span>
+            <span class="c1"># https://github.com/scipy/scipy/blob/44e4ebaac992fde33f04638b99629d23973cb9b2/scipy/optimize/_minpack_py.py#L446</span>
+            <span class="c1"># success = 1-4, failure=4-8</span>
+            <span class="c1"># Possible lmfit error messages here:</span>
+            <span class="c1"># Presently, fit is aborting with messaage &quot;Fit aborted&quot; if max_nfev is reached</span>
+            <span class="c1"># setting ier=-1.</span>
+            <span class="c1"># I don&#39;t understand why this is happening, as I can&#39;t find the code that</span>
+            <span class="c1"># actually sets result.aborted to True in the lmfit code.</span>
+            <span class="c1"># See here for where ier is set in this case:</span>
+            <span class="c1"># https://github.com/lmfit/lmfit-py/blob/7710da6d7e878ffee0dc90a85286f1ec619fc20f/lmfit/minimizer.py#L1653</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">lmout</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+                    <span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;lmfit: &#39;</span><span class="o">+</span><span class="n">lmout</span><span class="o">.</span><span class="n">message</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">q3di</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+                <span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;lmfit: &#39;</span><span class="o">+</span><span class="n">lmout</span><span class="o">.</span><span class="n">lmdif_message</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">q3di</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+                <span class="n">q3do</span><span class="o">.</span><span class="n">fitstatus</span> <span class="o">=</span> <span class="n">lmout</span><span class="o">.</span><span class="n">ier</span>
+
+            <span class="c1"># Errors from covariance matrix</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">perror</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">lmout</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
+                <span class="n">q3do</span><span class="o">.</span><span class="n">perror</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">lmout</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="o">.</span><span class="n">stderr</span>
+            <span class="c1"># Get flux peak errors from error spectrum and std dev of residual</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">perror_errspec</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">q3do</span><span class="o">.</span><span class="n">perror</span><span class="p">)</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">perror_resid</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">q3do</span><span class="o">.</span><span class="n">perror</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">listlines</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]:</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ncomp</span><span class="p">[</span><span class="n">line</span><span class="p">]):</span>
+                    <span class="n">lmline</span> <span class="o">=</span> <span class="n">lmlabel</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                    <span class="n">fluxlab</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">lmline</span><span class="o">.</span><span class="n">lmlabel</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">_flx&#39;</span>
+                    <span class="k">if</span> <span class="n">q3do</span><span class="o">.</span><span class="n">param</span><span class="p">[</span><span class="n">fluxlab</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">peakwave</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">param</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">lmline</span><span class="o">.</span><span class="n">lmlabel</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">_cwv&#39;</span><span class="p">]</span>
+                        <span class="n">ipeakwave</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">gdlambda</span> <span class="o">-</span> <span class="n">peakwave</span><span class="p">))</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span>
+                        <span class="c1"># from error spec</span>
+                        <span class="n">ipklo</span> <span class="o">=</span> <span class="n">ipeakwave</span> <span class="o">-</span> <span class="nb">round</span><span class="p">(</span><span class="n">q3di</span><span class="o">.</span><span class="n">perror_errspecwin</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+                        <span class="n">ipkhi</span> <span class="o">=</span> <span class="n">ipeakwave</span> <span class="o">+</span> <span class="nb">round</span><span class="p">(</span><span class="n">q3di</span><span class="o">.</span><span class="n">perror_errspecwin</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">ipklo</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">ipklo</span> <span class="o">=</span> <span class="mi">0</span>
+                        <span class="k">if</span> <span class="n">ipkhi</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                            <span class="n">ipkhi</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span>
+                        <span class="n">q3do</span><span class="o">.</span><span class="n">perror_errspec</span><span class="p">[</span><span class="n">fluxlab</span><span class="p">]</span> <span class="o">=</span> \
+                            <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">gderr</span><span class="p">[</span><span class="n">ipklo</span><span class="p">:</span><span class="n">ipkhi</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+                        <span class="c1"># from residual</span>
+                        <span class="n">ipklo</span> <span class="o">=</span> <span class="n">ipeakwave</span> <span class="o">-</span> <span class="nb">round</span><span class="p">(</span><span class="n">q3di</span><span class="o">.</span><span class="n">perror_residwin</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+                        <span class="n">ipkhi</span> <span class="o">=</span> <span class="n">ipeakwave</span> <span class="o">+</span> <span class="nb">round</span><span class="p">(</span><span class="n">q3di</span><span class="o">.</span><span class="n">perror_residwin</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">ipklo</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">ipklo</span> <span class="o">=</span> <span class="mi">0</span>
+                        <span class="k">if</span> <span class="n">ipkhi</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                            <span class="n">ipkhi</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">gdlambda</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span>
+                        <span class="n">q3do</span><span class="o">.</span><span class="n">perror_resid</span><span class="p">[</span><span class="n">fluxlab</span><span class="p">]</span> <span class="o">=</span> \
+                            <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">((</span><span class="n">q3do</span><span class="o">.</span><span class="n">line_dat</span> <span class="o">-</span> <span class="n">q3do</span><span class="o">.</span><span class="n">line_fit</span><span class="p">)</span>
+                                   <span class="p">[</span><span class="n">ipklo</span><span class="p">:</span><span class="n">ipkhi</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+                        <span class="c1"># Deal with flux pegging at boundary and no error</span>
+                        <span class="c1"># from lmfit. Check for both Nones and nans:</span>
+                        <span class="k">if</span> <span class="n">q3do</span><span class="o">.</span><span class="n">perror</span><span class="p">[</span><span class="n">fluxlab</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">q3do</span><span class="o">.</span><span class="n">perror</span><span class="p">[</span><span class="n">fluxlab</span><span class="p">]</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">perror_errspec</span><span class="p">[</span><span class="n">fluxlab</span><span class="p">]</span>
+                        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">q3do</span><span class="o">.</span><span class="n">perror</span><span class="p">[</span><span class="n">fluxlab</span><span class="p">]):</span>
+                            <span class="n">q3do</span><span class="o">.</span><span class="n">perror</span><span class="p">[</span><span class="n">fluxlab</span><span class="p">]</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">perror_errspec</span><span class="p">[</span><span class="n">fluxlab</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">q3di</span><span class="o">.</span><span class="n">perror_useresid</span> <span class="ow">and</span> \
+                            <span class="n">q3do</span><span class="o">.</span><span class="n">perror_resid</span><span class="p">[</span><span class="n">fluxlab</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">q3do</span><span class="o">.</span><span class="n">perror</span><span class="p">[</span><span class="n">fluxlab</span><span class="p">]:</span>
+                            <span class="n">q3do</span><span class="o">.</span><span class="n">perror</span><span class="p">[</span><span class="n">fluxlab</span><span class="p">]</span> <span class="o">=</span> <span class="n">q3do</span><span class="o">.</span><span class="n">perror_resid</span><span class="p">[</span><span class="n">fluxlab</span><span class="p">]</span>
+
+            <span class="c1"># Flux peak errors from fit residual.</span>
+            <span class="c1"># resid = gdflux - continuum - specfit</span>
+            <span class="c1"># q3do.perror_resid = copy.deepcopy(q3do.perror)</span>
+            <span class="c1"># sigrange = 20.</span>
+            <span class="c1"># for line in lines_arr:</span>
+            <span class="c1">#     iline = np.array([ip for ip, item in enumerate(parinit)</span>
+            <span class="c1">#                       if item[&#39;line&#39;] == line])</span>
+            <span class="c1">#     ifluxpk = \</span>
+            <span class="c1">#         np.intersect1d(iline,</span>
+            <span class="c1">#                        np.array([ip for ip, item in enumerate(parinit)</span>
+            <span class="c1">#                                  if item[&#39;parname&#39;] == &#39;flux_peak&#39;]))</span>
+            <span class="c1">#     ctfluxpk = len(ifluxpk)</span>
+            <span class="c1">#     isigma = \</span>
+            <span class="c1">#         np.intersect1d(iline,</span>
+            <span class="c1">#                        np.array([ip for ip, item in enumerate(parinit)</span>
+            <span class="c1">#                                  if item[&#39;parname&#39;] == &#39;sigma&#39;]))</span>
+            <span class="c1">#     iwave = \</span>
+            <span class="c1">#         np.intersect1d(iline,</span>
+            <span class="c1">#                        np.array([ip for ip, item in enumerate(parinit)</span>
+            <span class="c1">#                                  if item[&#39;parname&#39;] == &#39;wavelength&#39;]))</span>
+            <span class="c1">#     for i in range(0, ctfluxpk):</span>
+            <span class="c1">#         waverange = \</span>
+            <span class="c1">#             sigrange * np.sqrt(np.power((param[isigma[i]] /</span>
+            <span class="c1">#                                          c*param[iwave[i]]), 2.) +</span>
+            <span class="c1">#                                np.power(param[2], 2.))</span>
+            <span class="c1">#         wlo = np.searchsorted(gdlambda, param[iwave[i]] - waverange/2.)</span>
+            <span class="c1">#         whi = np.searchsorted(gdlambda, param[iwave[i]] + waverange/2.)</span>
+            <span class="c1">#         if whi == len(gdlambda)+1:</span>
+            <span class="c1">#             whi = len(gdlambda)-1</span>
+            <span class="c1">#         if param[ifluxpk[i]] &gt; 0:</span>
+            <span class="c1">#             perror_resid[ifluxpk[i]] = \</span>
+            <span class="c1">#                 np.sqrt(np.mean(np.power(resid[wlo:whi], 2.)))</span>
+
+            <span class="n">q3do</span><span class="o">.</span><span class="n">cont_dat</span> <span class="o">=</span> <span class="n">gdflux</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="o">-</span> <span class="n">q3do</span><span class="o">.</span><span class="n">line_fit</span>
+
+            <span class="n">fit_time2</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{:s}{:0.1f}{:s}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;FITSPEC: Line fit took &#39;</span><span class="p">,</span>
+                    <span class="n">fit_time2</span><span class="o">-</span><span class="n">fit_time1</span><span class="p">,</span> <span class="s1">&#39; s.&#39;</span><span class="p">),</span> <span class="n">file</span><span class="o">=</span><span class="n">q3di</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="n">q3do</span><span class="o">.</span><span class="n">dolinefit</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">q3do</span><span class="o">.</span><span class="n">cont_dat</span> <span class="o">=</span> <span class="n">gdflux</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1">#q3do.fitstatus = 1</span>
+        <span class="n">q3do</span><span class="o">.</span><span class="n">cont_dat</span> <span class="o">=</span> <span class="n">gdflux</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+<span class="c1">#  Finish</span>
+<span class="c1"># ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;</span>
+
+    <span class="k">return</span><span class="p">(</span><span class="n">q3do</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># For diagnosing problems, print value of each parameter every iteration</span>
+<span class="c1"># To use, set &#39;iter_cb&#39;: &#39;per_iteration&#39; as a keyword/value pair in &#39;argslinefit&#39;</span>
+<span class="c1"># https://lmfit.github.io/lmfit-py/examples/documentation/model_with_iter_callback.html</span>
+<div class="viewcode-block" id="per_iteration">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.fitspec.per_iteration">[docs]</a>
+<span class="k">def</span> <span class="nf">per_iteration</span><span class="p">(</span><span class="n">pars</span><span class="p">,</span> <span class="n">iteration</span><span class="p">,</span> <span class="n">resid</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot; ITER &quot;</span><span class="p">,</span> <span class="n">iteration</span><span class="p">,</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">value</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">&quot;</span>
+                                <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pars</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span></div>
+
+
+
+<div class="viewcode-block" id="airtovac">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.fitspec.airtovac">[docs]</a>
+<span class="k">def</span> <span class="nf">airtovac</span><span class="p">(</span><span class="n">wv</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+             <span class="n">waveunit</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;micron&#39;</span><span class="p">,</span><span class="s1">&#39;Angstrom&#39;</span><span class="p">]</span><span class="o">=</span><span class="s1">&#39;Angstrom&#39;</span><span class="p">,</span>
+             <span class="n">logfile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">quiet</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Takes an array of wavelengths in air and converts them to vacuum</span>
+<span class="sd">    using eq. 3 from Morton et al. 1991 ApJSS 77 119</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    wv</span>
+<span class="sd">        Input wavelengths.</span>
+<span class="sd">    waveunit</span>
+<span class="sd">        Optional. Wavelength unit. Default is Angstrom.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ndarray</span>
+<span class="sd">        An array of the same dimensions as the input and in the same units</span>
+<span class="sd">        as the input</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. Morton et al. 1991 ApJSS 77 119</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; wv=np.arange(3000,7000,1)</span>
+<span class="sd">    &gt;&gt;&gt; vac_wv=airtovac(wv)</span>
+<span class="sd">    array([3000.87467224, 3001.87492143, 3002.87517064, ..., 6998.92971915, 6999.92998844, 7000.93025774])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span><span class="o">=</span><span class="n">wv</span>
+    <span class="c1"># get x to be in Angstroms for calculations if it isn&#39;t already</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">waveunit</span><span class="o">!=</span><span class="s1">&#39;Angstrom&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">waveunit</span><span class="o">!=</span><span class="s1">&#39;micron&#39;</span><span class="p">)):</span>
+        <span class="n">write_msg</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Wave unit </span><span class="si">{</span><span class="n">waveunit</span><span class="si">}</span><span class="s1"> not recognized, assuming Angstroms.&#39;</span><span class="p">,</span> <span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">waveunit</span><span class="o">==</span><span class="s1">&#39;micron&#39;</span><span class="p">):</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">wv</span><span class="o">*</span><span class="mf">1.e4</span>
+
+    <span class="n">tmp</span><span class="o">=</span><span class="mf">1.e4</span><span class="o">/</span><span class="n">x</span>
+    <span class="c1"># vacuum wavelengths are indeed slightly longer</span>
+    <span class="n">y</span><span class="o">=</span><span class="n">x</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="mf">6.4328e-5</span><span class="o">+</span><span class="mf">2.94981e-2</span><span class="o">/</span><span class="p">(</span><span class="mf">146.</span><span class="o">-</span><span class="n">tmp</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">+</span><span class="mf">2.5540e-4</span><span class="o">/</span><span class="p">(</span><span class="mf">41.</span><span class="o">-</span><span class="n">tmp</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+
+    <span class="c1"># get y to be in the same units as the input:</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">waveunit</span><span class="o">==</span><span class="s1">&#39;micron&#39;</span><span class="p">):</span>
+        <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="o">*</span><span class="mf">1.e-4</span>
+
+    <span class="k">return</span><span class="p">(</span><span class="n">y</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="masklin">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.fitspec.masklin">[docs]</a>
+<span class="k">def</span> <span class="nf">masklin</span><span class="p">(</span><span class="n">llambda</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">linelambda</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+            <span class="n">halfwidth</span><span class="p">:</span> <span class="n">Table</span><span class="p">,</span>
+            <span class="n">nomaskran</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ArrayLike</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    Masks emission lines from the spectrum for continuum fitting</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    llambda</span>
+<span class="sd">        Wavelengths of the spectrum.</span>
+<span class="sd">    linelambda</span>
+<span class="sd">        Dictionary with line names as keys and arrays of central wavelengths as values,</span>
+<span class="sd">        one value per component.</span>
+<span class="sd">    halfwidth</span>
+<span class="sd">        Dictionary with line names as keys and arrays of half widths as values, one</span>
+<span class="sd">        value per component; or a Table with the same structure.</span>
+<span class="sd">    nomaskran</span>
+<span class="sd">        Optional. Set of lower and upper wavelength limits of regions not to mask. If</span>
+<span class="sd">        None, no regions are excluded.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        Array of llambda-array indices indicating non-masked wavelengths.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    1.  from masklin import masklin</span>
+<span class="sd">    </span>
+<span class="sd">        Generate linelist:</span>
+<span class="sd">            </span>
+<span class="sd">        from linelist import linelist</span>
+<span class="sd">        mylist=[&#39;Halpha&#39;,&#39;Hbeta&#39;,&#39;Hgamma&#39;]</span>
+<span class="sd">        u=linelist(inlines=mylist)</span>
+
+<span class="sd">        Generate wavelength array:</span>
+<span class="sd">            </span>
+<span class="sd">        import numpy as np</span>
+<span class="sd">        llambda=np.arange(3000.,8000.,1.)</span>
+<span class="sd">    </span>
+<span class="sd">        Generate half widths for masking:</span>
+<span class="sd">        from astropy.table import Table</span>
+<span class="sd">        # https://docs.astropy.org/en/stable/table/construct_table.html</span>
+<span class="sd">        halfwidth=Table([u[&#39;name&#39;]])</span>
+<span class="sd">        # populate another column</span>
+<span class="sd">        # https://docs.astropy.org/en/stable/table/modify_table.html</span>
+<span class="sd">        halfwidth[&#39;halfwidths&#39;]=6000.0</span>
+<span class="sd">        # I have chosen a huge masking width for better visual eff</span>
+<span class="sd">        #now use the masking function</span>
+<span class="sd">        ind=masklin(llambda, u, halfwidth, 60.)</span>
+
+<span class="sd">    # plot the spectrum without and with the masking</span>
+<span class="sd">    from matplotlib import pyplot as plt</span>
+<span class="sd">    plt.interactive(True)</span>
+<span class="sd">    fig=plt.figure(1, figsize=(8,8))</span>
+<span class="sd">    plt.clf()</span>
+<span class="sd">    spec=1.+(llambda-3000.0)*1e-3</span>
+<span class="sd">    plt.plot(llambda, spec, color=&#39;grey&#39;,alpha=0.3)</span>
+<span class="sd">    plt.scatter(llambda[ind],spec[ind]+0.05,color=&#39;red&#39;,alpha=0.1,s=2)</span>
+<span class="sd">    plt.show()</span>
+
+<span class="sd">    # now let&#39;s define a no-masking array</span>
+<span class="sd">    dontmask=np.array([[3000,4000,5000],[4000,5000,6000]])</span>
+<span class="sd">    ind1=masklin(llambda, u, halfwidth, 60., nomaskran=dontmask)</span>
+<span class="sd">    plt.scatter(llambda[ind1],spec[ind1]-0.05,color=&#39;blue&#39;,alpha=0.03,s=2)</span>
+<span class="sd">    plt.show()</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># we will return the ones that are not masked</span>
+
+    <span class="c1"># start by retaining all elements -- mark them all True</span>
+    <span class="n">retain</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">llambda</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+    <span class="c1"># line is the index in the linelambda array and</span>
+    <span class="c1"># cwv is the central wavelength</span>
+    <span class="c1"># let&#39;s flag the indices that are masked</span>
+    <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">cwv</span> <span class="ow">in</span> <span class="n">linelambda</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">halfwidth</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">temp1</span> <span class="o">=</span> \
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">llambda</span> <span class="o">&lt;=</span> <span class="n">cwv</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span> <span class="o">-</span> <span class="n">halfwidth</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">/</span>
+                    <span class="n">c</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;km/s&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="n">temp2</span> <span class="o">=</span> \
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">llambda</span> <span class="o">&gt;=</span> <span class="n">cwv</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span> <span class="o">+</span> <span class="n">halfwidth</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">/</span>
+                    <span class="n">c</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;km/s&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="n">retain</span> <span class="o">=</span> <span class="p">(</span><span class="n">retain</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">temp1</span> <span class="o">|</span> <span class="n">temp2</span><span class="p">))</span>
+
+    <span class="c1"># if the user has defined the regions not to be masked:</span>
+    <span class="k">if</span> <span class="n">nomaskran</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># set all to False</span>
+        <span class="n">nomask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">llambda</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">llim</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">nomaskran</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="c1"># set to True between lower and upper limit for each</span>
+            <span class="n">temp1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">llambda</span> <span class="o">&gt;=</span> <span class="n">llim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="n">temp2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">llambda</span> <span class="o">&lt;=</span> <span class="n">nomaskran</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">j</span><span class="p">]),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="n">nomask</span> <span class="o">=</span> <span class="p">(</span><span class="n">nomask</span> <span class="o">|</span> <span class="p">(</span><span class="n">temp1</span> <span class="o">&amp;</span> <span class="n">temp2</span><span class="p">))</span>
+        <span class="c1"># combine retain and nomask</span>
+        <span class="n">retain</span> <span class="o">=</span> <span class="p">(</span><span class="n">retain</span> <span class="o">|</span> <span class="n">nomask</span><span class="p">)</span>
+
+    <span class="c1"># return the indices to be retained</span>
+    <span class="c1"># https://stackoverflow.com/questions/21448225/getting-indices-of-true-values-in-a-boolean-list</span>
+    <span class="n">indgd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">retain</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">indgd</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, David Rupke and the Q3D Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

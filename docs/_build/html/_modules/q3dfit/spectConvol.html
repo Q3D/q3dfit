@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>q3dfit.spectConvol &mdash; q3dfit 1.1.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=00f267c6"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            q3dfit
+          </a>
+              <div class="version">
+                1.1.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">q3dfit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fitting.html">Fitting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../MIR-configuration.html">MIR Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html">checkcomp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.contfit">contfit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.cube_bin">cube_bin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.exceptions">q3dfit.exceptions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.fitloop">q3dfit.fitloop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.fitspec">q3dfit.fitspec</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.gdtemp">q3dfit.gdtemp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.interp_temp_quest">q3dfit.interp_temp_quest</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.interptemp">q3dfit.interptemp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.jnb">q3dfit.jnb</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.jwstlinez">q3dfit.jwstlinez</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.lineinit">q3dfit.lineinit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.linelist">q3dfit.linelist</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.masklin">q3dfit.masklin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#q3dfit-mk-npy-templ">q3dfit.mk_npy_templ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.nonJWST_datacube_converter">q3dfit.nonJWST_datacube_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.observedlinez">q3dfit.observedlinez</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.plot">q3dfit.plot</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#q3dfit-psf-sub">q3dfit.psf_sub</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3dcollect">q3dfit.q3dcollect</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3df">q3dfit.q3df</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3df_helperFunctions">q3dfit.q3df_helperFunctions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3din">q3dfit.q3din</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3dmath">q3dfit.q3dmath</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3dout">q3dfit.q3dout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3dpro">q3dfit.q3dpro</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.q3dutil">q3dfit.q3dutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.qsohostfcn">q3dfit.qsohostfcn</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.questfitfcn">q3dfit.questfitfcn</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.readcube">q3dfit.readcube</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.readtemp">q3dfit.readtemp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.rebin">q3dfit.rebin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.restline">q3dfit.restline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#q3dfit-sdi">q3dfit.sdi</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.select_spaxels">q3dfit.select_spaxels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.spectConvol">q3dfit.spectConvol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit.writeout_quest">q3dfit.writeout_quest</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#module-q3dfit">Module contents</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">q3dfit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">q3dfit.spectConvol</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for q3dfit.spectConvol</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">@author: Yuzo Ishikawa</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c1">#import copy</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">astropy.constants</span> <span class="kn">import</span> <span class="n">c</span>
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">fits</span>
+<span class="kn">from</span> <span class="nn">astropy.stats</span> <span class="kn">import</span> <span class="n">gaussian_sigma_to_fwhm</span>
+<span class="kn">from</span> <span class="nn">ppxf.ppxf_util</span> <span class="kn">import</span> <span class="n">varsmooth</span>
+<span class="c1">#from scipy.ndimage import gaussian_filter1d</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">CubicSpline</span>
+<span class="kn">import</span> <span class="nn">q3dfit.data.dispersion_files</span>
+
+
+<div class="viewcode-block" id="spectConvol">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.spectConvol">[docs]</a>
+<span class="k">class</span> <span class="nc">spectConvol</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Convolve an input spectrum by grating resolution.</span>
+<span class="sd">    </span>
+<span class="sd">    JWST provides NIRSpec dispersion files. However, MIRI is not provided. </span>
+<span class="sd">    Instead, we take a Cubic Spline interpolation based on the curves in </span>
+<span class="sd">    the Jdocs website.</span>
+<span class="sd">    </span>
+<span class="sd">    For the constructor, the requested dispersion curves</span>
+<span class="sd">    are either loaded from a file, created from a flat dispersion curve,</span>
+<span class="sd">    or computed from a formula in the case of MRS.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    spect_convol : {&#39;ws_instrum&#39;: dict[str, str], &#39;dispdir&#39;: Union[str, None]}</span>
+<span class="sd">        &#39;ws_instrum` contains instrument/grating combinations.</span>
+<span class="sd">        `dispdir` is the directory of dispersion files. If set to None (default), </span>
+<span class="sd">        the q3dfit dispersion_file directory is used.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    SystemExit</span>
+<span class="sd">        If no `ws_instrum` dictionary is found in the input dictionary.</span>
+<span class="sd">        If an error is found in the input dictionary.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dispdir </span>
+<span class="sd">        Full directory of dispersion files in the repository.</span>
+<span class="sd">    InstGratObjs</span>
+<span class="sd">        Nested dictionary whose keys are instrument/grating combinations.</span>
+<span class="sd">        The values are dispersion objects.</span>
+<span class="sd">       </span>
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    spect_convolver(wave, flux, wavecen=None, oversample=1)</span>
+<span class="sd">        Convolves an input spectrum by the spectral resolution.</span>
+<span class="sd">    selectInstGrat(wavecen=None)</span>
+<span class="sd">        Make a list of inst/grat objects for convolution.</span>
+<span class="sd">    get_InstGrat_waveDlam(InstGratSelect)</span>
+<span class="sd">        Get wavelength and dlambda for selected grating(s).</span>
+<span class="sd">    get_R(wave)</span>
+<span class="sd">        Compute resolving power for a wavelength, interpolated from</span>
+<span class="sd">        dispersion curves.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spect_convol</span><span class="p">):</span>
+        <span class="c1"># full directory of dispersion files in repo</span>
+        <span class="c1">#self.dispdir = os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],</span>
+        <span class="c1">#    &#39;dispersion_files&#39;)</span>
+
+        <span class="c1"># Check if dispersion directory is specified in the input dictionary.</span>
+        <span class="c1"># If not, use the default q3dfit directory.</span>
+        <span class="k">if</span> <span class="s1">&#39;dispdir&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">spect_convol</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dispdir</span> <span class="o">=</span> \
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">q3dfit</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="vm">__file__</span><span class="p">)[:</span><span class="o">-</span><span class="mi">11</span><span class="p">],</span>
+                <span class="s1">&#39;dispersion_files&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dispdir</span> <span class="o">=</span> <span class="n">spect_convol</span><span class="p">[</span><span class="s1">&#39;dispdir&#39;</span><span class="p">]</span>
+
+        <span class="c1"># create the nested dictionaries to hold the dispersion objects</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">InstGratObjs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># inst is a telescope+instrument string</span>
+        <span class="c1"># gratlist is dictionary of grating strings</span>
+        <span class="k">if</span> <span class="s1">&#39;ws_instrum&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">spect_convol</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39;No ws_instrum dictionary found in &#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;q3dinit.spect_convol.&#39;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">inst</span><span class="p">,</span> <span class="n">gratlist</span> <span class="ow">in</span> <span class="n">spect_convol</span><span class="p">[</span><span class="s1">&#39;ws_instrum&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">InstGratObjs</span><span class="p">[</span><span class="n">inst</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="k">for</span> <span class="n">grat</span> <span class="ow">in</span> <span class="n">gratlist</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">InstGratObjs</span><span class="p">[</span><span class="n">inst</span><span class="o">.</span><span class="n">upper</span><span class="p">()][</span><span class="n">grat</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39;Error in loading spect_convol dictionary &#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;in q3dinit.&#39;</span><span class="p">)</span>
+    
+        <span class="c1"># Create and populate the dispersion objects</span>
+        <span class="k">for</span> <span class="n">inst</span><span class="p">,</span> <span class="n">gratlist</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">InstGratObjs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">grat</span> <span class="ow">in</span> <span class="n">gratlist</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">inst</span> <span class="o">!=</span> <span class="s1">&#39;JWST_MIRI&#39;</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">inst</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;FLAT&#39;</span><span class="p">:</span>
+                        <span class="c1"># look for convolution method and dispersion</span>
+                        <span class="c1"># in grating name</span>
+                        <span class="n">flattype</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s2">&quot;[a-zA-Z]&quot;</span><span class="p">,</span> <span class="n">grat</span><span class="p">))</span>
+                        <span class="n">flatdisp</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s2">&quot;\d+&quot;</span><span class="p">,</span> <span class="n">grat</span><span class="p">))</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">InstGratObjs</span><span class="p">[</span><span class="n">inst</span><span class="p">][</span><span class="n">grat</span><span class="p">]</span> <span class="o">=</span> \
+                            <span class="n">FlatDispersion</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">flatdisp</span><span class="p">),</span> <span class="n">flattype</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">InstGratObjs</span><span class="p">[</span><span class="n">inst</span><span class="p">][</span><span class="n">grat</span><span class="p">]</span> <span class="o">=</span> \
+                            <span class="n">InstGratDispersion</span><span class="p">(</span><span class="n">inst</span><span class="p">,</span> <span class="n">grat</span><span class="p">,</span> <span class="n">dispdir</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dispdir</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">InstGratObjs</span><span class="p">[</span><span class="n">inst</span><span class="p">][</span><span class="n">grat</span><span class="p">]</span><span class="o">.</span><span class="n">readInstGrat</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">InstGratObjs</span><span class="p">[</span><span class="n">inst</span><span class="p">][</span><span class="n">grat</span><span class="p">]</span> <span class="o">=</span> \
+                        <span class="n">InstGratDispersion</span><span class="p">(</span><span class="n">inst</span><span class="p">,</span> <span class="n">grat</span><span class="p">,</span> <span class="n">dispdir</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dispdir</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">InstGratObjs</span><span class="p">[</span><span class="n">inst</span><span class="p">][</span><span class="n">grat</span><span class="p">]</span><span class="o">.</span><span class="n">get_MRS_Rdlam</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="spectConvol.spect_convolver">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.spectConvol.spect_convolver">[docs]</a>
+    <span class="k">def</span> <span class="nf">spect_convolver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wave</span><span class="p">,</span> <span class="n">flux</span><span class="p">,</span> <span class="n">wavecen</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">oversample</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Convolves an input spectrum by the spectral resolution.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        wave : array</span>
+<span class="sd">            Wavelength array of input spectrum</span>
+<span class="sd">        flux : array</span>
+<span class="sd">            Flux array of input spectrum</span>
+<span class="sd">        wavecen : float, optional</span>
+<span class="sd">            Central wavelength of a spectral feature, to check if it falls in the range</span>
+<span class="sd">            of a grating. Default is None.</span>
+<span class="sd">        oversample : int, optional</span>
+<span class="sd">            Oversample the spectrum by this factor before convolution. </span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        fluxconv : array</span>
+<span class="sd">            Convolved spectrum</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="c1"># select the instrument/grating combinations that cover the </span>
+        <span class="c1"># input wavelength of interest; if no wavelength is specified,</span>
+        <span class="c1"># all instrument/grating combinations are used</span>
+        <span class="n">InstGratSelect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selectInstGrat</span><span class="p">(</span><span class="n">wavecen</span><span class="o">=</span><span class="n">wavecen</span><span class="p">)</span>
+        <span class="c1">#</span>
+        <span class="n">gwave</span><span class="p">,</span> <span class="n">gdlam</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_InstGrat_waveDlam</span><span class="p">(</span><span class="n">InstGratSelect</span><span class="p">)</span>
+
+        <span class="c1"># If MRS ever has grating dispersion files, we just have to comment out</span>
+        <span class="c1"># this block and remove the if/else statement.</span>
+        <span class="k">if</span> <span class="n">gwave</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">gdlam</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+
+            <span class="n">iwave</span> <span class="o">=</span> <span class="n">wave</span>
+            <span class="n">iflux</span> <span class="o">=</span> <span class="n">flux</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">idlam</span> <span class="o">=</span> <span class="n">MRS_dispersion</span><span class="p">(</span><span class="n">wave</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="c1"># find the indices of the input wavelengths that are within the</span>
+            <span class="c1"># range of the grating</span>
+            <span class="n">w1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">wave</span> <span class="o">&gt;=</span> <span class="nb">min</span><span class="p">(</span><span class="n">gwave</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">w2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">wave</span> <span class="o">&lt;=</span> <span class="nb">max</span><span class="p">(</span><span class="n">gwave</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">ww</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">intersect1d</span><span class="p">(</span><span class="n">w1</span><span class="p">,</span> <span class="n">w2</span><span class="p">)</span>
+            <span class="c1"># indices of the input wavelengths that are outside the range of </span>
+            <span class="c1"># the grating</span>
+            <span class="n">w1x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">wave</span> <span class="o">&lt;</span> <span class="nb">min</span><span class="p">(</span><span class="n">gwave</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">w2x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">wave</span> <span class="o">&gt;</span> <span class="nb">max</span><span class="p">(</span><span class="n">gwave</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="c1"># wavelengths and fluxes that are within the range of the grating</span>
+            <span class="n">iwave</span><span class="o">=</span> <span class="n">wave</span><span class="p">[</span><span class="n">ww</span><span class="p">]</span>
+            <span class="n">iflux</span> <span class="o">=</span> <span class="n">flux</span><span class="p">[</span><span class="n">ww</span><span class="p">]</span>
+
+            <span class="c1"># interpolate the dispersion curve to the input wavelengths</span>
+            <span class="n">dlam_interp_fcn</span> <span class="o">=</span> <span class="n">CubicSpline</span><span class="p">(</span><span class="n">gwave</span><span class="p">,</span> <span class="n">gdlam</span><span class="p">)</span>
+            <span class="n">idlam</span> <span class="o">=</span> <span class="n">dlam_interp_fcn</span><span class="p">(</span><span class="n">iwave</span><span class="p">)</span>
+
+        <span class="n">idsig</span> <span class="o">=</span> <span class="n">idlam</span><span class="o">/</span><span class="n">gaussian_sigma_to_fwhm</span>
+        <span class="n">fluxconv</span> <span class="o">=</span> <span class="n">varsmooth</span><span class="p">(</span><span class="n">iwave</span><span class="p">,</span> <span class="n">iflux</span><span class="p">,</span> <span class="n">idsig</span><span class="p">,</span> <span class="n">oversample</span><span class="o">=</span><span class="n">oversample</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_dispobj_mrs</span><span class="p">(</span><span class="n">InstGratSelect</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="k">return</span> <span class="n">fluxconv</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">flux</span><span class="p">[</span><span class="n">w1x</span><span class="p">],</span> <span class="n">fluxconv</span><span class="p">,</span> <span class="n">flux</span><span class="p">[</span><span class="n">w2x</span><span class="p">]))</span></div>
+
+
+
+<div class="viewcode-block" id="spectConvol.selectInstGrat">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.spectConvol.selectInstGrat">[docs]</a>
+    <span class="k">def</span> <span class="nf">selectInstGrat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wavecen</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Make a list of instrument/grating combinations to use for convolution.</span>
+<span class="sd">        If wavecen is not specified, all instrument/grating combinations are</span>
+<span class="sd">        used. The length of the output list must be 1 or 2.</span>
+<span class="sd">        </span>
+<span class="sd">        If it&#39;s 2, the gratings may need to have some overlap in wavelength. </span>
+<span class="sd">        (See get_InstGrat_waveDlam for more details.) Should probably do a check</span>
+<span class="sd">        for this ...</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        wavecen : float, optional</span>
+<span class="sd">            Wavelength to check. Default is None, which means all</span>
+<span class="sd">            instrument/grating combinations are used.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        InstGratSelect : list</span>
+<span class="sd">            List of inst/grat objects to use for convolution. Must</span>
+<span class="sd">            have a length of 1 or 2.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        SystemExit</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">InstGratSelect</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">inst</span><span class="p">,</span> <span class="n">gratlist</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">InstGratObjs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">grat</span> <span class="ow">in</span> <span class="n">gratlist</span><span class="p">:</span>
+                <span class="n">gwave</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">InstGratObjs</span><span class="p">[</span><span class="n">inst</span><span class="p">][</span><span class="n">grat</span><span class="p">]</span><span class="o">.</span><span class="n">wave</span>
+                <span class="k">if</span> <span class="n">wavecen</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">InstGratSelect</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">InstGratObjs</span><span class="p">[</span><span class="n">inst</span><span class="p">][</span><span class="n">grat</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">wavecen</span> <span class="o">&gt;</span> <span class="n">gwave</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">and</span> <span class="p">(</span><span class="n">wavecen</span> <span class="o">&lt;</span> <span class="n">gwave</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]):</span>
+                        <span class="n">InstGratSelect</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">InstGratObjs</span><span class="p">[</span><span class="n">inst</span><span class="p">][</span><span class="n">grat</span><span class="p">])</span>
+                
+
+        <span class="c1"># Not sure if this deserves a SystemExit, but it&#39;s a way to</span>
+        <span class="c1"># catch the length errors.</span>
+        <span class="k">if</span> <span class="n">InstGratSelect</span><span class="o">.</span><span class="fm">__len__</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39;spectConvol.selectInstGrat: &#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;No specified inst/grat combination covers the line &#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;at &#39;</span> <span class="o">+</span> <span class="n">wavecen</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span> <span class="o">+</span> <span class="s1">&#39; μm.&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">InstGratSelect</span><span class="o">.</span><span class="fm">__len__</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">wavecen</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39;spectConvol.selectInstGrat: &#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;More than 2 inst/grat combinations are specified.&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39;spectConvol.selectInstGrat: &#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;More than 2 inst/grat combinations cover the line &#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;at &#39;</span> <span class="o">+</span> <span class="n">wavecen</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span> <span class="o">+</span> <span class="s1">&#39; μm.&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">InstGratSelect</span></div>
+
+    
+
+<div class="viewcode-block" id="spectConvol.get_InstGrat_waveDlam">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.spectConvol.get_InstGrat_waveDlam">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_InstGrat_waveDlam</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">InstGratSelect</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Get wavelength and dlambda for selected grating(s). If one grating,</span>
+<span class="sd">        return the wavelength and dlambda. If two gratings, return the</span>
+<span class="sd">        combined wavelength and dlambda, with the overlap region split</span>
+<span class="sd">        between the two gratings. If MRS is used, return None for both, </span>
+<span class="sd">        as we calculate the dispersion from a formula.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        InstGratSelect : list</span>
+<span class="sd">            List of instrument/grating combinations. The length of the list is </span>
+<span class="sd">            1 or 2. If 2 are specified, they must have overlapping wavelengths.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        gwave : array</span>
+<span class="sd">            Wavelength of the grating(s).</span>
+<span class="sd">        dlam : float</span>
+<span class="sd">            Delta lambda of the grating(s).</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="c1"># Case of one or two MRS gratings covering the same wavelength.</span>
+        <span class="c1"># Then no interpolation is necessary, we just reapply the formula at the</span>
+        <span class="c1"># input wavelength(s).</span>
+        <span class="c1"># If MRS ever has grating dispersion files, we just have to comment out</span>
+        <span class="c1"># this block and remove the if/else statement.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_dispobj_mrs</span><span class="p">(</span><span class="n">InstGratSelect</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+
+            <span class="n">gwave</span><span class="p">,</span> <span class="n">gdlam</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Case of two gratings; must have overlapping wavelengths</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">InstGratSelect</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="c1"># arrays to hold wavelength ranges, wavelengths, and dlambda for</span>
+                <span class="c1"># each grating</span>
+                <span class="n">gwaveranges</span><span class="p">,</span> <span class="n">gwaves</span><span class="p">,</span> <span class="n">gdlams</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+                <span class="c1"># loop through each grating and populate thse arrays</span>
+                <span class="k">for</span> <span class="n">overlap</span> <span class="ow">in</span> <span class="n">InstGratSelect</span><span class="p">:</span>
+                    <span class="c1">#iinst = overlap[0]</span>
+                    <span class="c1">#igrat = instoverlap[1]</span>
+                    <span class="n">gwaveranges</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">overlap</span><span class="o">.</span><span class="n">wave</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">overlap</span><span class="o">.</span><span class="n">wave</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+                    <span class="n">gwaves</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">overlap</span><span class="o">.</span><span class="n">wave</span><span class="p">)</span>
+                    <span class="n">gdlams</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">overlap</span><span class="o">.</span><span class="n">dlam</span><span class="p">)</span>
+                    <span class="c1"># these are the minima and maxima of the wavelength ranges</span>
+                    <span class="n">gwavemins</span><span class="p">,</span> <span class="n">gwavemaxs</span> <span class="o">=</span> <span class="p">[</span><span class="n">gwaveranges</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">gwaveranges</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]],</span> \
+                        <span class="p">[</span><span class="n">gwaveranges</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="n">gwaveranges</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]]</span>
+                    <span class="c1"># the max of the range mins is the overlap minimum, the min of the </span>
+                    <span class="c1"># range maxes is the overlap maximum. The indices of these will</span>
+                    <span class="c1"># pick out the correct grating to use for the lower and</span>
+                    <span class="c1"># upper halves of the overlap region</span>
+                    <span class="n">overlapmin</span><span class="p">,</span> <span class="n">igratingslo</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">gwavemins</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">gwavemins</span><span class="p">)</span>
+                    <span class="n">overlapmax</span><span class="p">,</span> <span class="n">igratingshi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">gwavemaxs</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">gwavemaxs</span><span class="p">)</span>
+                    <span class="c1"># the median of these is the overlap midpoint</span>
+                    <span class="n">overlapmid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">([</span><span class="n">overlapmin</span><span class="p">,</span> <span class="n">overlapmax</span><span class="p">])</span>
+                    <span class="c1"># indices of the wavelengths that are less than the overlap</span>
+                    <span class="n">igwaveslo</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">gwaves</span><span class="p">[</span><span class="n">igratingslo</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">overlapmid</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="c1"># indices of the wavelengths that are greater than the overlap</span>
+                    <span class="n">igwaveshi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">gwaves</span><span class="p">[</span><span class="n">igratingshi</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">overlapmid</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="c1"># combined, single array of grating wavelengths and dlambda</span>
+                    <span class="n">gwave</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">gwaves</span><span class="p">[</span><span class="n">igratingslo</span><span class="p">][</span><span class="n">igwaveslo</span><span class="p">],</span> 
+                        <span class="n">gwaves</span><span class="p">[</span><span class="n">igratingshi</span><span class="p">][</span><span class="n">igwaveshi</span><span class="p">]))</span>
+                    <span class="n">gdlam</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">gdlams</span><span class="p">[</span><span class="n">igratingslo</span><span class="p">][</span><span class="n">igwaveslo</span><span class="p">],</span> 
+                        <span class="n">gdlams</span><span class="p">[</span><span class="n">igratingshi</span><span class="p">][</span><span class="n">igwaveshi</span><span class="p">]))</span>
+            <span class="c1"># Case of one grating</span>
+            <span class="k">else</span><span class="p">:</span>
+
+                <span class="n">gwave</span> <span class="o">=</span> <span class="n">InstGratSelect</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">wave</span>
+                <span class="n">gdlam</span> <span class="o">=</span> <span class="n">InstGratSelect</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dlam</span>
+
+        <span class="k">return</span> <span class="n">gwave</span><span class="p">,</span> <span class="n">gdlam</span></div>
+
+
+
+<div class="viewcode-block" id="spectConvol.get_R">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.spectConvol.get_R">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_R</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wave</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Interpolate a dispersion curve to a new wavelength(s). This is</span>
+<span class="sd">        used to get the resolving power at a new wavelength.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        wave : float or array</span>
+<span class="sd">            Wavelength(s) to which to interpolate.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="n">instgrat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selectInstGrat</span><span class="p">(</span><span class="n">wavecen</span><span class="o">=</span><span class="n">wave</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_dispobj_mrs</span><span class="p">(</span><span class="n">instgrat</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">R</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">MRS_dispersion</span><span class="p">(</span><span class="n">wave</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">gwave</span><span class="p">,</span> <span class="n">gdlam</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_InstGrat_waveDlam</span><span class="p">(</span><span class="n">instgrat</span><span class="p">)</span>
+            <span class="n">dlamint</span> <span class="o">=</span> <span class="n">CubicSpline</span><span class="p">(</span><span class="n">gwave</span><span class="p">,</span> <span class="n">gdlam</span><span class="p">)</span>
+            <span class="n">R</span> <span class="o">=</span> <span class="n">wave</span><span class="o">/</span><span class="n">dlamint</span><span class="p">(</span><span class="n">wave</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">R</span></div>
+
+
+
+<div class="viewcode-block" id="spectConvol.is_dispobj_mrs">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.spectConvol.is_dispobj_mrs">[docs]</a>
+    <span class="k">def</span> <span class="nf">is_dispobj_mrs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">InstGratObj</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Convenience method to check if the dispersion object is for MRS.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">InstGratObj</span><span class="p">,</span> <span class="n">InstGratDispersion</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">InstGratObj</span><span class="o">.</span><span class="n">inst</span> <span class="o">==</span> <span class="s1">&#39;JWST_MIRI&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="dispersion">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.dispersion">[docs]</a>
+<span class="k">class</span> <span class="nc">dispersion</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Class to carry dispersion information.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    wave : array</span>
+<span class="sd">        Wavelength.</span>
+<span class="sd">    R : array</span>
+<span class="sd">        Resolving power.</span>
+<span class="sd">    dlam : array</span>
+<span class="sd">        Delta lambda.</span>
+<span class="sd">    dispdir : str</span>
+<span class="sd">        Directory that holds the file of the dispersion data, if any.</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Filename of the dispersion data file, if any.</span>
+<span class="sd">    </span>
+<span class="sd">    Methods:</span>
+<span class="sd">    --------</span>
+<span class="sd">    setdir(dispdir=None)</span>
+<span class="sd">        Set the directory of the associated dispersion file.</span>
+<span class="sd">    </span>
+<span class="sd">    </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Instantiate the dispersion class.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dlam</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dispdir</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="dispersion.setdir">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.dispersion.setdir">[docs]</a>
+    <span class="k">def</span> <span class="nf">setdir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dispdir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Set the directory of the associated dispersion file.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="n">dispdir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dispdir</span> <span class="o">=</span> <span class="n">dispdir</span></div>
+
+        <span class="c1"># Don&#39;t hardwire in the q3dfit directory.</span>
+        <span class="c1">#else:</span>
+        <span class="c1">#    self.dispdir = \</span>
+        <span class="c1">#        os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],</span>
+        <span class="c1">#        &#39;dispersion_files&#39;)</span>
+
+<div class="viewcode-block" id="dispersion.read">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.dispersion.read">[docs]</a>
+    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Get dispersion data from a dispersion file(s). The file must be in</span>
+<span class="sd">        FITS format. The dispersion file must have a wavelength array and</span>
+<span class="sd">        a dispersion array. The dispersion array can be either R, dlambda,</span>
+<span class="sd">        or dvel (delta velocity). The method chooses from these in order</span>
+<span class="sd">        of preference dvel, R, dlambda, if more than one is present.</span>
+<span class="sd">        It then computes R and dlambda and adds these to the object.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filename : str</span>
+<span class="sd">            Filename and path of the dispersion file to load. </span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdul</span><span class="p">:</span>
+            <span class="n">indisp</span> <span class="o">=</span> <span class="n">hdul</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+
+        <span class="c1"># Some methods here assume wavelength is in increasing order</span>
+        <span class="c1"># Should really do a check here for that ...</span>
+        <span class="k">try</span><span class="p">:</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="o">=</span> <span class="n">indisp</span><span class="p">[</span><span class="s1">&#39;WAVELENGTH&#39;</span><span class="p">]</span>  <span class="c1"># wavelength [μm]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">&quot;dispersion.read: no wavelength array found in &quot;</span> <span class="o">+</span>
+                <span class="s2">&quot;dispersion file.&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># types of dispersion, in order of preference</span>
+        <span class="c1"># if more than one is present, the first one is used</span>
+        <span class="n">types</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;DVEL&#39;</span><span class="p">,</span> <span class="s1">&#39;R&#39;</span><span class="p">,</span> <span class="s1">&#39;DLAMBDA&#39;</span><span class="p">]</span>
+        <span class="nb">type</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># default</span>
+         <span class="c1"># get the column names to look for the dispersion type</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="n">indisp</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">names</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">types</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">:</span>
+                <span class="n">disp</span> <span class="o">=</span> <span class="n">indisp</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
+                <span class="nb">type</span> <span class="o">=</span> <span class="n">t</span>
+                <span class="k">break</span>
+        <span class="k">if</span> <span class="nb">type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">&quot;dispersion.read: no viable type found in &quot;</span> <span class="o">+</span>
+                <span class="s2">&quot;dispersion file. Options are &#39;R&#39;, &#39;DVEL&#39;, or &#39;DLAMBDA&#39;.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Compute R and dlam from the dispersion array. This will read</span>
+        <span class="c1"># wavelength from the object.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_Rdlam</span><span class="p">(</span><span class="n">disp</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="dispersion.write">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.dispersion.write">[docs]</a>
+    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">wave</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">disp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;R&#39;</span><span class="p">,</span> 
+              <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Write dispersion file from dispersion data. Can specify the</span>
+<span class="sd">        dispersion quantity (disp) and type (type) to write. If not</span>
+<span class="sd">        specified, the method uses the dispersion data in the object, </span>
+<span class="sd">        starting with R, then dlambda.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filename : str</span>
+<span class="sd">            Filename and full path of the output dispersion file.</span>
+<span class="sd">        wave : array, optional</span>
+<span class="sd">            Wavelength array. Take from the object if not provided.</span>
+<span class="sd">        disp : array, optional</span>
+<span class="sd">            Dispersion array; either R, dlambda, or dvel. If not </span>
+<span class="sd">            specified, the method uses the dispersion data in the object.</span>
+<span class="sd">        type : str, optional</span>
+<span class="sd">            Type of dispersion. Options are &#39;R&#39;, &#39;DVEL&#39;, or &#39;DLAMBDA&#39;.</span>
+<span class="sd">            Default is &#39;R&#39;.</span>
+<span class="sd">        overwrite : bool, optional</span>
+<span class="sd">            Overwrite existing dispersion file. Default is False.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        SystemExit</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">if</span> <span class="n">wave</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">&quot;dispersion.write: no wavelength array &quot;</span> <span class="o">+</span>
+                                 <span class="s2">&quot;provided.&quot;</span><span class="p">)</span>
+            <span class="n">wave</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span>
+        <span class="k">if</span> <span class="nb">type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">&quot;dispersion.write: no dispersion type &quot;</span> <span class="o">+</span>
+                                 <span class="s2">&quot;provided.&quot;</span><span class="p">)</span>
+        <span class="n">c1</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;WAVELENGTH&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;E&#39;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">wave</span><span class="p">)</span>
+        <span class="n">clist</span> <span class="o">=</span> <span class="p">[</span><span class="n">c1</span><span class="p">]</span>
+        <span class="c1"># If no dispersion array is provided, use the one in the object.</span>
+        <span class="c1"># Start with R, then dlambda.</span>
+        <span class="k">if</span> <span class="n">disp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dlam</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">&quot;dispersion.write: no dispersion array &quot;</span> <span class="o">+</span>
+                                 <span class="s2">&quot;provided.&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">disp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dlam</span>
+                    <span class="nb">type</span> <span class="o">=</span> <span class="s1">&#39;DLAMBDA&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">disp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R</span>
+                <span class="nb">type</span> <span class="o">=</span> <span class="s1">&#39;R&#39;</span>
+        <span class="n">clist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="nb">type</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;E&#39;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">disp</span><span class="p">))</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">ColDefs</span><span class="p">(</span><span class="n">clist</span><span class="p">)</span>
+        <span class="n">tbhdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">BinTableHDU</span><span class="o">.</span><span class="n">from_columns</span><span class="p">(</span><span class="n">cols</span><span class="p">)</span>
+        <span class="n">tbhdu</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="n">overwrite</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="dispersion.compute_Rdlam">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.dispersion.compute_Rdlam">[docs]</a>
+    <span class="k">def</span> <span class="nf">compute_Rdlam</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">disp</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">wave</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Compute R and dlam for the dispersion curve from dispersion </span>
+<span class="sd">        value(s). If wave is not given, and the object does not have</span>
+<span class="sd">        a wavelength array, the method uses a default wavelength array.</span>
+
+<span class="sd">        The attributes R, dlam, and wave are updated.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        disp : float or array</span>
+<span class="sd">            Dispersion values.</span>
+<span class="sd">        type : str, optional</span>
+<span class="sd">            Type of dispersion. Options are &#39;R&#39;, &#39;DVEL&#39;, or &#39;DLAMBDA&#39;.</span>
+<span class="sd">        wave : array, optional</span>
+<span class="sd">            Wavelength array.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">if</span> <span class="n">wave</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Get it from the object if it&#39;s already there</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Default wavelength array is 0.05 to 100 micron,</span>
+                <span class="c1"># spacing of 0.01 micron = 100 Angstrom</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">100.</span><span class="p">,</span> <span class="nb">int</span><span class="p">((</span><span class="mf">100.</span><span class="o">-</span><span class="mf">0.05</span><span class="p">)</span><span class="o">/</span><span class="mf">0.01</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="o">=</span> <span class="n">wave</span>
+
+        <span class="c1"># Match dispersion length to wavelength length</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">disp</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="n">disparr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="o">.</span><span class="fm">__len__</span><span class="p">(),</span> <span class="n">disp</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">disp</span><span class="o">.</span><span class="fm">__len__</span><span class="p">()</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="o">.</span><span class="fm">__len__</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">&quot;dispersion.compute_Rdlam: dispersion and &quot;</span> <span class="o">+</span> 
+                             <span class="s2">&quot;wavelength arrays must have the same length.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">disparr</span> <span class="o">=</span> <span class="n">disp</span>
+
+        <span class="k">if</span> <span class="nb">type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">&quot;dispersion.compute_Rdlam: incorrect syntax. &quot;</span> <span class="o">+</span>
+                             <span class="s2">&quot;TYPE must be &#39;R&#39;, &#39;kms&#39; , or &#39;dlambda&#39;&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">type</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;R&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="n">disparr</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dlam</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">R</span>
+        <span class="k">elif</span> <span class="nb">type</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;DVEL&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;km/s&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="o">/</span><span class="n">disparr</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dlam</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">R</span>
+        <span class="k">elif</span> <span class="nb">type</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;DLAMBDA&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dlam</span> <span class="o">=</span> <span class="n">disparr</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">dlam</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="InstGratDispersion">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.InstGratDispersion">[docs]</a>
+<span class="k">class</span> <span class="nc">InstGratDispersion</span><span class="p">(</span><span class="n">dispersion</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inst</span><span class="p">,</span> <span class="n">grat</span><span class="p">,</span> <span class="n">dispdir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Instantiate the InstGratDispersion class. This is a subclass of</span>
+<span class="sd">        dispersion, specifically designed for instruments/gratings</span>
+<span class="sd">        with dispersion files. This sets the inst/grat values and defines</span>
+<span class="sd">        the filename of the dispersion file. It also sets the directory.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        inst : str</span>
+<span class="sd">            Instrument name.</span>
+<span class="sd">        grat : str</span>
+<span class="sd">            Grating name.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inst</span> <span class="o">=</span> <span class="n">inst</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grat</span> <span class="o">=</span> <span class="n">grat</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;_&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">inst</span><span class="p">,</span> <span class="n">grat</span><span class="p">])</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">+</span> <span class="s1">&#39;_disp.fits&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setdir</span><span class="p">(</span><span class="n">dispdir</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="InstGratDispersion.readInstGrat">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.InstGratDispersion.readInstGrat">[docs]</a>
+    <span class="k">def</span> <span class="nf">readInstGrat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Read the dispersion file.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dispdir</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39;The instrument/grating &#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;combination &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">inst</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">grat</span> <span class="o">+</span> 
+                <span class="s1">&#39; cannot be read.&#39;</span><span class="p">)</span></div>
+
+        
+
+<div class="viewcode-block" id="InstGratDispersion.writeInstGrat">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.InstGratDispersion.writeInstGrat">[docs]</a>
+    <span class="k">def</span> <span class="nf">writeInstGrat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wave</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">disp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;R&#39;</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Write the dispersion file.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        wave : array, optional</span>
+<span class="sd">            Wavelength array. Default is None, which means the object&#39;s</span>
+<span class="sd">            wavelength array is used.</span>
+<span class="sd">        disp : array, optional</span>
+<span class="sd">            Dispersion array. Default is None, which means the object&#39;s</span>
+<span class="sd">            dispersion array is used.</span>
+<span class="sd">        type : str, optional</span>
+<span class="sd">            Type of dispersion. Default is &#39;R&#39;. Options are &#39;R&#39;, &#39;DVEL&#39;,</span>
+<span class="sd">            or &#39;DLAMBDA&#39;.</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dispdir</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">),</span> 
+                   <span class="n">wave</span><span class="o">=</span><span class="n">wave</span><span class="p">,</span> <span class="n">disp</span><span class="o">=</span><span class="n">disp</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="n">overwrite</span><span class="p">)</span></div>
+
+    
+
+<div class="viewcode-block" id="InstGratDispersion.get_MRS_Rdlam">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.InstGratDispersion.get_MRS_Rdlam">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_MRS_Rdlam</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Populate the dispersion object with the MRS dispersion curve.</span>
+<span class="sd">        Analogous to readInstGrat, but for the MRS grating. Won&#39;t be</span>
+<span class="sd">        needed if MRS dispersion files are provided.</span>
+
+<span class="sd">        This updates attributes R and dlam, and wave if self.wave is None.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Default range. This is the range of the MRS.</span>
+            <span class="c1"># Spacing of 0.01 micron.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">28.8</span><span class="p">,</span> <span class="nb">int</span><span class="p">((</span><span class="mf">28.8</span><span class="o">-</span><span class="mf">5.0</span><span class="p">)</span><span class="o">/</span><span class="mf">0.01</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">R</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dlam</span> <span class="o">=</span> <span class="n">MRS_dispersion</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="FlatDispersion">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.FlatDispersion">[docs]</a>
+<span class="k">class</span> <span class="nc">FlatDispersion</span><span class="p">(</span><span class="n">dispersion</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">disp</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">wave</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Instantiate the FlatDispersion class. This is a subclass of</span>
+<span class="sd">        dispersion, specifically designed for flat dispersion curves --</span>
+<span class="sd">        i.e. that have a constant dispersion value R, dlambda, or dvel.</span>
+<span class="sd">        This sets the flat dispersion value and type, and computes</span>
+<span class="sd">        R and dlambda.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        disp : value</span>
+<span class="sd">        type : str</span>
+<span class="sd">        wave : array, optional</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flatdisp</span> <span class="o">=</span> <span class="n">disp</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flattype</span> <span class="o">=</span> <span class="nb">type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_Rdlam</span><span class="p">(</span><span class="n">disp</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">wave</span><span class="o">=</span><span class="n">wave</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="FlatDispersion.writeFlat">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.FlatDispersion.writeFlat">[docs]</a>
+    <span class="k">def</span> <span class="nf">writeFlat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dispdir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">wave</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Write the flat dispersion file.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        dispdir : str, optional</span>
+<span class="sd">            Directory to write the dispersion file. Default is None.</span>
+<span class="sd">        wave : array, optional</span>
+<span class="sd">            Wavelength array. Default is None, which means the object&#39;s</span>
+<span class="sd">            wavelength array is used.</span>
+<span class="sd">        overwrite : bool, optional</span>
+<span class="sd">            Overwrite existing dispersion file. Default is False.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+    
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;flat_&#39;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">flattype</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">+</span> \
+            <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flatdisp</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;_disp.fits&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setdir</span><span class="p">(</span><span class="n">dispdir</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dispdir</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">),</span> 
+                   <span class="n">wave</span><span class="o">=</span><span class="n">wave</span><span class="p">,</span> <span class="n">disp</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">flatdisp</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">flattype</span><span class="p">,</span> 
+                   <span class="n">overwrite</span><span class="o">=</span><span class="n">overwrite</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="MRS_dispersion">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.spectConvol.MRS_dispersion">[docs]</a>
+<span class="k">def</span> <span class="nf">MRS_dispersion</span><span class="p">(</span><span class="n">wave</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Calculate resolution vs. wavelength from Jones et al. 2023</span>
+<span class="sd">    https://ui.adsabs.harvard.edu/abs/2023MNRAS.523.2519J/abstract</span>
+<span class="sd">    https://jwst-docs.stsci.edu/jwst-mid-infrared-instrument/miri-observing-modes/miri-medium-resolution-spectroscopy#MIRIMediumResolutionSpectroscopy-wavelengthMRSwavelengthcoverageandspectralresolution</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    wave : array</span>
+<span class="sd">        Wavelength array.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    R : array</span>
+<span class="sd">        Resolving power</span>
+<span class="sd">    dlam : array</span>
+<span class="sd">        Delta lambda</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">R</span> <span class="o">=</span> <span class="mf">4603.</span> <span class="o">-</span> <span class="mf">128.</span> <span class="o">*</span> <span class="n">wave</span> <span class="o">+</span> <span class="mf">10.</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mf">7.4</span> <span class="o">*</span> <span class="n">wave</span><span class="p">)</span>
+    <span class="n">dlam</span> <span class="o">=</span> <span class="n">wave</span> <span class="o">/</span> <span class="n">R</span>
+
+    <span class="k">return</span> <span class="n">R</span><span class="p">,</span> <span class="n">dlam</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, David Rupke and the Q3D Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

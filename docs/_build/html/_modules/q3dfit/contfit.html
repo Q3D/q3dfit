@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>q3dfit.contfit &mdash; q3dfit 1.1.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=00f267c6"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            q3dfit
+          </a>
+              <div class="version">
+                1.1.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">q3dfit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fitting.html">Fitting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../MIR-configuration.html">MIR Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html">User modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#classes">Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#internal-modules">Internal modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">q3dfit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">q3dfit.contfit</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for q3dfit.contfit</h1><div class="highlight"><pre>
+<span></span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Continuum fitting routines and subroutines.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;fitpoly&#39;</span><span class="p">,</span> <span class="s1">&#39;fitqsohost&#39;</span><span class="p">,</span> <span class="s1">&#39;questfit&#39;</span><span class="p">,</span> <span class="s1">&#39;linfit_plus_FeII&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;Fe_flux_balmer&#39;</span><span class="p">,</span> <span class="s1">&#39;Fe_flux_UV&#39;</span><span class="p">,</span> <span class="s1">&#39;quest_extract_QSO_contrib&#39;</span><span class="p">]</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">importlib.resources</span> <span class="k">as</span> <span class="nn">pkg_resources</span>
+<span class="kn">import</span> <span class="nn">lmfit</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">ppxf.ppxf_util</span> <span class="k">as</span> <span class="nn">util</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">from</span> <span class="nn">astropy</span> <span class="kn">import</span> <span class="n">units</span> <span class="k">as</span> <span class="n">u</span>
+<span class="kn">from</span> <span class="nn">astropy.constants</span> <span class="kn">import</span> <span class="n">c</span> <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">astropy.modeling</span> <span class="kn">import</span> <span class="n">models</span><span class="p">,</span> <span class="n">fitting</span>
+<span class="c1"># from lmfit.models import ExpressionModel</span>
+<span class="kn">from</span> <span class="nn">lmfit.models</span> <span class="kn">import</span> <span class="n">LinearModel</span>
+<span class="kn">from</span> <span class="nn">ppxf.ppxf</span> <span class="kn">import</span> <span class="n">ppxf</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">interpolate</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">q3dmath</span><span class="p">,</span> <span class="n">q3dutil</span><span class="p">,</span> <span class="n">qsohostfcn</span><span class="p">,</span> <span class="n">questfitfcn</span>
+<span class="kn">from</span> <span class="nn">q3dfit</span> <span class="kn">import</span> <span class="n">questfitfcn</span>
+<span class="kn">from</span> <span class="nn">q3dfit.data</span> <span class="kn">import</span> <span class="n">questfit_templates</span>
+<span class="c1">#from q3dfit.data.questfit_templates import silicatemodels</span>
+<span class="kn">from</span> <span class="nn">q3dfit.exceptions</span> <span class="kn">import</span> <span class="n">InitializationError</span>
+
+
+<div class="viewcode-block" id="fitpoly">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.contfit.fitpoly">[docs]</a>
+<span class="k">def</span> <span class="nf">fitpoly</span><span class="p">(</span><span class="n">wave</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+            <span class="n">flux</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+            <span class="n">weight</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+            <span class="n">index</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+            <span class="n">logfile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">quiet</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">fitord</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> 
+            <span class="n">refit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ArrayLike</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> \
+                <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Fit the continuum as a polynomial.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    wave</span>
+<span class="sd">        Wavelengths</span>
+<span class="sd">    flux</span>
+<span class="sd">        Fluxes</span>
+<span class="sd">    weight</span>
+<span class="sd">        Weights</span>
+<span class="sd">    index</span>
+<span class="sd">        Points used in the fit.</span>
+<span class="sd">    logfile</span>
+<span class="sd">        Optional. Name of the log file. Default is None.</span>
+<span class="sd">    quiet</span>
+<span class="sd">        Optional. Suppress output to stdout? Default is True.</span>
+<span class="sd">    fitord</span>
+<span class="sd">        Optional. Order of the polynomial. Default is 3.</span>
+<span class="sd">    refit</span>
+<span class="sd">        Optional. Refit with a different polynomial order? If so, set to dictionary</span>
+<span class="sd">        with keys &#39;ord&#39; and &#39;ran&#39; for the order and range of the</span>
+<span class="sd">        refit, respectively. Can specify multiple ranges and orders as</span>
+<span class="sd">        array_like. Default is None.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        best fit continuum model</span>
+<span class="sd">    ArrayLike</span>
+<span class="sd">        Polynomial coefficients.</span>
+<span class="sd">    None</span>
+<span class="sd">        Unused</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">iwave</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">wave</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+    <span class="n">iflux</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">flux</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+    <span class="c1">#the fitter I used puts weights in 1/sigma so I took the square root to make the data correct</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">weight</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+    <span class="n">iweight</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">w</span><span class="p">))</span>
+
+    <span class="n">iwave</span> <span class="o">=</span> <span class="n">iwave</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">iwave</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+    <span class="n">iflux</span> <span class="o">=</span> <span class="n">iflux</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">iwave</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+    <span class="n">iweight</span> <span class="o">=</span> <span class="n">iweight</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">iwave</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">fitord</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+        <span class="n">deg1</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">iwave</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span>
+        <span class="n">deg2</span><span class="o">=</span><span class="n">fitord</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">deg1</span><span class="o">=</span><span class="n">fitord</span>
+        <span class="n">deg2</span><span class="o">=</span><span class="n">fitord</span>
+    
+    <span class="c1">#making astropy fitter</span>
+    <span class="n">fitter</span> <span class="o">=</span> <span class="n">fitting</span><span class="o">.</span><span class="n">LevMarLSQFitter</span><span class="p">()</span>
+    <span class="c1">#making polynomial model</span>
+    <span class="n">polymod1</span><span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Polynomial1D</span><span class="p">(</span><span class="n">deg1</span><span class="p">)</span>
+    <span class="n">polymod2</span><span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Polynomial1D</span><span class="p">(</span><span class="n">deg2</span><span class="p">)</span>
+
+    <span class="c1">#creating fluxfit</span>
+    <span class="n">fluxfit</span> <span class="o">=</span> <span class="n">fitter</span><span class="p">(</span><span class="n">polymod1</span><span class="p">,</span> <span class="n">iwave</span><span class="p">,</span> <span class="n">iflux</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">iweight</span><span class="p">)</span>
+    <span class="c1"># polynomial coefficients</span>
+    <span class="n">fluxfitparam</span> <span class="o">=</span> <span class="n">fluxfit</span><span class="o">.</span><span class="n">parameters</span>
+
+    <span class="c1">#flip for numpy.poly1d</span>
+    <span class="n">ct_coeff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">fluxfitparam</span><span class="p">)</span>
+    <span class="c1"># this is a class:</span>
+    <span class="c1"># https://numpy.org/doc/stable/reference/generated/numpy.poly1d.html</span>
+    <span class="n">ct_poly</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">ct_coeff</span><span class="p">,</span> <span class="n">variable</span><span class="o">=</span><span class="s1">&#39;lambda&#39;</span><span class="p">)</span>
+    <span class="n">continuum</span> <span class="o">=</span> <span class="n">ct_poly</span><span class="p">(</span><span class="n">wave</span><span class="p">)</span>
+    <span class="n">icontinuum</span> <span class="o">=</span> <span class="n">continuum</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">refit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">refit</span><span class="p">[</span><span class="s1">&#39;ord&#39;</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">tmp_ind</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">wave</span> <span class="o">&gt;=</span> <span class="n">refit</span><span class="p">[</span><span class="s1">&#39;ran&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span><span class="n">i</span><span class="p">]</span> <span class="ow">and</span>
+                             <span class="n">wave</span> <span class="o">&lt;=</span> <span class="n">refit</span><span class="p">[</span><span class="s1">&#39;ran&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">tmp_iind</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">iwave</span> <span class="o">&gt;=</span> <span class="n">refit</span><span class="p">[</span><span class="s1">&#39;ran&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span><span class="n">i</span><span class="p">]</span> <span class="ow">and</span>
+                              <span class="n">iwave</span> <span class="o">&lt;=</span> <span class="n">refit</span><span class="p">[</span><span class="s1">&#39;ran&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">])</span>
+            <span class="c1">#  parinfo=np.full(refit[&#39;ord&#39;][i]+1, {&#39;value&#39;:0.0})</span>
+
+            <span class="c1">#degree of polynomial fit defaults to len(x-variable)-1</span>
+            <span class="k">if</span> <span class="n">deg2</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                <span class="n">deg2</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">iwave</span><span class="p">[</span><span class="n">tmp_iind</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span>
+
+            <span class="c1">#creating tmp_pars</span>
+            <span class="n">tmp_pars</span><span class="o">=</span><span class="n">fitter</span><span class="p">(</span><span class="n">polymod2</span><span class="p">,</span> <span class="n">iwave</span><span class="p">[</span><span class="n">tmp_iind</span><span class="p">],</span>
+                            <span class="p">(</span><span class="n">iflux</span><span class="p">[</span><span class="n">tmp_iind</span><span class="p">]</span><span class="o">-</span><span class="n">icontinuum</span><span class="p">[</span><span class="n">tmp_iind</span><span class="p">]),</span>
+                            <span class="n">z</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">iweight</span><span class="p">[</span><span class="n">tmp_iind</span><span class="p">])</span>
+            <span class="n">tmp_parsptmp</span><span class="o">=</span><span class="n">tmp_pars</span><span class="o">.</span><span class="n">parameters</span>
+            <span class="n">tmp_parsparam</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">tmp_parsptmp</span><span class="p">)</span>
+
+            <span class="c1"># refitted continuum object</span>
+            <span class="n">ct_poly</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">tmp_parsparam</span><span class="p">,</span> <span class="n">variable</span><span class="o">=</span><span class="s1">&#39;lambda&#39;</span><span class="p">)</span>
+            <span class="c1"># refitted continuum over wavelength range for refitting, </span>
+            <span class="c1"># indexed to full wavelength array</span>
+            <span class="n">cont_refit</span> <span class="o">=</span> <span class="n">ct_poly</span><span class="p">(</span><span class="n">wave</span><span class="p">[</span><span class="n">tmp_ind</span><span class="p">])</span>
+            <span class="c1"># now add in the refitted continuum to the full continuum</span>
+            <span class="n">continuum</span> <span class="o">+=</span> <span class="n">cont_refit</span>
+
+    <span class="k">return</span> <span class="n">continuum</span><span class="p">,</span> <span class="n">ct_coeff</span><span class="p">,</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="fitqsohost">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.contfit.fitqsohost">[docs]</a>
+<span class="k">def</span> <span class="nf">fitqsohost</span><span class="p">(</span><span class="n">wave</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+               <span class="n">flux</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+               <span class="n">weight</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+               <span class="n">index</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+               <span class="n">logfile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">quiet</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+               <span class="n">refit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">template_wave</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">template_flux</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+               <span class="n">zstar</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span>
+               <span class="n">flux_log</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">err_log</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">index_log</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">siginit_stars</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">50.</span><span class="p">,</span>
+               <span class="n">add_poly_degree</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+               <span class="n">fitran</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ArrayLike</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">qsoord</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">hostord</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+               <span class="n">blrpar</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ArrayLike</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">qsoonly</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+               <span class="n">hostonly</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+               <span class="n">blronly</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+               <span class="n">fluxunit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="o">*</span><span class="p">,</span> <span class="n">qsoxdr</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+               <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Fit the continuum using a quasar template and a stellar template. Calls</span>
+<span class="sd">    :py:func:`~q3dfit.qsohostfcn.qsohostfcn` to jointly fit the quasar and host</span>
+<span class="sd">    galaxy components. Calls :py:func:`~ppxf.ppxf` or :py:func:`~q3dfit.contfit.questfit`</span>
+<span class="sd">    to refit the residual after subtracting the quasar component.</span>
+
+<span class="sd">    Additional keywords can be passed to :py:meth:`~lmfit.model.Model.fit` by passing </span>
+<span class="sd">    them as keyword arguments to this function. Arguments to the :py:mod:`~scipy.optimize` </span>
+<span class="sd">    functions can be passed by setting the keyword argument `argslmfit` to a dictionary of </span>
+<span class="sd">    parameter names and values as keys and values. Arguments to </span>
+<span class="sd">    :py:func:`~q3dfit.contfit.questfit` for the `refit` can be passed by setting the </span>
+<span class="sd">    keyword argument `args_questfit` to a dictionary of parameter names and values as </span>
+<span class="sd">    keys and values.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    -----</span>
+<span class="sd">    wave</span>
+<span class="sd">        Wavelengths</span>
+<span class="sd">    flux</span>
+<span class="sd">        Fluxes</span>
+<span class="sd">    weight</span>
+<span class="sd">        Weights</span>
+<span class="sd">    index</span>
+<span class="sd">        Points used in the fit.</span>
+<span class="sd">    logfile</span>
+<span class="sd">        Optional. Name of the log file. Default is None.</span>
+<span class="sd">    quiet</span>
+<span class="sd">        Optional. Suppress output to stdout? Default is True.</span>
+<span class="sd">    fitran</span>
+<span class="sd">        Optional. Wavelength range to fit. Default is None, to fit all wavelengths.        </span>
+<span class="sd">    qsoord</span>
+<span class="sd">        Optional. Order of the polynomial added to the quasar multiplier.</span>
+<span class="sd">        Default is None.</span>
+<span class="sd">    hostord</span>
+<span class="sd">        Optional. Order of the polynomial model for the host galaxy. </span>
+<span class="sd">        Default is None.</span>
+<span class="sd">    blrpar</span>
+<span class="sd">        Optional. Parameters of the broad line region scattering model. If set,</span>
+<span class="sd">        fit this part of the model. Set to array_like Default is None.</span>
+<span class="sd">    qsoonly</span>
+<span class="sd">        Optional. Fit only the quasar template. Default is False.</span>
+<span class="sd">    hostonly</span>
+<span class="sd">        Optional. Fit only the host galaxy. Default is False.</span>
+<span class="sd">    blronly</span>
+<span class="sd">        Optional. Fit only the broad line region scattering model. Default is False.</span>
+<span class="sd">    refit</span>
+<span class="sd">        Optional. Refit the continuum residual after subtracting the quasar. </span>
+<span class="sd">        Options are &#39;ppxf&#39; or &#39;questfit&#39;.</span>
+<span class="sd">    template_wave</span>
+<span class="sd">        Optional, but must be set if refit=&#39;ppxf&#39;. Wavelength array of the stellar </span>
+<span class="sd">        template used as model for stellar continuum.</span>
+<span class="sd">    template_flux</span>
+<span class="sd">        Optional, but must be set if refit=&#39;ppxf&#39;. Wavelength array of the stellar </span>
+<span class="sd">        template used as model for stellar continuum.</span>
+<span class="sd">    zstar</span>
+<span class="sd">        Optional, but must be set if refit=&#39;ppxf&#39;. Input guess for redshift of the </span>
+<span class="sd">        stellar continuum. Default is 0.</span>
+<span class="sd">    flux_log</span>
+<span class="sd">        Optional, but must be set if refit=&#39;ppxf&#39;. Flux values for the log-rebinned </span>
+<span class="sd">        pixels.</span>
+<span class="sd">    err_log</span>
+<span class="sd">        Optional, but must be set if refit=&#39;ppxf&#39;. Error values for the log-rebinned </span>
+<span class="sd">        pixels.</span>
+<span class="sd">    index_log</span>
+<span class="sd">        Optional, but must be set if refit=&#39;ppxf&#39;. Pixels used in the fit for the </span>
+<span class="sd">        pPXF fit, as log-rebinned.</span>
+<span class="sd">    siginit_stars</span>
+<span class="sd">        Optional. Initial guess for the stellar velocity dispersion in km/s, used</span>
+<span class="sd">        in the pPXF fit. Default is 50. km/s.</span>
+<span class="sd">    add_poly_degree</span>
+<span class="sd">         Optional. Degree of the additive polynomial for the pPXF fit. Default is </span>
+<span class="sd">         30.</span>
+<span class="sd">    qsoxdr</span>
+<span class="sd">        Path and filename for the quasar template.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        Best fit continuum model.</span>
+<span class="sd">    dict[str, Any]</span>
+<span class="sd">        Best fit parameters. The exact form will depend on the value of the </span>
+<span class="sd">        refit parameter. If refit is None, this will be the best fit parameters </span>
+<span class="sd">        from the initial fit. If refit is &#39;ppxf&#39;, this will be a dictionary with </span>
+<span class="sd">        keys &#39;qso_host&#39;, &#39;stel&#39;, &#39;poly&#39;, and &#39;ppxf_sigma&#39;. If refit is &#39;questfit&#39;, </span>
+<span class="sd">        this will be a dictionary with keys &#39;qso_host&#39;, &#39;stel&#39;, and &#39;poly&#39;.</span>
+<span class="sd">    float</span>
+<span class="sd">        Best fit stellar redshift if refit=&#39;ppxf&#39;. Otherwise, the input redshift.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="c1"># Load quasar template</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">qsotemplate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">qsoxdr</span><span class="p">,</span> <span class="n">allow_pickle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="n">qsowave</span> <span class="o">=</span> <span class="n">qsotemplate</span><span class="p">[</span><span class="s1">&#39;wave&#39;</span><span class="p">]</span>
+        <span class="n">qsoflux_full</span> <span class="o">=</span> <span class="n">qsotemplate</span><span class="p">[</span><span class="s1">&#39;flux&#39;</span><span class="p">]</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">InitializationError</span><span class="p">(</span><span class="s1">&#39;Cannot locate quasar template (qsoxdr) specified &#39;</span><span class="p">)</span>
+
+    <span class="c1"># Interpolate quasar template to the data grid. By not doing this</span>
+    <span class="c1"># we are assuming that the quasar template is already on the same</span>
+    <span class="c1"># grid as the data.</span>
+    <span class="c1"># qsoflux = interptemp(wave, qsowave, qsoflux_full)</span>
+
+    <span class="c1"># Make sure we are fitting only the range of the quasar template</span>
+    <span class="c1"># that matches the range of the complete fit, as specfified by fitspec</span>
+    <span class="k">if</span> <span class="n">fitran</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">iqsoflux</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">qsowave</span> <span class="o">&gt;=</span> <span class="n">fitran</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">qsowave</span> <span class="o">&lt;=</span> <span class="n">fitran</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">qsoflux</span> <span class="o">=</span> <span class="n">qsoflux_full</span><span class="p">[</span><span class="n">iqsoflux</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">qsoflux</span> <span class="o">=</span> <span class="n">qsoflux_full</span>
+
+    <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+
+    <span class="c1"># err = 1/weight**0.5</span>
+    <span class="n">iwave</span> <span class="o">=</span> <span class="n">wave</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+    <span class="n">iflux</span> <span class="o">=</span> <span class="n">flux</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+    <span class="n">iweight</span> <span class="o">=</span> <span class="n">weight</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+    <span class="c1"># ierr = err[index]</span>
+
+    <span class="c1"># Fit the quasar and a featureless host continuum</span>
+    <span class="n">ymod</span><span class="p">,</span> <span class="n">params</span> <span class="o">=</span> \
+        <span class="n">qsohostfcn</span><span class="o">.</span><span class="n">qsohostfcn</span><span class="p">(</span><span class="n">wave</span><span class="p">,</span> <span class="n">params_fit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">qsoonly</span><span class="o">=</span><span class="n">qsoonly</span><span class="p">,</span>
+            <span class="n">qsoord</span><span class="o">=</span><span class="n">qsoord</span><span class="p">,</span> <span class="n">hostonly</span><span class="o">=</span><span class="n">hostonly</span><span class="p">,</span> <span class="n">hostord</span><span class="o">=</span><span class="n">hostord</span><span class="p">,</span>
+            <span class="n">blronly</span><span class="o">=</span><span class="n">blronly</span><span class="p">,</span> <span class="n">blrpar</span><span class="o">=</span><span class="n">blrpar</span><span class="p">,</span> <span class="n">qsoflux</span><span class="o">=</span><span class="n">qsoflux</span><span class="p">,</span>
+            <span class="n">medflux</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">iflux</span><span class="p">))</span>
+
+    <span class="c1"># Set the fitting method</span>
+    <span class="c1"># default is scipy.optimize.least_squares</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;least_squares&#39;</span>
+    <span class="k">if</span> <span class="s1">&#39;method&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;method&#39;</span><span class="p">]</span>
+
+    <span class="n">fit_kws</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;least_squares&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">quiet</span><span class="p">:</span>
+            <span class="n">lmverbose</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># verbosity for scipy.optimize.least_squares</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lmverbose</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="n">fit_kws</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;verbose&#39;</span><span class="p">:</span> <span class="n">lmverbose</span><span class="p">}</span>
+
+    <span class="c1"># Add additional parameter settings for scipy.optimize.least_squares</span>
+    <span class="k">if</span> <span class="s1">&#39;argslmfit&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;argslmfit&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">fit_kws</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">ymod</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">iflux</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">iweight</span><span class="p">),</span>
+                      <span class="n">qsotemplate</span><span class="o">=</span><span class="n">qsoflux</span><span class="p">[</span><span class="n">index</span><span class="p">],</span>
+                      <span class="n">wave</span><span class="o">=</span><span class="n">iwave</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">iwave</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+                      <span class="n">nan_policy</span><span class="o">=</span><span class="s1">&#39;raise&#39;</span><span class="p">,</span> <span class="n">fit_kws</span><span class="o">=</span><span class="n">fit_kws</span><span class="p">)</span>
+
+    <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">fit_report</span><span class="p">(),</span> <span class="n">file</span><span class="o">=</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+
+    <span class="c1"># comps = result.eval_components(wave=wave, qso_model=qsoflux, x=wave)</span>
+    <span class="n">continuum</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">wave</span><span class="o">=</span><span class="n">wave</span><span class="p">,</span> <span class="n">qsotemplate</span><span class="o">=</span><span class="n">qsoflux</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">wave</span><span class="p">)</span>
+    <span class="c1"># Test plot</span>
+    <span class="c1"># import matplotlib.pyplot as plt</span>
+    <span class="c1"># for i in comps.keys():</span>
+    <span class="c1">#     plt.plot(wave, comps[i], label=i)</span>
+    <span class="c1"># plt.plot(wave, continuum, label=&#39;best-fit&#39;)</span>
+    <span class="c1"># plt.plot(wave, flux, label=&#39;flux&#39;)</span>
+    <span class="c1"># plt.plot(wave, flux-continuum, label=&#39;resid&#39;)</span>
+    <span class="c1"># plt.plot(wave, test_qsofcn, label=&#39;test&#39;)</span>
+    <span class="c1"># plt.legend(loc=&#39;best&#39;)</span>
+    <span class="c1"># plt.show()</span>
+
+    <span class="n">ct_coeff</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">params</span>
+
+    <span class="c1"># Refit the residual after subtracting the quasar component</span>
+    <span class="k">if</span> <span class="n">refit</span> <span class="o">==</span> <span class="s1">&#39;ppxf&#39;</span> <span class="ow">and</span> \
+        <span class="n">flux_log</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> \
+        <span class="n">err_log</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> \
+        <span class="n">index_log</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> \
+        <span class="n">template_wave</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> \
+        <span class="n">template_flux</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+
+        <span class="c1"># log rebin residual</span>
+        <span class="c1"># lamRange1 = np.array([wave.min(), wave.max()])/(1+zstar)</span>
+        <span class="n">cont_log</span><span class="p">,</span> <span class="n">lambda_log</span><span class="p">,</span> <span class="n">velscale</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">log_rebin</span><span class="p">(</span><span class="n">fitran</span><span class="p">,</span> <span class="n">continuum</span><span class="p">)</span>
+
+        <span class="n">resid_log</span> <span class="o">=</span> <span class="n">flux_log</span> <span class="o">-</span> <span class="n">cont_log</span>
+
+        <span class="c1"># nan_indx = np.where(np.isnan(resid_log))[0]</span>
+        <span class="c1"># if len(nan_indx) &gt; 0:</span>
+        <span class="c1">#    resid_log[nan_indx] = 0</span>
+
+        <span class="c1"># Interpolate template to same grid as data</span>
+        <span class="n">temp_log</span> <span class="o">=</span> <span class="n">q3dmath</span><span class="o">.</span><span class="n">interptemp</span><span class="p">(</span><span class="n">lambda_log</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">template_wave</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+            <span class="n">template_flux</span><span class="p">)</span>
+
+        <span class="c1"># vel = c*np.log(1 + zstar)   # eq.(8) of Cappellari (2017)</span>
+        <span class="c1"># t = clock()</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">siginit_stars</span><span class="p">]</span>  <span class="c1"># (km/s), starting guess for [V, sigma]</span>
+        <span class="n">pp</span> <span class="o">=</span> <span class="n">ppxf</span><span class="p">(</span><span class="n">temp_log</span><span class="p">,</span> <span class="n">resid_log</span><span class="p">,</span> <span class="n">err_log</span><span class="p">,</span> <span class="n">velscale</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span>
+                  <span class="n">goodpixels</span><span class="o">=</span><span class="n">index_log</span><span class="p">,</span>  <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">,</span>  <span class="c1"># plot=True, moments=2</span>
+                  <span class="n">degree</span><span class="o">=</span><span class="n">add_poly_degree</span><span class="p">)</span>  <span class="c1"># clean=False</span>
+
+        <span class="c1"># resample additive polynomial to linear grid</span>
+        <span class="c1"># poly_log = pp.apoly</span>
+        <span class="c1"># pinterp = \</span>
+        <span class="c1">#     interpolate.interp1d(residlambda_log, poly_log,</span>
+        <span class="c1">#                          kind=&#39;cubic&#39;, fill_value=&quot;extrapolate&quot;)</span>
+        <span class="c1"># poly = pinterp(np.log(wave))</span>
+
+        <span class="n">ct_coeff</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;qso_host&#39;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">params</span><span class="p">,</span>
+                    <span class="s1">&#39;stel&#39;</span><span class="p">:</span> <span class="n">pp</span><span class="o">.</span><span class="n">weights</span><span class="p">,</span>
+                    <span class="s1">&#39;poly&#39;</span><span class="p">:</span> <span class="n">pp</span><span class="o">.</span><span class="n">polyweights</span><span class="p">,</span>
+                    <span class="s1">&#39;ppxf_sigma&#39;</span><span class="p">:</span> <span class="n">pp</span><span class="o">.</span><span class="n">sol</span><span class="p">[</span><span class="mi">1</span><span class="p">]}</span>
+
+        <span class="c1"># From ppxf docs:</span>
+        <span class="c1"># IMPORTANT: The precise relation between the output pPXF velocity</span>
+        <span class="c1"># and redshift is Vel = c*np.log(1 + z).</span>
+        <span class="c1"># See Section 2.3 of Cappellari (2017) for a detailed explanation.</span>
+        <span class="n">zstar</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">pp</span><span class="o">.</span><span class="n">sol</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">c</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;km/s&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="p">)</span><span class="o">-</span><span class="mf">1.</span>
+
+        <span class="c1"># host can&#39;t be negative</span>
+        <span class="c1">#ineg = np.where(continuum &lt; 0)</span>
+        <span class="n">continuum</span><span class="p">[</span><span class="n">continuum</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">ppxfcontinuum_log</span> <span class="o">=</span> <span class="n">pp</span><span class="o">.</span><span class="n">bestfit</span>
+        <span class="n">cinterp</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">lambda_log</span><span class="p">,</span> <span class="n">ppxfcontinuum_log</span><span class="p">,</span>
+                                       <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;cubic&#39;</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="s1">&#39;extrapolate&#39;</span><span class="p">)</span>
+
+        <span class="n">ppxfcont_resid</span> <span class="o">=</span> <span class="n">cinterp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">wave</span><span class="p">))</span>
+        <span class="n">continuum</span> <span class="o">+=</span> <span class="n">ppxfcont_resid</span>
+
+    <span class="k">elif</span> <span class="n">refit</span> <span class="o">==</span> <span class="s1">&#39;questfit&#39;</span><span class="p">:</span>
+
+        <span class="n">resid</span> <span class="o">=</span> <span class="n">flux</span> <span class="o">-</span> <span class="n">continuum</span>
+        <span class="n">argscontfit_use</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;args_questfit&#39;</span><span class="p">]</span>
+        <span class="n">cont_resid</span><span class="p">,</span> <span class="n">ct_coeff</span><span class="p">,</span> <span class="n">zstar</span> <span class="o">=</span> <span class="n">questfit</span><span class="p">(</span><span class="n">wave</span><span class="p">,</span> <span class="n">resid</span><span class="p">,</span> <span class="n">weight</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> 
+                                               <span class="n">logfile</span><span class="o">=</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">zstar</span><span class="p">,</span> 
+                                               <span class="n">fluxunit</span><span class="o">=</span><span class="n">fluxunit</span><span class="p">,</span> <span class="o">**</span><span class="n">argscontfit_use</span><span class="p">)</span>
+
+        <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">plot</span>
+        <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+        <span class="n">initdatdict</span> <span class="o">=</span> <span class="n">argscontfit_use</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">initdatdict</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;miritest&#39;</span>
+        <span class="n">initdatdict</span><span class="p">[</span><span class="s1">&#39;plotMIR&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">plot</span><span class="o">.</span><span class="n">plotquest</span><span class="p">(</span><span class="n">wave</span><span class="p">,</span> <span class="n">resid</span><span class="p">,</span> <span class="n">cont_resid</span><span class="p">,</span> <span class="n">ct_coeff</span><span class="p">,</span> <span class="n">initdatdict</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        <span class="n">continuum</span> <span class="o">+=</span> <span class="n">cont_resid</span>
+        <span class="n">ct_coeff</span><span class="p">[</span><span class="s1">&#39;qso_host&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">params</span>
+
+    <span class="k">return</span> <span class="n">continuum</span><span class="p">,</span> <span class="n">ct_coeff</span><span class="p">,</span> <span class="n">zstar</span></div>
+
+
+
+<div class="viewcode-block" id="questfit">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.contfit.questfit">[docs]</a>
+<span class="k">def</span> <span class="nf">questfit</span><span class="p">(</span><span class="n">wave</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+             <span class="n">flux</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+             <span class="n">weight</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+             <span class="n">index</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+             <span class="n">logfile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">quiet</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+             <span class="n">z</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span>
+             <span class="n">fluxunit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">tempdir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="o">*</span><span class="p">,</span> <span class="n">config_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Fit the MIR continuum. Calls :py:func:`~q3dfit.contfit.questfitfcn` to fit the</span>
+<span class="sd">    continuum using the templates specified in the configuration file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    -----</span>
+<span class="sd">    wave</span>
+<span class="sd">        Wavelengths</span>
+<span class="sd">    flux</span>
+<span class="sd">        Fluxes</span>
+<span class="sd">    weight</span>
+<span class="sd">        Weights</span>
+<span class="sd">    index</span>
+<span class="sd">        Points used in the fit.</span>
+<span class="sd">    quiet</span>
+<span class="sd">        Optional. Suppress output? Default is True.</span>
+<span class="sd">    z</span>
+<span class="sd">        Optional. Redshift of the source, for redshifting the templates. </span>
+<span class="sd">        Default is 0.</span>
+<span class="sd">    fluxunit</span>
+<span class="sd">        Optional. Units of the flux, as defined by :py:class:`~q3dfit.readcube.Cube`.</span>
+<span class="sd">        Default is None. The templates are assumed to be in f_nu. If this</span>
+<span class="sd">        unit contains &#39;micron&#39; or &#39;Angstrom&#39;, the flux is assumed to be in f_lambda.</span>
+<span class="sd">        The templates are then converted to f_lambda. If None, the templates are not</span>
+<span class="sd">        converted.</span>
+<span class="sd">    tempdir</span>
+<span class="sd">        Optional. Directory containing the templates, to search if default</span>
+<span class="sd">        directory does not contain template. Default is None.</span>
+<span class="sd">    config_file</span>
+<span class="sd">        Configuration file for the fit.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        Best fit continuum model.</span>
+<span class="sd">    dict[str, Any]</span>
+<span class="sd">        Best fit parameters. Key &#39;MIRparams&#39; is a :py:class:`~lmfit.Parameters` object</span>
+<span class="sd">        containing the best fit parameters. Key &#39;comp_best_fit&#39; is a dictionary</span>
+<span class="sd">        containing with key/value pairs of the component names and their values</span>
+<span class="sd">        evaluated at the best fit parameters.</span>
+<span class="sd">    z</span>
+<span class="sd">        Same as input z.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="c1"># models dictionary holds extinction, absorption models</span>
+    <span class="n">emcomps</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="c1"># template dictionary holds templates, blackbodies, powerlaws</span>
+    <span class="n">allcomps</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+    <span class="c1"># Read input configuration file</span>
+    <span class="n">config_file</span> <span class="o">=</span> <span class="n">readcf</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span>
+
+    <span class="c1"># set up global extinction. Loop through all lines, looking for global tag</span>
+    <span class="n">global_extinction</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">config_file</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">config_file</span><span class="p">[</span><span class="n">key</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;global&#39;</span> <span class="ow">in</span> <span class="n">config_file</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="mi">3</span><span class="p">]:</span>
+                <span class="n">global_extinction</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># Set name of global extinction / ice models</span>
+    <span class="k">if</span> <span class="n">global_extinction</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">config_file</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;extinction&#39;</span> <span class="ow">in</span> <span class="n">config_file</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span>
+                <span class="n">global_ext_model</span> <span class="o">=</span> <span class="n">key</span>
+            <span class="k">if</span> <span class="s1">&#39;absorption&#39;</span> <span class="ow">in</span> <span class="n">config_file</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span>
+                <span class="n">global_ice_model</span> <span class="o">=</span> <span class="n">key</span>
+
+    <span class="c1"># counter for PAH/silicate/quasar templates</span>
+    <span class="n">n_temp</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># populating the components dictionaries and setting up lmfit models</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">config_file</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+
+        <span class="c1"># loc_models = q3dfit.__path__[0]+&#39;/data/questfit_templates/&#39;</span>
+        <span class="k">if</span> <span class="s1">&#39;blackbody&#39;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">:</span>
+            <span class="c1">#starting with the blackbodies</span>
+            <span class="n">model_parameters</span> <span class="o">=</span> <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">name_model</span> <span class="o">=</span> <span class="s1">&#39;blackbody&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">7</span><span class="p">])))</span>
+            <span class="n">extinction_model</span> <span class="o">=</span> <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span>
+            <span class="n">ice_model</span> <span class="o">=</span> <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">9</span><span class="p">]</span>
+            <span class="c1"># instantiate model class and set parameters</span>
+            <span class="n">model_temp_BB</span><span class="p">,</span> <span class="n">param_temp_BB</span> <span class="o">=</span> \
+                <span class="n">questfitfcn</span><span class="o">.</span>\
+                <span class="n">set_up_fit_blackbody_model</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                                            <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">7</span><span class="p">])],</span>
+                                           <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span>
+                                            <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">8</span><span class="p">])],</span>
+                                           <span class="n">name_model</span><span class="p">[:])</span>
+            <span class="c1"># instantiate individual extinction model</span>
+            <span class="k">if</span> <span class="n">global_extinction</span> <span class="ow">is</span> <span class="kc">False</span> <span class="ow">and</span> \
+                <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;_&#39;</span> <span class="ow">and</span> \
+                <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>
+                <span class="n">model_temp_extinction</span><span class="p">,</span> <span class="n">param_temp_extinction</span> <span class="o">=</span> \
+                    <span class="n">questfitfcn</span><span class="o">.</span>\
+                    <span class="n">set_up_fit_extinction</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">4</span><span class="p">])],</span>
+                                          <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">5</span><span class="p">])],</span>
+                                          <span class="n">name_model</span><span class="o">+</span><span class="s1">&#39;_ext&#39;</span><span class="p">,</span>
+                                          <span class="n">extinction_model</span><span class="p">,</span>
+                                          <span class="n">model_parameters</span><span class="p">[</span><span class="mi">6</span><span class="p">])</span>
+                <span class="c1"># multiply the BB model by extinction and add parameters</span>
+                <span class="c1"># temporary holders just for this component</span>
+                <span class="n">model_temp</span> <span class="o">=</span> <span class="n">model_temp_BB</span><span class="o">*</span><span class="n">model_temp_extinction</span>
+                <span class="n">param_temp</span> <span class="o">=</span> <span class="n">param_temp_BB</span> <span class="o">+</span> <span class="n">param_temp_extinction</span>
+                <span class="c1"># add extinction model to dictionary</span>
+                <span class="n">allcomps</span><span class="p">[</span><span class="n">extinction_model</span><span class="p">]</span> <span class="o">=</span> \
+                    <span class="n">config_file</span><span class="p">[</span><span class="n">extinction_model</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># temporary holders just for this component, without extinction</span>
+                <span class="n">model_temp</span> <span class="o">=</span> <span class="n">model_temp_BB</span>
+                <span class="n">param_temp</span> <span class="o">=</span> <span class="n">param_temp_BB</span>
+
+            <span class="c1"># checking if we need to add ice absorption</span>
+            <span class="k">if</span> <span class="s1">&#39;ice&#39;</span> <span class="ow">in</span> <span class="n">i</span> <span class="ow">and</span> <span class="n">global_extinction</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="n">model_temp_ice</span><span class="p">,</span> <span class="n">param_temp_ice</span> <span class="o">=</span> \
+                    <span class="n">questfitfcn</span><span class="o">.</span>\
+                    <span class="n">set_up_absorption</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">10</span><span class="p">])],</span>
+                                      <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">11</span><span class="p">])],</span>
+                                      <span class="n">name_model</span><span class="o">+</span><span class="s1">&#39;_abs&#39;</span><span class="p">,</span>
+                                      <span class="n">model_parameters</span><span class="p">[</span><span class="mi">9</span><span class="p">])</span>
+                <span class="n">model_temp</span> <span class="o">=</span> <span class="n">model_temp</span><span class="o">*</span><span class="n">model_temp_ice</span>
+                <span class="n">param_temp</span> <span class="o">+=</span> <span class="n">param_temp_ice</span>
+                <span class="n">allcomps</span><span class="p">[</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">9</span><span class="p">]]</span> <span class="o">=</span> \
+                    <span class="n">config_file</span><span class="p">[</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">9</span><span class="p">]][</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="c1"># Check if this is the first component; if not, set up full</span>
+            <span class="c1"># model/pars</span>
+            <span class="k">if</span> <span class="s1">&#39;model&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">():</span>
+                <span class="n">model</span><span class="p">,</span> <span class="n">param</span> <span class="o">=</span> <span class="n">model_temp</span><span class="p">,</span> <span class="n">param_temp</span>
+            <span class="c1"># otherwise, add them in</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">model</span> <span class="o">+=</span> <span class="n">model_temp</span>
+                <span class="n">param</span> <span class="o">+=</span> <span class="n">param_temp</span>
+
+        <span class="c1"># powerlaw model</span>
+        <span class="k">if</span> <span class="s1">&#39;powerlaw&#39;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">:</span>
+            <span class="n">model_parameters</span> <span class="o">=</span> <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">name_model</span> <span class="o">=</span> <span class="s1">&#39;powerlaw&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">7</span><span class="p">])))</span>
+            <span class="n">extinction_model</span> <span class="o">=</span> <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span>
+            <span class="n">ice_model</span> <span class="o">=</span> <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">9</span><span class="p">]</span>
+
+            <span class="c1">#powerlaw model</span>
+            <span class="c1"># exponent to that specified in config. file.</span>
+            <span class="n">model_temp_powerlaw</span><span class="p">,</span> <span class="n">param_temp_powerlaw</span> <span class="o">=</span> \
+                <span class="n">questfitfcn</span><span class="o">.</span>\
+                    <span class="n">set_up_fit_powerlaw_model</span><span class="p">(</span>
+                        <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="mf">1.</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">7</span><span class="p">])],</span>
+                        <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span>
+                         <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">8</span><span class="p">])],</span>
+                        <span class="n">name_model</span><span class="p">[:])</span>
+            <span class="k">if</span> <span class="n">global_extinction</span> <span class="ow">is</span> <span class="kc">False</span> <span class="ow">and</span> \
+                <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;_&#39;</span> <span class="ow">and</span> \
+                <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>
+                <span class="n">model_temp_extinction</span><span class="p">,</span> <span class="n">param_temp_extinction</span> <span class="o">=</span> \
+                    <span class="n">questfitfcn</span><span class="o">.</span>\
+                    <span class="n">set_up_fit_extinction</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">4</span><span class="p">])],</span>
+                                          <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">5</span><span class="p">])],</span>
+                                          <span class="s1">&#39;powerlaw&#39;</span> <span class="o">+</span>
+                                          <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">7</span><span class="p">])))</span>
+                                          <span class="o">+</span> <span class="s1">&#39;_ext&#39;</span><span class="p">,</span> <span class="n">extinction_model</span><span class="p">,</span>
+                                          <span class="n">model_parameters</span><span class="p">[</span><span class="mi">6</span><span class="p">])</span>
+
+                <span class="n">model_temp</span> <span class="o">=</span> <span class="n">model_temp_powerlaw</span><span class="o">*</span><span class="n">model_temp_extinction</span>
+                <span class="n">param_temp</span> <span class="o">=</span> <span class="n">param_temp_powerlaw</span> <span class="o">+</span> <span class="n">param_temp_extinction</span>
+
+                <span class="n">allcomps</span><span class="p">[</span><span class="n">extinction_model</span><span class="p">]</span> <span class="o">=</span> \
+                    <span class="n">config_file</span><span class="p">[</span><span class="n">extinction_model</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">model_temp</span> <span class="o">=</span> <span class="n">model_temp_powerlaw</span>
+                <span class="n">param_temp</span> <span class="o">=</span> <span class="n">param_temp_powerlaw</span>
+
+            <span class="k">if</span> <span class="s1">&#39;ice&#39;</span> <span class="ow">in</span> <span class="n">i</span> <span class="ow">and</span> <span class="n">global_extinction</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="n">model_temp_ice</span><span class="p">,</span> <span class="n">param_temp_ice</span> <span class="o">=</span> \
+                    <span class="n">questfitfcn</span><span class="o">.</span>\
+                    <span class="n">set_up_absorption</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">10</span><span class="p">])],</span>
+                                      <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">11</span><span class="p">])],</span>
+                                      <span class="n">name_model</span><span class="o">+</span><span class="s1">&#39;_abs&#39;</span><span class="p">,</span> <span class="n">model_parameters</span><span class="p">[</span><span class="mi">9</span><span class="p">])</span>
+                <span class="n">model_temp</span> <span class="o">=</span> <span class="n">model_temp</span><span class="o">*</span><span class="n">model_temp_ice</span>
+                <span class="n">param_temp</span> <span class="o">+=</span> <span class="n">param_temp_ice</span>
+                <span class="n">allcomps</span><span class="p">[</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">9</span><span class="p">]]</span> <span class="o">=</span> \
+                    <span class="n">config_file</span><span class="p">[</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">9</span><span class="p">]][</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="s1">&#39;model&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">():</span>
+                <span class="n">model</span><span class="p">,</span> <span class="n">param</span> <span class="o">=</span> <span class="n">model_temp</span><span class="p">,</span> <span class="n">param_temp</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">model</span> <span class="o">+=</span> <span class="n">model_temp</span>
+                <span class="n">param</span> <span class="o">+=</span> <span class="n">param_temp</span>
+
+        <span class="k">if</span> <span class="s1">&#39;template&#39;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">:</span> <span class="c1">#template model</span>
+            <span class="n">model_parameters</span> <span class="o">=</span> <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">name_model</span> <span class="o">=</span> <span class="s1">&#39;template_&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">n_temp</span><span class="p">)</span><span class="c1">#i</span>
+            <span class="n">extinction_model</span> <span class="o">=</span> <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span>
+            <span class="n">ice_model</span> <span class="o">=</span> <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">9</span><span class="p">]</span>
+            <span class="c1"># if it&#39;s not a polynomial model for PSF fitting</span>
+            <span class="c1">#if not &#39;poly&#39; in i:</span>
+            <span class="n">model_temp_template</span><span class="p">,</span> <span class="n">param_temp_template</span> <span class="o">=</span> \
+                <span class="n">questfitfcn</span><span class="o">.</span>\
+                    <span class="n">set_up_fit_model_scale</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">1</span><span class="p">])],</span>
+                                           <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">2</span><span class="p">])],</span>
+                                           <span class="n">name_model</span><span class="p">,</span> <span class="n">name_model</span><span class="p">)</span> <span class="c1">#,</span>
+                                            <span class="c1">#maxamp=1.05*max(flux[index]) )</span>
+            <span class="c1"># # ... and if it is!</span>
+            <span class="c1"># Not presently implmented</span>
+            <span class="c1"># else:</span>
+            <span class="c1">#     # constrain amplitude</span>
+            <span class="c1">#     minamp = np.float64(model_parameters[1]) / 1.25</span>
+            <span class="c1">#     maxamp = np.float64(model_parameters[1]) * 1.25</span>
+            <span class="c1">#     model_temp_template, param_temp_template = \</span>
+            <span class="c1">#         questfitfcn.set_up_fit_model_scale_withpoly(</span>
+            <span class="c1">#             [np.float64(model_parameters[1])],</span>
+            <span class="c1">#             [np.float64(model_parameters[2])],</span>
+            <span class="c1">#             name_model, name_model, minamp=minamp, maxamp=maxamp)</span>
+
+            <span class="k">if</span> <span class="n">global_extinction</span> <span class="ow">is</span> <span class="kc">False</span> <span class="ow">and</span> \
+                <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;_&#39;</span> <span class="ow">and</span> \
+                <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>
+
+                <span class="n">model_temp_extinction</span><span class="p">,</span> <span class="n">param_temp_extinction</span> <span class="o">=</span> \
+                    <span class="n">questfitfcn</span><span class="o">.</span>\
+                    <span class="n">set_up_fit_extinction</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">4</span><span class="p">])],</span>
+                                          <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">5</span><span class="p">])],</span>
+                                          <span class="n">name_model</span> <span class="o">+</span> <span class="s1">&#39;_ext&#39;</span><span class="p">,</span>
+                                          <span class="n">extinction_model</span><span class="p">,</span>
+                                          <span class="n">model_parameters</span><span class="p">[</span><span class="mi">6</span><span class="p">])</span>
+                <span class="n">model_temp</span> <span class="o">=</span> <span class="n">model_temp_template</span><span class="o">*</span><span class="n">model_temp_extinction</span>
+                <span class="n">param_temp</span> <span class="o">=</span> <span class="n">param_temp_template</span> <span class="o">+</span> <span class="n">param_temp_extinction</span>
+
+                <span class="n">allcomps</span><span class="p">[</span><span class="n">extinction_model</span><span class="p">]</span> <span class="o">=</span> \
+                    <span class="n">config_file</span><span class="p">[</span><span class="n">extinction_model</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">model_temp</span> <span class="o">=</span> <span class="n">model_temp_template</span>
+                <span class="n">param_temp</span> <span class="o">=</span> <span class="n">param_temp_template</span>
+
+            <span class="k">if</span> <span class="s1">&#39;ice&#39;</span> <span class="ow">in</span> <span class="n">i</span> <span class="ow">and</span> <span class="n">global_extinction</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="n">model_temp_ice</span><span class="p">,</span> <span class="n">param_temp_ice</span> <span class="o">=</span> \
+                    <span class="n">questfitfcn</span><span class="o">.</span><span class="n">set_up_absorption</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">10</span><span class="p">])],</span>
+                                                  <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">11</span><span class="p">])],</span>
+                                                  <span class="n">name_model</span><span class="o">+</span><span class="s1">&#39;_abs&#39;</span><span class="p">,</span>
+                                                  <span class="n">model_parameters</span><span class="p">[</span><span class="mi">9</span><span class="p">])</span>
+                <span class="n">model_temp</span> <span class="o">=</span> <span class="n">model_temp</span><span class="o">*</span><span class="n">model_temp_ice</span>
+                <span class="n">param_temp</span> <span class="o">+=</span> <span class="n">param_temp_ice</span>
+
+                <span class="n">allcomps</span><span class="p">[</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">9</span><span class="p">]]</span> <span class="o">=</span> \
+                    <span class="n">config_file</span><span class="p">[</span><span class="n">model_parameters</span><span class="p">[</span><span class="mi">9</span><span class="p">]]</span>
+
+            <span class="k">if</span> <span class="s1">&#39;model&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">():</span>
+                <span class="n">model</span><span class="p">,</span><span class="n">param</span> <span class="o">=</span> <span class="n">model_temp</span><span class="p">,</span><span class="n">param_temp</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">model</span> <span class="o">+=</span> <span class="n">model_temp</span>
+                <span class="n">param</span> <span class="o">+=</span> <span class="n">param_temp</span>
+            <span class="c1"># add numerical template to emcomps</span>
+            <span class="n">emcomps</span><span class="p">[</span><span class="n">name_model</span><span class="p">]</span> <span class="o">=</span> <span class="n">config_file</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="c1"># increment counter for PAH/silicate/quasar templates</span>
+            <span class="n">n_temp</span><span class="o">+=</span><span class="mi">1</span>
+
+        <span class="c1">#if qsoflux is not None:</span>
+            <span class="c1">#model_qso, param_qso = questfitfcn.set_up_fit_model_scale</span>
+
+    <span class="c1"># Check to see if we are using global extinction, where the total</span>
+    <span class="c1"># model flux is extincted by the same ice and dust model.</span>
+    <span class="k">if</span> <span class="n">global_extinction</span><span class="p">:</span>
+
+        <span class="n">model_global_ext</span><span class="p">,</span> <span class="n">param_global_ext</span> <span class="o">=</span> \
+            <span class="n">questfitfcn</span><span class="o">.</span><span class="n">set_up_fit_extinction</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="mf">0.</span><span class="p">)],</span>
+                                              <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="mf">1.</span><span class="p">)],</span> <span class="s1">&#39;global_ext&#39;</span><span class="p">,</span>
+                                              <span class="n">global_ext_model</span><span class="p">,</span> <span class="s1">&#39;S&#39;</span><span class="p">)</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="o">*</span><span class="n">model_global_ext</span>
+        <span class="n">param</span> <span class="o">+=</span> <span class="n">param_global_ext</span>
+        <span class="n">allcomps</span><span class="p">[</span><span class="n">global_ext_model</span><span class="p">]</span> <span class="o">=</span> <span class="n">config_file</span><span class="p">[</span><span class="n">global_ext_model</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">model_global_ice</span><span class="p">,</span> <span class="n">param_global_ice</span> <span class="o">=</span> \
+            <span class="n">questfitfcn</span><span class="o">.</span><span class="n">set_up_absorption</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="mf">0.</span><span class="p">)],</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="mf">1.</span><span class="p">)],</span>
+                                          <span class="s1">&#39;global_ice&#39;</span><span class="p">,</span> <span class="n">global_ice_model</span><span class="p">)</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="o">*</span><span class="n">model_global_ice</span>
+        <span class="n">param</span> <span class="o">+=</span> <span class="n">param_global_ice</span>
+        <span class="n">allcomps</span><span class="p">[</span><span class="n">global_ice_model</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="n">config_file</span><span class="p">[</span><span class="n">global_ice_model</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># loop over abs. dictionary, load in the numerical models and resample.</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">allcomps</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="c1">#if qsoflux is not None:</span>
+        <span class="k">with</span> <span class="n">pkg_resources</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="n">questfit_templates</span><span class="p">,</span> <span class="n">allcomps</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">as</span> <span class="n">p</span><span class="p">:</span>
+            <span class="n">temp_model</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">allow_pickle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="ow">and</span> <span class="n">tempdir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">temp_model</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">tempdir</span><span class="o">+</span><span class="n">allcomps</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">InitializationError</span><span class="p">(</span><span class="s1">&#39;Cannot locate template specified in config file.&#39;</span><span class="p">)</span>
+        <span class="c1"># Check to see if we are using global extinction, where the total</span>
+        <span class="n">temp_wave</span><span class="o">=</span><span class="n">temp_model</span><span class="p">[</span><span class="s1">&#39;WAVE&#39;</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">temp_value</span><span class="o">=</span><span class="n">temp_model</span><span class="p">[</span><span class="s1">&#39;FLUX&#39;</span><span class="p">]</span>
+
+        <span class="n">temp_value_rebin</span> <span class="o">=</span> \
+            <span class="n">q3dmath</span><span class="o">.</span><span class="n">interp_lis</span><span class="p">(</span><span class="n">wave</span><span class="p">,</span> <span class="n">temp_wave</span><span class="p">,</span> <span class="n">temp_value</span><span class="p">)</span>
+        <span class="n">allcomps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">temp_value_rebin</span>
+
+    <span class="c1"># conversion from f_nu to f_lambda is f_lambda = f_nu x c/lambda^2</span>
+    <span class="c1"># [1 Jy = 1e-10 erg/s/cm^2/um [/sr] ???]</span>
+    <span class="c1"># about 1.2 for wave=5 [micron]</span>
+    <span class="c1">#c_scale =  constants.c * u.Unit(&#39;m&#39;).to(&#39;micron&#39;) / wave**2 * \</span>
+    <span class="c1">#    1e-23 * 1e10</span>
+    <span class="c1"># the exact value doesn&#39;t matter, because we normalize the templates</span>
+    <span class="n">c_scale</span> <span class="o">=</span>  <span class="mf">1.</span> <span class="o">/</span> <span class="n">wave</span><span class="o">**</span><span class="mi">2</span>
+
+    <span class="c1"># loop over emission template dictionary, load them in and resample.</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">emcomps</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">if</span> <span class="s1">&#39;sifrom&#39;</span> <span class="ow">in</span> <span class="n">emcomps</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+            <span class="n">tempdir</span> <span class="o">=</span> <span class="n">questfit_templates</span><span class="o">.</span><span class="n">silicatemodels</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tempdir</span> <span class="o">=</span> <span class="n">questfit_templates</span>
+        <span class="k">with</span> <span class="n">pkg_resources</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="n">tempdir</span><span class="p">,</span> <span class="n">emcomps</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">as</span> <span class="n">p</span><span class="p">:</span>
+             <span class="n">temp_model</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">allow_pickle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">temp_wave</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">temp_model</span><span class="p">[</span><span class="s1">&#39;WAVE&#39;</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">z</span><span class="p">))</span>
+            <span class="n">temp_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">temp_model</span><span class="p">[</span><span class="s1">&#39;FLUX&#39;</span><span class="p">])</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="c1"># if a QSO template generated by makeqsotemplate() is included,</span>
+            <span class="c1"># that is formatted slightly differently</span>
+            <span class="n">temp_model</span> <span class="o">=</span> <span class="n">temp_model</span><span class="p">[()]</span>
+            <span class="n">temp_wave</span> <span class="o">=</span> <span class="n">temp_model</span><span class="p">[</span><span class="s1">&#39;wave&#39;</span><span class="p">]</span> <span class="c1">#*(1.+z)</span>
+            <span class="n">temp_value</span> <span class="o">=</span> <span class="n">temp_model</span><span class="p">[</span><span class="s1">&#39;flux&#39;</span><span class="p">]</span>
+
+        <span class="n">temp_value_rebin</span> <span class="o">=</span> \
+            <span class="n">q3dmath</span><span class="o">.</span><span class="n">interp_lis</span><span class="p">(</span><span class="n">wave</span><span class="p">,</span> <span class="n">temp_wave</span><span class="p">,</span> <span class="n">temp_value</span><span class="p">)</span>
+        <span class="n">allcomps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">temp_value_rebin</span>
+        <span class="c1"># conversion from f_nu to f_lambda: f_lambda = f_nu x c/lambda^2</span>
+        <span class="c1"># assume that presence of micron or Angstrom in fluxunit means that the flux is</span>
+        <span class="c1"># f_lambda</span>
+        <span class="k">if</span> <span class="n">fluxunit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;micron&#39;</span> <span class="ow">in</span> <span class="n">fluxunit</span> <span class="ow">or</span> <span class="s1">&#39;Angstrom&#39;</span> <span class="ow">in</span> <span class="n">fluxunit</span><span class="p">:</span>
+                <span class="n">allcomps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*=</span> <span class="n">c_scale</span>
+
+        <span class="n">allcomps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">allcomps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">/</span><span class="n">allcomps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+    <span class="c1"># Add in wavelength and units flags</span>
+    <span class="n">allcomps</span><span class="p">[</span><span class="s1">&#39;wave&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">wave</span><span class="p">)</span>
+    <span class="n">allcomps</span><span class="p">[</span><span class="s1">&#39;fluxunit&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fluxunit</span>
+
+    <span class="c1"># produce copy of components dictionary with index applied</span>
+    <span class="n">flux_cut</span> <span class="o">=</span> <span class="n">flux</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+    <span class="n">allcomps_cut</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">allcomps</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">allcomps</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="s1">&#39;fluxunit&#39;</span> <span class="ow">in</span> <span class="n">el</span><span class="p">):</span>
+            <span class="n">allcomps_cut</span><span class="p">[</span><span class="n">el</span><span class="p">]</span> <span class="o">=</span> <span class="n">allcomps_cut</span><span class="p">[</span><span class="n">el</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+
+    <span class="c1"># Get ready for fit</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;least_squares&#39;</span>
+    <span class="k">if</span> <span class="s1">&#39;method&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;method&#39;</span><span class="p">]</span>
+
+    <span class="n">fit_kws</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;least_squares&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">quiet</span><span class="p">:</span>
+            <span class="n">lmverbose</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># verbosity for scipy.optimize.least_squares</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lmverbose</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="n">fit_kws</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;verbose&#39;</span><span class="p">:</span> <span class="n">lmverbose</span><span class="p">}</span>
+
+    <span class="c1"># Add additional parameter settings for scipy.optimize.least_squares</span>
+    <span class="k">if</span> <span class="s1">&#39;argslmfit&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;argslmfit&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">fit_kws</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+
+    <span class="c1"># FIT!</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">flux_cut</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="o">**</span><span class="n">allcomps_cut</span><span class="p">,</span>
+                       <span class="n">max_nfev</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="mf">1e5</span><span class="p">),</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+                       <span class="n">nan_policy</span><span class="o">=</span><span class="s1">&#39;raise&#39;</span><span class="p">,</span> <span class="n">fit_kws</span><span class="o">=</span><span class="n">fit_kws</span><span class="p">)</span>
+
+    <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">fit_report</span><span class="p">(),</span> <span class="n">file</span><span class="o">=</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+
+    <span class="c1"># use allcomps rather than allcomps_cut to evaluate</span>
+    <span class="c1"># over all wavelengths within fit range (not just [index])</span>
+    <span class="n">best_fit</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="o">**</span><span class="n">allcomps</span><span class="p">)</span>
+    <span class="n">comp_best_fit</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">eval_components</span><span class="p">(</span><span class="o">**</span><span class="n">allcomps</span><span class="p">)</span>
+    <span class="c1"># print(result.best_values)</span>
+
+    <span class="c1"># apply extinction and ice absorption to total best fit</span>
+    <span class="k">if</span> <span class="n">global_extinction</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">comp_best_fit</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">el</span> <span class="o">!=</span> <span class="s1">&#39;global_ext&#39;</span> <span class="ow">and</span> <span class="n">el</span> <span class="o">!=</span> <span class="s1">&#39;global_ice&#39;</span><span class="p">:</span>
+                <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="p">]</span> <span class="o">*=</span> <span class="n">comp_best_fit</span><span class="p">[</span><span class="s1">&#39;global_ext&#39;</span><span class="p">]</span>
+                <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="p">]</span> <span class="o">*=</span> <span class="n">comp_best_fit</span><span class="p">[</span><span class="s1">&#39;global_ice&#39;</span><span class="p">]</span>
+
+    <span class="n">ct_coeff</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;MIRparams&#39;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">params</span><span class="p">,</span>
+                <span class="s1">&#39;comp_best_fit&#39;</span><span class="p">:</span> <span class="n">comp_best_fit</span><span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">best_fit</span><span class="p">,</span> <span class="n">ct_coeff</span><span class="p">,</span> <span class="n">z</span></div>
+
+
+
+<div class="viewcode-block" id="linfit_plus_FeII">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.contfit.linfit_plus_FeII">[docs]</a>
+<span class="k">def</span> <span class="nf">linfit_plus_FeII</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">flux</span><span class="p">,</span><span class="n">weight</span><span class="p">,</span> <span class="n">unused1</span><span class="p">,</span> <span class="n">unused2</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> 
+                     <span class="n">zstar</span><span class="p">,</span> <span class="n">specConv</span><span class="p">,</span> <span class="n">outdir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">refit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+                     <span class="n">rows</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">Fe_FWHM</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">Fe_FWHM_UV</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+                     <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    This function fits the continuum as a superposition of a linear fit and </span>
+<span class="sd">    an FeII template. </span>
+<span class="sd">    * Optical FeII template:  taken from Vestergaard &amp; Wilkes (2001).</span>
+<span class="sd">    * UV FeII template: following the PyQSOFit code (Guo et al. 2018): </span>
+<span class="sd">        template by Shen et al. (2019) - composite of </span>
+<span class="sd">        Vestergaard &amp; Wilkes (2001), Tsuzuki et al. (2006) and </span>
+<span class="sd">        Salviander et al. (2007)</span>
+<span class="sd">    The UV and optical FeII templates are scaled up/down separately </span>
+<span class="sd">    from each other.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    -----</span>
+<span class="sd">    lam: array</span>
+<span class="sd">        wavelength</span>
+<span class="sd">    flux: array</span>
+<span class="sd">        Flux values to be fit</span>
+<span class="sd">    weight: array</span>
+<span class="sd">        Weights of each individual pixel to be fit</span>
+<span class="sd">    unused1:</span>
+<span class="sd">        Not used in this function.</span>
+<span class="sd">    unused2:</span>
+<span class="sd">        Not used in this function.</span>
+<span class="sd">    index: array</span>
+<span class="sd">        Pixels used in the fit</span>
+<span class="sd">    zstar: float</span>
+<span class="sd">        redshift of the stellar continuum</span>
+<span class="sd">    specConv: instance of the spectConvol class</span>
+<span class="sd">        specifying the instrumental spectral resolution convolution</span>
+<span class="sd">    outdir: string</span>
+<span class="sd">        directory for saving the output log</span>
+<span class="sd">    quiet: bool</span>
+<span class="sd">        not used in this function</span>
+<span class="sd">    refit: bool</span>
+<span class="sd">        not used in this function</span>
+<span class="sd">    rows, cols: int</span>
+<span class="sd">        row(s) and column(s) of the input cube in which the fitting is done. </span>
+<span class="sd">        Used only to define the name of the output log</span>
+<span class="sd">    Fe_FWHM: float</span>
+<span class="sd">        Defines the smoothing of the FeII template in km/s. FWHM of the Gaussian smoothing that will be applied. Needs to be &gt;900 km/s (FWHM of template).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    continuum: array</span>
+<span class="sd">        best fit continuum model</span>
+<span class="sd">    ct_coeff: dictionary or lmfit best fit params structure</span>
+<span class="sd">        best fit parameters</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">flux_cut</span> <span class="o">=</span> <span class="n">flux</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+    <span class="n">lam_cut</span> <span class="o">=</span> <span class="n">lam</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+
+    <span class="n">models_dictionary</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="n">lam_cut</span><span class="p">}</span>
+
+    <span class="n">temp_fe</span> <span class="o">=</span> <span class="s1">&#39;../q3dfit/data/questfit_templates/fe_optical.txt&#39;</span>
+    <span class="n">temp_fe_uv</span> <span class="o">=</span> <span class="s1">&#39;../q3dfit/data/questfit_templates/fe_uv.txt&#39;</span>
+    <span class="n">ind_opt</span> <span class="o">=</span> <span class="p">(</span><span class="n">lam_cut</span> <span class="o">&gt;</span> <span class="mf">0.3686</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">zstar</span><span class="p">))</span><span class="o">&amp;</span><span class="p">(</span><span class="n">lam_cut</span> <span class="o">&lt;</span> <span class="mf">0.7484</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">zstar</span><span class="p">))</span>
+    <span class="n">ind_UV</span> <span class="o">=</span> <span class="p">(</span><span class="n">lam_cut</span> <span class="o">&gt;</span> <span class="mf">0.120</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">zstar</span><span class="p">))</span><span class="o">&amp;</span><span class="p">(</span><span class="n">lam_cut</span> <span class="o">&lt;</span> <span class="mf">0.350</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">zstar</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">Fe_FWHM</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">Fitting with FeII template, but no broadening applied. </span><span class="se">\</span>
+<span class="s1">              Please supply argscontfit with Fe_FWHM... Halting.&#39;</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="nn">sys</span><span class="p">;</span> <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+
+    <span class="n">model_linfit</span> <span class="o">=</span> <span class="n">LinearModel</span><span class="p">(</span><span class="n">independent_vars</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">],</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;lincont&#39;</span><span class="p">,</span> 
+                               <span class="n">nan_policy</span><span class="o">=</span><span class="s1">&#39;raise&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">pars_lin</span> <span class="o">=</span> <span class="n">model_linfit</span><span class="o">.</span><span class="n">make_params</span><span class="p">(</span><span class="n">intercept</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">flux</span><span class="p">),</span> <span class="n">slope</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">model_linfit</span>
+    <span class="n">param</span> <span class="o">=</span> <span class="n">pars_lin</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ind_opt</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+        <span class="n">F_fe_rebin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lam_cut</span><span class="p">))</span>
+        <span class="n">F_Fe_opt_conv</span><span class="p">,</span> <span class="n">wave_fe</span> <span class="o">=</span> <span class="n">Fe_flux_balmer</span><span class="p">(</span><span class="n">Fe_FWHM</span><span class="p">,</span> <span class="n">zstar</span><span class="p">,</span> <span class="n">specConv</span><span class="p">)</span>
+        <span class="n">F_fe_rebin</span><span class="p">[</span><span class="n">ind_opt</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="n">q3dmath</span><span class="o">.</span><span class="n">interp_lis</span><span class="p">(</span><span class="n">lam_cut</span><span class="p">[</span><span class="n">ind_opt</span><span class="p">],</span> <span class="n">wave_fe</span><span class="p">,</span> 
+                                         <span class="n">F_Fe_opt_conv</span><span class="p">)</span>
+        <span class="n">models_dictionary</span><span class="p">[</span><span class="s1">&#39;temp_fe_opt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">F_fe_rebin</span>
+        <span class="n">p_init</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">]</span>
+        <span class="n">p_vary</span> <span class="o">=</span> <span class="p">[</span><span class="kc">True</span><span class="p">]</span>
+        <span class="n">model_fe_templ_opt</span><span class="p">,</span> <span class="n">param_fe_templ_opt</span> <span class="o">=</span> \
+            <span class="n">questfitfcn</span><span class="o">.</span><span class="n">set_up_fit_model_scale</span><span class="p">(</span><span class="n">p_init</span><span class="p">,</span> <span class="n">p_vary</span><span class="p">,</span> 
+            <span class="s1">&#39;temp_fe_opt&#39;</span><span class="p">,</span> <span class="s1">&#39;temp_fe_opt&#39;</span><span class="p">,</span> <span class="n">maxamp</span><span class="o">=</span><span class="mf">1.05</span><span class="o">*</span><span class="nb">max</span><span class="p">(</span><span class="n">flux</span><span class="p">[</span><span class="n">index</span><span class="p">]))</span>
+        <span class="n">model</span> <span class="o">+=</span> <span class="n">model_fe_templ_opt</span>
+        <span class="n">param</span> <span class="o">+=</span> <span class="n">param_fe_templ_opt</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ind_UV</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">Fe_FWHM_UV</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">Fe_FWHM_UV</span> <span class="o">=</span> <span class="n">Fe_FWHM</span>
+        <span class="n">F_Fe_rebin_UV</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lam_cut</span><span class="p">))</span>
+        <span class="n">F_Fe_UV_conv</span><span class="p">,</span> <span class="n">wave_fe_UV</span> <span class="o">=</span> <span class="n">Fe_flux_UV</span><span class="p">(</span><span class="n">Fe_FWHM_UV</span><span class="p">,</span> <span class="n">zstar</span><span class="p">,</span> <span class="n">specConv</span><span class="p">)</span>
+        <span class="n">F_Fe_rebin_UV</span><span class="p">[</span><span class="n">ind_UV</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="n">q3dmath</span><span class="o">.</span><span class="n">interp_lis</span><span class="p">(</span><span class="n">lam_cut</span><span class="p">[</span><span class="n">ind_UV</span><span class="p">],</span> <span class="n">wave_fe_UV</span><span class="p">,</span> 
+                                         <span class="n">F_Fe_UV_conv</span><span class="p">)</span>
+        <span class="n">models_dictionary</span><span class="p">[</span><span class="s1">&#39;temp_fe_UV&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">F_Fe_rebin_UV</span>
+        <span class="n">p_init</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">]</span>
+        <span class="n">p_vary</span> <span class="o">=</span> <span class="p">[</span><span class="kc">True</span><span class="p">]</span>
+        <span class="n">model_fe_templ_UV</span><span class="p">,</span> <span class="n">param_fe_templ_UV</span> <span class="o">=</span> \
+            <span class="n">questfitfcn</span><span class="o">.</span><span class="n">set_up_fit_model_scale</span><span class="p">(</span><span class="n">p_init</span><span class="p">,</span> <span class="n">p_vary</span><span class="p">,</span> <span class="s1">&#39;temp_fe_UV&#39;</span><span class="p">,</span> 
+            <span class="s1">&#39;temp_fe_UV&#39;</span><span class="p">,</span> <span class="n">maxamp</span><span class="o">=</span><span class="mf">1.05</span><span class="o">*</span><span class="nb">max</span><span class="p">(</span><span class="n">flux</span><span class="p">[</span><span class="n">index</span><span class="p">])</span> <span class="p">)</span> 
+        <span class="n">model</span> <span class="o">+=</span> <span class="n">model_fe_templ_UV</span>
+        <span class="n">param</span> <span class="o">+=</span> <span class="n">param_fe_templ_UV</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">flux_cut</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="o">**</span><span class="n">models_dictionary</span><span class="p">,</span>
+                               <span class="n">max_nfev</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="mf">1e5</span><span class="p">),</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;least_squares&#39;</span><span class="p">,</span>
+                               <span class="n">nan_policy</span><span class="o">=</span><span class="s1">&#39;omit&#39;</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="s1">&#39;verbose&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">})</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">fit_report</span><span class="p">())</span>
+
+    <span class="c1"># extrapolate result to full wavelength vector</span>
+    <span class="n">models_dictionary_B</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="n">lam</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ind_opt</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+        <span class="n">F_Fe_opt_all</span> <span class="o">=</span> <span class="n">q3dmath</span><span class="o">.</span><span class="n">interp_lis</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">wave_fe</span><span class="p">,</span> <span class="n">F_Fe_opt_conv</span><span class="p">)</span>
+        <span class="n">models_dictionary_B</span><span class="p">[</span><span class="s1">&#39;temp_fe_opt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">F_Fe_opt_all</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ind_UV</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+        <span class="n">F_Fe_UV_all</span> <span class="o">=</span> <span class="n">q3dmath</span><span class="o">.</span><span class="n">interp_lis</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">wave_fe_UV</span><span class="p">,</span> <span class="n">F_Fe_UV_conv</span><span class="p">)</span>
+        <span class="n">models_dictionary_B</span><span class="p">[</span><span class="s1">&#39;temp_fe_UV&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">F_Fe_UV_all</span>
+
+    <span class="n">continuum</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="o">**</span><span class="n">models_dictionary_B</span><span class="p">)</span>
+    <span class="n">comp_best_fit</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">eval_components</span><span class="p">(</span><span class="o">**</span><span class="n">models_dictionary_B</span><span class="p">)</span>
+    
+
+    <span class="n">ct_coeff</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;params_best_fit&#39;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">params</span><span class="p">,</span>
+                <span class="s1">&#39;comp_best_fit&#39;</span><span class="p">:</span> <span class="n">comp_best_fit</span><span class="p">}</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>        
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cols</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cols</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="n">cols</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>        
+    <span class="k">if</span> <span class="n">rows</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">cols</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">saveres</span> <span class="o">=</span> <span class="s1">&#39;fit_result__</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">.txt&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cols</span><span class="p">,</span> <span class="n">rows</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">saveres</span> <span class="o">=</span> <span class="s1">&#39;fit_result.txt&#39;</span>
+
+    <span class="k">if</span> <span class="n">outdir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">outdir</span><span class="o">+</span><span class="n">saveres</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+            <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">fit_report</span><span class="p">())</span>
+            <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">continuum</span><span class="p">,</span> <span class="n">ct_coeff</span><span class="p">,</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="Fe_flux_balmer">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.contfit.Fe_flux_balmer">[docs]</a>
+<span class="k">def</span> <span class="nf">Fe_flux_balmer</span><span class="p">(</span><span class="n">Fe_FWHM</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
+                   <span class="n">zstar</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
+                   <span class="n">specConv</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> \
+                    <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Loads the optical FeII template, redshifts it,</span>
+<span class="sd">    convolves it with the intrinsic broadening, and convolves it </span>
+<span class="sd">    with the instrumental resolution.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Fe_FWHM</span>
+<span class="sd">        Defines the smoothing of the FeII template in km/s. FWHM of the</span>
+<span class="sd">        Gaussian smoothing that will be applied. Needs to be &gt;900 km/s</span>
+<span class="sd">        (FWHM of template).</span>
+<span class="sd">    zstar</span>
+<span class="sd">        Redshift of the stellar continuum.</span>
+<span class="sd">    specConv</span>
+<span class="sd">        Instance of :py:class:`~q3dfit.spectConvol.spectConvol` specifying </span>
+<span class="sd">        the instrumental spectral resolution convolution.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        Convolved FeII template.</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        Wavelength array of the FeII template.</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">temp_fe</span> <span class="o">=</span> <span class="s1">&#39;../q3dfit/data/questfit_templates/fe_optical.txt&#39;</span>
+    <span class="n">data1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">temp_fe</span><span class="p">)</span>
+    <span class="n">wave_fe</span> <span class="o">=</span> <span class="mi">10</span><span class="o">**</span><span class="n">data1</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">+</span> <span class="n">zstar</span><span class="p">)</span> <span class="o">/</span><span class="mf">1e4</span>
+    <span class="n">F_fe</span> <span class="o">=</span> <span class="n">data1</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">data1</span><span class="p">[:,</span><span class="mi">1</span><span class="p">])</span>
+    <span class="c1"># sig_conv in km/s. 900 km/s is the FWHM of the Vestergaard &amp; </span>
+    <span class="c1"># Wilkes 2001 template.</span>
+    <span class="c1"># sig_tot_BLR = (sig_temp^2+sig_add_broadening^2)^0.5</span>
+    <span class="n">sig_conv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Fe_FWHM</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">-</span> <span class="mf">900.0</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.</span> <span class="o">/</span> \
+        <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">2.</span><span class="p">))</span>
+    <span class="c1"># 106.3 km/s is the dispersion for the BG92 FeII template </span>
+    <span class="c1"># used by Vestergaard &amp; Wilkes 2001</span>
+    <span class="n">sig_pix</span> <span class="o">=</span> <span class="n">sig_conv</span> <span class="o">/</span> <span class="mf">106.3</span>
+    <span class="n">xx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mf">3.5</span><span class="o">*</span><span class="n">sig_pix</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> \
+        <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mf">3.5</span><span class="o">*</span><span class="n">sig_pix</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">xx</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sig_pix</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">kernel</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">kernel</span><span class="p">)</span>
+    <span class="n">F_Fe_conv_intermed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">F_fe</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span> <span class="s1">&#39;same&#39;</span><span class="p">)</span>
+    <span class="n">F_Fe_opt_conv</span> <span class="o">=</span> <span class="n">F_Fe_conv_intermed</span>
+    <span class="n">F_Fe_opt_conv</span> <span class="o">=</span> \
+        <span class="n">specConv</span><span class="o">.</span><span class="n">spect_convolver</span><span class="p">(</span><span class="n">wave_fe</span><span class="p">,</span> <span class="n">F_Fe_conv_intermed</span><span class="p">,</span> 
+                                 <span class="mf">0.4861</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span> <span class="o">+</span> <span class="n">zstar</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">F_Fe_opt_conv</span><span class="p">,</span> <span class="n">wave_fe</span></div>
+
+
+
+<div class="viewcode-block" id="Fe_flux_UV">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.contfit.Fe_flux_UV">[docs]</a>
+<span class="k">def</span> <span class="nf">Fe_flux_UV</span><span class="p">(</span><span class="n">Fe_FWHM</span><span class="p">,</span> <span class="n">zstar</span><span class="p">,</span> <span class="n">specConv</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    This function loads the UV FeII template, redshifts it,</span>
+<span class="sd">    convolves it with the intrinsic broadening, and convolves it</span>
+<span class="sd">    with the instrumental resolution.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Fe_FWHM: float</span>
+<span class="sd">        Defines the smoothing of the FeII template in km/s. FWHM of the</span>
+<span class="sd">        Gaussian smoothing that will be applied. Needs to be &gt;900 km/s</span>
+<span class="sd">        (FWHM of template).</span>
+<span class="sd">    zstar: float</span>
+<span class="sd">        Redshift of the stellar continuum.</span>
+<span class="sd">    specConv: instance of the spectConvol class</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    F_Fe_uv_conv: array</span>
+<span class="sd">        Convolved FeII template.</span>
+<span class="sd">    wave_fe: array</span>
+<span class="sd">        Wavelength array of the FeII template. </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">temp_fe_uv</span> <span class="o">=</span> <span class="s1">&#39;../q3dfit/data/questfit_templates/fe_uv.txt&#39;</span>
+    <span class="n">data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">temp_fe_uv</span><span class="p">)</span>
+    <span class="n">wave_fe</span> <span class="o">=</span> <span class="mi">10</span><span class="o">**</span><span class="n">data2</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">+</span> <span class="n">zstar</span><span class="p">)</span> <span class="o">/</span><span class="mf">1e4</span>
+    <span class="n">F_fe</span> <span class="o">=</span> <span class="n">data2</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">data2</span><span class="p">[:,</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">sig_conv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Fe_FWHM</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">-</span> <span class="mf">900.0</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.</span> <span class="o">/</span> \
+        <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">2.</span><span class="p">))</span>
+    <span class="n">sig_pix</span> <span class="o">=</span> <span class="n">sig_conv</span> <span class="o">/</span> <span class="mf">106.3</span>
+    <span class="n">xx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mf">3.5</span><span class="o">*</span><span class="n">sig_pix</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> \
+        <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mf">3.5</span><span class="o">*</span><span class="n">sig_pix</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">xx</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sig_pix</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">kernel</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">kernel</span><span class="p">)</span>
+    <span class="n">F_Fe_conv_intermed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">F_fe</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span> <span class="s1">&#39;same&#39;</span><span class="p">)</span>
+    <span class="n">F_Fe_uv_conv</span> <span class="o">=</span> <span class="n">F_Fe_conv_intermed</span>
+    <span class="n">F_Fe_uv_conv</span> <span class="o">=</span> \
+        <span class="n">specConv</span><span class="o">.</span><span class="n">spect_convolver</span><span class="p">(</span><span class="n">wave_fe</span><span class="p">,</span> <span class="n">F_Fe_conv_intermed</span><span class="p">,</span> \
+                                 <span class="mf">0.2800</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span> <span class="o">+</span> <span class="n">zstar</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">F_Fe_uv_conv</span><span class="p">,</span> <span class="n">wave_fe</span></div>
+
+
+
+<div class="viewcode-block" id="quest_extract_QSO_contrib">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.contfit.quest_extract_QSO_contrib">[docs]</a>
+<span class="k">def</span> <span class="nf">quest_extract_QSO_contrib</span><span class="p">(</span><span class="n">ct_coeff</span><span class="p">,</span> <span class="n">initdat</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    This function can be used to recover the QSO-host decomposition after running questfit</span>
+
+<span class="sd">    :Params:</span>
+<span class="sd">        ct_coeff: in, required, type=dict</span>
+<span class="sd">            dict returned by questfit containing the continuum fitting results</span>
+<span class="sd">        initdat: in, required, type=dict</span>
+<span class="sd">            dict that was used to initialize the fit</span>
+
+<span class="sd">        qso_out_ext: out, type=array</span>
+<span class="sd">            spectrum of the QSO component (with dust extinction and ice absorption)</span>
+<span class="sd">        host_out_ext:  out, type=array</span>
+<span class="sd">            spectrum of the host component (with dust extinction and ice absorption)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">comp_best_fit</span> <span class="o">=</span> <span class="n">ct_coeff</span><span class="p">[</span><span class="s1">&#39;comp_best_fit&#39;</span><span class="p">]</span>
+    <span class="n">qso_out_ext</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+    <span class="n">qso_out_intr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+
+    <span class="c1">#config_file = readcf(initdat[&#39;argscontfit&#39;][&#39;config_file&#39;])</span>
+    <span class="n">config_file</span> <span class="o">=</span> <span class="n">readcf</span><span class="p">(</span><span class="n">initdat</span><span class="o">.</span><span class="n">argscontfit</span><span class="p">[</span><span class="s1">&#39;config_file&#39;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="s1">&#39;qso&#39;</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">config_file</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">1</span><span class="p">]:</span>    <span class="c1">### This function assumes that in the config file the qso temple is the first template. Rudimentary check here.</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">WARNING during QSO-host decomposition: </span><span class="se">\n</span><span class="s1">The function assumes that in the config file the qso template is the first template, but its name does not contain </span><span class="se">\&quot;</span><span class="s1">qso</span><span class="se">\&quot;</span><span class="s1">. Pausing here as a checkpoint, press c for continuing.</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="nn">pdb</span><span class="p">;</span> <span class="n">pdb</span><span class="o">.</span><span class="n">set_trace</span><span class="p">()</span>
+
+    <span class="n">global_extinction</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">config_file</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">config_file</span><span class="p">[</span><span class="n">key</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;global&#39;</span> <span class="ow">in</span> <span class="n">config_file</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="mi">3</span><span class="p">]:</span>
+                <span class="n">global_extinction</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">if</span> <span class="n">global_extinction</span><span class="p">:</span>
+        <span class="n">str_global_ext</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">comp_best_fit</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">str_global_ice</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">comp_best_fit</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">comp_best_fit</span><span class="p">[</span><span class="n">str_global_ext</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># global_ext is a multi-dimensional array</span>
+          <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">str_global_ext</span><span class="p">]</span> <span class="o">=</span> <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">str_global_ext</span><span class="p">]</span> <span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">comp_best_fit</span><span class="p">[</span><span class="n">str_global_ice</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># global_ice is a multi-dimensional array</span>
+          <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">str_global_ice</span><span class="p">]</span> <span class="o">=</span> <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">str_global_ice</span><span class="p">]</span> <span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">host_out_ext</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">comp_best_fit</span><span class="p">[</span><span class="n">str_global_ext</span><span class="p">]))</span>
+        <span class="n">host_out_intr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">comp_best_fit</span><span class="p">[</span><span class="n">str_global_ext</span><span class="p">]))</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">el</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">comp_best_fit</span><span class="p">):</span>
+          <span class="k">if</span> <span class="p">(</span><span class="n">el</span> <span class="o">!=</span> <span class="n">str_global_ext</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">el</span> <span class="o">!=</span> <span class="n">str_global_ice</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>              <span class="c1"># component is a multi-dimensional array</span>
+              <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="p">]</span> <span class="o">=</span> <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="p">]</span> <span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">initdat</span><span class="p">,</span> <span class="s1">&#39;decompose_qso_fit&#39;</span><span class="p">):</span>
+              <span class="k">if</span> <span class="n">initdat</span><span class="o">.</span><span class="n">decompose_qso_fit</span> <span class="ow">and</span> <span class="n">i</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>     <span class="c1">### NOTE on i==0: This only works is in the config file the qso temple is the first template</span>
+                <span class="n">qso_out_ext</span> <span class="o">=</span> <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="p">]</span><span class="o">*</span><span class="n">comp_best_fit</span><span class="p">[</span><span class="n">str_global_ext</span><span class="p">]</span><span class="o">*</span><span class="n">comp_best_fit</span><span class="p">[</span><span class="n">str_global_ice</span><span class="p">]</span>
+                <span class="n">qso_out_intr</span> <span class="o">=</span> <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="p">]</span>
+              <span class="k">else</span><span class="p">:</span>
+                <span class="n">host_out_ext</span> <span class="o">+=</span> <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="p">]</span><span class="o">*</span><span class="n">comp_best_fit</span><span class="p">[</span><span class="n">str_global_ext</span><span class="p">]</span><span class="o">*</span><span class="n">comp_best_fit</span><span class="p">[</span><span class="n">str_global_ice</span><span class="p">]</span>
+                <span class="n">host_out_intr</span> <span class="o">+=</span> <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">el1</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">comp_best_fit</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">host_out_ext</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el1</span><span class="p">]))</span>
+        <span class="n">host_out_intr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el1</span><span class="p">]))</span>
+
+        <span class="n">spec_i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">el</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">comp_best_fit</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+              <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="p">]</span> <span class="o">=</span> <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="p">]</span> <span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="s1">&#39;_ext&#39;</span> <span class="ow">in</span> <span class="n">el</span> <span class="ow">or</span> <span class="s1">&#39;_abs&#39;</span> <span class="ow">in</span> <span class="n">el</span><span class="p">):</span>
+                <span class="n">spec_i</span> <span class="o">=</span> <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="p">]</span>
+                <span class="n">intr_spec_i</span> <span class="o">=</span> <span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">el</span><span class="o">+</span><span class="s1">&#39;_ext&#39;</span> <span class="ow">in</span> <span class="n">comp_best_fit</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="n">spec_i</span> <span class="o">=</span> <span class="n">spec_i</span><span class="o">*</span><span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="o">+</span><span class="s1">&#39;_ext&#39;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">el</span><span class="o">+</span><span class="s1">&#39;_abs&#39;</span> <span class="ow">in</span> <span class="n">comp_best_fit</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="n">spec_i</span> <span class="o">=</span> <span class="n">spec_i</span><span class="o">*</span><span class="n">comp_best_fit</span><span class="p">[</span><span class="n">el</span><span class="o">+</span><span class="s1">&#39;_abs&#39;</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">initdat</span><span class="p">,</span> <span class="s1">&#39;decompose_qso_fit&#39;</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">initdat</span><span class="o">.</span><span class="n">decompose_qso_fit</span> <span class="ow">and</span> <span class="n">i</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                        <span class="n">qso_out_ext</span> <span class="o">=</span> <span class="n">spec_i</span>
+                        <span class="n">qso_out_intr</span> <span class="o">=</span> <span class="n">intr_spec_i</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">host_out_ext</span> <span class="o">+=</span> <span class="n">spec_i</span>
+                        <span class="n">host_out_intr</span> <span class="o">+=</span> <span class="n">intr_spec_i</span>
+                        <span class="c1">#breakpoint()</span>
+
+    <span class="k">return</span> <span class="n">qso_out_ext</span><span class="p">,</span> <span class="n">host_out_ext</span><span class="p">,</span> <span class="n">qso_out_intr</span><span class="p">,</span> <span class="n">host_out_intr</span></div>
+
+
+
+<div class="viewcode-block" id="readcf">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.contfit.readcf">[docs]</a>
+<span class="k">def</span> <span class="nf">readcf</span><span class="p">(</span><span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Read in the configuration file for fitting with questfit.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename</span>
+<span class="sd">        Name of, and path, to the configuration file.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        Dictionary with the configuration file. Keys are the names of the</span>
+<span class="sd">        components to be fitted, values are lists with the parameters for</span>
+<span class="sd">        the components.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">cf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">,</span> <span class="n">comments</span><span class="o">=</span><span class="s2">&quot;#&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Cycle through rows</span>
+    <span class="n">init_questfit</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">cf</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;template&#39;</span> <span class="ow">or</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;powerlaw&#39;</span> <span class="ow">or</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;blackbody&#39;</span> \
+        <span class="ow">or</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;template_poly&#39;</span><span class="p">:</span>
+            <span class="c1"># populate initilization dictionary with</span>
+            <span class="c1"># col 0: filename (if nessesary; path hardcoded)</span>
+            <span class="c1"># col 1: lower wavelength limit or normalization factor</span>
+            <span class="c1"># col 2: upper wavelength limit or fix/free parameter (0 or 1) for normalization</span>
+            <span class="c1"># col 3: name of ext. curve or ice feature</span>
+            <span class="c1"># col 4: initial guess for Av</span>
+            <span class="c1"># col 5: fix/free parameter (0/1) for Av</span>
+            <span class="c1"># col 6: S,M = screen or mixed extinction</span>
+            <span class="c1"># col 7: initial guess for BB temperature or powerlaw index</span>
+            <span class="c1"># col 8: fix/free parameter (0/1) for BB temperature or powerlaw index</span>
+            <span class="c1"># col 9: ice name model</span>
+            <span class="c1"># col 10: intial guess for ice absorption tau</span>
+            <span class="c1"># col 11: fix/free parameter (0/1) for tau</span>
+            <span class="n">init_questfit</span><span class="p">[</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="s1">&#39;_&#39;</span><span class="o">+</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="s1">&#39;_&#39;</span><span class="o">+</span><span class="n">i</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">+</span><span class="s1">&#39;_&#39;</span><span class="o">+</span><span class="n">i</span><span class="p">[</span><span class="mi">10</span><span class="p">]]</span> <span class="o">=</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;absorption&#39;</span> <span class="ow">or</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;extinction&#39;</span><span class="p">:</span>
+            <span class="c1">#init_questfit[i[0]+&#39;_&#39;+i[1]+&#39;_&#39;+i[4]+&#39;_&#39;+i[10]] = i[1:]</span>
+            <span class="n">init_questfit</span><span class="p">[</span><span class="n">i</span><span class="p">[</span><span class="mi">4</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+
+        <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;source&#39;</span><span class="p">:</span>
+            <span class="n">init_questfit</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+    <span class="k">return</span> <span class="n">init_questfit</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, David Rupke and the Q3D Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,209 +1,175 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import numpy as np
+from __future__ import annotations
 
-from q3dfit.linelist import linelist
-from q3dfit.q3dutil import lmlabel
 from astropy.constants import c
-from math import pi
+import numpy as np
+from scipy import interpolate
+from numpy.typing import ArrayLike
+
+#from . import linelist
 
 
-def airtovac(wv, waveunit='Angstrom'):
+def interptemp(spec_lam: ArrayLike,
+               temp_lam: ArrayLike,
+               template: ArrayLike) -> ArrayLike:
     """
-    Takes an array of wavelengths in air and converts them to vacuum
-        using eq. 3 from Morton et al. 1991 ApJSS 77 119
+    (Linearly) interpolate templates from template wavelength grid to data
+    wavelength grid.
 
     Parameters
     ----------
-    wv : ndarray, shape (n,)
-       Input wavelengths. Array of real elements with shape (n,)
-       where 'n' is the number of wavelengths
-    waveunit : str, optional
-       Wavelength unit, could be 'Angstrom' or 'micron',
-       default is Angstrom
+    spec_lam
+        Wavelengths of data arrays.
+    temp_lam
+        Wavelengths of template arrays.
+    template
+        Model fluxes from templates. Second dimension is the number of
+        templates.
 
     Returns
     -------
-    ndarray, shape (n,)
-       An array of the same dimensions as the input and in the same units
-       as the input
-
-    References
-    ----------
-    .. Morton et al. 1991 ApJSS 77 119
-
-    Examples
-    --------
-    >>>wv=np.arange(3000,7000,1)
-    >>>vac_wv=airtovac(wv)
-    array([3000.87467224, 3001.87492143, 3002.87517064, ..., 6998.92971915,
-       6999.92998844, 7000.93025774])
-
+    ArrayLike
+        The interpolated templates.
     """
-    x=wv
-    # get x to be in Angstroms for calculations if it isn't already
-    if ((waveunit!='Angstrom') & (waveunit!='micron')):
-        print ('Wave unit ',waveunit,' not recognized, returning Angstroms')
-    if (waveunit=='micron'):
-        x=wv*1.e4
 
-    tmp=1.e4/x
-    y=x*(1.+6.4328e-5+2.94981e-2/(146.-tmp**2)+2.5540e-4/(41.-tmp**2))
-    # vacuum wavelengths are indeed slightly longer
+    if len(template.shape) == 2:
+        ntemp = template.shape(1)
+        new_temp = np.zeros((spec_lam.shape[0], ntemp))
+    else:
+        ntemp = 1
 
-    # get y to be in the same units as the input:
-    if (waveunit=='micron'):
-        y=y*1.e-4
+    if np.min(temp_lam) > np.min(spec_lam):
+        print('IFSF_INTERPTEMP: WARNING -- Extrapolating template from ' +
+              str(min(temp_lam)) + ' to ' + str(min(spec_lam)) + '.')
+    if np.max(temp_lam) < np.max(spec_lam):
+        print('IFSF_INTERPTEMP: WARNING -- Extrapolating template from ' +
+              str(max(temp_lam)) + ' to ' + str(max(spec_lam)) + '.')
 
-    return(y)
+    # Default interpolation for INTERPOL is linear
+    if ntemp != 1:
+        for i in range(ntemp - 1):
+            interpfunc = \
+                interpolate.interp1d(temp_lam, template[:, i], kind='linear')
+            new_temp[:, i] = interpfunc(spec_lam)
+    else:
+        interpfunc = \
+            interpolate.interp1d(temp_lam, template, kind='linear',
+                                 bounds_error=False, fill_value=0)
+        new_temp = interpfunc(spec_lam)
+    return new_temp
 
 
-def cmpcvdf(wave, sigma, pkflux, ncomp, line, zref,
-            vlimits=[-1e4, 1e4], vstep=1.):
+def interp_lis(spec_lam: ArrayLike,
+               temp_lam_lis: list[ArrayLike] | ArrayLike,
+               template_lis: list[ArrayLike] | ArrayLike) -> np.ndarray:
     """
-    Computes cumulative velocity distribution function for a given line, for
-    each spaxel in a data cube.
+    This function samples a single template or list of templates onto
+    the wavelength array of the input observed spectrum.  The output is
+    padded with NaN values instead of extrapolating beyond any template's
+    wavelength range.
 
     Parameters
     ----------
-    wave : array(ncols, nrows, ncomp)
-    sigma : array(ncols, nrows, ncomp)
-    pkflux : array(ncols, nrows, ncomp)
-    ncomp : array(ncols, nrows)
-    line : str
-    zref : float
+    spec_lam
+        reference wavelength array onto which the templates(s) are interpolated
+    temp_lam_lis
+        Template wavelength array or list containing the wavelength arrays of the
+        different templates (not required to be at same length). (Also accepts 1D list,
+        list containing a 1D array, or list of lists)
+    template_lis
+        Template flux array or list containing the flux arrays of the different templates
+        (not required to be at same length). (Also accepts 1D list, list containing a 1D
+        array, or list of lists)
+
 
     Returns
     -------
-    modvel : array(nmod)
-    vdf : array(ncols, nrows, nmod)
-        Velocity distribution in flux space. 3D data with two dimensions of
-        imaging plane and third of model points.
-    cvdf : array(ncols, nrows, nmod)
-        Cumulative velocity distribution function.
+    numpy.ndarray
+        Array containing the flux of the templates interpolated onto the spec_lam input
+        array.
+        If 2D, the 2nd dimension corresponds to the flux arrays of individual templates,
+        i.e. the newly sampled flux of template 0 can be accessed as new_temp[:,0], while
+        for template 1 this is new_temp[:,1], etc. The new_temp array is padded with NaN
+        values where the wavelength range of the respective template was more narrow than
+        the observed spectum.
 
-    Notes
-    -----
     """
+     # -- Keyword to fill output array with NaNs beyond the interpolation range.
+    bounds_error=False
 
-    # these are allegedly the smallest numbers recognized
-    minexp = -310
-    # this is the experimentally determined limit for when
-    # I can take a log of a 1e-minexp
-    # mymin = np.exp(minexp)
+    # (not triggered for a single 1D list)
+    if isinstance(template_lis, list) and hasattr(template_lis[0], "__len__"):
+        ntemp = len(template_lis)
+        new_temp = np.zeros((spec_lam.shape[0],ntemp))
+        if ntemp == 1: # If a list containing just a 1D array is entered
+            template_lis = template_lis[0]; temp_lam_lis=temp_lam_lis[0]
+    else:
+        ntemp = 1
 
-    # establish the velocity array from the inputs or from the defaults
-    modvel = np.arange(vlimits[0], vlimits[1]+vstep, vstep)
-    beta = modvel/c.to('km/s').value
-    dz = np.sqrt((1. + beta)/(1. - beta)) - 1.
-
-    # central (rest) wavelength of the line in question
-    listlines = linelist([line])
-    cwv = listlines['lines'].value[0]
-    modwaves = cwv*(1. + dz)*(1. + zref)
-
-    # output arrays
-    size_cube = np.shape(pkflux)
-    nmod = np.size(modvel)
-
-    vdf = np.zeros((size_cube[0], size_cube[1], nmod))
-    #vdferr = np.zeros((size_cube[0], size_cube[1], nmod))
-    cvdf = np.zeros((size_cube[0], size_cube[1], nmod))
-    #cvdferr = np.zeros((size_cube[0], size_cube[1], nmod))
-    for i in range(np.max(ncomp)):
-        rbpkflux = np.repeat((pkflux[:, :, i])[:, :, np.newaxis], nmod, axis=2)
-        rbsigma = np.repeat((sigma[:, :, i])[:, :, np.newaxis], nmod, axis=2)
-        rbpkwave = np.repeat((wave[:, :, i])[:, :, np.newaxis], nmod, axis=2)
-        rbncomp = np.repeat(ncomp[:, :, np.newaxis], nmod, axis=2)
-        rbmodwave = \
-            np.broadcast_to(modwaves, (size_cube[0], size_cube[1], nmod))
-
-        inz = ((rbsigma > 0) & (rbsigma != np.nan) &
-               (rbpkwave > 0) & (rbpkwave != np.nan) &
-               (rbpkflux > 0) & (rbpkflux != np.nan) &
-               (rbncomp > i))
-        if np.sum(inz) > 0:
-            exparg = np.zeros((size_cube[0], size_cube[1], nmod)) - minexp
-            exparg[inz] = ((rbmodwave[inz]/rbpkwave[inz] - 1.) /
-                           (rbsigma[inz]/c.to('km/s').value))**2. / 2.
-            i_no_under = (exparg < -minexp)
-            if np.sum(i_no_under) > 0:
-                vdf[i_no_under] += rbpkflux[i_no_under] * \
-                    np.exp(-exparg[i_no_under])
-                # df_norm = rbpkfluxerrs[i_no_under]*np.exp(-exparg[i_no_under])
-                #term1 = rbpkflux[i_no_under] * \
-                #    np.abs(rbmodwave[i_no_under] - rbpkwave[i_no_under])
-                #term2 = rbsigma[i_no_under]/c.to('km/s').value * \
-                #    rbpkwave[i_no_under]
-                # df_wave = term1/(term2**2)*rbpkwaveerrs[i_no_under]*np.exp(-exparg[i_no_under])
-                #term3 = rbpkflux[i_no_under] * \
-                #    (rbmodwave[i_no_under] - rbpkwave[i_no_under])**2
-                #term4 = rbsigma[i_no_under]/c.to('km/s').value * \
-                #    rbpkwave[i_no_under]
-                #df_sig = term3/term4**2*rbsigmaerrs[i_no_under]/rbsigmas[i_no_under]*np.exp(-exparg[i_no_under])
-                #dfsq = np.zeros((size_cube[0],size_cube[1],nmod))
-                #dfsq = dfsq[i_no_under]
-                #i_no_under_2 = ((df_norm > mymin) & (df_wave > mymin) & (df_sig > mymin))
-                #if (sum(i_no_under_2)>0):
-                #    dfsq[i_no_under_2] = (df_norm[i_no_under_2])**2+(df_wave[i_no_under_2])**2+(df_sig[i_no_under_2])**2
-                #emlcvdf['fluxerr'][line][i_no_under] += dfsq
-
-        #inz = (emlcvdf['flux'][line] > 0)
-        #if (sum(inz)>0):
-        #    emlcvdf['fluxerr'][line][inz] = np.sqrt(emlcvdf['fluxerr'][line][inz])
-
-    # size of each model bin
-    dmodwaves = modwaves[1:nmod] - modwaves[0:nmod-1]
-    # supplement with the zeroth element to make the right length
-    dmodwaves = np.append(dmodwaves[0], dmodwaves)
-    # rebin to full cube
-    rbdmodwaves = \
-        np.broadcast_to(dmodwaves, (size_cube[0], size_cube[1], nmod))
-    fluxnorm = vdf * rbdmodwaves
-    #fluxnormerr = emlcvdf['fluxerr'][line]*dmodwaves
-    fluxint = np.repeat((np.sum(fluxnorm, 2))[:, :, np.newaxis], nmod, axis=2)
-    inz = fluxint != 0
-    if np.sum(inz) > 0:
-        fluxnorm[inz] /= fluxint[inz]
-        #fluxnormerr[inz] /= fluxint[inz]
-
-    cvdf[:, :, 0] = fluxnorm[:, :, 0]
-    for i in range(1, nmod):
-        cvdf[:, :, i] = cvdf[:, :, i-1] + fluxnorm[:, :, i]
-        #emlcvdf['cvdferr'][line] = fluxnormerr
-
-    return modvel, vdf, cvdf
+    if ntemp >1:
+        for i in range(ntemp):
+            interpfunc = \
+                interpolate.interp1d(temp_lam_lis[i], template_lis[i], kind='cubic', 
+                                     bounds_error=bounds_error, fill_value=0)
+            new_temp[:, i] = interpfunc(spec_lam)
+    else:
+        interpfunc = \
+            interpolate.interp1d(temp_lam_lis, template_lis, kind='linear', 
+                                 bounds_error=bounds_error, fill_value=float(0))
+        new_temp = interpfunc(spec_lam)
+    return new_temp
 
 
-def cmplin(q3do, line, comp, velsig=False):
-    '''
-    Function takes four parameters and returns specified flux
+def cutoff_NaNs(spec_lam: ArrayLike,
+                new_temp: np.ndarray) -> tuple[ArrayLike, np.ndarray]:
+    """
+    This function removes any NaN values from the output of the interp_lis() function.
 
-    Parameters:
-    q3do : obj
-    line : str
-    comp : int
-    velsig : bool
+    Parameters
+    ----------
+    spec_lam
+        reference wavelength array onto which the templates(s) are interpolated
+    new_temp
+        1D or 2D array with newly interpolated template fluxes, corresponding to the
+        output of interp_lis()
 
     Returns
     -------
-    flux : float
-    '''
+    new_temp_NoNan
+        Same as new_temp, but without any NaN elements / rows containing at least one NaN
+        value
 
-    lmline = lmlabel(line)
-    mName = '{0}_{1}_'.format(lmline.lmlabel, comp)
-    gausspar = np.zeros(3)
-    gausspar[0] = q3do.param[mName+'flx']
-    gausspar[1] = q3do.param[mName+'cwv']
-    gausspar[2] = q3do.param[mName+'sig']
-    if velsig:
-        gausspar[2] = gausspar[2] * gausspar[1]/c.to('km/s').value
+    """
+    OKrow = np.array([])
+    for i in range(new_temp.shape[0]):
+        if np.sum(np.isnan(new_temp[i]))==0:
+            OKrow = np.append(OKrow, i)
+    spec_lam_NoNaN = spec_lam[OKrow.astype(int)]
+    if len(new_temp.shape)>1:
+        new_temp_NoNan = new_temp[OKrow.astype(int), :]
+    else:
+        new_temp_NoNan = new_temp[OKrow.astype(int)]
+    return spec_lam_NoNaN, new_temp_NoNan
 
-    flux = gaussian(q3do.wave, gausspar)
 
-    return flux
+# def example_interp():
+
+#     source1 = np.load('../test/test_questfit/IRAS21219m1757_dlw_qst.npy', allow_pickle=True)
+#     if source1.shape[0]==1:	source1=source1[0]
+#     templ1 = np.load('../data/questfit_templates/smith_nftemp3.npy', allow_pickle=True)
+#     templ2 = np.load('../data/questfit_templates/smith_nftemp4.npy', allow_pickle=True)
+
+#     tpl_wave_lis = [templ1['WAVE'], templ2['WAVE']]
+#     tpl_flux_lis = [templ1['FLUX'], templ2['FLUX']]
+#     temp_flux = interp_lis(source1['WAVE'], tpl_wave_lis, tpl_flux_lis)
+
+#     wave_noNaN, temp_flux_NoNaN = cutoff_NaNs(source1['WAVE'], temp_flux)
+#     return wave_noNaN, temp_flux_NoNaN
 
 
+'''
 def cmpweq(instr, linelist, doublets=None):
     """
     Compute equivalent widths for the specified emission lines.
@@ -270,31 +236,5 @@ def cmpweq(instr, linelist, doublets=None):
                 comp[dkey] = comp[doublets[i][0]]+comp[doublets[i][1]]
 
     return({'tot': tot,'comp': comp})
+'''
 
-
-def gaussian(xi, parms):
-    '''
-    '''
-    a = parms[0]  # amp
-    b = parms[1]  # mean
-    c = parms[2]  # standard dev
-
-    # Anything higher-precision than this (e.g., float64) slows things down
-    # a bunch. longdouble completely chokes on lack of memory.
-    arg = np.array(-0.5 * ((xi - b)/c)**2, dtype=np.float32)
-    g = a * np.exp(arg)
-
-    return g
-
-
-def gaussflux(norm, sigma, normerr=None, sigerr=None):
-
-    flux = norm * sigma * np.sqrt(2. * pi)
-    fluxerr = 0.
-
-    if normerr is not None and sigerr is not None:
-        fluxerr = flux*np.sqrt((normerr/norm)**2. + (sigerr/sigma)**2.)
-
-    outstr = {'flux': flux, 'flux_err': fluxerr}
-
-    return outstr

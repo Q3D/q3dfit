@@ -5,11 +5,15 @@ Created on Tue May 31 15:31:13 2022
 
 @author: yuyuzo12
 """
+from __future__ import annotations
+
+from typing import Any, Literal, Optional
 
 import copy as copy
 import numpy as np
 import os
-import q3dfit.q3dutil as q3dutil
+
+from numpy.typing import ArrayLike
 
 from astropy.constants import c
 from astropy.cosmology import WMAP9 as cosmo
@@ -19,8 +23,9 @@ from matplotlib import cm
 from matplotlib.colors import LogNorm
 from matplotlib.ticker import MaxNLocator, LinearLocator
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from q3dfit.q3dmath import cmpcvdf
+
 from q3dfit.linelist import linelist
+from . import q3din, q3dutil
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -29,194 +34,273 @@ plt.rcParams['figure.constrained_layout.use'] = False
 
 class Q3Dpro:
     '''
-    Class to process the q3dfit output data
+    Class to process the q3dfit output data.
+
+    Parameters
+    ----------
+    q3di
+        Path to the q3dfit output file or q3din object. Also updates
+        :py:attr:`~q3dfit.q3dpro.Q3Dpro.q3dinit`.
+    quiet
+        Optional. Flag to suppress print statements. Default is True. 
+        Also updates :py:attr:`~q3dfit.q3dpro.Q3Dpro.quiet`.
+    nocont
+        Optional. If False, create :py:class:`~q3dfit.q3dpro.ContData` object
+        and assign to :py:attr:`~q3dfit.q3dpro.Q3Dpro.contdat`. Default is False.
+    noline
+        Optional. If False, create :py:class:`~q3dfit.q3pro.LineData` object
+        and assign to :py:attr:`~q3dfit.q3dpro.Q3Dpro.linedat`. Default is False.
+    zsys
+        Optional. Systemic redshift of the galaxy. Default is None, which
+        will use the value from the q3din object. Also updates
+        :py:attr:`~q3dfit.q3dpro.Q3Dpro.zsys` and :py:attr:`~q3dfit.q3dpro.Q3Dpro.zsys_gas`.
+    zsys_gas
+        Optional. Kept for backwards compatibility; zsys is preferred. 
+        Default is None. Setting this will update 
+        :py:attr:`~q3dfit.q3dpro.Q3Dpro.zsys` and
+        :py:attr:`~q3dfit.q3dpro.Q3Dpro.zsys_gas`.
 
     Attributes
     ----------
-    q3dinit : object
-        q3dinit object. Added/updated by :method:init.
+    q3dinit : q3din.q3din
+        Copy of :py:class:`~q3dfit.q3din.q3din` object. Added/updated by
+        :py:method:`__init__`.
     target_name : str
-        Label from q3dinit. Added/updated by :method:init.
-    silent : bool
-        Flag to suppress print statements. Default is True. 
-        Added/updated by :method:init.
+        Full name of source for plot labels, etc. . Added/updated by :method:init.
     pix : float
         Plate scale of the data. Added/updated by :method:init.
     bad : float
         Value for bad data. Default is np.nan. Added/updated by :method:init.
     dataDIR : str
         Directory of the data, from q3dinit. Added/updated by :method:init.
-    contdat : object
+    contdat : Optional[ContData]
         Continuum data object. Added/updated by :method:init, using 
-        :class:ContData.
-    linedat : object
+        :class:ContData. If nocont is True, this will be None.
+    linedat : Optional[LineData]
         Emission line data object. Added/updated by :method:init, using 
-        :class:LineData.
+        :class:LineData. If noline is True, this will be None.
     map_bkg : str
         Background color for the maps. Default is 'white'. Added/updated by 
         :method:init.
+    zsys : float
+        Systemic redshift of the galaxy. Added/updated by :py:method:`__init__`.
     zsys_gas : float
-        Systemic redshift of the galaxy. Added/updated by :method:init.
-    
-    Methods
-    -------
-    get_lineprop(LINESELECT)
-        Get the wavelength and line label of an emission line.
-    get_linemap(LINESELECT, APPLYMASK=True, SAVEDATA=False)
-    make_linemap(LINESELECT, SNRCUT=5., xyCenter=None, 
-        VMINMAX=None, XYSTYLE=None, PLTNUM=1, CMAP=None, VCOMP=None, 
-        SAVEDATA=False)
-    make_lineratio_map(lineA, lineB, SNRCUT=3, SAVEDATA=False, 
-        PLTNUM=5, KPC=False, VMINMAX=[-1,1])
-    make_BPT(SNRCUT=3, SAVEDATA=False, PLTNUM=5, KPC=False)
-    resort_line_components(dataOUT, NCOMP=None, COMP_SORT=None)
-
+        Kept for backwards compatibility; zsys is preferred. Equal to zsys.
+        Added/updated by :py:method:`__init__`.
     '''
+    def __init__(self,
+                 q3di: str | q3din.q3din,
+                 quiet: bool=True,
+                 nocont: bool=False,
+                 noline: bool=False,
+                 platescale: float=0.15,
+                 background: str='white',
+                 bad: float=np.nan, 
+                 zsys: Optional[float]=None,                 
+                 zsys_gas: Optional[float]=None,
+                 **kwargs):
+        
+        # take care of old upper case parameters
+        if 'NOCONT' in kwargs:
+            nocont = kwargs['NOCONT']
+        if 'NOLINE' in kwargs:
+            noline = kwargs['NOLINE']
+        if 'PLATESCALE' in kwargs:
+            platescale = kwargs['PLATESCALE']
+        if 'BACKGROUND' in kwargs:
+            background = kwargs['BACKGROUND']
+        if 'BAD' in kwargs:
+            bad = kwargs['BAD']
 
-    def __init__(self, q3di, SILENT=True, NOCONT=False, NOLINE=False,
-                 PLATESCALE=0.15, BACKGROUND='white', BAD=np.nan, 
-                 zsys_gas=None):
-        '''
-        Initialize the Q3Dpro object.
-
-        Parameters
-        ----------
-        See class attributes.
-
-        Returns
-        -------
-        None.
-
-        '''
         # read in the q3di file and unpack
-        self.q3dinit = q3dutil.get_q3dio(q3di)
+        self.q3dinit: q3din.q3din = q3dutil.get_q3dio(q3di)
         # unpack initproc
         self.target_name = self.q3dinit.name
-        self.silent = SILENT
-        if self.silent is False:
-            print('processing outputs...')
-            print('Target name:', self.target_name)
+        if self.target_name is None:
+            self.target_name = 'NoName'
+            q3dutil.write_msg(f'No target name set in q3din. Please set Q3Dpro.target_name.', quiet=quiet)
+        self.quiet = quiet
+        q3dutil.write_msg(f'Processing outputs.', quiet=quiet)
+        q3dutil.write_msg(f'Target name: {self.target_name}', quiet=quiet)
 
-        self.pix = PLATESCALE  # pixel size
-        self.bad = BAD
+        self.pix = platescale  # pixel size
+        self.bad = bad
         self.dataDIR = self.q3dinit.outdir
         # instantiate the Continuum (npy) and Emission Line (npz) objects
-        if not NOCONT:
+        if not nocont:
             self.contdat = ContData(self.q3dinit)
-        if not NOLINE:
+        else :
+            self.contdat = None
+        if not noline:
             self.linedat = LineData(self.q3dinit)
-        self.map_bkg = BACKGROUND
+        else :
+            self.linedat = None
+        self.map_bkg = background
 
-        self.zsys_gas = zsys_gas
+        self.zsys = self.get_zsys(zsys, zsys_gas)
+        self.zsys_gas = self.zsys
 
-        return
 
-
-    def get_zsys_gas(self):
+    def get_zsys(self,
+                 zsys: Optional[float],
+                 zsys_gas: Optional[float]) -> float:
         '''
-        Get the systemic redshift of the galaxy from the zsys_gas attribute
-        or q3dinit object, in that order.
+        Get the systemic redshift of the galaxy from the zsys or zsys_gas attribute
+        or q3din object, in that order.
 
         Returns
         -------
-        redshift : float
+        float
             Systemic redshift of the galaxy.
 
         '''
-        if self.zsys_gas is None:
-            if self.q3dinit.zsys_gas is None:
-                raise ValueError('Redshift not set in q3dinit or q3dpro ' +
-                                 'objects. Please use zsys_gas parameter ' +
-                                 'in q3dpro to set the systemic redshift ' +
-                                 'of the galaxy for computing line properties.')
-            else:
-                redshift = self.q3dinit.zsys_gas
+        if zsys is not None:
+            redshift = zsys
+        elif zsys_gas is not None:
+            redshift = zsys_gas
+        elif self.q3dinit.zsys_gas is not None:
+            redshift = self.q3dinit.zsys_gas
+            q3dutil.write_msg('Using redshift from q3dinit object.', quiet=self.quiet)
         else:
-            redshift = self.zsys_gas
+            raise ValueError('Redshift not set in q3dinit or q3dpro ' +
+                             'objects. Please use zsys parameter ' +
+                             'in q3dpro to set the systemic redshift ' +
+                             'of the galaxy for computing line properties.')
         return redshift
     
 
-    def get_lineprop(self, LINESELECT):
+    def get_lineprop(self,
+                     line: str,
+                     **kwargs) -> tuple[float, str]:
         '''
-        Get the wavelength and line label of an emission line.
+        Get the rest wavelength and line label of an emission line.
 
         Parameters
         ----------
-        LINESELECT : str
+        line
             Name of the line to select.
         
         Returns
         -------
-        linewave : float
+        float
             Wavelength of the line in microns.
-        linename : str
-            Label of the line.
-
+        str
+            Full label of the line for plotting.
         '''
+        if self.linedat is None:
+            raise ValueError('No line data available.')
+
+        # backwards compatibility
+        if 'LINESELECT' in kwargs:
+            line = kwargs['LINESELECT']
+        
         listlines = linelist(self.linedat.lines, vacuum=self.q3dinit.vacuum)
-        ww = np.where(listlines['name'] == LINESELECT)[0]
+        ww = np.where(listlines['name'] == line)[0]
         linewave = listlines['lines'][ww].value[0]
         linename = listlines['linelab'][ww].value[0]
-        # output in MICRON
         return linewave, linename
 
-    def get_linemap(self, LINESELECT, APPLYMASK=True, SAVEDATA=False):
+
+    def get_linemap(self,
+                    line: str,
+                    applymask: bool=True,
+                    **kwargs) -> \
+                        tuple[float, str, dict[Literal['Ftot','Fci','Sig','v50','w80'], 
+                                               dict[Literal['data','err','line','mask'], 
+                                                    np.ndarray | list]]]:
         '''
-        Create maps of properties of an emission line.
+        Create arrays holding maps of properties of an emission line.
 
         Parameters
         ----------
-        LINESELECT : str
-            Name of the line for which to create maps.
+        line
+            Name of the line to select.
+        applymask
+            Optional. Flag to apply the mask to the data. Default is True.
         
+        Returns
+        -------
+        float
+            Rest wavelength of the line in microns.
+        str
+            Full label of the line for plotting.
+        dict[Literal['Ftot','Fci','Sig','v50','w80'], dict[Literal['data','err','line','mask'], np.ndarray | list]]
+            Dictionary of line properties. Keys are 'Ftot', 'Fci', 'Sig', 'v50', 'w80'.
+            Each key contains a dictionary with keys 'data', 'err', 'name', 'mask'.
+            'data' and 'err' are the data and error arrays, respectively, with shape (ncols, nrows, ncomp). 
+            'name' is the properly formatted name of the property, for plotting. 'mask' is the mask array, 
+            with shape (ncols, nrows, ncomp). In the mask, 1 is good data and :py:attr:`~q3dfit.q3dpro.q3dpro.bad'
+            is bad data.
         '''
-        print('getting line data...',LINESELECT)
+        if self.linedat is None:
+            raise ValueError('No line data available.')
+        
+        # backwards compatibility
+        if 'LINESELECT' in kwargs:
+            line = kwargs['LINESELECT']
+        if 'APPLYMASK' in kwargs:
+            applymask = kwargs['APPLYMASK']
 
-        redshift = self.get_zsys_gas()
-        ncomp = np.max(self.q3dinit.ncomp[LINESELECT])
+        q3dutil.write_msg(f'Getting line data for {line}.', quiet=self.quiet)
+        ncomp = np.max(self.q3dinit.ncomp[line])
+        wave0, linetext = self.get_lineprop(line)
+        # total fluxes and errors
+        fluxsum = self.linedat.get_flux(line, fluxsel='ftot')['flux']
+        fluxsum_err = self.linedat.get_flux(line, fluxsel='ftot')['fluxerr']
+        fsmsk = _clean_mask(fluxsum, BAD=self.bad)
 
-        # kpc_arcsec = cosmo.kpc_proper_per_arcmin(redshift).value/60.
-        # arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
-        # argscheckcomp = self.q3dinit.argscheckcomp
-        # xycen = xyCenter # (nx,ny) of the center
+        # tuple giving ncols, nrows, ncomp
+        matrix_size = (fluxsum.shape[0], fluxsum.shape[1], ncomp)
 
-        # cid = -1 # index of the component to plot, -1 is the broadest component
-        # central wavelength --> need to get from linereader
-        wave0,linetext = self.get_lineprop(LINESELECT)
-
-        fluxsum     = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['flux']
-        fluxsum_err = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['fluxerr']
-        fsmsk = clean_mask(fluxsum, BAD=self.bad)
-
-        matrix_size = (fluxsum.shape[0],fluxsum.shape[1],ncomp)
-
-        dataOUT = {'Ftot':{'data':fluxsum,
-                           'err':fluxsum_err,
-                           'name':['F$_{tot}$'],'mask':fsmsk},
-                   'Fci' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[],'mask':np.zeros(matrix_size)},
-                   'Sig' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[],'mask':np.zeros(matrix_size)},
-                   'v50' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[],'mask':np.zeros(matrix_size)},
-                   'w80' :{'data':np.zeros(matrix_size),'err':np.zeros(matrix_size),'name':[],'mask':np.zeros(matrix_size)}}
+        # Create the output dictionary. Presently, we're only saving the properties of the last component
+        # and the total flux.
+        dataOUT = {'Ftot':
+                   {'data': fluxsum,
+                    'err': fluxsum_err,
+                    'name': ['F$_{tot}$'],
+                    'mask': fsmsk},
+                   'Fci':
+                   {'data': np.zeros(matrix_size),
+                    'err': np.zeros(matrix_size),
+                    'name': [],
+                    'mask': np.zeros(matrix_size)},
+                   'Sig':
+                   {'data': np.zeros(matrix_size),
+                    'err': np.zeros(matrix_size),
+                    'name': [],
+                    'mask': np.zeros(matrix_size)},
+                   'v50':
+                   {'data': np.zeros(matrix_size),
+                    'err': np.zeros(matrix_size),
+                    'name': [],
+                    'mask': np.zeros(matrix_size)},
+                   'w80':
+                    {'data': np.zeros(matrix_size),
+                     'err': np.zeros(matrix_size),
+                     'name': [],
+                     'mask': np.zeros(matrix_size)}
+                   }
 
         # EXTRACT COMPONENTS
         for ci in range(0,ncomp) :
             ici = ci+1
             fcl = 'fc'+str(ici)
-            iflux = self.linedat.get_flux(LINESELECT,FLUXSEL=fcl)['flux']
-            ifler = self.linedat.get_flux(LINESELECT,FLUXSEL=fcl)['fluxerr']
-            isigm = self.linedat.get_sigma(LINESELECT,COMPSEL=ici)['sig']
-            isger = self.linedat.get_sigma(LINESELECT,COMPSEL=ici)['sigerr']
-            iwvcn = self.linedat.get_wave(LINESELECT,COMPSEL=ici)['wav']
-            iwver = self.linedat.get_wave(LINESELECT,COMPSEL=ici)['waverr']
-            #ireds = redshift[:,:,ci]
+            iflux = self.linedat.get_flux(line, FLUXSEL=fcl)['flux']
+            ifler = self.linedat.get_flux(line, FLUXSEL=fcl)['fluxerr']
+            isigm = self.linedat.get_sigma(line, COMPSEL=ici)['sig']
+            isger = self.linedat.get_sigma(line, COMPSEL=ici)['sigerr']
+            iwvcn = self.linedat.get_wave(line, COMPSEL=ici)['wav']
+            iwver = self.linedat.get_wave(line, COMPSEL=ici)['waverr']
 
             # now process them
-            iv50 = ((iwvcn - wave0)/wave0 - redshift)/(1.+redshift)*c.to('km/s').value
+            # this is the velocity of the line, though note that
+            # it is not the special relativistic velocity
+            iv50 = ((iwvcn - wave0)/wave0 - self.zsys)/(1.+self.zsys)*c.to('km/s').value
             iw80  = isigm*2.563 #w80 linewidth from the velocity dispersion
             # mask out the bad values
-            ifmask = np.array(clean_mask(iflux,BAD=self.bad))
-            isgmsk = np.array(clean_mask(isigm,BAD=self.bad))
-            iwvmsk = np.array(clean_mask(iwvcn,BAD=self.bad))
+            ifmask = np.array(_clean_mask(iflux, BAD=self.bad))
+            isgmsk = np.array(_clean_mask(isigm, BAD=self.bad))
+            iwvmsk = np.array(_clean_mask(iwvcn, BAD=self.bad))
 
             # save to the processed matrices
             dataOUT['Fci']['data'][:,:,ci] = iflux#*ifmask
@@ -239,162 +323,228 @@ class Q3Dpro:
             dataOUT['v50']['mask'][:,:,ci] = iwvmsk
             dataOUT['w80']['mask'][:,:,ci] = isgmsk
 
-        if APPLYMASK:
+        if applymask:
             for ditem in dataOUT:
                 if len(dataOUT[ditem]['data'].shape) > 2:
                     for ci in range(0,ncomp):
-                        dataOUT[ditem]['data'][:,:,ci] = dataOUT[ditem]['data'][:,:,ci]*dataOUT[ditem]['mask'][:,:,ci]
-                        dataOUT[ditem]['err'][:,:,ci]  = dataOUT[ditem]['err'][:,:,ci]*dataOUT[ditem]['mask'][:,:,ci]
+                        dataOUT[ditem]['data'][:, :, ci] = \
+                            dataOUT[ditem]['data'][:, :, ci]*dataOUT[ditem]['mask'][:, :, ci]
+                        dataOUT[ditem]['err'][:,:,ci]  = \
+                            dataOUT[ditem]['err'][:, :, ci]*dataOUT[ditem]['mask'][:, :, ci]
                 else:
                     dataOUT[ditem]['data'] = dataOUT[ditem]['data']*dataOUT[ditem]['mask']
                     dataOUT[ditem]['err']  = dataOUT[ditem]['err']*dataOUT[ditem]['mask']
 
-        return wave0,linetext,dataOUT
+        return wave0, linetext, dataOUT
 
-    def make_linemap(self, LINESELECT, SNRCUT=5.,
-                     xyCenter=None, VMINMAX=None,
-                     XYSTYLE=None, PLTNUM=1, CMAP=None,
-                     VCOMP=None,
-                     SAVEDATA=False):
+
+    def make_linemap(self,
+                     line: str,
+                     #snrcut: float=5.,
+                     xyCenter: Optional[list]=None,
+                     xyStyle: Optional[str]=None,
+                     fluxcmap: str='YlOrBr_r',
+                     fluxlog: bool=False,
+                     ranges: Optional[dict[Literal['Ftot', 'Fci', 'Sig', 'v50', 'w80'], list]]=None,
+                     #pltnum: int=1,
+                     compSort: Optional[dict[Literal['sort_by','sort_range'], Any]]=None,
+                     saveData: bool=False,
+                     dpi: int=100,
+                     **kwargs):
         '''
-        Create maps of properties of an emission line.
+        Plot maps of properties of an emission line.
 
         Parameters
         ----------
-        LINESELECT : str
-            Name of the line for which to create maps.
-        SNRCUT : float
-            SNR cut for the data. Default is 5.
-        xyCenter : list
-            Center of the map. Default is None.
+        line
+            Name of the line for which to create plots.
+        compSort
+            Optional. Dictionary with the following keys: 'sort_by' and 'sort_range'. The 'sort_by' key
+            must take one of the following values, which are keys of the dictionary output by
+            :py:meth:`~q3dfit.q3dpro.get_linemap`: 'Ftot', 'Fci', 'Sig', 'v50', or 'w80'. 
+            The 'sort_range' key is optional and is a tuple of lists. Each list contains two
+            values that define the range of the component values to be used in the sorting.
+            For the nth element of the tuple, the last existing component that lies in the range 
+            will be the nth component in the re-sorted line maps. If 'sort_range' is not provided, 
+            the components will be sorted based on the absolute value of the 'sort_by' parameter.
+            Default is None, which means no sorting.
+        xyCenter
+            Optional. Center of the plot in 0-offset spaxel coordinates. Default is None, which means
+            the center is the spatial middle of the FOV.
+        xyStyle
+            Optional. Set this to 'kpc' to label the axes in kpc from xyCenter. Set to any other
+            string to label the axes in pixels from xyCenter. Default is None, which means the axes are 
+            labeled in pixels from the lower left corner. 
+        fluxcmap
+            Optional. Color palette for the flux maps. Default is 'YlOrBr_r'.
+        fluxlog
+            Optional. If True, plot the flux maps with a log scale. Default is False.
+        ranges
+            Optional. Dictionary with one or more of the following keys: 'Ftot', 'Fci', 'Sig', 'v50', 'w80'.
+            The values of each key are lists of two values that define the range of the parameter to be plotted.
+            Default is None, which means the full range of the parameter is plotted.
+        saveData
+            Optional. If True, save the plots to a ... file. Default is False.
+        dpi
+
         '''
 
-        print('Plotting emission line maps')
-        if self.silent is False:
-            print('create linemap:', LINESELECT)
+        # backwards compatibility
+        if 'LINESELECT' in kwargs:
+            line = kwargs['LINESELECT']
+        #if 'SNRCUT' in kwargs:
+        #    snrcut = kwargs['SNRCUT']
+        if 'VCOMP' in kwargs:
+            compSort = kwargs['VCOMP']
+        if 'XYSTYLE' in kwargs:
+            xyStyle = kwargs['XYSTYLE']
+            if xyStyle is False:
+                xyStyle = None
+        if 'VMINMAX' in kwargs:
+            ranges = kwargs['VMINMAX']
+        #if 'PLTNUM' in kwargs:
+        #    pltnum = kwargs['PLTNUM']
+        if 'CMAP' in kwargs:
+            fluxcmap = kwargs['CMAP']
+        if 'SAVEDATA' in kwargs:
+            saveData = kwargs['SAVEDATA']
 
-        redshift = self.get_zsys_gas()
-        ncomp = np.max(self.q3dinit.ncomp[LINESELECT])
+        q3dutil.write_msg('Plotting emission line maps.', quiet=self.quiet)
+        q3dutil.write_msg(f'Creating linemap of {line}.', quiet=self.quiet)
+        # max number of components fitted
+        ncomp = np.max(self.q3dinit.ncomp[line])
+        # kpc per arcsec
+        kpc_arcsec = cosmo.kpc_proper_per_arcmin(self.zsys).value/60.
 
-        kpc_arcsec = cosmo.kpc_proper_per_arcmin(redshift).value/60.
-        # arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
-        # argscheckcomp = self.q3dinit.argscheckcomp
-        # xycen = xyCenter # (nx,ny) of the center
+        # linemaps
+        wave0, linetext, linemaps = self.get_linemap(line, applymask=True)
+        # sort the components if requested
+        if compSort is not None:
+            dataOUT = self._resort_line_components(linemaps, sort_pars=compSort)
+        else:
+            dataOUT = copy.deepcopy(linemaps)
+        # Total line fluxes and errores
+        fluxsum = dataOUT['Ftot']['data']
+        #fluxsum_err = dataOUT['Ftot']['err']
 
-        # cid = -1 # index of the component to plot, -1 is the broadest component
-        # central wavelength --> need to get from linereader
-        # wave0,linetext = self.get_lineprop(LINESELECT)
-
-        # --------------------------
-        # EXTRACT THE DATA HERE
-        # --------------------------
-        wave0, linetext, dataOUT = self.get_linemap(LINESELECT, APPLYMASK=True)
-        dataOUT, ncomp = self.resort_line_components(dataOUT, NCOMP=ncomp, 
-                                                     COMP_SORT=VCOMP)
-        # EXTRACT TOTAL FLUX
-        # sn_tot = fluxsum/fluxsum_err
-        # w80 = sigma*2.563   # w80 linewidth from the velocity dispersion
-        # sn = flux/flux_err
-        fluxsum     = dataOUT['Ftot']['data']
-        fluxsum_err = dataOUT['Ftot']['err']
-
-        fluxsum_snc, gdindx, bdindx = snr_cut(fluxsum, fluxsum_err, 
-                                              SNRCUT=SNRCUT)
-        matrix_size = (fluxsum.shape[0],fluxsum.shape[1],ncomp)
-        FLUXLOG = False
+        # Apply the SNR cut
+        #fluxsum_snc, gdindx, bdindx = _snr_cut(fluxsum, fluxsum_err, SNRCUT=snrcut)
+        matrix_size = fluxsum.shape #(fluxsum.shape[0], fluxsum.shape[1], fluxsum.shape[2])
 
         # --------------------------
         # Do the plotting here
         # --------------------------
-        # pixkpc = self.pix*arckpc
-        # Here, we determine the plot axis
+
+        # range of the spaxels, in 0-offset coordinates
         xgrid = np.arange(0, matrix_size[1])
         ygrid = np.arange(0, matrix_size[0])
         xcol = xgrid
         ycol = ygrid
 
-        qsoCenter = xyCenter
-        if xyCenter == None :
-            qsoCenter = [int(np.ceil(matrix_size[0]/2)),
-                         int(np.ceil(matrix_size[1]/2))]
+        # Set xyCenter. Assume the center of the FOV if not provided
+        if xyCenter is None:
+            xyCenter = [int(np.ceil(matrix_size[0]/2)),
+                        int(np.ceil(matrix_size[1]/2))]
 
-        XYtitle = 'Spaxel'
-        if XYSTYLE != None and XYSTYLE != False:
-            #if XYSTYLE.lower() == 'center':
-            xcol = (xgrid-xyCenter[1])
-            ycol = (ygrid-xyCenter[0])
-            if xyCenter != None :
-                qsoCenter = [0, 0]
-            if XYSTYLE.lower() == 'kpc':
+        xTitle = 'Column [pix]'
+        yTitle = 'Row [pix]'
+        if xyStyle is not None:
+            # recenter the spaxel coordinates on the map center
+            xcol = (xgrid - xyCenter[1])
+            ycol = (ygrid - xyCenter[0])
+            xTitle = 'Distance [pix]'
+            yTitle = 'Distance [pix]'
+            #qsoCenter = [0, 0]
+            if xyStyle.lower() == 'kpc':
                 kpc_pix = np.median(kpc_arcsec)* self.pix
                 xcolkpc = xcol*kpc_pix
                 ycolkpc = ycol*kpc_pix
-                xcol,ycol = xcolkpc, ycolkpc
-                XYtitle = 'Relative distance [kpc]'
-        plt.close(PLTNUM)
+                xcol, ycol = xcolkpc, ycolkpc
+                xTitle = 'Distance [kpc]'
+                yTitle = 'Distance [kpc]'
+        #plt.close(PLTNUM)
         figDIM = [ncomp+1, 4]
-        figOUT = set_figSize(figDIM, matrix_size)
-        fig, ax = plt.subplots(figDIM[0], figDIM[1], dpi=100)
+        figOUT = _set_figsize(figDIM, matrix_size)
+        # create the figure
+        fig, ax = plt.subplots(figDIM[0], figDIM[1], dpi=dpi) #, facecolor=self.map_bkg)
         fig.set_figheight(figOUT[1]+2)  # (12)
         fig.set_figwidth(figOUT[0]-1)  # (14)
-        if CMAP == None :
-            CMAP = 'YlOrBr_r'
-        ici = ''
-        i,j=0,0
+
+        # string to append to the line parameter name with component information
+        ici = '' 
+        # i and j are the row and column indices of the subplot
+        # i is the component number, j is the line parameter number
+        i, j = 0, 0
+        # cycle through line parameters
+        # icomp is the line parameter string
+        # ipdat is the dictionary containing the line parameter data
         for icomp, ipdat in dataOUT.items():
             doPLT = False
-            pixVals = ipdat['data']
+            pixVals = ipdat['data'] # select just the parameter values
             ipshape = pixVals.shape
-            if VMINMAX != None :
-                vminmax = VMINMAX[icomp]
+            # Set range to plot to the full range of the parameter
+            # unless a range is provided
+            iranges = [np.nanmin(pixVals), np.nanmax(pixVals)]
+            if ranges is not None:
+                if icomp in ranges:
+                    iranges = ranges[icomp]
             if icomp == 'Ftot':
-                NTICKS = 4
-                ici=''
-                vticks = \
-                    [vminmax[0], np.power(10, np.median([np.log10(vminmax[0]),
-                    np.log10(vminmax[1])])), vminmax[1]]
-                if 'fluxlog' in VMINMAX :
-                    FLUXLOG = VMINMAX['fluxlog']
+                ici='' # no component information for the total flux
+                cmap = fluxcmap
+                #nticks = 4
+                vticks = [iranges[0], 
+                          np.power(10, np.median([np.log10(iranges[0]), 
+                                                  np.log10(iranges[1])])),
+                          iranges[1]]
+                if fluxlog:
+                    logplot = True
+                else:
+                    logplot = False
             else:
-                i=1
-                if icomp.lower() == 'fci' :
-                    j = 0
-                    NTICKS = 3
-                    vticks = \
-                        [vminmax[0], np.power(10, np.median([np.log10(vminmax[0]),
-                        np.log10(vminmax[1])])),vminmax[1]]
-                    if 'fluxlog' in VMINMAX :
-                        FLUXLOG = VMINMAX['fluxlog']
+                i=1 # start with the first component
+                if icomp.lower() == 'fci':
+                    j = 0 # first column
+                    #nticks = 3
+                    vticks = [iranges[0], 
+                              np.power(10, np.median([np.log10(iranges[0]), 
+                                                      np.log10(iranges[1])])),
+                              iranges[1]]
+                    if fluxlog:
+                        logplot = True
+                    else:
+                        logplot = False
                 if icomp.lower() == 'sig':
                     j+=1
-                    CMAP = 'YlOrBr_r'
-                    NTICKS  = 3
-                    vticks = [vminmax[0],(vminmax[0]+vminmax[1])/2.,vminmax[1]]
-                    FLUXLOG = False
+                    cmap = 'YlOrBr_r'
+                    #nticks  = 3
+                    vticks = [iranges[0], (iranges[0]+iranges[1])/2., iranges[1]]
+                    logplot = False
                 elif icomp.lower() == 'v50' :
                     j+=1
-                    NTICKS = 5
-                    vticks = [vminmax[0],vminmax[0]/2,0,vminmax[1]/2,vminmax[1]]
-                    CMAP = 'RdYlBu'
-                    CMAP += '_r'
-                    FLUXLOG = False
+                    cmap = 'RdYlBu_r'
+                    #nticks = 3
+                    vticks = [iranges[0], (iranges[0]+iranges[1])/2., iranges[1]]
+                    logplot = False
                 elif icomp.lower() == 'w80' :
                     j+=1
-                    NTICKS = 3
-                    vticks = [vminmax[0],(vminmax[0]+vminmax[1])/2.,vminmax[1]]
-                    CMAP = 'RdYlBu'
-                    CMAP += '_r'
-                    FLUXLOG = False
+                    cmap = 'RdYlBu_r'
+                    #nticks = 3
+                    vticks = [iranges[0], (iranges[0]+iranges[1])/2., iranges[1]]
+                    logplot = False
+            # If this is the first row (i=0) but not the first col (j!=0), plot the total flux only 
+            # and skip the rest of the line parameters
             if j != 0:
                 doPLT = False
-                fig.delaxes(ax[0,j])
-            for ci in range(0,ncomp) :
+                fig.delaxes(ax[0, j])
+            # If this is not the first row (i>0), plot the component maps
+            for ci in range(0, ncomp) :
                 ipixVals = []
                 if icomp != 'Ftot' and len(ipshape) > 2:
                     doPLT = True
-                    i = ci+1
-                    ici = '_c'+str(ci+1)
-                    ipixVals = pixVals[:,:,ci]
+                    i = ci+1 # component no.
+                    ici = '_c'+str(ci+1) # component string
+                    ipixVals = pixVals[:, :, ci]
+                # if this is a component row, don't plot the total flux
                 elif icomp == 'Ftot':
                     doPLT = True
                     if ci > 0 :
@@ -402,32 +552,28 @@ class Q3Dpro:
                         break
                     else:
                         ipixVals = pixVals
-                if doPLT == True:
-                    cmap_r = cm.get_cmap(CMAP)
+                if doPLT is True:
+                    cmap_r = cm.get_cmap(cmap)
                     # cmap_r.set_bad(color='black')
                     cmap_r.set_bad(color=self.map_bkg)
-                    xx, yy = xcol,ycol
-                    axi = ax[i,j]
-                    if ncomp < 2:
-                        axi = ax[i,j]
-                    else:
-                        axi = ax[i,j]
-                    display_pixels_wz(yy, xx, ipixVals, CMAP=CMAP, AX=axi,
-                                      COLORBAR=True, PLOTLOG=FLUXLOG,
-                                      VMIN=vminmax[0], VMAX=vminmax[1],
-                                      TICKS=vticks, NTICKS=NTICKS)
-                    if xyCenter != None :
-                        axi.errorbar(qsoCenter[0],qsoCenter[1],color='black',mew=1,mfc='red',fmt='*',markersize=15,zorder=2)
-                    axi.set_xlabel(XYtitle,fontsize=16)
-                    axi.set_ylabel(XYtitle,fontsize=16)
-                    axi.set_title(ipdat['name'][ci],fontsize=20,pad=45)
+                    axi = ax[i, j]
+                    _display_pixels_wz(ycol, xcol, ipixVals, axi, CMAP=cmap,
+                                       COLORBAR=True, PLOTLOG=logplot,
+                                       VMIN=iranges[0], VMAX=iranges[1],
+                                       TICKS=vticks) #, NTICKS=nticks)
+                    # Plot the center
+                    axi.errorbar(xyCenter[0]-1, xyCenter[1]-1, color='black', mew=1, mfc='red', fmt='*', 
+                                 markersize=15, zorder=2)
+                    axi.set_xlabel(xTitle, fontsize=16)
+                    axi.set_ylabel(yTitle, fontsize=16)
+                    axi.set_title(ipdat['name'][ci], fontsize=20, pad=45)
                     # axi.set_ylim([min(xx),np.ceil(max(xx))])
                     # axi.set_xlim([min(yy),np.ceil(max(yy))])
-                    if SAVEDATA == True:
-                        linesave_name = self.target_name+'_'+LINESELECT+'_'+icomp+ici+'_map.fits'
-                        print('Saving line map:',linesave_name)
+                    if saveData:
+                        linesave_name = self.target_name+'_'+line+'_'+icomp+ici+'_map.fits'
+                        q3dutil.write_msg(f'Saving line map {linesave_name}', quiet=self.quiet)
                         savepath = os.path.join(self.dataDIR,linesave_name)
-                        save_to_fits(pixVals,[],savepath)
+                        _save_to_fits(pixVals, [], savepath)
 
 
             # j+=1
@@ -436,29 +582,42 @@ class Q3Dpro:
                      # verticalalignment='center',
                      # fontweight='semibold')
         fig.tight_layout()#pad=0.15,h_pad=0.1)
-        if SAVEDATA == True:
-            pltsave_name = LINESELECT+'_emlin_map'
-            print('Saving figure:',pltsave_name)
-            plt.savefig(os.path.join(self.dataDIR,pltsave_name+'.png'),format='png')
-            plt.savefig(os.path.join(self.dataDIR,pltsave_name+'.pdf'),format='pdf')
+        if saveData:
+            pltsave_name = line+'_emlin_map'
+            q3dutil.write_msg(f'Saving figure {pltsave_name} to png and pdf.', quiet=self.quiet)
+            plt.savefig(os.path.join(self.dataDIR, pltsave_name+'.png'), format='png')
+            plt.savefig(os.path.join(self.dataDIR, pltsave_name+'.pdf'), format='pdf')
         # fig.subplots_adjust(top=0.88)
         plt.show()
-        return
 
-    # def make_contmap(self):
-    #     return
 
-    def make_lineratio_map(self, lineA, lineB, SNRCUT=3, SAVEDATA=False, 
-                           PLTNUM=5, KPC=False, VMINMAX=[-1,1]):
+    def make_lineratio_map(self,
+                           lineA: str,
+                           lineB: str,
+                           SNRCUT: float=3.,
+                           SAVEDATA: bool=False, 
+                           PLTNUM=5,
+                           KPC: bool=False,
+                           VMINMAX: list=[-1,1]):
+        '''
+        Plot maps of the line ratio of two emission lines.
+
+        Parameters
+        ----------
+        lineA
+            Name of the first line for the line ratio.
+        lineB
+            Name of the second line for the line ratio.
+        SNRCUT
+            Optional. Signal-to-noise ratio cut for the line maps. Default is 3.
+        '''
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # first identify the lines, extract fluxes, and apply the SNR cuts
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        linelist = {lineA:None,lineB:None}
+        linelist = {lineA:None, lineB:None}
 
-        redshift = self.get_zsys_gas()
-
-        arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
-        mshaps = [None,None]
+        #arckpc = cosmo.kpc_proper_per_arcmin(self.zsys).value/60.
+        mshaps = [None, None]
         li = 0
         for lin in self.linedat.lines:
             if lin in linelist:
@@ -474,7 +633,7 @@ class Q3Dpro:
                             mshaps[1] = dataOUT[ditem]['data'].shape
                             istruct['snr'][ditem][0] = np.zeros(mshaps[1])
                         for ci in range(0,ncomp):
-                            i_snc,i_gindx,i_bindx = snr_cut(dataOUT[ditem]['data'][:,:,ci],dataOUT[ditem]['err'][:,:,ci],SNRCUT=SNRCUT)
+                            i_snc,i_gindx,i_bindx = _snr_cut(dataOUT[ditem]['data'][:,:,ci],dataOUT[ditem]['err'][:,:,ci],SNRCUT=SNRCUT)
                             istruct['snr'][ditem][0][:,:,ci] = i_snc
                             istruct['snr'][ditem][1].append(i_gindx)
                             istruct['snr'][ditem][2].append(i_bindx)
@@ -482,7 +641,7 @@ class Q3Dpro:
                     else:
                         if li == 0:
                             mshaps[0] = dataOUT[ditem]['data'].shape
-                        i_snc,i_gindx,i_bindx = snr_cut(dataOUT[ditem]['data'],dataOUT[ditem]['err'],SNRCUT=SNRCUT)
+                        i_snc,i_gindx,i_bindx = _snr_cut(dataOUT[ditem]['data'],dataOUT[ditem]['err'],SNRCUT=SNRCUT)
                         istruct['snr'][ditem] = [i_snc,i_gindx,i_bindx]
                 linelist[lin] = istruct
 
@@ -548,7 +707,7 @@ class Q3Dpro:
                     fi_mask = fratdat[0][lratF][2]*fratdat[1][lratF][2]
                     fi_frat = fratdat[0][lratF][3]/fratdat[1][lratF][3]
                     frat10 = np.log10(fi_frat)*fi_mask
-                    frat10err = lgerr(fratdat[0][lratF][3],fratdat[1][lratF][3],
+                    frat10err = _lgerr(fratdat[0][lratF][3],fratdat[1][lratF][3],
                                       fratdat[0][lratF][1],fratdat[1][lratF][1])
                     lineratios[lrat]['lrat'][lratF]=[frat10,frat10err]
 
@@ -570,7 +729,7 @@ class Q3Dpro:
         # --------------------------
         plt.close(PLTNUM)
         figDIM = [1,nps]
-        figOUT = set_figSize(figDIM,mshaps[1])
+        figOUT = _set_figsize(figDIM,mshaps[1])
         fig,ax = plt.subplots(1,nps,num=PLTNUM,dpi=100)#, gridspec_kw={'height_ratios': [1, 2]})
         fig.set_figheight(figOUT[1])
         fig.set_figwidth(figOUT[0])
@@ -601,11 +760,11 @@ class Q3Dpro:
                     if lratF == 'Fci':
                         frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
                         for ci in range(0,ncomp):
-                            display_pixels_wz(yy, xx, frat10[:,:,ci], CMAP=CMAP, AX=ax[li+ci],
+                            _display_pixels_wz(yy, xx, frat10[:,:,ci], ax[li+ci], CMAP=CMAP,
                                               VMIN=VMINMAX[0], VMAX=VMINMAX[1], NTICKS=5, COLORBAR=True)
                     else:
                         frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
-                        display_pixels_wz(yy, xx, frat10, CMAP=CMAP, AX=ax[li],
+                        _display_pixels_wz(yy, xx, frat10, ax[li], CMAP=CMAP,
                                           VMIN=VMINMAX[0], VMAX=VMINMAX[1], NTICKS=5, COLORBAR=True)
                 # pltname,pltrange = lineratios[linrat]['pltname'],lineratios[linrat]['pltrange']
                 cf += 1
@@ -618,7 +777,11 @@ class Q3Dpro:
         return
 
 
-    def make_BPT(self, SNRCUT=3, SAVEDATA=False, PLTNUM=5, KPC=False):
+    def make_BPT(self,
+                 SNRCUT=3,
+                 SAVEDATA=False,
+                 PLTNUM=5,
+                 KPC=False):
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # first identify the lines, extract fluxes, and apply the SNR cuts
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -631,7 +794,7 @@ class Q3Dpro:
                     '[SII]6716':None,
                     '[SII]6731':None}
 
-        redshift = self.get_zsys_gas()
+        redshift = self.zsys
 
         arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
         mshaps = [None,None]
@@ -650,7 +813,7 @@ class Q3Dpro:
                             mshaps[1] = dataOUT[ditem]['data'].shape
                             istruct['snr'][ditem][0] = np.zeros(mshaps[1])
                         for ci in range(0,ncomp):
-                            i_snc,i_gindx,i_bindx = snr_cut(dataOUT[ditem]['data'][:,:,ci],dataOUT[ditem]['err'][:,:,ci],SNRCUT=SNRCUT)
+                            i_snc,i_gindx,i_bindx = _snr_cut(dataOUT[ditem]['data'][:,:,ci],dataOUT[ditem]['err'][:,:,ci],SNRCUT=SNRCUT)
                             istruct['snr'][ditem][0][:,:,ci] = i_snc
                             istruct['snr'][ditem][1].append(i_gindx)
                             istruct['snr'][ditem][2].append(i_bindx)
@@ -658,7 +821,7 @@ class Q3Dpro:
                     else:
                         if li == 0:
                             mshaps[0] = dataOUT[ditem]['data'].shape
-                        i_snc,i_gindx,i_bindx = snr_cut(dataOUT[ditem]['data'],dataOUT[ditem]['err'],SNRCUT=SNRCUT)
+                        i_snc,i_gindx,i_bindx = _snr_cut(dataOUT[ditem]['data'],dataOUT[ditem]['err'],SNRCUT=SNRCUT)
                         istruct['snr'][ditem] = [i_snc,i_gindx,i_bindx]
                 BPTlines[lin] = istruct
 
@@ -764,7 +927,7 @@ class Q3Dpro:
                     fi_mask = fratdat[0][lratF][2]*fratdat[1][lratF][2]
                     fi_frat = fratdat[0][lratF][3]/fratdat[1][lratF][3]
                     frat10 = np.log10(fi_frat)*fi_mask
-                    frat10err = lgerr(fratdat[0][lratF][3],fratdat[1][lratF][3],
+                    frat10err = _lgerr(fratdat[0][lratF][3],fratdat[1][lratF][3],
                                       fratdat[0][lratF][1],fratdat[1][lratF][1])
                     lineratios[lrat]['lrat'][lratF]=[frat10,frat10err]
 
@@ -786,7 +949,7 @@ class Q3Dpro:
         # --------------------------
         plt.close(PLTNUM)
         figDIM = [nps,cntr]
-        figOUT = set_figSize(figDIM,mshaps[1])
+        figOUT = _set_figsize(figDIM,mshaps[1])
         fig,ax = plt.subplots(nps,cntr,num=PLTNUM,dpi=100)#, gridspec_kw={'height_ratios': [1, 2]})
         fig.set_figheight(figOUT[1]+1)
         fig.set_figwidth(figOUT[0])
@@ -819,13 +982,13 @@ class Q3Dpro:
                     if lratF == 'Fci':
                         frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
                         for ci in range(0,ncomp):
-                            display_pixels_wz(yy, xx,
-                                              frat10[:,:,ci], CMAP=CMAP, AX=ax[li+ci,cf],
-                                              VMIN=-1, VMAX=1,NTICKS=5, COLORBAR=True)
+                            _display_pixels_wz(yy, xx,
+                                              frat10[:,:,ci], ax[li+ci,cf], CMAP=CMAP,
+                                              VMIN=-1, VMAX=1, NTICKS=5, COLORBAR=True)
                     else:
                         frat10,frat10err = lineratios[linrat]['lrat'][lratF][0],lineratios[linrat]['lrat'][lratF][1]
-                        display_pixels_wz(yy, xx,
-                                          frat10, CMAP=CMAP, AX=ax[li,cf],
+                        _display_pixels_wz(yy, xx,
+                                          frat10, ax[li,cf], CMAP=CMAP, 
                                           VMIN=-1, VMAX=1, NTICKS=5, COLORBAR=True)
                 cf += 1
         plt.tight_layout(pad=1.5,h_pad=0.1)
@@ -841,7 +1004,7 @@ class Q3Dpro:
         PLTNUM += 1
         plt.close(PLTNUM)
         figDIM = [nps,cntr-1]
-        figOUT = set_figSize(figDIM,mshaps[1],SQUARE=True)
+        figOUT = _set_figsize(figDIM,mshaps[1])
         fig,ax = plt.subplots(nps,cntr-1,figsize=((cntr-1)*5,5),num=PLTNUM,dpi=100)
         fig.set_figheight(int(figOUT[1]))
         fig.set_figwidth(figOUT[0])
@@ -928,262 +1091,289 @@ class Q3Dpro:
             # breakpoint()
         return
 
-    def resort_line_components(self,dataIN,NCOMP=1,COMP_SORT=None):
+    def _resort_line_components(self,
+                                linemaps: dict[Literal['Ftot', 'Fci', 'Sig', 'v50', 'w80'], 
+                                               dict[Literal['data', 'err', 'name', 'mask'], Any]],
+                                sort_pars: dict[Literal['sort_by', 'sort_range'], Any]) \
+                                      -> dict[Literal['Ftot', 'Fci', 'Sig', 'v50', 'w80'], 
+                                              dict[Literal['data', 'err', 'name', 'mask'], Any]]:
+        '''
+        Re-sort the line components based on the values of a given line parameter.
 
-        if COMP_SORT == None:
-            return dataIN,NCOMP
+        Parameters
+        ----------
+        linemaps
+            Line maps. This equals the third output of the :py:meth:`~q3dfit.q3dpro.get_linemap` 
+            method.
+        sort_pars
+            Parameters for sorting components. See `compSort` parameter of
+            :py:meth:`~q3dfit.q3dpro.make_linemap` for more information.
+        
+        Returns
+        -------
+        dict
+            The re-sorted line maps. This is the same as the input linemaps, but with the components
+            re-ordered based on the sort_by parameter.
+        '''
+        if sort_pars['sort_by'] not in linemaps.keys():
+            raise ValueError('The sort_by parameter in sort_pars is not valid.')
         else:
-            if COMP_SORT['sort_by'] in dataIN.keys() :
-                if 'sort_range' not in COMP_SORT:
-                    print('sort comp by:',COMP_SORT['sort_by'])
-                    dataOUT = copy.deepcopy(dataIN)
-                    sortDat = dataIN[COMP_SORT['sort_by']]
-                    mshap = sortDat['data'].shape
-                    for ii in range (0,mshap[0]):
-                        for jj in range (0,mshap[1]):
-                            sij = np.argsort(np.abs(sortDat['data'][ii,jj,:]))
-                            dataOUT['Fci']['data'][ii,jj,:] = dataIN['Fci']['data'][ii,jj,sij]
-                            dataOUT['Sig']['data'][ii,jj,:] = dataIN['Sig']['data'][ii,jj,sij]
-                            dataOUT['v50']['data'][ii,jj,:] = dataIN['v50']['data'][ii,jj,sij]
-                            dataOUT['w80']['data'][ii,jj,:] = dataIN['w80']['data'][ii,jj,sij]
-                            dataOUT['Fci']['err'][ii,jj,:]  = dataIN['Fci']['err'][ii,jj,sij]
-                            dataOUT['Sig']['err'][ii,jj,:]  = dataIN['Sig']['err'][ii,jj,sij]
-                            dataOUT['v50']['err'][ii,jj,:]  = dataIN['v50']['err'][ii,jj,sij]
-                            dataOUT['w80']['err'][ii,jj,:]  = dataIN['w80']['err'][ii,jj,sij]
-                            dataOUT['Fci']['mask'][ii,jj,:] = dataIN['Fci']['mask'][ii,jj,sij]
-                            dataOUT['Sig']['mask'][ii,jj,:] = dataIN['Sig']['mask'][ii,jj,sij]
-                            dataOUT['v50']['mask'][ii,jj,:] = dataIN['v50']['mask'][ii,jj,sij]
-                            dataOUT['w80']['mask'][ii,jj,:] = dataIN['w80']['mask'][ii,jj,sij]
-                    return dataOUT,mshap[2]
-                else:
-                    sort_rang = COMP_SORT['sort_range']
-                    print('========================')
-                    print('sort comp by:',COMP_SORT['sort_by'])
-                    for si,srang in enumerate(sort_rang):
-                        print('c'+str(si+1),srang)
-                    sortDat = dataIN[COMP_SORT['sort_by']]
-                    mshap = sortDat['data'].shape
-                    dataOUT = {'Ftot':dataIN['Ftot'],
-                               'Fci':{'data':None,'err':None,'name':None,'mask':None},
-                               'Sig':{'data':None,'err':None,'name':None,'mask':None},
-                               'v50':{'data':None,'err':None,'name':None,'mask':None},
-                               'w80':{'data':None,'err':None,'name':None,'mask':None}}
-                    for ditem in dataOUT:
-                        if ditem != 'Ftot':
-                            dataOUT[ditem]['data'] = np.zeros((mshap[0],mshap[1],len(sort_rang)))+np.nan
-                            dataOUT[ditem]['err']  = np.zeros((mshap[0],mshap[1],len(sort_rang)))+np.nan
-                            dataOUT[ditem]['name'] = []
-                            dataOUT[ditem]['mask'] = np.zeros((mshap[0],mshap[1],len(sort_rang)))+np.nan
+            sortDat = linemaps[sort_pars['sort_by']]
+            mshap = sortDat['data'].shape
 
-                    for ii in range (0,mshap[0]):
-                        for jj in range (0,mshap[1]):
-                            for cc in range(0,mshap[2]):
-                                for sri,sr in enumerate(sort_rang):
-                                    # dataOUT['Fci']['name'].append()
-                                    ici = sri
-                                    dataOUT['Fci']['name'].append('F$_{c'+str(ici)+'}$')
-                                    dataOUT['Sig']['name'].append('$\sigma_{c'+str(ici)+'}$')
-                                    dataOUT['v50']['name'].append('v$_{50,c'+str(ici)+'}$')
-                                    dataOUT['w80']['name'].append('w$_{80,c'+str(ici)+'}$')
-                                    if sr[0] <= sortDat['data'][ii,jj,cc] <= sr[1]:
-                                        dataOUT['Fci']['data'][ii,jj,sri] = dataIN['Fci']['data'][ii,jj,cc]
-                                        dataOUT['Sig']['data'][ii,jj,sri] = dataIN['Sig']['data'][ii,jj,cc]
-                                        dataOUT['v50']['data'][ii,jj,sri] = dataIN['v50']['data'][ii,jj,cc]
-                                        dataOUT['w80']['data'][ii,jj,sri] = dataIN['w80']['data'][ii,jj,cc]
-                                        dataOUT['Fci']['err'][ii,jj,sri]  = dataIN['Fci']['err'][ii,jj,cc]
-                                        dataOUT['Sig']['err'][ii,jj,sri]  = dataIN['Sig']['err'][ii,jj,cc]
-                                        dataOUT['v50']['err'][ii,jj,sri]  = dataIN['v50']['err'][ii,jj,cc]
-                                        dataOUT['w80']['err'][ii,jj,sri]  = dataIN['w80']['err'][ii,jj,cc]
-                                        dataOUT['Fci']['mask'][ii,jj,sri] = dataIN['Fci']['mask'][ii,jj,cc]
-                                        dataOUT['Sig']['mask'][ii,jj,sri] = dataIN['Sig']['mask'][ii,jj,cc]
-                                        dataOUT['v50']['mask'][ii,jj,sri] = dataIN['v50']['mask'][ii,jj,cc]
-                                        dataOUT['w80']['mask'][ii,jj,sri] = dataIN['w80']['mask'][ii,jj,cc]
-                                # print('---')
-                    return dataOUT,len(sort_rang)
-            else:
-                print('SORT ERROR...')
-                pass
+        q3dutil.write_msg('Sorting components by ', sort_pars['sort_by'])
 
+        if 'sort_range' not in sort_pars:
+            dataOUT = copy.deepcopy(linemaps)
+            for ii in range (0, mshap[0]):
+                for jj in range (0, mshap[1]):
+                    sij = np.argsort(np.abs(sortDat['data'][ii,jj,:]))
+                    dataOUT['Fci']['data'][ii,jj,:] = linemaps['Fci']['data'][ii,jj,sij]
+                    dataOUT['Sig']['data'][ii,jj,:] = linemaps['Sig']['data'][ii,jj,sij]
+                    dataOUT['v50']['data'][ii,jj,:] = linemaps['v50']['data'][ii,jj,sij]
+                    dataOUT['w80']['data'][ii,jj,:] = linemaps['w80']['data'][ii,jj,sij]
+                    dataOUT['Fci']['err'][ii,jj,:]  = linemaps['Fci']['err'][ii,jj,sij]
+                    dataOUT['Sig']['err'][ii,jj,:]  = linemaps['Sig']['err'][ii,jj,sij]
+                    dataOUT['v50']['err'][ii,jj,:]  = linemaps['v50']['err'][ii,jj,sij]
+                    dataOUT['w80']['err'][ii,jj,:]  = linemaps['w80']['err'][ii,jj,sij]
+                    dataOUT['Fci']['mask'][ii,jj,:] = linemaps['Fci']['mask'][ii,jj,sij]
+                    dataOUT['Sig']['mask'][ii,jj,:] = linemaps['Sig']['mask'][ii,jj,sij]
+                    dataOUT['v50']['mask'][ii,jj,:] = linemaps['v50']['mask'][ii,jj,sij]
+                    dataOUT['w80']['mask'][ii,jj,:] = linemaps['w80']['mask'][ii,jj,sij]
 
-
-# =============================================================================================
-# reading in the .npy and .npz files
-# =============================================================================================
-# Emission line data
-# ---------------------------------------------------------------------------------------------
-
+        else:
+            sort_rang = sort_pars['sort_range']
+            for si, srang in enumerate(sort_rang):
+                q3dutil.write_msg(f'The component c{si+1} will equal the last component that '+
+                                  f'lies in the range {srang}.', quiet=self.quiet)
+                q3dutil.write_msg(f'Setting values to np.nan otherwise.', quiet=self.quiet)
+            # Set up output dictionary
+            dataOUT = {'Ftot':linemaps['Ftot'],
+                       'Fci':{'data':None,'err':None,'name':None,'mask':None},
+                       'Sig':{'data':None,'err':None,'name':None,'mask':None},
+                       'v50':{'data':None,'err':None,'name':None,'mask':None},
+                       'w80':{'data':None,'err':None,'name':None,'mask':None}}
+            for ditem in dataOUT:
+                if ditem != 'Ftot':
+                    dataOUT[ditem]['data'] = np.zeros((mshap[0],mshap[1],len(sort_rang)))+np.nan
+                    dataOUT[ditem]['err']  = np.zeros((mshap[0],mshap[1],len(sort_rang)))+np.nan
+                    dataOUT[ditem]['name'] = []
+                    dataOUT[ditem]['mask'] = np.zeros((mshap[0],mshap[1],len(sort_rang)))+np.nan
+            # loop through spaxels
+            for ii in range (0, mshap[0]):
+                for jj in range (0, mshap[1]):
+                    # this tracks the input component index
+                    for cc in range(0, mshap[2]):
+                        # this tracks the output component index and the sort range
+                        for sri, sr in enumerate(sort_rang):
+                            dataOUT['Fci']['name'].append('F$_{c'+str(sri)+'}$')
+                            dataOUT['Sig']['name'].append('$\sigma_{c'+str(sri)+'}$')
+                            dataOUT['v50']['name'].append('v$_{50,c'+str(sri)+'}$')
+                            dataOUT['w80']['name'].append('w$_{80,c'+str(sri)+'}$')
+                            if sr[0] <= sortDat['data'][ii,jj,cc] <= sr[1]:
+                                dataOUT['Fci']['data'][ii,jj,sri] = linemaps['Fci']['data'][ii,jj,cc]
+                                dataOUT['Sig']['data'][ii,jj,sri] = linemaps['Sig']['data'][ii,jj,cc]
+                                dataOUT['v50']['data'][ii,jj,sri] = linemaps['v50']['data'][ii,jj,cc]
+                                dataOUT['w80']['data'][ii,jj,sri] = linemaps['w80']['data'][ii,jj,cc]
+                                dataOUT['Fci']['err'][ii,jj,sri]  = linemaps['Fci']['err'][ii,jj,cc]
+                                dataOUT['Sig']['err'][ii,jj,sri]  = linemaps['Sig']['err'][ii,jj,cc]
+                                dataOUT['v50']['err'][ii,jj,sri]  = linemaps['v50']['err'][ii,jj,cc]
+                                dataOUT['w80']['err'][ii,jj,sri]  = linemaps['w80']['err'][ii,jj,cc]
+                                dataOUT['Fci']['mask'][ii,jj,sri] = linemaps['Fci']['mask'][ii,jj,cc]
+                                dataOUT['Sig']['mask'][ii,jj,sri] = linemaps['Sig']['mask'][ii,jj,cc]
+                                dataOUT['v50']['mask'][ii,jj,sri] = linemaps['v50']['mask'][ii,jj,cc]
+                                dataOUT['w80']['mask'][ii,jj,sri] = linemaps['w80']['mask'][ii,jj,cc]
+            
+        # return the re-sorted line maps
+        return dataOUT
+ 
 
 class LineData:
     '''
-    Read in and store line data for all lines found in *.lin.npz file
-    (which is output by q3da).
+    Read in and store line data for all fitted lines in the numpy save file created by 
+    :py:method:`~q3dfit.q3dcollect.q3dcollect'.
 
     Individual line measurements can be obtained with corresponding methods.
 
     Parameters
     -----------
-    q3di : object
+    q3di
+        q3d initialization object containing line names and other parameters.
 
     Attributes
     ----------
-    lines : dict
-        Line names.
+    lines : list
+        Copy of :py:attr:`~q3dfit.q3din.q3din.lines`.
     maxncomp : int
-        Maximum number of components fit to a line.
-    data : dict
+        Copy of :py:attr:`~q3dfit.q3din.q3din.maxncomp`.
+    data : numpy.lib.npyio.NpzFile
         Contents of the line data (.npz) file.
-    Examples
-    --------
-    >>>
-
-    Notes
-    -----
+    ncols : int
+        Copy of :py:attr:`~q3dfit.q3din.q3din.ncols`.
+    nrows : int
+        Copy of :py:attr:`~q3dfit.q3din.q3din.nrows`.
+    bad : float
+        Value of bad pixels. Default is np.nan.
+    dataDIR : str
+        Copy of :py:attr:`~q3dfit.q3din.q3din.outdir`.
+    target_name : str
+        Copy of :py:attr:`~q3dfit.q3din.q3din.name`.
+    colname : list
+        Sorted list of dictionary names in the :py:attr:`~q3dfit.q3din.q3din.data` attribute.
+        Set in :py:meth:`~q3dfit.q3dpro.LineData._read_npz`.
     '''
 
-    def __init__(self, q3di):
+    def __init__(self,
+                 q3di: q3din.q3din):
 
         filename = q3di.label+'.line.npz'
         datafile = os.path.join(q3di.outdir, filename)
-        # print(datafile)
         if not os.path.exists(datafile):
-            print('ERROR: emission line ('+filename+') file does not exist')
-            return
+            raise FileNotFoundError(f'ERROR: emission line file {filename} does not exist.')
         self.lines = q3di.lines
         self.maxncomp = q3di.maxncomp
-        self.data = self.read_npz(datafile)
+        self.data = self._read_npz(datafile)
         # book-keeping inheritance from initproc
-        self.ncols = self.data['ncols'].item()
-        self.nrows = self.data['nrows'].item()
+        self.ncols = q3di.ncols # self.data['ncols'].item()
+        self.nrows = q3di.nrows # self.data['nrows'].item()
         self.bad = np.nan
         self.dataDIR = q3di.outdir
         self.target_name = q3di.name
-        # self.flux    = self.get_flux()
-        # self.siga    = self.get_sigma()
-        # self.wavelen = self.get_wave()
-        # self.eq      = self.get_weq()
-        return
 
-    def read_npz(self, datafile):
-        ''' Load binary line data file.
+
+    def _read_npz(self,
+                  file: str):
+        '''
+        Load compressed file archive.
 
         Parameters
         ----------
-        datafile : str
+        file
+            Name of the .npz file to read.
 
         Returns
         -------
-        Contents of datafile.
-
+        numpy.lib.npyio.NpzFile
         '''
-        dataread = np.load(datafile, allow_pickle=True)
+        dataread = np.load(file, allow_pickle=True)
         self.colname = sorted(dataread)
         return dataread
 
-    def get_flux(self, lineselect, FLUXSEL='ftot'):
-        ''' Get flux and error of a given line.
+
+    def get_flux(self,
+                 lineselect: str,
+                 fluxsel: str='ftot',
+                 **kwargs) -> dict[Literal['flx', 'flxerr'], np.ndarray]:
+        ''' 
+        Get flux and error of a given line.
 
         Parameters
         ----------
-        lineselect : str
+        lineselect
             Which line to grab.
-        fluxsel : str, default 'ftot' (total flux)
-            Which flux to grab. String names defined in q3da.
+        fluxsel
+            Optional. Which type of flux to grab, as defined in :py:func:`~q3dfit.q3dcollect.q3dcollect`.
+            Options are 'ftot', 'fc1', 'fc1pk', 'fc2', 'fc2pk', ..., 'fcN', 'fcNpk' for N total components.
+            Default is 'ftot'.
 
         Returns
         -------
-        dict
-            keys flux, fluxerr contain ndarray(ncols, nrows, ncomp)
+        dict[Literal['flx', 'flxerr'], numpy.ndarray]
+            Each key contains an array of size (ncols, nrows, ncomp).
 
         '''
-
-        # FLUXSEL = 'ftot' by default --> select from ('ftot', 'fc1', 'fc1pk')
+        if 'FLUXSEL' in kwargs:
+            fluxsel = kwargs['FLUXSEL']
         if lineselect not in self.lines:
-            print('ERROR: line does not exist')
-            return None
+            raise ValueError(f'Line {lineselect} is not present in the data.')
         emlflx = self.data['emlflx'].item()
         emlflxerr = self.data['emlflxerr'].item()
-        dataout = {'flux': emlflx[FLUXSEL][lineselect],
-                   'fluxerr': emlflxerr[FLUXSEL][lineselect]}
+        dataout = {'flux': emlflx[fluxsel][lineselect],
+                   'fluxerr': emlflxerr[fluxsel][lineselect]}
         return dataout
 
-    def get_ncomp(self, lineselect):
-        ''' Get # components fit to a given line.
+
+    def get_ncomp(self,
+                  lineselect: str) -> np.ndarray:
+        '''
+        Get # components fit to a given line.
 
         Parameters
         ----------
-        lineselect : str
+        lineselect
+            Which line to grab.
 
         Returns
         -------
-        ndarray(ncols, nrows)
-
+        numpy.ndarray
+            Array of size (ncols, nrows) containing the number of components fit to each spaxel.
         '''
         if lineselect not in self.lines:
-            print('ERROR: line does not exist')
-            return None
+            raise ValueError(f'Line {lineselect} is not present in the data.')
         return (self.data['emlncomp'].item())[lineselect]
 
-    def get_sigma(self, lineselect, COMPSEL=1):
-        ''' Get sigma and error of a given line and component.
+
+    def get_sigma(self,
+                  lineselect: str,
+                  compsel: int=1,
+                  **kwargs) -> dict[Literal['sig', 'sigerr'], np.ndarray]:
+        '''
+        Get sigma and error of a given line and component.
 
         Parameters
         ----------
-        lineselect : str
+        lineselect
             Which line to grab.
-        compsel : int, default 1
+        compsel
+            Optional. Which component to grab. Default is 1.
 
         Returns
         -------
-        dict
-            keys sig, sigerr contain ndarray(ncols, nrows)
+        dict[Literal['sig', 'sigerr'], numpy.ndarray]
+            Each key contains an array of size (ncols, nrows).
 
         '''
+        if 'COMPSEL' in kwargs:
+            compsel = kwargs['COMPSEL']
         if lineselect not in self.lines:
-            print('ERROR: line does not exist')
-            return None
-        # 'c1'
+            raise ValueError(f'Line {lineselect} is not present in the data.')
         emlsig = self.data['emlsig'].item()
         emlsigerr = self.data['emlsigerr'].item()
-        csel = 'c'+str(COMPSEL)
+        csel = 'c'+str(compsel)
         dataout = {'sig': emlsig[csel][lineselect],
                    'sigerr': emlsigerr[csel][lineselect]}
         return dataout
 
-    def get_wave(self, lineselect, COMPSEL=1):
-        ''' Get central wavelength and error of a given line and component.
+
+    def get_wave(self,
+                 lineselect: str,
+                 compsel: int=1,
+                 **kwargs) -> dict[Literal['wav', 'waverr'], np.ndarray]:
+        '''
+        Get central wavelength and error of a given line and component.
 
         Parameters
         ----------
-        lineselect : str
+        lineselect
             Which line to grab.
-        compsel : int, default 1
+        compsel
+            Optional. Which component to grab. Default is 1.
 
         Returns
         -------
-        dict
-            keys wav, waverr contain ndarray(ncols, nrows)
-
+        dict[Literal['wav', 'waverr'], numpy.ndarray]
+            Each key contains an array of size (ncols, nrows).
         '''
+        if 'COMPSEL' in kwargs:
+            compsel = kwargs['COMPSEL']
         if lineselect not in self.lines:
-            print('ERROR: line does not exist')
-            return None
-        # 'c1'
+            raise ValueError(f'Line {lineselect} is not present in the data.')
         emlwav = self.data['emlwav'].item()
         emlwaverr = self.data['emlwaverr'].item()
-        csel = 'c'+str(COMPSEL)
+        csel = 'c'+str(compsel)
         dataout = {'wav': emlwav[csel][lineselect],
                    'waverr': emlwaverr[csel][lineselect]}
         return dataout
-
-    # def get_weq(self, lineselect, FLUXSEL='ftot'):
-    #     # FLUXSEL = 'ftot' by default --> select from ('ftot', 'fc1')
-    #     if lineselect not in self.lines:
-    #         print('ERROR: line does not exist')
-    #         return None
-    #     # 'ftot', 'fc1'
-    #     emlweq = self.data['emlweq'].item()
-    #     dataout = emlweq[FLUXSEL][lineselect]
-    #     return dataout
 
 
 class OneLineData:
@@ -1192,35 +1382,61 @@ class OneLineData:
 
     Parameters
     -----------
-    linedata :
-        Data from *.lin.npz file, stored in LineData.data.
+    linedata
+        All raw line data from the fit.
+    lineselect
+        Which line to grab.
 
     Attributes
     ----------
-    flux : ndarray(ncols, nrows, maxncomp)
-    fpklux : ndarray(ncols, nrows, maxncomp)
-    line : str
-    ncomp : ndarray(ncols, nrows)
-    sig : ndarray(ncols, nrows, maxncomp)
-    wave : ndarray(ncols, nrows, maxncomp)
-
-    Examples
-    --------
-    >>>
-
-    Notes
-    -----
+    ncols : int
+        Copy of :py:attr:`~q3dfit.q3dpro.LineData.ncols`.
+    nrows : int
+        Copy of :py:attr:`~q3dfit.q3dpro.LineData.nrows`.
+    bad : float
+        Copy of :py:attr:`~q3dfit.q3dpro.LineData.bad`.
+    dataDIR : str
+        Copy of :py:attr:`~q3dfit.q3dpro.LineData.dataDIR`.
+    target_name : str
+        Copy of :py:attr:`~q3dfit.q3dpro.LineData.target_name`.
+    flux : numpy.ndarray
+        Total flux of each spaxel and component for this line.
+    fpklux : numpy.ndarray
+        Peak flux of each spaxel and component for this line.
+    sig : numpy.ndarray
+        Sigma of each spaxel and component for this line.
+    wave : numpy.ndarray
+        Central wavelength of each spaxel and component for this line.
+    ncomp : numpy.ndarray
+        Number of components fit to each spaxel for this line.
+    cvdf_zref : float
+        Reference redshift for computing velocities. Defined in :py:meth:`~q3dfit.q3dpro.OneLineData.calc_cvdf`.
+    cvdf_vel : numpy.ndarray
+        Model velocities. 1D array. Defined in :py:meth:`~q3dfit.q3dpro.OneLineData.calc_cvdf`.
+    vdf : numpy.ndarray
+        Velocity distribution in flux space. 3D data with two dimensions of
+        imaging plane and third of model points. Defined in :py:meth:`~q3dfit.q3dpro.OneLineData.calc_cvdf`.
+    cvdf : numpy.ndarray
+        Cumulative velocity distribution function. 3D data with two dimensions of
+        imaging plane and third of model points. Defined in :py:meth:`~q3dfit.q3dpro.OneLineData.calc_cvdf`.
+    cvdf_nmod : int
+        Number of model points. Defined in :py:meth:`~q3dfit.q3dpro.OneLineData.calc_cvdf`.
     '''
+    def __init__(self,
+                 linedata: LineData,
+                 lineselect: str):
 
-    def __init__(self, linedata, lineselect):
         # inherit some stuff from linedata
         self.ncols = linedata.ncols
         self.nrows = linedata.nrows
         self.bad = linedata.bad
         self.dataDIR = linedata.dataDIR
         self.target_name = linedata.target_name
-
+        
+        if lineselect not in linedata.lines:
+            raise ValueError(f'Line {lineselect} is not present in the data.')
         self.line = lineselect
+
         # initialize arrays
         self.flux = \
             np.zeros((linedata.ncols, linedata.nrows, linedata.maxncomp),
@@ -1248,52 +1464,112 @@ class OneLineData:
         # No. of components on a spaxel-by-spaxel basis
         self.ncomp = linedata.get_ncomp(lineselect)
 
-    def calc_cvdf(self, zref, vlimits=[-1e4, 1e4], vstep=1.):
+
+    def calc_cvdf(self,
+                  zref: float,
+                  vlimits: ArrayLike=[-1e4, 1e4],
+                  vstep: float=1.):
         '''
-        Compute CVDF for this line, for each spaxel.
+        Compute cumulative velocity distribution function for this line, for each spaxel.
 
         Parameters
         -----------
-        zref : float
-            Reference redshift for computing velocities
-        vlimits : ndarray(2)
-            limits for model velocities, in km/s
-        vstep : float
-            step for model velocities, in km/s
-
-        Attributes
-        ----------
-        cvdf_vel : ndarray(nmod)
-            Model velocities.
-        vdf : ndarray(ncols, nrows, nmod)
-            Velocity distribution in flux space.
-        cvdf : ndarray(ncols, nrows, nmod)
-            Cumulative velocity distribution function.
-
-        '''
+        zref
+            Reference redshift for computing velocities.
+        vlimits
+            Limits for model velocities, in km/s.
+        vstep
+            Step size for model velocities, in km/s.
+        ''' 
         self.cvdf_zref = zref
-        self.cvdf_vel, self.vdf, self.cvdf = \
-            cmpcvdf(self.wave, self.sig, self.pkflux, self.ncomp,
-                    self.line, zref, vlimits=vlimits, vstep=vstep)
-        self.cvdf_nmod = len(self.cvdf_vel)
+        
+        # these are allegedly the smallest numbers recognized
+        minexp = -310
+        # this is the experimentally determined limit for when
+        # I can take a log of a 1e-minexp
+        # mymin = np.exp(minexp)
 
-    def calc_cvdf_vel(self, pct, calc_from_posvel=True):
+        # establish the velocity array from the inputs or from the defaults
+        modvel = np.arange(vlimits[0], vlimits[1]+vstep, vstep)
+        beta = modvel/c.to('km/s').value
+        dz = np.sqrt((1. + beta)/(1. - beta)) - 1.
+
+        # central (rest) wavelength of the line in question
+        listlines = linelist.linelist([line])
+        cwv = listlines['lines'].value[0]
+        modwaves = cwv*(1. + dz)*(1. + zref)
+
+        # output arrays
+        size_cube = np.shape(pkflux)
+        nmod = np.size(modvel)
+
+        vdf = np.zeros((size_cube[0], size_cube[1], nmod))
+        cvdf = np.zeros((size_cube[0], size_cube[1], nmod))
+        for i in range(np.max(ncomp)):
+            rbpkflux = np.repeat((pkflux[:, :, i])[:, :, np.newaxis], nmod, axis=2)
+            rbsigma = np.repeat((sigma[:, :, i])[:, :, np.newaxis], nmod, axis=2)
+            rbpkwave = np.repeat((wave[:, :, i])[:, :, np.newaxis], nmod, axis=2)
+            rbncomp = np.repeat(ncomp[:, :, np.newaxis], nmod, axis=2)
+            rbmodwave = \
+                np.broadcast_to(modwaves, (size_cube[0], size_cube[1], nmod))
+
+            inz = ((rbsigma > 0) & (rbsigma != np.nan) &
+                (rbpkwave > 0) & (rbpkwave != np.nan) &
+                (rbpkflux > 0) & (rbpkflux != np.nan) &
+                (rbncomp > i))
+            if np.sum(inz) > 0:
+                exparg = np.zeros((size_cube[0], size_cube[1], nmod)) - minexp
+                exparg[inz] = ((rbmodwave[inz]/rbpkwave[inz] - 1.) /
+                            (rbsigma[inz]/c.to('km/s').value))**2. / 2.
+                i_no_under = (exparg < -minexp)
+                if np.sum(i_no_under) > 0:
+                    vdf[i_no_under] += rbpkflux[i_no_under] * \
+                        np.exp(-exparg[i_no_under])
+
+        # size of each model bin
+        dmodwaves = modwaves[1:nmod] - modwaves[0:nmod-1]
+        # supplement with the zeroth element to make the right length
+        dmodwaves = np.append(dmodwaves[0], dmodwaves)
+        # rebin to full cube
+        rbdmodwaves = \
+            np.broadcast_to(dmodwaves, (size_cube[0], size_cube[1], nmod))
+        fluxnorm = vdf * rbdmodwaves
+        #fluxnormerr = emlcvdf['fluxerr'][line]*dmodwaves
+        fluxint = np.repeat((np.sum(fluxnorm, 2))[:, :, np.newaxis], nmod, axis=2)
+        inz = fluxint != 0
+        if np.sum(inz) > 0:
+            fluxnorm[inz] /= fluxint[inz]
+            #fluxnormerr[inz] /= fluxint[inz]
+
+        cvdf[:, :, 0] = fluxnorm[:, :, 0]
+        for i in range(1, nmod):
+            cvdf[:, :, i] = cvdf[:, :, i-1] + fluxnorm[:, :, i]
+            #emlcvdf['cvdferr'][line] = fluxnormerr
+
+        self.cvdf_vel = modvel
+        self.vdf = vdf
+        self.cvdf = cvdf
+        self.cvdf_nmod = len(modvel)
+
+
+    def calc_cvdf_vel(self,
+                      pct: float,
+                      calc_from_posvel: bool=True) -> np.ndarray:
         '''
         Compute a velocity at % pct from one side of the CVDF.
 
         Parameters
         -----------
-        pct : float
+        pct
             Percentage at which to calculate velocity.
-        calc_from_posvel : bool
-            If True, v0% is at positive velocities.
+        calc_from_posvel
+            Optional. If True, the zero-point is at positive velocities. Default is True.
 
         Returns
         -------
-        ndarray(ncols, nrows)
-
+        numpy.ndarray
+            Array of size (ncols, nrows) containing the velocity at the given percentile.
         '''
-
         if calc_from_posvel:
             pct_use = 100. - pct
         else:
@@ -1309,9 +1585,17 @@ class OneLineData:
                                   self.cvdf_vel[ivel-1]) / 2.
         return varr
 
-    def make_cvdf_map(self, pct, velran=None, cmap=None,
-                      center=None, markcenter=None, axisunit='spaxel',
-                      platescale=None, outfile=False, outformat='png'):
+
+    def make_cvdf_map(self,
+                      pct,
+                      velran=None,
+                      cmap=None,
+                      center=None,
+                      markcenter=None,
+                      axisunit='spaxel',
+                      platescale=None,
+                      outfile=False,
+                      outformat='png'):
 
         pixVals = self.calc_cvdf_vel(pct)
 
@@ -1348,7 +1632,7 @@ class OneLineData:
         cmap_r = cm.get_cmap(cmap)
         cmap_r.set_bad(color='black')
         # cmap_r.set_bad(color=self.map_bkg)
-        display_pixels_wz(cols_cent, rows_cent, pixVals, CMAP=cmap, AX=ax,
+        _display_pixels_wz(cols_cent, rows_cent, pixVals, ax, CMAP=cmap, 
                           COLORBAR=True, VMIN=velran[0], VMAX=velran[1],
                           TICKS=vticks, NTICKS=nticks, XRAN=xran, YRAN=yran)
         if markcenter is not None:
@@ -1383,17 +1667,29 @@ class OneLineData:
         return
 
 
-# ---------------------------------------------------------------------------------------------
-# Continuum data
-# ---------------------------------------------------------------------------------------------
 class ContData:
-    def __init__(self, q3di):
+    '''
+    Read in and store continuum data for all spaxels in the numpy save file created by
+    :py:method:`~q3dfit.q3dcollect.q3dcollect`.
+
+    Parameters
+    ----------
+    q3di
+
+    Attributes
+    ----------
+
+    '''
+
+    def __init__(self,
+                 q3di: q3din.q3din):
+
         filename = q3di.label+'.cont.npy'
-        datafile = os.path.join(q3di.outdir,filename)
-        if os.path.exists(datafile) != True:
-            print('ERROR: continuum ('+filename+') file does not exist')
-            return None
-        self.data = self.read_npy(datafile)
+        datafile = os.path.join(q3di.outdir, filename)
+        if not os.path.exists(datafile):
+            raise FileNotFoundError(f'Continuum file {filename} does not exist.')
+
+        self.data = self._read_npy(datafile)
         self.wave           = self.data['wave']
         self.qso_mod        = self.data['qso_mod']
         self.host_mod       = self.data['host_mod']
@@ -1406,63 +1702,37 @@ class ContData:
         self.stel_rchisq    = self.data['stel_rchisq']
         self.stel_ebv       = self.data['stel_ebv']
         self.stel_ebv_err   = self.data['stel_ebv_err']
-        return
 
-    def read_npy(self, datafile):
+
+    def _read_npy(self,
+                  datafile: str) -> dict:
+        '''
+        Load numpy save file.
+        '''
         dataout = np.load(datafile, allow_pickle=True).item()
         self.colname = dataout.keys()
         return dataout
 
-##############################################################################
-# code from W.Liu  - adapted from PPXF
-# edited by Y.Ishikawa
-##############################################################################
-"""
-Copyright (C) 2014-2017, Michele Cappellari
-E-mail: michele.cappellari_at_physics.ox.ac.uk
 
-Updated versions of the software are available from my web page
-http://purl.org/cappellari/software
-
-See example at the bottom for usage instructions.
-
-MODIFICATION HISTORY:
-    V1.0.0: Created to emulate my IDL procedure with the same name.
-        Michele Cappellari, Oxford, 28 March 2014
-    V1.0.1: Fixed treatment of optional parameters. MC, Oxford, 6 June 2014
-    V1.0.2: Avoid potential runtime warning. MC, Oxford, 2 October 2014
-    V1.0.3: Return axis. MC, Oxford, 26 March 2015
-    V1.0.4: Return image instead of axis. MC, Oxford, 15 July 2015
-    V1.0.5: Removes white gaps from rotated images using edgecolors.
-        MC, Oxford, 5 October 2015
-    V1.0.6: Pass kwargs to graphics functions.
-        MC, Campos do Jordao, Brazil, 23 November 2015
-    V1.0.7: Check that input (x,y) come from an axis-aligned image.
-        MC, Oxford, 28 January 2016
-    V1.0.8: Fixed deprecation warning in Numpy 1.11. MC, Oxford, 22 April 2016
-    V1.1.0: Fixed program stop with kwargs. Included `colorbar` keyword.
-        MC, Oxford, 18 May 2016
-    V1.1.1: Use interpolation='nearest' to avoid crash on MacOS.
-        MC, Oxford, 14 June 2016
-    V1.1.2: Specify origin=`upper` in imshow() for consistent results with older
-        Matplotlib version. Thanks to Guillermo Bosch for reporting the issue.
-        MC, Oxford, 6 January 2017
-    V1.1.3: Simplified passing of default keywords. MC, Oxford, 20 February 2017
-    V1.1.4: Use register_sauron_colormap(). MC, Oxford, 29 March 2017
-    V1.1.5: Request `pixelsize` when dataset is large. Thanks to Davor
-        Krajnovic (Potsdam) for the feedback. MC, Oxford, 10 July 2017
-    V1.1.6: Fixed new incompatibility with Matplotlib 2.1.
-        MC, Oxford, 9 November 2017
-    V1.1.7: Changed imports for plotbin as a package. MC, Oxford, 17 April 2018
-
-"""
-
-
-def display_pixels_wz(x, y, datIN, PIXELSIZE=None, VMIN=None, VMAX=None,
-                      TICKS=None, PLOTLOG=False, ANGLE=None, COLORBAR=False,
-                      AUTOCBAR=False, LABEL=None, NTICKS=3, CMAP='RdYlBu',
-                      SKIPTICK=False, AX=None, XRAN=None, YRAN=None):
+def _display_pixels_wz(x: np.ndarray,
+                       y: np.ndarray,
+                       datIN: np.ndarray,
+                       AX: plt.Axes,
+                       VMIN: Optional[float]=None,
+                       VMAX: Optional[float]=None,
+                       XRAN: Optional[ArrayLike]=None,
+                       YRAN: Optional[ArrayLike]=None,
+                       PLOTLOG: bool=False,
+                       CMAP: str='RdYlBu',
+                       COLORBAR: bool=False,
+                       TICKS: Optional[list]=None,
+                       NTICKS: int=3,
+                       AUTOCBAR: bool=False,
+                       SKIPTICK: bool=False):
     """
+    Adapted from v1.1.7 version (circa 2017) of a routine by Michele Cappellari,
+    by Weizhe Liu and Yuzo Ishikawa.
+    
     Display vectors of square pixels at coordinates (x,y) coloured with "val".
     An optional rotation around the origin can be applied to the whole image.
 
@@ -1473,19 +1743,54 @@ def display_pixels_wz(x, y, datIN, PIXELSIZE=None, VMIN=None, VMAX=None,
     This routine is designed to be fast even with large images and to produce
     minimal file sizes when the output is saved in a vector format like PDF.
 
+    Parameters
+    ----------
+    x
+        2D array with the x-coordinates of the pixels.
+    y
+        2D array with the y-coordinates of the pixels.
+    datIN
+        2D array with the values of the pixels.
+    AX
+        The matplotlib axes to plot the image.
+    VMIN
+        Optional. Minimum value of the color scale. Default is np.nanmin(datIN).
+    VMAX
+        Optional. Maximum value of the color scale. Default is np.nanmax(datIN).
+    XRAN
+        Optional. Range of the x-axis: [xmin, xmax]. Default is [np.min(x), np.max(x)].
+    YRAN
+        Optional. Range of the y-axis: [ymin, ymax]. Default is [np.min(y), np.max(y)].
+    PLOTLOG
+        Optional. If True, plot the logarithm of the data. Default is False.
+    CMAP
+        Optional. Colormap. Default is 'RdYlBu'.
+    COLORBAR
+        Optional. If True, plot a colorbar. Default is False.
+    TICKS
+        Optional. List of ticks for the colorbar. Default is None. If None, the
+        ticks are automatically determined using NTICKS.
+    NTICKS
+        Optional. Number of ticks for the colorbar. Default is 3. Ignored if TICKS is not None.
+    AUTOCBAR
+        Optional. If True, and TICKS is None, the colorbar ticks are determined using 
+        :py:class:`matplotlib.ticker.MaxNLocator'. If False, :py:class:`matplotlib.ticker.LinearLocator`
+        is used. Default is False.
+    SKIPTICK
+        Optional. If True, do not plot ticks. Default is False.
     """
     if VMIN is None:
-        VMIN = np.min(datIN[datIN != np.nan])
+        VMIN = np.nanmin(datIN)
 
     if VMAX is None:
-        VMAX = np.max(datIN[datIN != np.nan])
+        VMAX = np.nanmax(datIN)
 
-    # print(VMIN,VMAX)
     if XRAN is not None:
         xmin, xmax = XRAN[0], XRAN[1]
     else:
         xmin, xmax = np.ceil(np.min(x)), np.ceil(np.max(x))
         xmax = 5*np.round(np.array(xmax)/5)
+
     if YRAN is not None:
         ymin, ymax = YRAN[0], YRAN[1]
     else:
@@ -1532,7 +1837,7 @@ def display_pixels_wz(x, y, datIN, PIXELSIZE=None, VMIN=None, VMAX=None,
                          format='%.0e')
         # cax.formatter.set_powerlimits((0, 0))
         plt.sca(AX)  # Activate main plot before returning
-    AX.set_facecolor('black')
+    #AX.set_facecolor('black')
 
     if not SKIPTICK:
         AX.minorticks_on()
@@ -1546,14 +1851,16 @@ def display_pixels_wz(x, y, datIN, PIXELSIZE=None, VMIN=None, VMAX=None,
         AX.tick_params(which='minor', length=5, width=1, direction='inout',
                        bottom=True, top=False, left=True, right=True,
                        color='black')
-    return
 
-##############################################################################
-# other functions
-##############################################################################
 
-# estimate the errors in logarithm from linear errors
-def lgerr(x1,x2,x1err,x2err,):
+def _lgerr(x1: ArrayLike | float,
+           x2: ArrayLike | float,
+           x1err: ArrayLike | float,
+           x2err: ArrayLike | float) -> list[np.ndarray]:
+    '''
+    Estimate the lower- and upper-errors in the base-10 log of the ratio of two numbers x1 and x2 from 
+    linear errors. 
+    '''
     x1,x2,x1err,x2err = np.array(x1),np.array(x2),np.array(x1err),np.array(x2err)
     yd0 = x1/x2
     yd = np.log10(yd0)
@@ -1562,35 +1869,73 @@ def lgerr(x1,x2,x1err,x2err,):
     lgyerrlow = yd - np.log10(yd0-yderr0)
     return [lgyerrlow,lgyerrup]
 
-def clean_mask(dataIN, BAD=np.nan):
-    dataOUT = copy.deepcopy(dataIN)
+
+def _clean_mask(dataIN: np.ndarray,
+                BAD: float=np.nan) -> np.ndarray:
+    '''
+    Create a mask for bad pixels in an array. Set good pixels to 1 and bad pixels to BAD.
+    '''
+    dataOUT = copy.copy(dataIN)
     dataOUT[dataIN != BAD] = 1
     dataOUT[dataIN == BAD] = np.nan
-    # breakpoint()
     return dataOUT
 
-def snr_cut(dataIN,errIN,SNRCUT=2):
-    snr = dataIN/errIN
 
+def _snr_cut(dataIN: np.ndarray,
+             errIN: np.ndarray,
+             SNRCUT: float=2) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    '''
+    Apply a signal-to-noise ratio cut to data. Pixels with SNR < SNRCUT are set to np.nan.
+    
+    Returns
+    -------
+    numpy.ndarray
+        Data with bad pixels set to np.nan.
+    numpy.ndarray
+        Indices of good pixels.
+    numpy.ndarray
+        Indices of bad pixels.
+    '''
+    snr = dataIN/errIN
     gud_indx = np.where(snr >= SNRCUT)
     bad_indx = np.where(snr < SNRCUT)
-    dataOUT = copy.deepcopy(dataIN)
+    dataOUT = copy.copy(dataIN)
     dataOUT[snr < SNRCUT] = np.nan
     dataOUT[np.where(np.isnan(errIN))] = np.nan
-    return dataOUT,gud_indx,bad_indx
+    return dataOUT, gud_indx, bad_indx
 
-def save_to_fits(dataIN,hdrIN,savepath):
-    # if not os.path.isfile(savepath):
-        # shutil.copy(datpath1,savepath)
-    if hdrIN == None or hdrIN == []:
+
+def _save_to_fits(dataIN: np.ndarray,
+                  hdrIN: fits.Header,
+                  savepath: str):
+    '''
+    Save data to a FITS file.
+    '''
+    if hdrIN is None or hdrIN == []:
         hdu_0 = fits.PrimaryHDU(dataIN)
     else:
-        hdu_0 = fits.PrimaryHDU(dataIN,header=hdrIN)
+        hdu_0 = fits.PrimaryHDU(dataIN, header=hdrIN)
     hdul = fits.HDUList([hdu_0])
     hdul.writeto(savepath,overwrite=True)
-    return
 
-def set_figSize(dim,plotsize,SQUARE=False):
+
+def _set_figsize(dim: ArrayLike,
+                 plotsize: ArrayLike) -> np.ndarray:
+    '''
+    Set the size of a figure based on the dimensions of the data and the desired plot size.
+
+    Parameters
+    ----------
+    dim
+        A 2-element ArrayLike giving the dimensions of the data.
+    plotsize
+        A 2-element ArrayLike giving the desired size of the plot in units of ...?
+
+    Returns
+    -------
+    numpy.ndarray
+        A 2-element array giving the size of the figure in units of ...?
+    '''
     dim = np.array(dim, dtype='float')
     xy = [12.,14.]
     figSIZE = 5.*np.round(np.array(plotsize, dtype='float')/5.)[0:2]
@@ -1612,5 +1957,3 @@ def set_figSize(dim,plotsize,SQUARE=False):
         figSIZE = [np.min(figSIZE),np.max(figSIZE)]
     figSIZE = np.array(figSIZE).astype(int)
     return figSIZE
-
-

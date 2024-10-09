@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>q3dfit.readcube &mdash; q3dfit 1.1.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=00f267c6"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            q3dfit
+          </a>
+              <div class="version">
+                1.1.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">q3dfit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fitting.html">Fitting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../MIR-configuration.html">MIR Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html">User modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#classes">Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#internal-modules">Internal modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">q3dfit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">q3dfit.readcube</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for q3dfit.readcube</h1><div class="highlight"><pre>
+<span></span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">This module contains the Cube class for reading in and containing a data cube</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+
+<span class="kn">from</span> <span class="nn">astropy</span> <span class="kn">import</span> <span class="n">units</span> <span class="k">as</span> <span class="n">u</span>
+<span class="kn">from</span> <span class="nn">astropy.constants</span> <span class="kn">import</span> <span class="n">c</span>
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">fits</span>
+<span class="c1">#from scipy import interpolate</span>
+
+<span class="kn">from</span> <span class="nn">q3dfit.exceptions</span> <span class="kn">import</span> <span class="n">CubeError</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">q3dutil</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;Cube&#39;</span>
+    <span class="p">]</span>
+
+
+<div class="viewcode-block" id="Cube">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.readcube.Cube">[docs]</a>
+<span class="k">class</span> <span class="nc">Cube</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Read in and contain a data cube and associated information.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    -----------</span>
+<span class="sd">    infile</span>
+<span class="sd">        Name of input FITS file.</span>
+<span class="sd">    datext</span>
+<span class="sd">        Optional. Extension number of data. Defaults to 1.</span>
+<span class="sd">    varext</span>
+<span class="sd">        Optional. Extension number of variance. Defaults to 2.</span>
+<span class="sd">    dqext</span>
+<span class="sd">        Optional. Extension number of data quality. Defaults to 3. If DQ</span>
+<span class="sd">        extension is not present, set to None. This will set all DQ values</span>
+<span class="sd">        to 0.</span>
+<span class="sd">    wmapext</span>
+<span class="sd">        Optional. Extension number  of weight. Defaults to 4. If weight</span>
+<span class="sd">        extension is not present, set to None.</span>
+<span class="sd">    wavext</span>
+<span class="sd">        Optional. Extension number of wavelength data. Defaults to None.</span>
+<span class="sd">    zerodq</span>
+<span class="sd">        Optional. Zero out the DQ array. Default is False. Even if dqext</span>
+<span class="sd">        is present, this will set all DQ values to 0.</span>
+<span class="sd">    error</span>
+<span class="sd">        Optional. If the variance extension contains errors rather than</span>
+<span class="sd">        variance, set to True. Defaults to False.</span>
+<span class="sd">    invvar</span>
+<span class="sd">        Optional. If the variance extension contains inverse variance rather</span>
+<span class="sd">        than variance, set to True. Defaults to False.</span>
+<span class="sd">    fluxnorm</span>
+<span class="sd">        Optional. Factor by which to divide the data. Defaults to 1.</span>
+<span class="sd">    fluxunit_in</span>
+<span class="sd">        Optional. Flux unit of input data cube. Default is `MJy/sr` (JWST </span>
+<span class="sd">        default). Must be parseable by :py:mod:`~astropy.units`.</span>
+<span class="sd">    fluxunit_out</span>
+<span class="sd">        Optional. Flux unit carried by object. Default is </span>
+<span class="sd">        `erg/s/cm2/micron/sr`. Must be parseable by :py:mod:`~astropy.units`.</span>
+<span class="sd">    usebunit</span>
+<span class="sd">        Optional. If BUNIT and fluxunit_in differ, default to BUNIT. </span>
+<span class="sd">        Default is False.</span>
+<span class="sd">    pixarea_sqas</span>
+<span class="sd">        Optional. Spaxel area in square arcseconds. If present and </span>
+<span class="sd">        flux units are per sr or per square arcseconds, will convert surface </span>
+<span class="sd">        brightness units to flux per spaxel. Default is None. If set to None and</span>
+<span class="sd">        header contains PIXAR_A2, routine will use that value.</span>
+<span class="sd">    waveunit_in </span>
+<span class="sd">        Optional. Wavelength unit of input data cube. Default is `micron`.</span>
+<span class="sd">    waveunit_out</span>
+<span class="sd">        Optional. Wavelength unit carried by object. Default is `micron`.</span>
+<span class="sd">    usecunit</span>
+<span class="sd">        Optional. If CUNIT and waveunit_in differ, default to CUNIT. </span>
+<span class="sd">        Default is False.</span>
+<span class="sd">    logfile</span>
+<span class="sd">        Optional. Filename for progress messages. Default is None.</span>
+<span class="sd">    quiet</span>
+<span class="sd">        Optional. Send progress messages to stdout. Default is False.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dat: numpy.ndarray</span>
+<span class="sd">        Data array (ncols, nrows, nwave).</span>
+<span class="sd">    var : numpy.ndarray</span>
+<span class="sd">        Variance array (ncols, nrows, nwave).</span>
+<span class="sd">    err : numpy.ndarray</span>
+<span class="sd">        Error array (ncols, nrows, nwave). Recorded as nan when the variance is negative.</span>
+<span class="sd">    dq : numpy.ndarray</span>
+<span class="sd">        Data quality array (ncols, nrows, nwave).</span>
+<span class="sd">    wmap : numpy.ndarray</span>
+<span class="sd">        Weight (1/variance) array (ncols, nrows, nwave). If wmap extension is not present, </span>
+<span class="sd">        set to None.</span>
+<span class="sd">    wave : numpy.ndarray</span>
+<span class="sd">        Wavelength array (nwave).</span>
+<span class="sd">    cdelt : float</span>
+<span class="sd">        Constant dispersion. If a wavelength extension is present, this is the difference</span>
+<span class="sd">        between the first two wavelengths.</span>
+<span class="sd">    crpix : int</span>
+<span class="sd">        WCS pixel zero point, in unity-offset coordinates. If a wavelength extension is </span>
+<span class="sd">        present, this is the first pixel (i.e., 1).</span>
+<span class="sd">    crval : float</span>
+<span class="sd">        WCS wavelength zero point. If a wavelength extension is present, this is the first</span>
+<span class="sd">        wavelength.</span>
+<span class="sd">    header_phu : astropy.io.fits.Header</span>
+<span class="sd">        Primary header data unit.</span>
+<span class="sd">    header_dat : astropy.io.fits.Header</span>
+<span class="sd">        Header for the data extension.</span>
+<span class="sd">    header_var : astropy.io.fits.Header</span>
+<span class="sd">        Header for the variance extension.</span>
+<span class="sd">    header_dq : astropy.io.fits.Header</span>
+<span class="sd">        Optional. Header for the data quality extension. If dq extension is not present, </span>
+<span class="sd">        set to None.</span>
+<span class="sd">    header_wmap : astropy.io.fits.Header</span>
+<span class="sd">       Optional. Header for the wmap extension. If wmap extension is not present, </span>
+<span class="sd">       set to None.</span>
+<span class="sd">    cubedim : int</span>
+<span class="sd">        Number of dimensions of the &quot;cube&quot; (1, 2, or 3).</span>
+<span class="sd">    ncols : int</span>
+<span class="sd">        Number of columns.  If the data are 1D, this is 1. If the data are 2D, this is the</span>
+<span class="sd">        number of spectra.</span>
+<span class="sd">    nrows : int</span>
+<span class="sd">        Number of rows. If the data are 1D or 2D, this is 1.</span>
+<span class="sd">    nwave : int</span>
+<span class="sd">        Number of wavelength elements.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; from q3dfit import readcube</span>
+<span class="sd">    &gt;&gt;&gt; cube = readcube.Cube(&#39;infile.fits&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; cube.convolve(2.5)</span>
+<span class="sd">    &gt;&gt;&gt; cube.writefits(&#39;outfile.fits&#39;)</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">infile</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">datext</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">varext</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                 <span class="n">dqext</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                 <span class="n">wmapext</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                 <span class="n">wavext</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+                 <span class="n">zerodq</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">error</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">invvar</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">fluxnorm</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span>
+                 <span class="n">fluxunit_in</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">&#39;MJy/sr&#39;</span><span class="p">,</span>
+                 <span class="n">fluxunit_out</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">&#39;erg/s/cm2/micron/sr&#39;</span><span class="p">,</span>
+                 <span class="n">usebunit</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> 
+                 <span class="n">pixarea_sqas</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+                 <span class="n">waveunit_in</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">&#39;micron&#39;</span><span class="p">,</span> 
+                 <span class="n">waveunit_out</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">&#39;micron&#39;</span><span class="p">,</span>
+                 <span class="n">usecunit</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="c1">#                 linearize: bool=False,</span>
+<span class="c1">#                 vormap=None,</span>
+                 <span class="n">quiet</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">logfile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+        <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">infile</span> <span class="o">=</span> <span class="n">infile</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">infile</span><span class="p">,</span> <span class="n">ignore_missing_end</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">CubeError</span><span class="p">(</span><span class="n">infile</span><span class="o">+</span><span class="s1">&#39; does not exist&#39;</span><span class="p">)</span>
+        <span class="c1"># fits extensions labels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datext</span> <span class="o">=</span> <span class="n">datext</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">varext</span> <span class="o">=</span> <span class="n">varext</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dqext</span> <span class="o">=</span> <span class="n">dqext</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wmapext</span> <span class="o">=</span> <span class="n">wmapext</span>
+
+        <span class="c1"># Data</span>
+        <span class="c1"># Input assumed to be array (nwave, nrows, ncols)</span>
+        <span class="c1"># Transpose turns this into (ncols, nrows, nwave)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">hdu</span><span class="p">[</span><span class="n">datext</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float64&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span> <span class="ow">or</span> <span class="ne">KeyError</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">CubeError</span><span class="p">(</span><span class="s1">&#39;Data extension not properly specified or absent&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Uncertainty</span>
+        <span class="c1"># This could be one of three expressions of uncertainty:</span>
+        <span class="c1"># variance, error, or inverse variance.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">uncert</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">hdu</span><span class="p">[</span><span class="n">varext</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float64&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span> <span class="ow">or</span> <span class="ne">KeyError</span><span class="p">):</span>
+            <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;Variance extension not properly specified &#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;or absent&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">CubeError</span><span class="p">(</span><span class="s1">&#39;Variance extension not properly specified &#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;or absent&#39;</span><span class="p">)</span>
+        <span class="c1"># convert expression of uncertainty to variance and error</span>
+        <span class="c1"># if uncert = inverse variance:</span>
+        <span class="k">if</span> <span class="n">invvar</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">/</span><span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">uncert</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">err</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">/</span><span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">uncert</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span>
+        <span class="c1"># if uncert = error:</span>
+        <span class="k">elif</span> <span class="n">error</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">uncert</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;Cube: Negative values encountered in error &#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;array. Taking absolute value.&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">uncert</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">uncert</span><span class="p">))</span> <span class="o">**</span> <span class="mf">2.</span>
+        <span class="c1"># if uncert = variance:</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">uncert</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;Cube: Negative values encountered in variance &#39;</span> <span class="o">+</span> 
+                    <span class="s1">&#39;array. Taking absolute value.&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">uncert</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">uncert</span><span class="p">))</span> <span class="o">**</span> <span class="mf">0.5</span>
+ 
+        <span class="c1"># Data quality</span>
+        <span class="k">if</span> <span class="n">dqext</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">hdu</span><span class="p">[</span><span class="n">dqext</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span> <span class="ow">or</span> <span class="ne">KeyError</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">CubeError</span><span class="p">(</span><span class="s1">&#39;DQ extension not properly specified &#39;</span> <span class="o">+</span>
+                                <span class="s1">&#39;or absent&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">zerodq</span><span class="o">=</span><span class="kc">True</span>
+        <span class="c1"># put all dq to good (0), data type bytes</span>
+        <span class="k">if</span> <span class="n">zerodq</span><span class="p">:</span>
+            <span class="c1"># data type mirrors JWST output DQ</span>
+            <span class="c1"># https://jwst-pipeline.readthedocs.io/en/stable/jwst/data_products/science_products.html</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dat</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;uint32&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Weight</span>
+        <span class="k">if</span> <span class="n">wmapext</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">wmap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">hdu</span><span class="p">[</span><span class="n">wmapext</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span> <span class="ow">or</span> <span class="ne">KeyError</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">CubeError</span><span class="p">(</span><span class="s1">&#39;WMAP extension not properly specified &#39;</span> <span class="o">+</span>
+                                <span class="s1">&#39;or absent&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wmap</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># headers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">header_phu</span> <span class="o">=</span> <span class="n">hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">header_dat</span> <span class="o">=</span> <span class="n">hdu</span><span class="p">[</span><span class="n">datext</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">header_var</span> <span class="o">=</span> <span class="n">hdu</span><span class="p">[</span><span class="n">varext</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dqext</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">header_dq</span> <span class="o">=</span> <span class="n">hdu</span><span class="p">[</span><span class="n">dqext</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">header_dq</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">wmapext</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">header_wmap</span> <span class="o">=</span> <span class="n">hdu</span><span class="p">[</span><span class="n">wmapext</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">header_wmap</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># copy of data header</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">header_dat</span><span class="p">)</span>
+
+        <span class="c1"># Get shape of data</span>
+        <span class="n">datashape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dat</span><span class="p">)</span>
+        <span class="c1"># cube</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">datashape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">ncols</span> <span class="o">=</span> <span class="p">(</span><span class="n">datashape</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">nrows</span> <span class="o">=</span> <span class="p">(</span><span class="n">datashape</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">nwave</span> <span class="o">=</span> <span class="p">(</span><span class="n">datashape</span><span class="p">)[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span><span class="p">])</span> <span class="o">&gt;</span> <span class="n">nwave</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">CubeError</span><span class="p">(</span><span class="s1">&#39;Data cube dimensions not in &#39;</span> <span class="o">+</span>
+                                <span class="s1">&#39;[nwave, nrows, ncols] format.&#39;</span><span class="p">)</span>
+            <span class="n">CDELT</span> <span class="o">=</span> <span class="s1">&#39;CDELT3&#39;</span>
+            <span class="n">CRVAL</span> <span class="o">=</span> <span class="s1">&#39;CRVAL3&#39;</span>
+            <span class="n">CRPIX</span> <span class="o">=</span> <span class="s1">&#39;CRPIX3&#39;</span>
+            <span class="n">CDELT</span> <span class="o">=</span> <span class="s1">&#39;CDELT3&#39;</span>
+            <span class="n">CD</span> <span class="o">=</span> <span class="s1">&#39;CD3_3&#39;</span>
+            <span class="n">CUNIT</span> <span class="o">=</span> <span class="s1">&#39;CUNIT3&#39;</span>
+            <span class="n">BUNIT</span> <span class="o">=</span> <span class="s1">&#39;BUNIT&#39;</span>
+        <span class="c1"># 1d array of spectra</span>
+        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">datashape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;Cube: Reading 2D image. Assuming dispersion &#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;is along rows.&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+            <span class="n">nrows</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">ncols</span> <span class="o">=</span> <span class="p">(</span><span class="n">datashape</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">nwave</span> <span class="o">=</span> <span class="p">(</span><span class="n">datashape</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">CDELT</span> <span class="o">=</span> <span class="s1">&#39;CDELT1&#39;</span>
+            <span class="n">CRVAL</span> <span class="o">=</span> <span class="s1">&#39;CRVAL1&#39;</span>
+            <span class="n">CRPIX</span> <span class="o">=</span> <span class="s1">&#39;CRPIX1&#39;</span>
+            <span class="n">CDELT</span> <span class="o">=</span> <span class="s1">&#39;CDELT1&#39;</span>
+            <span class="n">CD</span> <span class="o">=</span> <span class="s1">&#39;CD1_1&#39;</span>
+            <span class="n">CUNIT</span> <span class="o">=</span> <span class="s1">&#39;CUNIT1&#39;</span>
+            <span class="n">BUNIT</span> <span class="o">=</span> <span class="s1">&#39;BUNIT&#39;</span>
+        <span class="c1"># single spectrum</span>
+        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">datashape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">nrows</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">ncols</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">nwave</span> <span class="o">=</span> <span class="p">(</span><span class="n">datashape</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">CDELT</span> <span class="o">=</span> <span class="s1">&#39;CDELT1&#39;</span>
+            <span class="n">CRVAL</span> <span class="o">=</span> <span class="s1">&#39;CRVAL1&#39;</span>
+            <span class="n">CRPIX</span> <span class="o">=</span> <span class="s1">&#39;CRPIX1&#39;</span>
+            <span class="n">CDELT</span> <span class="o">=</span> <span class="s1">&#39;CDELT1&#39;</span>
+            <span class="n">CD</span> <span class="o">=</span> <span class="s1">&#39;CD1_1&#39;</span>
+            <span class="n">CUNIT</span> <span class="o">=</span> <span class="s1">&#39;CUNIT1&#39;</span>
+            <span class="n">BUNIT</span> <span class="o">=</span> <span class="s1">&#39;BUNIT&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ncols</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">nrows</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nwave</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">nwave</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cubedim</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">datashape</span><span class="p">)</span>
+
+        <span class="c1"># check on wavelength and flux units</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">waveunit_in</span> <span class="o">=</span> <span class="n">waveunit_in</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span> <span class="o">=</span> <span class="n">fluxunit_in</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">waveunit_out</span> <span class="o">=</span> <span class="n">waveunit_out</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span> <span class="o">=</span> <span class="n">fluxunit_out</span>
+        <span class="c1"># set with header if available</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cunitval</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="n">CUNIT</span><span class="p">]</span>
+            <span class="c1"># switch from fits header string for microns to</span>
+            <span class="c1"># astropy.units string for microns</span>
+            <span class="k">if</span> <span class="n">cunitval</span> <span class="o">==</span> <span class="s1">&#39;um&#39;</span><span class="p">:</span>
+                <span class="n">cunitval</span> <span class="o">=</span> <span class="s1">&#39;micron&#39;</span>
+            <span class="k">if</span> <span class="n">cunitval</span> <span class="o">!=</span> <span class="n">waveunit_in</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">usecunit</span><span class="p">:</span>
+                <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;Cube: Wave units in header (CUNIT) differ from &#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;waveunit_in=&#39;</span><span class="o">+</span><span class="n">waveunit_in</span><span class="o">+</span><span class="s1">&#39;; ignoring CUNIT. &#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;To override, set usecunit=True.&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">waveunit_in</span> <span class="o">=</span> <span class="n">cunitval</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;Cube: No wavelength units in header; using &#39;</span> <span class="o">+</span>
+                <span class="n">waveunit_in</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">bunitval</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="n">BUNIT</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">bunitval</span> <span class="o">!=</span> <span class="n">fluxunit_in</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">usebunit</span><span class="p">:</span>
+                <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;Cube: Flux units in header (BUNIT=&#39;</span><span class="o">+</span><span class="n">bunitval</span><span class="o">+</span>
+                    <span class="s1">&#39;) differ from &#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;fluxunit_in=&#39;</span><span class="o">+</span><span class="n">fluxunit_in</span><span class="o">+</span><span class="s1">&#39;; ignoring BUNIT. &#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;To override, set usebunit=True.&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span> <span class="o">=</span> <span class="n">bunitval</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;Cube: No flux units in header; using &#39;</span> <span class="o">+</span> <span class="n">fluxunit_in</span><span class="p">,</span>
+                <span class="n">file</span><span class="o">=</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+        <span class="c1"># Remove whitespace from units</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">waveunit_in</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+        <span class="c1"># Look for pixel area in square arcseconds</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pixarea_sqas</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;PIXAR_A2&#39;</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pixarea_sqas</span> <span class="o">=</span> <span class="n">pixarea_sqas</span>
+            <span class="k">if</span> <span class="n">pixarea_sqas</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="s1">&#39;Cube: No pixel area in header or specified in call; &#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;no correction for surface brightness flux units.&#39;</span><span class="p">,</span>
+                    <span class="n">file</span><span class="o">=</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+
+        <span class="c1"># cases of weirdo flux units</span>
+        <span class="c1"># remove string literal &#39;/A/&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;/A/&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;/A/&#39;</span><span class="p">,</span> <span class="s1">&#39;/Angstrom/&#39;</span><span class="p">)</span>
+        <span class="c1"># remove string literal &#39;/Ang&#39; if it&#39;s at the end of the string</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;/Ang&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;/Ang&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span><span class="p">)</span><span class="o">-</span><span class="mi">4</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;/Ang&#39;</span><span class="p">,</span> <span class="s1">&#39;/Angstrom&#39;</span><span class="p">)</span>
+        <span class="c1"># remove scientific notation # and trailing whitespace</span>
+        <span class="c1"># https://stackoverflow.com/questions/18152597/extract-scientific-number-from-string</span>
+        <span class="c1"># with some modification</span>
+        <span class="c1"># https://developers.google.com/edu/python/regular-expressions</span>
+        <span class="n">match_number</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;-?\s+[0-9]+\.?[0-9]*(?:[Ee]&#39;</span> <span class="o">+</span>
+                                  <span class="sa">r</span><span class="s1">&#39;\s*-?\s*[0-9]+)\s*&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">match_number</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span><span class="p">)</span>
+
+        <span class="c1"># reading wavelength from wavelength extension</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wavext</span> <span class="o">=</span> <span class="n">wavext</span>
+        <span class="k">if</span> <span class="n">wavext</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="o">=</span> <span class="n">hdu</span><span class="p">[</span><span class="n">wavext</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+                <span class="n">q3dutil</span><span class="o">.</span><span class="n">write_msg</span><span class="p">(</span><span class="s2">&quot;Assuming constant dispersion.&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">logfile</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span> <span class="ow">or</span> <span class="ne">KeyError</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">CubeError</span><span class="p">(</span><span class="s1">&#39;Wave extension not properly specified &#39;</span> <span class="o">+</span>
+                                <span class="s1">&#39;or absent&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">crval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">crpix</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="c1"># assume constant dispersion</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cdelt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">crval</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="n">CRVAL</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">crpix</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="n">CRPIX</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">CubeError</span><span class="p">(</span><span class="s1">&#39;Cannot compute wavelengths; &#39;</span> <span class="o">+</span>
+                                <span class="s1">&#39;CRVAL and/or CRPIX missing&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">CDELT</span> <span class="ow">in</span> <span class="n">header</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_wav0</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="n">CRVAL</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="n">CRPIX</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> \
+                    <span class="n">header</span><span class="p">[</span><span class="n">CDELT</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wav0</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nwave</span><span class="p">)</span><span class="o">*</span><span class="n">header</span><span class="p">[</span><span class="n">CDELT</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cdelt</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="n">CDELT</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">CD</span> <span class="ow">in</span> <span class="n">header</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_wav0</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="n">CRVAL</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="n">CRPIX</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">header</span><span class="p">[</span><span class="n">CD</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wav0</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nwave</span><span class="p">)</span><span class="o">*</span><span class="n">header</span><span class="p">[</span><span class="n">CD</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cdelt</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="n">CD</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">CubeError</span><span class="p">(</span><span class="s1">&#39;Cannot find or compute wavelengths&#39;</span><span class="p">)</span>
+        <span class="c1"># explicitly cast as float64</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float64&#39;</span><span class="p">)</span>
+
+        <span class="c1"># convert wavelengths if requested</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">waveunit_in</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">waveunit_out</span><span class="p">:</span>
+            <span class="n">wave_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">waveunit_in</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="o">=</span> <span class="n">wave_in</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">waveunit_out</span><span class="p">))</span><span class="o">.</span><span class="n">value</span>
+
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        This feature is not currently implemented.</span>
+<span class="sd">        # indexing of Voronoi-tessellated data</span>
+<span class="sd">        if vormap:</span>
+<span class="sd">            ncols = np.max(vormap)</span>
+<span class="sd">            nrows = 1</span>
+<span class="sd">            vordat = np.zeros((ncols, nrows, nwave))</span>
+<span class="sd">            vorvar = np.zeros((ncols, nrows, nwave))</span>
+<span class="sd">            vordq = np.zeros((ncols, nrows, nwave))</span>
+<span class="sd">            vorcoords = np.zeros((ncols, 2), dtype=int)</span>
+<span class="sd">            nvor = np.zeros((ncols))</span>
+<span class="sd">            for i in np.arange(ncols):</span>
+<span class="sd">                ivor = np.where(vormap == i+1)</span>
+<span class="sd">                xyvor = [ivor[0][0], ivor[0][1]]</span>
+<span class="sd">                vordat[i, 0, :] = self.dat[xyvor[0], xyvor[1], :]</span>
+<span class="sd">                if self.var is not None:</span>
+<span class="sd">                    vorvar[i, 0, :] = self.var[xyvor[0], xyvor[1], :]</span>
+<span class="sd">                if self.dq is not None:</span>
+<span class="sd">                    vordq[i, 0, :] = self.dq[xyvor[0], xyvor[1], :]</span>
+<span class="sd">                vorcoords[i, :] = xyvor</span>
+<span class="sd">                nvor[i] = (np.shape(ivor))[1]</span>
+<span class="sd">            self.dat = vordat</span>
+<span class="sd">            self.var = vorvar</span>
+<span class="sd">            self.dq = vordq</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="c1"># Flux unit conversions</span>
+        <span class="c1"># default working flux unit is erg/s/cm^2/um/sr or erg/s/cm^2/um</span>
+        <span class="n">convert_flux</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="mf">1.</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;Jy&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span> <span class="ow">and</span> <span class="s1">&#39;Jy&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span><span class="p">:</span>
+            <span class="c1"># IR units: https://coolwiki.ipac.caltech.edu/index.php/Units</span>
+            <span class="c1"># default input flux unit is MJy/sr</span>
+            <span class="c1"># 1 Jy = 10^-26 W/m^2/Hz</span>
+            <span class="c1"># first fac: MJy to Jy</span>
+            <span class="c1"># second fac: 10^-26 W/m^2/Hz / Jy * 10^-4 m^2/cm^-2 * 10^7 erg/s/W</span>
+            <span class="c1">#    = 10^-23 erg/cm^-2/s/Hz</span>
+            <span class="c1"># third fac: c/lambda**2 Hz/micron, with lambda^2 in m*micron</span>
+            <span class="n">wave_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">waveunit_out</span><span class="p">)</span>
+            <span class="n">convert_flux</span> <span class="o">=</span> <span class="mf">1e-23</span> <span class="o">*</span> <span class="n">c</span><span class="o">.</span><span class="n">value</span> <span class="o">/</span> <span class="n">wave_out</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;m&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">value</span> <span class="o">/</span> \
+                <span class="n">wave_out</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;micron&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">if</span> <span class="s1">&#39;MJy&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span><span class="p">:</span>
+                <span class="n">convert_flux</span> <span class="o">*=</span> <span class="mf">1e6</span>
+
+        <span class="c1"># case of input flux_lambda cgs units per Angstrom:</span>
+        <span class="k">elif</span> <span class="s1">&#39;/Angstrom&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span><span class="p">:</span>
+            <span class="n">convert_flux</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="mf">1e4</span><span class="p">)</span>
+
+        <span class="c1"># case of output flux_lambda cgs units per Angstrom:</span>
+        <span class="k">if</span> <span class="s1">&#39;/Angstrom&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span><span class="p">:</span>
+            <span class="n">convert_flux</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="mf">1e4</span><span class="p">)</span>
+
+        <span class="c1"># remove /sr or /arcsec2</span>
+        <span class="k">if</span> <span class="s1">&#39;/sr&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span> <span class="ow">and</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">pixarea_sqas</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">convert_flux</span> <span class="o">*=</span> <span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mf">206265.</span><span class="o">*</span><span class="mf">206265.</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">pixarea_sqas</span>
+            <span class="k">if</span> <span class="s1">&#39;/sr&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;/sr&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;/sr&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span> <span class="ow">and</span> <span class="s1">&#39;/sr&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;/sr&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;/arcsec2&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span> <span class="ow">and</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">pixarea_sqas</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">convert_flux</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixarea_sqas</span>
+            <span class="k">if</span> <span class="s1">&#39;/arcsec2&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;/arcsec2&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">dat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dat</span> <span class="o">*</span> <span class="n">convert_flux</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="o">*</span> <span class="n">convert_flux</span><span class="o">**</span><span class="mi">2</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">err</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">err</span> <span class="o">*</span> <span class="n">convert_flux</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fluxnorm</span> <span class="o">=</span> <span class="n">fluxnorm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dat</span> <span class="o">/</span> <span class="n">fluxnorm</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="o">/</span> <span class="n">fluxnorm</span><span class="o">**</span><span class="mi">2</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">err</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">err</span> <span class="o">/</span> <span class="n">fluxnorm</span>
+<span class="w">        </span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        This feature is not currently implemented.</span>
+<span class="sd">        # linearize in the wavelength direction</span>
+<span class="sd">        if linearize:</span>
+<span class="sd">            waveold = copy.copy(self.wave)</span>
+<span class="sd">            datold = copy.copy(self.dat)</span>
+<span class="sd">            varold = copy.copy(self.var)</span>
+<span class="sd">            dqold = copy.copy(self.dq)</span>
+<span class="sd">            self.crpix = 1</span>
+<span class="sd">            self.cdelt = (waveold[-1]-waveold[0]) / (self.nwave-1)</span>
+<span class="sd">            wave = np.linspace(waveold[0], waveold[-1], num=self.nwave)</span>
+<span class="sd">            self.wave = wave</span>
+<span class="sd">            if self.cubedim == 1:</span>
+<span class="sd">                spldat = interpolate.splrep(waveold, datold, s=0)</span>
+<span class="sd">                self.dat = interpolate.splev(wave_in, spldat, der=0)</span>
+<span class="sd">                splvar = interpolate.splrep(waveold, varold, s=0)</span>
+<span class="sd">                self.var = interpolate.splev(wave, splvar, der=0)</span>
+<span class="sd">                spldq = interpolate.splrep(waveold, dqold, s=0)</span>
+<span class="sd">                self.dq = interpolate.splev(wave, spldq, der=0)</span>
+<span class="sd">            elif self.cubedim == 2:</span>
+<span class="sd">                for i in np.arange(self.ncols):</span>
+<span class="sd">                    spldat = interpolate.splrep(waveold, datold[i, :], s=0)</span>
+<span class="sd">                    self.dat[i, :] = interpolate.splev(wave, spldat, der=0)</span>
+<span class="sd">                    if self.var is not None:</span>
+<span class="sd">                        splvar = interpolate.splrep(waveold, varold[i, :], s=0)</span>
+<span class="sd">                        self.var[i, :] = interpolate.splev(wave, splvar, der=0)</span>
+<span class="sd">                    if self.dq is not None:</span>
+<span class="sd">                        spldq = interpolate.splrep(waveold, dqold[i, :], s=0)</span>
+<span class="sd">                        self.dq[i, :] = interpolate.splev(wave, spldq, der=0)</span>
+<span class="sd">            elif self.cubedim == 3:</span>
+<span class="sd">                for i in np.arange(self.ncols):</span>
+<span class="sd">                    for j in np.arange(self.nrows):</span>
+<span class="sd">                        spldat = interpolate.splrep(waveold, datold[i, j, :],</span>
+<span class="sd">                            s=0)</span>
+<span class="sd">                        self.dat[i, j, :] = interpolate.splev(wave, spldat,</span>
+<span class="sd">                            der=0)</span>
+<span class="sd">                        if self.var is not None:</span>
+<span class="sd">                            splvar = interpolate.splrep(waveold, varold[i, j, :],</span>
+<span class="sd">                                s=0)</span>
+<span class="sd">                            self.var[i, j, :] = interpolate.splev(wave, splvar,</span>
+<span class="sd">                                der=0)</span>
+<span class="sd">                        if self.dq is not None:</span>
+<span class="sd">                            spldq = interpolate.splrep(waveold, dqold[i, j, :],</span>
+<span class="sd">                                s=0)</span>
+<span class="sd">                            self.dq[i, j, :] = interpolate.splev(wave, spldq,</span>
+<span class="sd">                                der=0)</span>
+<span class="sd">            if not quiet:</span>
+<span class="sd">                print(&#39;Cube: Interpolating DQ; values &gt; 0.01 set to 1.&#39;,</span>
+<span class="sd">                      file=logfile)</span>
+<span class="sd">            if self.dq is not None:</span>
+<span class="sd">                ibd = np.where(self.dq &gt; 0.01)</span>
+<span class="sd">                if np.size(ibd) &gt; 0:</span>
+<span class="sd">                    self.dq[ibd] = 1</span>
+<span class="sd">            if self.var is not None:</span>
+<span class="sd">                self.err = copy.copy(self.var)**0.5</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="c1"># close the fits file</span>
+        <span class="n">hdu</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="Cube.about">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.readcube.Cube.about">[docs]</a>
+    <span class="k">def</span> <span class="nf">about</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Print information about the cube to stdout.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Size of data cube: [</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nwave</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Wavelength range: [</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">0.5f</span><span class="si">}</span><span class="s2">,&quot;</span><span class="p">,</span>
+              <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">nwave</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">0.5f</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">,</span>
+              <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">waveunit_out</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dispersion: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cdelt</span><span class="si">:</span><span class="s2">0.5f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">waveunit_out</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Input flux units: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_in</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Input wave units: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">waveunit_in</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Output flux units: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Output wave units: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">waveunit_out</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;NB: q3dfit uses output units for internal calculations.&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="Cube.convolve">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.readcube.Cube.convolve">[docs]</a>
+    <span class="k">def</span> <span class="nf">convolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">refsize</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
+                 <span class="n">wavescale</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;circle&#39;</span><span class="p">,</span><span class="s1">&#39;Gaussian&#39;</span><span class="p">,</span><span class="s1">&#39;boxcar&#39;</span><span class="p">]</span><span class="o">=</span><span class="s1">&#39;circle&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Spatially smooth a cube. Updates the data, variance, and error attributes.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        refsize</span>
+<span class="sd">            Pixel size for smoothing algorithm.</span>
+<span class="sd">        wavescale</span>
+<span class="sd">            Optional. Scale smoothing size with wavelength. Default is False.</span>
+<span class="sd">        method</span>
+<span class="sd">            Optional. Smoothing method. Options are &#39;circle&#39;, &#39;Gaussian&#39;, and </span>
+<span class="sd">            &#39;boxcar&#39;. Default is &#39;circle&#39;.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="kn">from</span> <span class="nn">astropy.convolution</span> <span class="kn">import</span> <span class="n">convolve</span><span class="p">,</span> <span class="n">Box2DKernel</span><span class="p">,</span> <span class="n">Gaussian2DKernel</span><span class="p">,</span> \
+            <span class="n">Tophat2DKernel</span>
+
+        <span class="c1"># check for flux/err = inf or bad dq</span>
+        <span class="c1"># set to nan, as convolve will deal with nans</span>
+        <span class="c1"># set dq to 1 to flag as bad</span>
+        <span class="c1"># [astropy.convolve can interpolate over nans;</span>
+        <span class="c1"># does this mean we don&#39;t need to set dq to 1?]</span>
+        <span class="n">indx_bd</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dat</span><span class="p">)</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">var</span><span class="p">)</span> <span class="o">|</span>
+                   <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dq</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">nonzero</span><span class="p">()</span>
+        <span class="n">indx_bd</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dat</span><span class="p">)</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">var</span><span class="p">)</span> <span class="o">|</span>
+                   <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dq</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">nonzero</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dat</span><span class="p">[</span><span class="n">indx_bd</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">err</span><span class="p">[</span><span class="n">indx_bd</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="n">indx_bd</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dq</span><span class="p">[</span><span class="n">indx_bd</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="c1"># decreasing convolution size with increasing wavelength</span>
+        <span class="c1"># reference size is at the longest wavelength</span>
+        <span class="k">if</span> <span class="n">wavescale</span><span class="p">:</span>
+            <span class="n">cscale</span> <span class="o">=</span> <span class="n">refsize</span><span class="o">/</span><span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">)</span>
+            <span class="n">sizes</span> <span class="o">=</span> <span class="n">cscale</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sizes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nwave</span><span class="p">)</span>
+            <span class="n">sizes</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">refsize</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nwave</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;circle&#39;</span><span class="p">:</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="n">Tophat2DKernel</span><span class="p">(</span><span class="n">sizes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;Gaussian&#39;</span><span class="p">:</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="n">Gaussian2DKernel</span><span class="p">(</span><span class="n">sizes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;boxcar&#39;</span><span class="p">:</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="n">Box2DKernel</span><span class="p">(</span><span class="n">sizes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">convolve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">mask</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">var</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">convolve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">var</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">mask</span><span class="p">)</span>
+
+        <span class="c1"># re-compute error</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">var</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="Cube.makeqsotemplate">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.readcube.Cube.makeqsotemplate">[docs]</a>
+    <span class="k">def</span> <span class="nf">makeqsotemplate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                        <span class="n">outpy</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                        <span class="n">col</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">row</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">norm</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span>
+                        <span class="n">plot</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">1.</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Extract the quasar spectrum and save it to a numpy file.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        outpy</span>
+<span class="sd">            Name of the numpy save file for the resulting qso spectrum.</span>
+<span class="sd">        col</span>
+<span class="sd">            Optional. x value of aperture center, in unity-offset</span>
+<span class="sd">            coordinates. Default is None, in which case the cube is median-</span>
+<span class="sd">            collapsed in wavelength and the peak spaxel is used.</span>
+<span class="sd">        row</span>
+<span class="sd">            Optional.yx value of aperture center, in unity-offset</span>
+<span class="sd">            coordinates. Default is None, in which case the cube is median-</span>
+<span class="sd">            collapsed in wavelength and the peak spaxel is used.</span>
+<span class="sd">        norm</span>
+<span class="sd">            Optional. Factor by which to divide output spectrum. Default is 1.</span>
+<span class="sd">        plot</span>
+<span class="sd">            Optional. Plot extracted spectrum. Default is True.</span>
+<span class="sd">        radius</span>
+<span class="sd">            Optional. Radius for circular extraction. Must be &gt; 0. Default is 1.</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">if</span> <span class="n">col</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">row</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;makeqsotempate: using peak spaxel in white light as center&#39;</span><span class="p">)</span>
+            <span class="n">white_light_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dat</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">white_light_image</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">white_light_image</span><span class="p">))]</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="n">loc_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">white_light_image</span> <span class="o">==</span> <span class="n">white_light_image</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+            <span class="n">col</span> <span class="o">=</span> <span class="n">loc_max</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="n">loc_max</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span>
+
+        <span class="n">qsotemplate</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;wave&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">}</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">specextract</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="n">plot</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">qsotemplate</span><span class="p">[</span><span class="s1">&#39;flux&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">qsotemplate</span><span class="p">[</span><span class="s1">&#39;var&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dq</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">qsotemplate</span><span class="p">[</span><span class="s1">&#39;dq&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span>
+
+        <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">outpy</span><span class="p">,</span> <span class="n">qsotemplate</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="Cube.specextract">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.readcube.Cube.specextract">[docs]</a>
+    <span class="k">def</span> <span class="nf">specextract</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                    <span class="n">col</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                    <span class="n">row</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                    <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span>
+                    <span class="n">norm</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span>
+                    <span class="n">plot</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">ylim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Extract a spectrum in a single spaxel or a circular aperture.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        col</span>
+<span class="sd">            x value of aperture center, in unity-offset coordinates.</span>
+<span class="sd">        row</span>
+<span class="sd">            y value of aperture center, in unity-offset coordinates.</span>
+<span class="sd">        radius</span>
+<span class="sd">            Optional. Radius for circular extraction. If 0, extract single </span>
+<span class="sd">            spaxel. Default is 1.</span>
+<span class="sd">        norm</span>
+<span class="sd">            Optional. Factor by which to divide output spectrum. Default is 1.</span>
+<span class="sd">        plot</span>
+<span class="sd">            Optional. Plot extracted spectrum.</span>
+<span class="sd">        ylim</span>
+<span class="sd">            Optional. Y-axis limits for plot. Default is None, in which case</span>
+<span class="sd">            the plot will autoscale.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        numpy.ndarray</span>
+<span class="sd">            Array of size nwave x (1-3), including data and var and/or dq if</span>
+<span class="sd">            present.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        <span class="kn">import</span> <span class="nn">photutils</span>
+
+        <span class="c1"># second dimension of output array</span>
+        <span class="nb">next</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">next</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dq</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">next</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># create output array</span>
+        <span class="c1"># Note that all planes have same dtype (float)</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">nwave</span><span class="p">,</span> <span class="nb">next</span><span class="p">))</span>
+
+        <span class="c1"># Set extraction to single pixel if zero radius is specified</span>
+        <span class="c1"># Round col, row to nearest integer first</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">spec</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dat</span> <span class="o">/</span> <span class="n">norm</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">spec</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="o">/</span> <span class="n">norm</span> <span class="o">/</span> <span class="n">norm</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dq</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">spec</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dq</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">intcol</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+                <span class="n">spec</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dat</span><span class="p">[</span><span class="n">intcol</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">/</span> <span class="n">norm</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">spec</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="n">intcol</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">/</span> <span class="n">norm</span> <span class="o">/</span> <span class="n">norm</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dq</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">spec</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dq</span><span class="p">[</span><span class="n">intcol</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="k">elif</span> <span class="n">radius</span> <span class="o">==</span> <span class="mf">0.</span><span class="p">:</span>
+            <span class="n">intcol</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+            <span class="n">introw</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+            <span class="n">spec</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dat</span><span class="p">[</span><span class="n">intcol</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">introw</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">/</span> <span class="n">norm</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">spec</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="n">intcol</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">introw</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">/</span> <span class="n">norm</span> <span class="o">/</span> <span class="n">norm</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dq</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">spec</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dq</span><span class="p">[</span><span class="n">intcol</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">introw</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># create circular mask</span>
+            <span class="n">cent</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">row</span><span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="n">col</span><span class="o">-</span><span class="mf">1.</span><span class="p">])</span>
+            <span class="n">aper</span> <span class="o">=</span> <span class="n">photutils</span><span class="o">.</span><span class="n">aperture</span><span class="o">.</span><span class="n">CircularAperture</span><span class="p">(</span><span class="n">cent</span><span class="p">,</span> <span class="n">radius</span><span class="p">)</span>
+
+            <span class="c1"># loop through wavelengths</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nwave</span><span class="p">):</span>
+                <span class="n">specdat</span> <span class="o">=</span> \
+                    <span class="n">photutils</span><span class="o">.</span><span class="n">aperture</span><span class="o">.</span><span class="n">aperture_photometry</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">dat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">aper</span><span class="p">)</span>
+                <span class="n">spec</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">specdat</span><span class="p">[</span><span class="s1">&#39;aperture_sum&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">norm</span>
+                <span class="c1"># for now simply sum var as well</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">specvar</span> <span class="o">=</span> \
+                        <span class="n">photutils</span><span class="o">.</span><span class="n">aperture</span><span class="o">.</span><span class="n">aperture_photometry</span><span class="p">(</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">var</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">aper</span><span class="p">)</span>
+                    <span class="n">spec</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">specvar</span><span class="p">[</span><span class="s1">&#39;aperture_sum&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">norm</span> <span class="o">/</span> <span class="n">norm</span>
+                <span class="c1"># for now simply sum dq</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dq</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">specdq</span> <span class="o">=</span> \
+                        <span class="n">photutils</span><span class="o">.</span><span class="n">aperture</span><span class="o">.</span><span class="n">aperture_photometry</span><span class="p">(</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">dq</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">aper</span><span class="p">)</span>
+                    <span class="n">spec</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">specdq</span><span class="p">[</span><span class="s1">&#39;aperture_sum&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">,</span> <span class="n">spec</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">spec</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]))</span>
+            <span class="k">if</span> <span class="n">ylim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="n">ylim</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">spec</span></div>
+
+
+
+<div class="viewcode-block" id="Cube.reproject">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.readcube.Cube.reproject">[docs]</a>
+    <span class="k">def</span> <span class="nf">reproject</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                  <span class="n">newheader</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+                  <span class="n">new2dshape</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+                  <span class="n">newpixarea_sqas</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                  <span class="n">parallel</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Reproject cube onto a new WCS. Overwrites the data, variance, dq, and</span>
+<span class="sd">        error attributes. Also updates the pixel area, nrows, ncols, and</span>
+<span class="sd">        PIXEL_A2 keyword in the header.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        newheader</span>
+<span class="sd">            Header object containing new WCS information.</span>
+<span class="sd">        new2dshape</span>
+<span class="sd">            2-element array containing (nrows, ncols).</span>
+<span class="sd">        newpixarea_sqas</span>
+<span class="sd">            Pixel area in square arcseconds.</span>
+<span class="sd">        parallel</span>
+<span class="sd">            Optional. Use parallel processing when computing</span>
+<span class="sd">            reprojection. Default is True.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="kn">from</span> <span class="nn">reproject</span> <span class="kn">import</span> <span class="n">reproject_exact</span>
+
+        <span class="n">head2d</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">header_dat</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;NAXIS3&#39;</span> <span class="ow">in</span> <span class="n">head2d</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">head2d</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                <span class="k">if</span> <span class="s2">&quot;3&quot;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+                    <span class="n">head2d</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="n">head2d</span><span class="p">[</span><span class="s1">&#39;NAXIS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+            <span class="n">head2d</span><span class="p">[</span><span class="s1">&#39;WCSAXES&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+
+        <span class="n">nstack</span> <span class="o">=</span> <span class="mi">3</span> <span class="c1"># for dat, var, dq</span>
+        <span class="n">dqind</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="c1"># temporary array has size (nstack, ncols, nrows, nwave)</span>
+        <span class="c1"># reproject needs (nrows, ncols), but cube stores data</span>
+        <span class="c1"># as (ncols, nrows)</span>
+        <span class="n">stack_in</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">((</span><span class="n">nstack</span><span class="p">,)</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">)</span> <span class="o">+</span>
+                              <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nwave</span><span class="p">,))</span>
+        <span class="n">stack_rp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">((</span><span class="n">nstack</span><span class="p">,)</span> <span class="o">+</span> <span class="n">new2dshape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span>
+                              <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nwave</span><span class="p">,))</span>
+        <span class="n">stack_in</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dat</span>
+        <span class="n">stack_in</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span>
+        <span class="n">stack_in</span><span class="p">[</span><span class="n">dqind</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dq</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nwave</span><span class="p">):</span>
+            <span class="c1"># transpose data to (nrows, ncols)</span>
+            <span class="n">tmp_rp</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> \
+                <span class="n">reproject_exact</span><span class="p">((</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">stack_in</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+                    <span class="n">head2d</span><span class="p">),</span> <span class="n">newheader</span><span class="p">,</span> <span class="n">shape_out</span><span class="o">=</span><span class="n">new2dshape</span><span class="p">,</span>
+                    <span class="n">parallel</span><span class="o">=</span><span class="n">parallel</span><span class="p">)</span>
+            <span class="c1"># transpose back</span>
+            <span class="n">stack_rp</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">tmp_rp</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dat</span> <span class="o">=</span> <span class="n">stack_rp</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="o">=</span> <span class="n">stack_rp</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dq</span> <span class="o">=</span> <span class="n">stack_rp</span><span class="p">[</span><span class="n">dqind</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="c1"># do surface brightness conversion</span>
+        <span class="c1"># reproject expects SB units</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixarea_sqas</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dat</span> <span class="o">/=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixarea_sqas</span> <span class="o">/</span> <span class="n">newpixarea_sqas</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="o">/=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pixarea_sqas</span> <span class="o">/</span> <span class="n">newpixarea_sqas</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pixarea_sqas</span> <span class="o">=</span> <span class="n">newpixarea_sqas</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;WARNING: reproject needs original pixel area in square &#39;</span> <span class="o">+</span>
+                  <span class="s1">&#39;arcseconds to properly calculate flux units. Input as &#39;</span> <span class="o">+</span>
+                  <span class="s1">&#39;pixarea_sqas=VALUE in call to cube if not in header.&#39;</span><span class="p">)</span>
+
+        <span class="c1"># store new shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span> <span class="o">=</span> <span class="n">new2dshape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span> <span class="o">=</span> <span class="n">new2dshape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># re-compute error</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">var</span><span class="p">)</span>
+
+        <span class="c1"># in case we need to write this to disk for later access</span>
+        <span class="k">if</span> <span class="s1">&#39;PIXAR_A2&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">header_dat</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">header_dat</span><span class="p">[</span><span class="s1">&#39;PIXAR_A2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixarea_sqas</span></div>
+
+
+
+<div class="viewcode-block" id="Cube.writefits">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.readcube.Cube.writefits">[docs]</a>
+    <span class="k">def</span> <span class="nf">writefits</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                  <span class="n">outfile</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Write cube to file outfile. Assumes extension order empty phu (if</span>
+<span class="sd">        present in original fits file), datext, varext, dqext, and wmapext.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        outfile</span>
+<span class="sd">            Name of output file.</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Output flux units: &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Output wave units: &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">waveunit_out</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;BUNIT&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">header_dat</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">header_dat</span><span class="p">[</span><span class="s1">&#39;BUNIT&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">datext</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># create empty PHU</span>
+            <span class="n">hdu1</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">header_phu</span><span class="p">)</span>
+            <span class="c1"># create HDUList</span>
+            <span class="n">hdul</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">([</span><span class="n">hdu1</span><span class="p">])</span>
+            <span class="c1"># add data</span>
+            <span class="n">hdul</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dat</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">header_dat</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># create PHU with data</span>
+            <span class="n">hdu1</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dat</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">header_dat</span><span class="p">)</span>
+            <span class="c1"># create HDUList</span>
+            <span class="n">hdul</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">([</span><span class="n">hdu1</span><span class="p">])</span>
+
+        <span class="c1"># add variance, DQ, and wmap if present</span>
+        <span class="n">hdul</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">var</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">header_var</span><span class="p">))</span>
+        <span class="n">hdul</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dq</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">header_dq</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">wmapext</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">hdul</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wmap</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">header_wmap</span><span class="p">))</span>
+
+        <span class="n">hdul</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="Cube.writespec">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.readcube.Cube.writespec">[docs]</a>
+    <span class="k">def</span> <span class="nf">writespec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                  <span class="n">spec</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+                  <span class="n">outfile</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Write extracted spectrum to disk. Assumes extension order empty phu (if</span>
+<span class="sd">        present in original fits file), datext, varext, dqext, and wmapext.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        spec</span>
+<span class="sd">            Array of size nwave x (1-3), including data and var and/or dq if</span>
+<span class="sd">            present.</span>
+<span class="sd">        outfile</span>
+<span class="sd">            Name of output file.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Output flux units: &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Output wave units: &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">waveunit_out</span><span class="p">)</span>
+
+        <span class="c1"># deal with simplest case for now</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">wavext</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">hdr</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Header</span><span class="p">({</span><span class="s1">&#39;CUNIT1&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">waveunit_out</span><span class="p">,</span>
+                               <span class="s1">&#39;CRPIX1&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">crpix</span><span class="p">,</span>
+                               <span class="s1">&#39;CDELT1&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cdelt</span><span class="p">,</span>
+                               <span class="s1">&#39;CRVAL1&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">crval</span><span class="p">,</span>
+                               <span class="s1">&#39;CTYPE1&#39;</span><span class="p">:</span> <span class="s1">&#39;WAVE&#39;</span><span class="p">,</span>
+                               <span class="s1">&#39;BUNIT&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">fluxunit_out</span><span class="p">})</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">datext</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># create empty PHU</span>
+            <span class="n">hdu1</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">header_phu</span><span class="p">)</span>
+            <span class="c1"># create HDUList</span>
+            <span class="n">hdul</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">([</span><span class="n">hdu1</span><span class="p">])</span>
+            <span class="c1"># add data</span>
+            <span class="n">hdul</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">(</span><span class="n">spec</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">header</span><span class="o">=</span><span class="n">hdr</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># create PHU with data</span>
+            <span class="n">hdu1</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">spec</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">header</span><span class="o">=</span><span class="n">hdr</span><span class="p">)</span>
+            <span class="c1"># create HDUList</span>
+            <span class="n">hdul</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">([</span><span class="n">hdu1</span><span class="p">])</span>
+
+        <span class="c1"># add variance, DQ, and wmap if present</span>
+        <span class="n">hdul</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">(</span><span class="n">spec</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">header</span><span class="o">=</span><span class="n">hdr</span><span class="p">))</span>
+        <span class="n">hdul</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">(</span><span class="n">spec</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">header</span><span class="o">=</span><span class="n">hdr</span><span class="p">))</span>
+        <span class="c1"># if self.wmapext is not None:</span>
+        <span class="c1">#     hdul.append(fits.ImageHDU(self.wmap.T, header=self.header_wmap))</span>
+
+        <span class="n">hdul</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, David Rupke and the Q3D Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

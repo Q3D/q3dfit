@@ -2,11 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 @author: Yuzo Ishikawa
-
 """
-
 #import copy
-import glob
 import numpy as np
 import os
 import re
@@ -16,6 +13,7 @@ from astropy.stats import gaussian_sigma_to_fwhm
 from ppxf.ppxf_util import varsmooth
 #from scipy.ndimage import gaussian_filter1d
 from scipy.interpolate import CubicSpline
+
 import q3dfit.data.dispersion_files
 
 
@@ -26,12 +24,29 @@ class spectConvol:
     JWST provides NIRSpec dispersion files. However, MIRI is not provided. 
     Instead, we take a Cubic Spline interpolation based on the curves in 
     the Jdocs website.
+    
+    For the constructor, the requested dispersion curves
+    are either loaded from a file, created from a flat dispersion curve,
+    or computed from a formula in the case of MRS.
+
+    Parameters
+    ----------
+    spect_convol : {'ws_instrum': dict[str, str], 'dispdir': Union[str, None]}
+        'ws_instrum` contains instrument/grating combinations.
+        `dispdir` is the directory of dispersion files. If set to None (default), 
+        the q3dfit dispersion_file directory is used.
+
+    Raises
+    ------
+    SystemExit
+        If no `ws_instrum` dictionary is found in the input dictionary.
+        If an error is found in the input dictionary.
 
     Attributes
     ----------
-    dispdir : str
+    dispdir 
         Full directory of dispersion files in the repository.
-    InstGratObjs : dict
+    InstGratObjs
         Nested dictionary whose keys are instrument/grating combinations.
         The values are dispersion objects.
        
@@ -49,32 +64,8 @@ class spectConvol:
     '''
 
 
-    def __init__(self, spect_convol):
-        '''
-        Instantiate the spectConvol class. The requested dispersion curves
-        are either loaded from a file, created from a flat dispersion curve,
-        or computed from a formula in the case of MRS.
-
-        Parameters
-        ----------
-        spect_convol : dict
-            Dictionary with the following keys:
-            - ws_instrum : dict
-                Nested dictionary of instrument/grating combinations.
-            - dispdir : str, optional
-                Directory of dispersion files. Default is None. If not
-                specified, the q3dfit dispersion_file directory is used.
-
-        Raises
-        ------
-        SystemExit
-
-        Returns
-        -------
-        None
-
-        '''
-
+    def __init__(self,
+                 spect_convol):
         # full directory of dispersion files in repo
         #self.dispdir = os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],
         #    'dispersion_files')

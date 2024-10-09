@@ -1,83 +1,94 @@
+'''
+Continuum fitting routines and subroutines.
+'''
+from __future__ import annotations
+
+__all__ = ['fitpoly', 'fitqsohost', 'questfit', 'linfit_plus_FeII',
+           'Fe_flux_balmer', 'Fe_flux_UV', 'quest_extract_QSO_contrib']
+
+from typing import Optional, Any
+from numpy.typing import ArrayLike
+
 import copy
 import importlib.resources as pkg_resources
 import lmfit
 import numpy as np
 import ppxf.ppxf_util as util
-import sys, os
+import os
 
 from astropy import units as u
-from astropy.constants import c
+from astropy.constants import c # type: ignore
 from astropy.modeling import models, fitting
 # from lmfit.models import ExpressionModel
-from matplotlib import pyplot as plt
-from ppxf.ppxf import ppxf
-from q3dfit import interp_temp_quest
-from q3dfit import questfitfcn
-from q3dfit.questfitfcn import readcf
-# from q3dfit import writeout_quest
-from q3dfit.data import questfit_templates
-from q3dfit.data.questfit_templates import silicatemodels
-from q3dfit.qsohostfcn import qsohostfcn
-from q3dfit.interptemp import interptemp
-from scipy import constants, interpolate
-
 from lmfit.models import LinearModel
+from ppxf.ppxf import ppxf
+from scipy import interpolate
 
-def fitpoly(lam, flux, weight, unused1, unused2, index, unused3,
-            fitord=3, quiet=False, refit=None, **kwargs):
+from . import q3dmath, q3dutil, qsohostfcn, questfitfcn
+from q3dfit import questfitfcn
+from q3dfit.data import questfit_templates
+#from q3dfit.data.questfit_templates import silicatemodels
+from q3dfit.exceptions import InitializationError
+
+
+def fitpoly(wave: np.ndarray, 
+            flux: np.ndarray, 
+            weight: np.ndarray, 
+            index: np.ndarray, 
+            logfile: Optional[str]=None,
+            quiet: bool=True,
+            fitord: int=3, 
+            refit: Optional[dict[str, ArrayLike]] = None) \
+                -> tuple[np.ndarray, ArrayLike, None]:
     '''
-    This function fits the continuum as a polynomial.
+    Fit the continuum as a polynomial.
 
     Parameters
     ----------
-    lam: numpy.ndarray
-        wavelength
-    flux: numpy.ndarray
-        Flux values to be fit
-    weight: numpy.ndarray
-        Weights of each individual pixel to be fit
-    unused1
-        Not used in this function.
-    unused2
-        Not used in this function.
-    index: array
-        Pixels used in the fit.
-    unused3
-        Not used in this function.
-    fitord: int, optional
-        Order of the polynomial fit.
-    quiet: bool, optional
-        Not used in this function.
-    refit: NoneType or dictionary, optional
-        Refit with a different polynomial order. Default is None. Dictionary
-        should have keys 'ord' and 'ran' for the order and range of the
-        refit, respectively.
-    kwargs: dict, optional
-        Additional keyword arguments.
+    wave
+        Wavelengths
+    flux
+        Fluxes
+    weight
+        Weights
+    index
+        Points used in the fit.
+    logfile
+        Optional. Name of the log file. Default is None.
+    quiet
+        Optional. Suppress output to stdout? Default is True.
+    fitord
+        Optional. Order of the polynomial. Default is 3.
+    refit
+        Optional. Refit with a different polynomial order? If so, set to dictionary
+        with keys 'ord' and 'ran' for the order and range of the
+        refit, respectively. Can specify multiple ranges and orders as
+        array_like. Default is None.
 
     Returns
     -------
-    continuum: array
+    np.ndarray
         best fit continuum model
-    ct_coeff: dictionary or lmfit best fit params structure
-        best fit parameters
-
+    ArrayLike
+        Polynomial coefficients.
+    None
+        Unused
     '''
-    ilam = np.array(lam[index])
+    iwave = np.array(wave[index])
     iflux = np.array(flux[index])
     #the fitter I used puts weights in 1/sigma so I took the square root to make the data correct
     w = np.array(weight[index])
     iweight = np.array(np.sqrt(w))
 
-    ilam = ilam.reshape(ilam.size)
-    iflux = iflux.reshape(ilam.size)
-    iweight = iweight.reshape(ilam.size)
+    iwave = iwave.reshape(iwave.size)
+    iflux = iflux.reshape(iwave.size)
+    iweight = iweight.reshape(iwave.size)
 
     if len(ilam) <= fitord:
     	fitord = len(ilam)-1
 
     if fitord==0:
-        deg1=len(ilam)-1
+        deg1=len(iwave)-1
         deg2=fitord
     else:
         deg1=fitord
@@ -90,31 +101,32 @@ def fitpoly(lam, flux, weight, unused1, unused2, index, unused3,
     polymod2= models.Polynomial1D(deg2)
 
     #creating fluxfit
-    fluxfit = fitter(polymod1, ilam, iflux, weights=iweight)
-    fluxfitparam=fluxfit.parameters
+    fluxfit = fitter(polymod1, iwave, iflux, weights=iweight)
+    # polynomial coefficients
+    fluxfitparam = fluxfit.parameters
 
     #flip for numpy.poly1d
     ct_coeff = np.flip(fluxfitparam)
     # this is a class:
     # https://numpy.org/doc/stable/reference/generated/numpy.poly1d.html
     ct_poly = np.poly1d(ct_coeff, variable='lambda')
-    continuum = ct_poly(lam)
+    continuum = ct_poly(wave)
     icontinuum = continuum[index]
 
     if refit is not None:
         for i in range (0, np.size(refit['ord']) - 1):
-            tmp_ind=np.where(lam >= refit['ran'][0,i] and
-                             lam <= refit['ran'][1,i])
-            tmp_iind=np.where(ilam >= refit['ran'][0,i] and
-                              ilam <= refit['ran'][1,i])
+            tmp_ind=np.where(wave >= refit['ran'][0,i] and
+                             wave <= refit['ran'][1,i])
+            tmp_iind=np.where(iwave >= refit['ran'][0,i] and
+                              iwave <= refit['ran'][1,i])
             #  parinfo=np.full(refit['ord'][i]+1, {'value':0.0})
 
             #degree of polynomial fit defaults to len(x-variable)-1
             if deg2==0:
-                deg2=len(ilam[tmp_iind])-1
+                deg2=len(iwave[tmp_iind])-1
 
             #creating tmp_pars
-            tmp_pars=fitter(polymod2, ilam[tmp_iind],
+            tmp_pars=fitter(polymod2, iwave[tmp_iind],
                             (iflux[tmp_iind]-icontinuum[tmp_iind]),
                             z=None, weights=iweight[tmp_iind])
             tmp_parsptmp=tmp_pars.parameters
@@ -124,341 +136,149 @@ def fitpoly(lam, flux, weight, unused1, unused2, index, unused3,
             ct_poly = np.poly1d(tmp_parsparam, variable='lambda')
             # refitted continuum over wavelength range for refitting, 
             # indexed to full wavelength array
-            cont_refit = ct_poly(lam[tmp_ind])
+            cont_refit = ct_poly(wave[tmp_ind])
             # now add in the refitted continuum to the full continuum
             continuum += cont_refit
 
     return continuum, ct_coeff, None
 
 
-def Fe_flux_balmer(Fe_FWHM, zstar, specConv):
+def fitqsohost(wave: np.ndarray,
+               flux: np.ndarray,
+               weight: np.ndarray,
+               index: np.ndarray,
+               logfile: Optional[str]=None,
+               quiet: bool=True,
+               refit: Optional[str]=None,
+               template_wave: Optional[np.ndarray]=None,
+               template_flux: Optional[np.ndarray]=None, 
+               zstar: float=0.,
+               flux_log: Optional[np.ndarray]=None,
+               err_log: Optional[np.ndarray]=None,
+               index_log: Optional[np.ndarray]=None,
+               siginit_stars: float=50.,
+               add_poly_degree: int=30,
+               fitran: Optional[ArrayLike]=None,
+               qsoord: Optional[int]=None,
+               hostord: Optional[int]=None, 
+               blrpar: Optional[ArrayLike]=None,
+               qsoonly: bool=False,
+               hostonly: bool=False,
+               blronly: bool=False,
+               fluxunit: Optional[str]=None,
+               *, qsoxdr: str,
+               **kwargs) -> tuple[np.ndarray, dict[str, Any], float]:
     '''
-    This function loads the optical FeII template, redshifts it,
-    convolves it with the intrinsic broadening, and convolves it 
-    with the instrumental resolution.
+    Fit the continuum using a quasar template and a stellar template. Calls
+    :py:func:`~q3dfit.qsohostfcn.qsohostfcn` to jointly fit the quasar and host
+    galaxy components. Calls :py:func:`~ppxf.ppxf` or :py:func:`~q3dfit.contfit.questfit`
+    to refit the residual after subtracting the quasar component.
 
-    Parameters
-    ----------
-    Fe_FWHM: float
-        Defines the smoothing of the FeII template in km/s. FWHM of the
-        Gaussian smoothing that will be applied. Needs to be >900 km/s
-        (FWHM of template).
-    zstar: float
-        Redshift of the stellar continuum.
-    specConv: instance of the spectConvol class
-
-    Returns
-    -------
-    F_Fe_opt_conv: array
-        Convolved FeII template.
-    wave_fe: array
-        Wavelength array of the FeII template.
-
-    '''
-    temp_fe = os.path.normpath('../q3dfit/data/questfit_templates/fe_optical.txt')
-    data1 = np.loadtxt(temp_fe)
-    wave_fe = 10**data1[:,0] * (1. + zstar) /1e4
-    F_fe = data1[:,1]/np.max(data1[:,1])
-    # sig_conv in km/s. 900 km/s is the FWHM of the Vestergaard & 
-    # Wilkes 2001 template.
-    # sig_tot_BLR = (sig_temp^2+sig_add_broadening^2)^0.5
-    sig_conv = np.sqrt(Fe_FWHM ** 2 - 900.0 ** 2) / 2. / \
-        np.sqrt(2. * np.log(2.))
-    # 106.3 km/s is the dispersion for the BG92 FeII template 
-    # used by Vestergaard & Wilkes 2001
-    sig_pix = sig_conv / 106.3
-    xx = np.arange(0, 2*np.round(3.5*sig_pix+1, 0), 1) - \
-        np.round(3.5*sig_pix+1, 0)
-    kernel = np.exp(-xx ** 2 / (2 * sig_pix ** 2))
-    kernel = kernel / np.sum(kernel)
-    F_Fe_conv_intermed = np.convolve(F_fe, kernel, 'same')
-    F_Fe_opt_conv = F_Fe_conv_intermed
-    F_Fe_opt_conv = \
-        specConv.spect_convolver(wave_fe, F_Fe_conv_intermed, 
-                                 0.4861*(1. + zstar))
-    return F_Fe_opt_conv, wave_fe
-
-def Fe_flux_UV(Fe_FWHM, zstar, specConv):
-    '''
-    This function loads the UV FeII template, redshifts it,
-    convolves it with the intrinsic broadening, and convolves it
-    with the instrumental resolution.
-
-    Parameters
-    ----------
-    Fe_FWHM: float
-        Defines the smoothing of the FeII template in km/s. FWHM of the
-        Gaussian smoothing that will be applied. Needs to be >900 km/s
-        (FWHM of template).
-    zstar: float
-        Redshift of the stellar continuum.
-    specConv: instance of the spectConvol class
-
-    Returns
-    -------
-    F_Fe_uv_conv: array
-        Convolved FeII template.
-    wave_fe: array
-        Wavelength array of the FeII template. 
-    '''
-    temp_fe_uv = os.path.normpath('../q3dfit/data/questfit_templates/fe_uv.txt')
-    data2 = np.loadtxt(temp_fe_uv)
-    wave_fe = 10**data2[:,0] * (1. + zstar) /1e4
-    F_fe = data2[:,1]/np.max(data2[:,1])
-    sig_conv = np.sqrt(Fe_FWHM ** 2 - 900.0 ** 2) / 2. / \
-        np.sqrt(2. * np.log(2.))
-    sig_pix = sig_conv / 106.3
-    xx = np.arange(0, 2*np.round(3.5*sig_pix+1, 0), 1) - \
-        np.round(3.5*sig_pix+1, 0)
-    kernel = np.exp(-xx ** 2 / (2 * sig_pix ** 2))
-    kernel = kernel / np.sum(kernel)
-    F_Fe_conv_intermed = np.convolve(F_fe, kernel, 'same')
-    F_Fe_uv_conv = F_Fe_conv_intermed
-    F_Fe_uv_conv = \
-        specConv.spect_convolver(wave_fe, F_Fe_conv_intermed, \
-                                 0.2800*(1. + zstar))
-    return F_Fe_uv_conv, wave_fe
-
-
-
-def linfit_plus_FeII(lam, flux,weight, unused1, unused2, index, 
-                     zstar, specConv, outdir=None, quiet=False, refit=None, 
-                     rows=None, cols=None, Fe_FWHM=None, Fe_FWHM_UV=None, 
-                     **kwargs):
-    '''
-    This function fits the continuum as a superposition of a linear fit and 
-    an FeII template. 
-    * Optical FeII template:  taken from Vestergaard & Wilkes (2001).
-    * UV FeII template: following the PyQSOFit code (Guo et al. 2018): 
-        template by Shen et al. (2019) - composite of 
-        Vestergaard & Wilkes (2001), Tsuzuki et al. (2006) and 
-        Salviander et al. (2007)
-    The UV and optical FeII templates are scaled up/down separately 
-    from each other.
+    Additional keywords can be passed to :py:meth:`~lmfit.model.Model.fit` by passing 
+    them as keyword arguments to this function. Arguments to the :py:mod:`~scipy.optimize` 
+    functions can be passed by setting the keyword argument `argslmfit` to a dictionary of 
+    parameter names and values as keys and values. Arguments to 
+    :py:func:`~q3dfit.contfit.questfit` for the `refit` can be passed by setting the 
+    keyword argument `args_questfit` to a dictionary of parameter names and values as 
+    keys and values.
 
     Parameters
     -----
-    lam: array
-        wavelength
-    flux: array
-        Flux values to be fit
-    weight: array
-        Weights of each individual pixel to be fit
-    unused1:
-        Not used in this function.
-    unused2:
-        Not used in this function.
-    index: array
-        Pixels used in the fit
-    zstar: float
-        redshift of the stellar continuum
-    specConv: instance of the spectConvol class
-        specifying the instrumental spectral resolution convolution
-    outdir: string
-        directory for saving the output log
-    quiet: bool
-        not used in this function
-    refit: bool
-        not used in this function
-    rows, cols: int
-        row(s) and column(s) of the input cube in which the fitting is done. 
-        Used only to define the name of the output log
-    Fe_FWHM: float
-        Defines the smoothing of the FeII template in km/s. FWHM of the Gaussian smoothing that will be applied. Needs to be >900 km/s (FWHM of template).
-
-    Returns
-    -------
-    continuum: array
-        best fit continuum model
-    ct_coeff: dictionary or lmfit best fit params structure
-        best fit parameters
-    '''
-
-    flux_cut = flux[index]
-    lam_cut = lam[index]
-
-    models_dictionary = {'x': lam_cut}
-
-    temp_fe = '../q3dfit/data/questfit_templates/fe_optical.txt'
-    temp_fe_uv = '../q3dfit/data/questfit_templates/fe_uv.txt'
-    ind_opt = (lam_cut > 0.3686*(1.+zstar))&(lam_cut < 0.7484*(1.+zstar))
-    ind_UV = (lam_cut > 0.120*(1.+zstar))&(lam_cut < 0.350*(1.+zstar))
-
-    if Fe_FWHM is None:
-        print('\n\nFitting with FeII template, but no broadening applied. \
-              Please supply argscontfit with Fe_FWHM... Halting.')
-        import sys; sys.exit()
-
-    model_linfit = LinearModel(independent_vars=['x'], prefix='lincont', 
-                               nan_policy='raise', **kwargs)
-    pars_lin = model_linfit.make_params(intercept=np.nanmedian(flux), slope=0)
-
-    model = model_linfit
-    param = pars_lin
-
-    if np.sum(ind_opt)>0:
-        F_fe_rebin = np.zeros(len(lam_cut))
-        F_Fe_opt_conv, wave_fe = Fe_flux_balmer(Fe_FWHM, zstar, specConv)
-        F_fe_rebin[ind_opt] = \
-            interp_temp_quest.interp_lis(lam_cut[ind_opt], wave_fe, 
-                                         F_Fe_opt_conv)
-        models_dictionary['temp_fe_opt'] = F_fe_rebin
-        p_init = [0.5]
-        p_vary = [True]
-        model_fe_templ_opt, param_fe_templ_opt = \
-            questfitfcn.set_up_fit_model_scale(p_init, p_vary, 
-            'temp_fe_opt', 'temp_fe_opt', maxamp=1.05*max(flux[index]))
-        model += model_fe_templ_opt
-        param += param_fe_templ_opt
-
-    if np.sum(ind_UV)>0:
-        if Fe_FWHM_UV is None:
-            Fe_FWHM_UV = Fe_FWHM
-        F_Fe_rebin_UV = np.zeros(len(lam_cut))
-        F_Fe_UV_conv, wave_fe_UV = Fe_flux_UV(Fe_FWHM_UV, zstar, specConv)
-        F_Fe_rebin_UV[ind_UV] = \
-            interp_temp_quest.interp_lis(lam_cut[ind_UV], wave_fe_UV, 
-                                         F_Fe_UV_conv)
-        models_dictionary['temp_fe_UV'] = F_Fe_rebin_UV
-        p_init = [0.5]
-        p_vary = [True]
-        model_fe_templ_UV, param_fe_templ_UV = \
-            questfitfcn.set_up_fit_model_scale(p_init, p_vary, 'temp_fe_UV', 
-            'temp_fe_UV', maxamp=1.05*max(flux[index]) ) 
-        model += model_fe_templ_UV
-        param += param_fe_templ_UV
-
-    result = model.fit(flux_cut, param, **models_dictionary,
-                               max_nfev=int(1e5), method='least_squares',
-                               nan_policy='omit', **{'verbose': 2})
-    print(result.fit_report())
-
-    # extrapolate result to full wavelength vector
-    models_dictionary_B = {'x': lam}
-    if np.sum(ind_opt)>0:
-        F_Fe_opt_all = interp_temp_quest.interp_lis(lam, wave_fe, F_Fe_opt_conv)
-        models_dictionary_B['temp_fe_opt'] = F_Fe_opt_all
-    if np.sum(ind_UV)>0:
-        F_Fe_UV_all = interp_temp_quest.interp_lis(lam, wave_fe_UV, F_Fe_UV_conv)
-        models_dictionary_B['temp_fe_UV'] = F_Fe_UV_all
-
-    continuum = result.eval(**models_dictionary_B)
-    comp_best_fit = result.eval_components(**models_dictionary_B)
-    
-
-    ct_coeff = {'params_best_fit': result.params,
-                'comp_best_fit': comp_best_fit}
-
-    if isinstance(rows, list) or isinstance(rows, np.ndarray):
-        rows = rows[0]        
-    if isinstance(cols, list) or isinstance(cols, np.ndarray):
-        cols = cols[0]        
-    if rows is not None and cols is not None:
-        saveres = 'fit_result__{}_{}.txt'.format(cols, rows)
-    else:
-        saveres = 'fit_result.txt'
-
-    if outdir is not None:
-        with open(os.path.join(outdir, saveres), 'w') as fh:
-            fh.write(result.fit_report())
-            fh.write('\n')
-
-    return continuum, ct_coeff, None
-
-
-def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
-               zstar, quiet=True, blrpar=None, qsoxdr=None,
-               qsoonly=False, index_log=None, err_log=None,
-               flux_log=None, refit=None,
-               add_poly_degree=30, siginit_stars=50.,
-               fitran=None, qsoord=None, hostonly=False, hostord=None, 
-               blronly=False, **kwargs):
-    '''
-    Function defined to fit the continuum using a quasar template and a
-    stellar template.
-
-    Parameters
-    -----
-    wave: array
-        wavelength
-    flux: array
-        Flux values to be fit
-    weight: array
-        Weights of each individual pixel to be fit
-    template_wave: array
-        Wavelength array of the stellar template used as model for
-        stellar continuum
-    template_flux: array
-        Flux of the stellar template used as model for stellar continuum
-    index: array
-        Pixels used in the fit
-    zstar: float
-        redshift of the stellar continuum
-    quiet: bool, optional
-    blrpar: array, optional
-        Parameters of the broad line region scattering model.
-    qsoxdr: string, optional
-        Path and filename for the quasar template.
-    qsoonly: bool, optional
-        Fit only the quasar template.
-    index_log: array, optional
-        Pixels used in the fit for the pPXF fit, as log-rebinned.
-    err_log: array, optional
-        Error values for the log-rebinned pixels.
-    flux_log: array, optional
-        Flux values for the log-rebinned pixels.
-    refit: string, optional
-        Refit the continuum residual after subtracting the quasar. 
-        Options are 'ppxf' or 'questfit'.
-    add_poly_degree: int, optional
-        Degree of the additive polynomial for the pPXF fit. Default is 30.
-    siginit_stars: float, optional
-        Initial guess for the stellar velocity dispersion in km/s, used
-        in the pPXF fit. Default is 50.
-    fitran: array, optional
-        Wavelength range to fit. Default is None, to fit all wavelengths.
-    qsoord: int, optional
-        Order of the polynomial added to the quasar multiplier.
+    wave
+        Wavelengths
+    flux
+        Fluxes
+    weight
+        Weights
+    index
+        Points used in the fit.
+    logfile
+        Optional. Name of the log file. Default is None.
+    quiet
+        Optional. Suppress output to stdout? Default is True.
+    fitran
+        Optional. Wavelength range to fit. Default is None, to fit all wavelengths.        
+    qsoord
+        Optional. Order of the polynomial added to the quasar multiplier.
         Default is None.
-    hostonly: bool, optional
-        Fit only the host galaxy.
-    hostord: int, optional
-        Order of the polynomial model for the host galaxy. Default is None.
-    blronly: bool, optional
-        Fit only the broad line region scattering model.
-    kwargs: dict, optional
-        Additional keyword arguments.
-    
+    hostord
+        Optional. Order of the polynomial model for the host galaxy. 
+        Default is None.
+    blrpar
+        Optional. Parameters of the broad line region scattering model. If set,
+        fit this part of the model. Set to array_like Default is None.
+    qsoonly
+        Optional. Fit only the quasar template. Default is False.
+    hostonly
+        Optional. Fit only the host galaxy. Default is False.
+    blronly
+        Optional. Fit only the broad line region scattering model. Default is False.
+    refit
+        Optional. Refit the continuum residual after subtracting the quasar. 
+        Options are 'ppxf' or 'questfit'.
+    template_wave
+        Optional, but must be set if refit='ppxf'. Wavelength array of the stellar 
+        template used as model for stellar continuum.
+    template_flux
+        Optional, but must be set if refit='ppxf'. Wavelength array of the stellar 
+        template used as model for stellar continuum.
+    zstar
+        Optional, but must be set if refit='ppxf'. Input guess for redshift of the 
+        stellar continuum. Default is 0.
+    flux_log
+        Optional, but must be set if refit='ppxf'. Flux values for the log-rebinned 
+        pixels.
+    err_log
+        Optional, but must be set if refit='ppxf'. Error values for the log-rebinned 
+        pixels.
+    index_log
+        Optional, but must be set if refit='ppxf'. Pixels used in the fit for the 
+        pPXF fit, as log-rebinned.
+    siginit_stars
+        Optional. Initial guess for the stellar velocity dispersion in km/s, used
+        in the pPXF fit. Default is 50. km/s.
+    add_poly_degree
+         Optional. Degree of the additive polynomial for the pPXF fit. Default is 
+         30.
+    qsoxdr
+        Path and filename for the quasar template.
+
     Returns
     -------
-    continuum: array
-        best fit continuum model
-    ct_coeff: dictionary or lmfit best fit params structure
-        best fit parameters
-    zstar: float
-        best fit stellar redshift
+    numpy.ndarray
+        Best fit continuum model.
+    dict[str, Any]
+        Best fit parameters. The exact form will depend on the value of the 
+        refit parameter. If refit is None, this will be the best fit parameters 
+        from the initial fit. If refit is 'ppxf', this will be a dictionary with 
+        keys 'qso_host', 'stel', 'poly', and 'ppxf_sigma'. If refit is 'questfit', 
+        this will be a dictionary with keys 'qso_host', 'stel', and 'poly'.
+    float
+        Best fit stellar redshift if refit='ppxf'. Otherwise, the input redshift.
     '''
 
-    if qsoxdr is None:
-        sys.exit('Quasar template (qsoxdr) not specified in \
-                 initialization file.')
+    # Load quasar template
     try:
         qsotemplate = np.load(qsoxdr, allow_pickle=True).item()
         qsowave = qsotemplate['wave']
         qsoflux_full = qsotemplate['flux']
     except:
-        sys.exit('Cannot find quasar template (qsoxdr).')
+        raise InitializationError('Cannot locate quasar template (qsoxdr) specified ')
 
+    # Interpolate quasar template to the data grid. By not doing this
+    # we are assuming that the quasar template is already on the same
+    # grid as the data.
     # qsoflux = interptemp(wave, qsowave, qsoflux_full)
 
+    # Make sure we are fitting only the range of the quasar template
+    # that matches the range of the complete fit, as specfified by fitspec
     if fitran is not None:
         iqsoflux = np.where((qsowave >= fitran[0]) & (qsowave <= fitran[1]))
         qsoflux = qsoflux_full[iqsoflux]
     else:
         qsoflux = qsoflux_full
 
-    index = np.array(index)
-    index = index.astype(dtype='int')
+    index = np.array(index, dtype=np.int64)
 
     # err = 1/weight**0.5
     iwave = wave[index]
@@ -466,12 +286,15 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     iweight = weight[index]
     # ierr = err[index]
 
+    # Fit the quasar and a featureless host continuum
     ymod, params = \
-        qsohostfcn(wave, params_fit=None, qsoxdr=qsoxdr, qsoonly=qsoonly,
-                   qsoord=qsoord, hostonly=hostonly, hostord=hostord,
-                   blronly=blronly, blrpar=blrpar, qsoflux=qsoflux,
-                   medflux=np.median(iflux), **kwargs)
+        qsohostfcn.qsohostfcn(wave, params_fit=None, qsoonly=qsoonly,
+            qsoord=qsoord, hostonly=hostonly, hostord=hostord,
+            blronly=blronly, blrpar=blrpar, qsoflux=qsoflux,
+            medflux=np.median(iflux))
 
+    # Set the fitting method
+    # default is scipy.optimize.least_squares
     method = 'least_squares'
     if 'method' in kwargs:
         method = kwargs['method']
@@ -494,8 +317,7 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
                       wave=iwave, x=iwave, method=method,
                       nan_policy='raise', fit_kws=fit_kws)
 
-    if not quiet:
-        lmfit.report_fit(result.params)
+    q3dutil.write_msg(result.fit_report(), file=logfile, quiet=quiet)
 
     # comps = result.eval_components(wave=wave, qso_model=qsoflux, x=wave)
     continuum = result.eval(wave=wave, qsotemplate=qsoflux, x=wave)
@@ -512,8 +334,13 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
 
     ct_coeff = result.params
 
-    if refit == 'ppxf' and index_log is not None and \
-        err_log is not None and flux_log is not None:
+    # Refit the residual after subtracting the quasar component
+    if refit == 'ppxf' and \
+        flux_log is not None and \
+        err_log is not None and \
+        index_log is not None and \
+        template_wave is not None and \
+        template_flux is not None:
 
         # log rebin residual
         # lamRange1 = np.array([wave.min(), wave.max()])/(1+zstar)
@@ -526,8 +353,8 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
         #    resid_log[nan_indx] = 0
 
         # Interpolate template to same grid as data
-        temp_log = interptemp(lambda_log, np.log(template_wave.T[0]),
-                              template_flux)
+        temp_log = q3dmath.interptemp(lambda_log, np.log(template_wave.T[0]),
+            template_flux)
 
         # vel = c*np.log(1 + zstar)   # eq.(8) of Cappellari (2017)
         # t = clock()
@@ -555,33 +382,30 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
         zstar += np.exp(pp.sol[0]/c.to('km/s').value)-1.
 
         # host can't be negative
-        ineg = np.where(continuum < 0)
+        #ineg = np.where(continuum < 0)
         continuum[continuum < 0] = 0
 
         ppxfcontinuum_log = pp.bestfit
         cinterp = interpolate.interp1d(lambda_log, ppxfcontinuum_log,
-                                       kind='cubic', fill_value="extrapolate")
+                                       kind='cubic', fill_value='extrapolate')
 
         ppxfcont_resid = cinterp(np.log(wave))
         continuum += ppxfcont_resid
 
-        return continuum, ct_coeff, zstar
-
     elif refit == 'questfit':
 
-        from q3dfit.questfit import questfit
         resid = flux - continuum
         argscontfit_use = kwargs['args_questfit']
-        cont_resid, ct_coeff, zstar = questfit(wave, resid, weight, None,
-                                               None, index, zstar,
-                                               quiet=quiet, **argscontfit_use)
+        cont_resid, ct_coeff, zstar = questfit(wave, resid, weight, index, 
+                                               logfile=logfile, quiet=quiet, z=zstar, 
+                                               fluxunit=fluxunit, **argscontfit_use)
 
-        from q3dfit.plot_quest import plot_quest
+        from . import plot
         from matplotlib import pyplot as plt
         initdatdict = argscontfit_use.copy()
         initdatdict['label'] = 'miritest'
         initdatdict['plotMIR'] = True
-        plot_quest(wave, resid, cont_resid, ct_coeff, initdatdict)
+        plot.plotquest(wave, resid, cont_resid, ct_coeff, initdatdict)
         plt.show()
 
         continuum += cont_resid
@@ -590,59 +414,57 @@ def fitqsohost(wave, flux, weight, template_wave, template_flux, index,
     return continuum, ct_coeff, zstar
 
 
-def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
-             index, z, quiet=True, config_file=None, global_ice_model='None',
-             global_ext_model='None', fitran=None, convert2Flambda=True,
-             outdir=None, plot_decomp=None, rows=None, cols=None, **kwargs):
+def questfit(wave: np.ndarray, 
+             flux: np.ndarray, 
+             weight: np.ndarray, 
+             index: np.ndarray, 
+             logfile: Optional[str]=None,
+             quiet: bool=True, 
+             z: float=0.,
+             fluxunit: Optional[str]=None,
+             tempdir: Optional[str]=None,
+             *, config_file: str) -> tuple[np.ndarray, dict[str, Any], float]:
     '''
-    Function defined to fit the MIR continuum
+    Fit the MIR continuum. Calls :py:func:`~q3dfit.contfit.questfitfcn` to fit the
+    continuum using the templates specified in the configuration file.
 
     Parameters
     -----
-    wlambda: array
-        wavelength array in micron
-    flux: array
-        Flux values to be fit. Assumed input units are Jy. [Need to check 
-        this.]
-    weights: array
-        Weights of each individual pixel to be fit
-    singletemplatelambda : array
-    singletemplateflux : array
-        Wavelength and flux arrays for any continuum template
-        separate from the simple empirical BB, power-law etc. components.
-    index: array
-        Pixels used in the fit
-    z: float
-        redshift
-    quiet: bool, optional
-    config_file: string, optional
-        Configuration file for the fit. Default is None.
-    global_ice_model: string, optional
-        Global ice model. Default is 'None'. Options are ...
-    global_ext_model: string, optional
-        Global extinction model. Default is 'None'. Options are ...
-    fitran: array, optional
-        Wavelength range to fit. Default is None, to fit all wavelengths.
-    convert2Flambda: bool, optional
-        Convert flux to erg/s/cm2/mu [/sr] from Jy. [Need to check this.]
-        Default is True.
-    outdir: string, optional
-        Directory for saving the output log. Default is None.
-    plot_decomp: bool, optional
-        Decompose components of the fit when plotting. Default is None.
-    rows, cols: int, optional
-        Row(s) and column(s) of the input cube in which the fitting is done.
-        Used only to define the name of the output log.
-    kwargs: dict, optional
-        Additional keyword arguments.
+    wave
+        Wavelengths
+    flux
+        Fluxes
+    weight
+        Weights
+    index
+        Points used in the fit.
+    quiet
+        Optional. Suppress output? Default is True.
+    z
+        Optional. Redshift of the source, for redshifting the templates. 
+        Default is 0.
+    fluxunit
+        Optional. Units of the flux, as defined by :py:class:`~q3dfit.readcube.Cube`.
+        Default is None. The templates are assumed to be in f_nu. If this
+        unit contains 'micron' or 'Angstrom', the flux is assumed to be in f_lambda.
+        The templates are then converted to f_lambda. If None, the templates are not
+        converted.
+    tempdir
+        Optional. Directory containing the templates, to search if default
+        directory does not contain template. Default is None.
+    config_file
+        Configuration file for the fit.
 
     Returns
     -------
-    continuum: array
-        best fit continuum model
-    ct_coeff: dictionary or lmfit best fit params structure
-        best fit parameters
-    z: float
+    numpy.ndarray
+        Best fit continuum model.
+    dict[str, Any]
+        Best fit parameters. Key 'MIRparams' is a :py:class:`~lmfit.Parameters` object
+        containing the best fit parameters. Key 'comp_best_fit' is a dictionary
+        containing with key/value pairs of the component names and their values
+        evaluated at the best fit parameters.
+    z
         Same as input z.
     '''
 
@@ -650,20 +472,6 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
     emcomps = dict()
     # template dictionary holds templates, blackbodies, powerlaws
     allcomps = dict()
-
-    # Apply fit range to data
-    if fitran:
-        flux = flux[wlambda >= fitran[0] & wlambda <= fitran[1]]
-        wlambda = wlambda[wlambda >= fitran[0] & wlambda <= fitran[1]]
-        #flux = flux[np.logical_and(wlambda >= fitran[0]),
-        #            np.logical_and(wlambda <= fitran[1])]
-        #wlambda = wlambda[np.logical_and(wlambda >= fitran[0]),
-        #                  np.logical_and(wlambda <= fitran[1])]
-
-    if singletemplatelambda is not None:
-        print('Trying to pass a single separate template to questfit, \
-              which is not implemented ... Halting.')
-        import sys; sys.exit()
 
     # Read input configuration file
     config_file = readcf(config_file)
@@ -808,57 +616,24 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
             extinction_model = config_file[i][3]
             ice_model = config_file[i][9]
             # if it's not a polynomial model for PSF fitting
-            if not 'poly' in i:
-                model_temp_template, param_temp_template = \
-                    questfitfcn.\
-                        set_up_fit_model_scale([np.float64(model_parameters[1])],
-                                               [np.float64(model_parameters[2])],
-                                               name_model, name_model) #,
-                                                #maxamp=1.05*max(flux[index]) )
-            # ... and if it is!
-            else:
-                # constrain amplitude
-                minamp = np.float64(model_parameters[1]) / 1.25
-                maxamp = np.float64(model_parameters[1]) * 1.25
-                model_temp_template, param_temp_template = \
-                    questfitfcn.set_up_fit_model_scale_withpoly(
-                        [np.float64(model_parameters[1])],
-                        [np.float64(model_parameters[2])],
-                        name_model, name_model, minamp=minamp, maxamp=maxamp)
-
-                # testing = False
-                # if testing:
-                #     with pkg_resources.path(
-                #             questfit_templates,
-                #             'miri_qsotemplate_flex.npy') as p:
-                #         temp_model = np.load(p, allow_pickle=True)
-                #     temp_model = temp_model[()]
-                #     wave_ex = temp_model['wave']
-                #     flux_ex = temp_model['flux']
-                #     c_scale =  constants.c * u.Unit('m').to('micron') /(wave_ex)**2 *1e-23  *1e10      # [1e-10 erg/s/cm^2/um/sr]]
-                #     flux_ex = flux_ex * c_scale
-                #     flux_ex = flux_ex/flux_ex.max()
-                #     c2 = [1., 0., 0.]
-                #     c2 = [0.116, 0.224, 147.71]
-                #     c2 = [0.213, 0.024, 75.794]
-                #     c2 = [1, 100., 500.71]
-                #     m1 = model_temp_template.eval(template_0=flux_ex , wave=wave_ex, template_0_amp=1.,template_0_multpolyA=1.,template_0_multpolyB=2.,template_0_multpolyC = 3. )
-                #     m2 = model_temp_template.eval(template_0=flux_ex , wave=wave_ex, template_0_amp=1.,template_0_multpolyA=c2[0],template_0_multpolyB=c2[1],template_0_multpolyC = c2[2] )
-
-                #     ex_poly = lambda lam, p0,p1,p2:  (p0+p1*lam+p2*lam**2)/max(p0+p1*lam+p2*lam**2)
-                #     ex_poly2 = lambda lam, p0,p1,p2:  (p0+p1*lam+p2*lam**7)/max(p0+p1*lam+p2*lam**7)
-                #     ex_poly = lambda lam, p0,p1,p2:  (p0+p1*lam+p2*lam**2)/max(p0+p1*lam+p2*lam**2)
-                #     lin_poly = lambda lam, p0,p1,p2:  (p0+p1*np.arange(len(lam)))/max((p0+p1*np.arange(len(lam))))
-                #     plt.figure()
-                #     plt.plot(wave_ex, flux_ex, label='orig', color='k', linewidth=2.5)
-                #     plt.plot(wave_ex, m1, linewidth=1, label='model.eval() with  A=1, B=2, C=3 (and Amp=1)')
-                #     plt.plot(wave_ex, m2, linewidth=1, label='model.eval() with  A={}, B={}, C={} (and Amp=1)'.format(c2[0], c2[1], c2[2]))
-                #     plt.xlabel(r'$\lambda$')
-                #     plt.ylabel('F_norm')
-                #     plt.legend()
-                #     plt.show()
-
-                #     breakpoint()
+            #if not 'poly' in i:
+            model_temp_template, param_temp_template = \
+                questfitfcn.\
+                    set_up_fit_model_scale([np.float64(model_parameters[1])],
+                                           [np.float64(model_parameters[2])],
+                                           name_model, name_model) #,
+                                            #maxamp=1.05*max(flux[index]) )
+            # # ... and if it is!
+            # Not presently implmented
+            # else:
+            #     # constrain amplitude
+            #     minamp = np.float64(model_parameters[1]) / 1.25
+            #     maxamp = np.float64(model_parameters[1]) * 1.25
+            #     model_temp_template, param_temp_template = \
+            #         questfitfcn.set_up_fit_model_scale_withpoly(
+            #             [np.float64(model_parameters[1])],
+            #             [np.float64(model_parameters[2])],
+            #             name_model, name_model, minamp=minamp, maxamp=maxamp)
 
             if global_extinction is False and \
                 config_file[i][3] != '_' and \
@@ -931,28 +706,30 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
         #if qsoflux is not None:
         with pkg_resources.path(questfit_templates, allcomps[i]) as p:
             temp_model = np.load(p, allow_pickle=True)
-            if not os.path.exists(p):
-                temp_model = np.load(os.path.join(outdir, allcomps[i]))
-
+            if not os.path.exists(p) and tempdir is not None:
+                temp_model = np.load(tempdir+allcomps[i])
+            else:
+                raise InitializationError('Cannot locate template specified in config file.')
         # Check to see if we are using global extinction, where the total
         temp_wave=temp_model['WAVE']*(1.+z)
         temp_value=temp_model['FLUX']
 
         temp_value_rebin = \
-            interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
+            q3dmath.interp_lis(wave, temp_wave, temp_value)
         allcomps[i] = temp_value_rebin
 
-    # conversion from f_nu to f_lambda: 
-    # f_lambda = f_nu x c/lambda^2
+    # conversion from f_nu to f_lambda is f_lambda = f_nu x c/lambda^2
     # [1 Jy = 1e-10 erg/s/cm^2/um [/sr] ???]
-    # about 1.2 for wlambda=5 [micron]
-    c_scale =  constants.c * u.Unit('m').to('micron') /(wlambda)**2 * \
-        1e-23 * 1e10
+    # about 1.2 for wave=5 [micron]
+    #c_scale =  constants.c * u.Unit('m').to('micron') / wave**2 * \
+    #    1e-23 * 1e10
+    # the exact value doesn't matter, because we normalize the templates
+    c_scale =  1. / wave**2
 
     # loop over emission template dictionary, load them in and resample.
     for i in emcomps.keys():
         if 'sifrom' in emcomps[i]:
-            tempdir = silicatemodels
+            tempdir = questfit_templates.silicatemodels
         else:
             tempdir = questfit_templates
         with pkg_resources.path(tempdir, emcomps[i]) as p:
@@ -969,87 +746,29 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
             temp_value = temp_model['flux']
 
         temp_value_rebin = \
-            interp_temp_quest.interp_lis(wlambda, temp_wave, temp_value)
+            q3dmath.interp_lis(wave, temp_wave, temp_value)
         allcomps[i] = temp_value_rebin
-        if convert2Flambda:
-            allcomps[i] *= c_scale
-
         # conversion from f_nu to f_lambda: f_lambda = f_nu x c/lambda^2
+        # assume that presence of micron or Angstrom in fluxunit means that the flux is
+        # f_lambda
+        if fluxunit is not None:
+            if 'micron' in fluxunit or 'Angstrom' in fluxunit:
+                allcomps[i] *= c_scale
+
         allcomps[i] = allcomps[i]/allcomps[i].max()
 
-    # Add in wavelength and units flag
-    allcomps['wave'] = np.float64(wlambda)
-    allcomps['fitFlambda'] = bool(convert2Flambda)
-
-    #if convert2Flambda:
-    #    flux *= c_scale
-
-    # plot_ini_guess = False
-    # if plot_ini_guess:
-    #     plt.plot(allcomps['wave'],
-    #              param['template_0_amp'].value *
-    #              allcomps['template_0']/c_scale,
-    #              color='c', label = 'QSO model init')
-    #     with pkg_resources.path(questfit_templates,
-    #                             'miri_qsotemplate_flexB.npy') as p:
-    #         data1 = np.load(p, allow_pickle='TRUE').item()
-    #     F1 = data1['flux'][:-1] * c_scale
-    #     plt.plot(allcomps['wave'], F1/c_scale, color='b', label = 'QSO real')
-
-    #     gal_model_comp = [el for el in allcomps if 'template' in el and 'template_0' not in el]
-    #     Fgalmodel = 0
-    #     for comp_i in gal_model_comp:
-    #         Fgalmodel += param[comp_i+'_amp'].value * allcomps[comp_i]
-    #     plt.plot(allcomps['wave'], Fgalmodel/c_scale, color='plum', label = 'host model init')
-
-    #     with pkg_resources.path(questfit_templates,
-    #                             'miri_gal_spec.npy') as p:
-    #         data2 = np.load(p, allow_pickle='TRUE').item()
-    #     F2 = data2['flux'][:-1] * c_scale
-    #     plt.plot(allcomps['wave'], F2/c_scale, color='darkviolet', label = 'host real')
-    #     plt.yscale("log")
-    #     plt.xlabel(r'$\lambda \ \mathrm{[micron]}$')
-    #     plt.legend()
-    #     plt.show()
-    #     breakpoint()
+    # Add in wavelength and units flags
+    allcomps['wave'] = np.float64(wave)
+    allcomps['fluxunit'] = fluxunit
 
     # produce copy of components dictionary with index applied
     flux_cut = flux[index]
     allcomps_cut = copy.deepcopy(allcomps)
     for el in allcomps.keys():
-        if not ('fitFlambda' in el):
+        if not ('fluxunit' in el):
             allcomps_cut[el] = allcomps_cut[el][index]
 
-    # not sure what this is ...
-    # with pkg_resources.path(questfit_templates,
-    #                         'miri_qsotemplate_flex.npy') as p:
-    #     data1 = np.load(p, allow_pickle=True)
-    # f_orig = data1.item()['flux'][:-1]
-
-    # from multiprocessing import Pool
-    # with Pool() as pool:
-    # use_emcee = False
-    # if use_emcee:
-
-    #     # -- Originally used max_nfev=int(1e5), and method='least_squares'
-    #     emcee_kws = dict(steps=5000, burn=500, thin=20, is_weighted=False, progress=True) #, run_mcmc_kwargs={'skip_initial_state_check': True} )
-    #     #emcee_kws = dict(nwalkers=500, steps=5000, burn=500, thin=20, workers=pool, is_weighted=False, progress=True) #, run_mcmc_kwargs={'skip_initial_state_check': True} )
-    #     # emcee_kws = dict(nwalkers=256, steps=50000, burn=500, thin=5, is_weighted=False, progress=True) #, run_mcmc_kwargs={'skip_initial_state_check': True} )
-
-    #     param.add('__lnsigma', value=np.log(0.1), min=np.log(0.001), max=np.log(2.0))
-    #     import time
-    #     t1 = time.time()
-    #     result = model.fit(flux_cut,param,**allcomps_cut,max_nfev=int(1e5),method='emcee',nan_policy='omit', fit_kws=emcee_kws)#method='least_squares'nan_policy='omit'
-    #     print('Time needed for fitting: ', time.time()-t1)
-
-    #     import corner
-    #     emcee_plot = corner.corner(result.flatchain, labels=result.var_names,truths=list(result.params.valuesdict().values()))
-    #     plt.savefig(outdir+'corner')
-
-    # else:
-    #test = model.eval(param,**allcomps_cut)
-    #import pdb; pdb.set_trace()
-
+    # Get ready for fit
     method = 'least_squares'
     if 'method' in kwargs:
         method = kwargs['method']
@@ -1073,17 +792,10 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
                        max_nfev=int(1e5), method=method,
                        nan_policy='raise', fit_kws=fit_kws)
 
-    lmfit.report_fit(result.params)
-    if rows is not None and cols is not None:
-        saveres = 'fit_result__{}_{}.txt'.format(cols, rows)
-    else:
-        saveres = 'fit_result.txt'
-    with open(os.path.join(outdir, saveres), 'w') as fh:
-        fh.write(result.fit_report())
-        fh.write('\n')
+    q3dutil.write_msg(result.fit_report(), file=logfile, quiet=quiet)
 
     # use allcomps rather than allcomps_cut to evaluate
-    # over all wavelengths within fitran (not just [index])
+    # over all wavelengths within fit range (not just [index])
     best_fit = result.eval(**allcomps)
     comp_best_fit = result.eval_components(**allcomps)
     # print(result.best_values)
@@ -1095,23 +807,250 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
                 comp_best_fit[el] *= comp_best_fit['global_ext']
                 comp_best_fit[el] *= comp_best_fit['global_ice']
 
-    # if convert2Flambda:
-    #     flux /= c_scale
-    #     best_fit /= c_scale
-    #     for el in comp_best_fit.keys():
-    #         if not (global_ext_model in el) and \
-    #             not (global_ice_model in el) and \
-    #             not ('ext' in el) and not ('ice' in el):
-    #             try:
-    #                 comp_best_fit[el] /= c_scale
-    #             except Exception as e:
-    #                 print(e)
-    #                 import pdb; pdb.set_trace()
-
     ct_coeff = {'MIRparams': result.params,
                 'comp_best_fit': comp_best_fit}
 
     return best_fit, ct_coeff, z
+
+
+def linfit_plus_FeII(lam, flux,weight, unused1, unused2, index, 
+                     zstar, specConv, outdir=None, quiet=False, refit=None, 
+                     rows=None, cols=None, Fe_FWHM=None, Fe_FWHM_UV=None, 
+                     **kwargs):
+    '''
+    This function fits the continuum as a superposition of a linear fit and 
+    an FeII template. 
+    * Optical FeII template:  taken from Vestergaard & Wilkes (2001).
+    * UV FeII template: following the PyQSOFit code (Guo et al. 2018): 
+        template by Shen et al. (2019) - composite of 
+        Vestergaard & Wilkes (2001), Tsuzuki et al. (2006) and 
+        Salviander et al. (2007)
+    The UV and optical FeII templates are scaled up/down separately 
+    from each other.
+
+    Parameters
+    -----
+    lam: array
+        wavelength
+    flux: array
+        Flux values to be fit
+    weight: array
+        Weights of each individual pixel to be fit
+    unused1:
+        Not used in this function.
+    unused2:
+        Not used in this function.
+    index: array
+        Pixels used in the fit
+    zstar: float
+        redshift of the stellar continuum
+    specConv: instance of the spectConvol class
+        specifying the instrumental spectral resolution convolution
+    outdir: string
+        directory for saving the output log
+    quiet: bool
+        not used in this function
+    refit: bool
+        not used in this function
+    rows, cols: int
+        row(s) and column(s) of the input cube in which the fitting is done. 
+        Used only to define the name of the output log
+    Fe_FWHM: float
+        Defines the smoothing of the FeII template in km/s. FWHM of the Gaussian smoothing that will be applied. Needs to be >900 km/s (FWHM of template).
+
+    Returns
+    -------
+    continuum: array
+        best fit continuum model
+    ct_coeff: dictionary or lmfit best fit params structure
+        best fit parameters
+    '''
+
+    flux_cut = flux[index]
+    lam_cut = lam[index]
+
+    models_dictionary = {'x': lam_cut}
+
+    temp_fe = '../q3dfit/data/questfit_templates/fe_optical.txt'
+    temp_fe_uv = '../q3dfit/data/questfit_templates/fe_uv.txt'
+    ind_opt = (lam_cut > 0.3686*(1.+zstar))&(lam_cut < 0.7484*(1.+zstar))
+    ind_UV = (lam_cut > 0.120*(1.+zstar))&(lam_cut < 0.350*(1.+zstar))
+
+    if Fe_FWHM is None:
+        print('\n\nFitting with FeII template, but no broadening applied. \
+              Please supply argscontfit with Fe_FWHM... Halting.')
+        import sys; sys.exit()
+
+    model_linfit = LinearModel(independent_vars=['x'], prefix='lincont', 
+                               nan_policy='raise', **kwargs)
+    pars_lin = model_linfit.make_params(intercept=np.nanmedian(flux), slope=0)
+
+    model = model_linfit
+    param = pars_lin
+
+    if np.sum(ind_opt)>0:
+        F_fe_rebin = np.zeros(len(lam_cut))
+        F_Fe_opt_conv, wave_fe = Fe_flux_balmer(Fe_FWHM, zstar, specConv)
+        F_fe_rebin[ind_opt] = \
+            q3dmath.interp_lis(lam_cut[ind_opt], wave_fe, 
+                                         F_Fe_opt_conv)
+        models_dictionary['temp_fe_opt'] = F_fe_rebin
+        p_init = [0.5]
+        p_vary = [True]
+        model_fe_templ_opt, param_fe_templ_opt = \
+            questfitfcn.set_up_fit_model_scale(p_init, p_vary, 
+            'temp_fe_opt', 'temp_fe_opt', maxamp=1.05*max(flux[index]))
+        model += model_fe_templ_opt
+        param += param_fe_templ_opt
+
+    if np.sum(ind_UV)>0:
+        if Fe_FWHM_UV is None:
+            Fe_FWHM_UV = Fe_FWHM
+        F_Fe_rebin_UV = np.zeros(len(lam_cut))
+        F_Fe_UV_conv, wave_fe_UV = Fe_flux_UV(Fe_FWHM_UV, zstar, specConv)
+        F_Fe_rebin_UV[ind_UV] = \
+            q3dmath.interp_lis(lam_cut[ind_UV], wave_fe_UV, 
+                                         F_Fe_UV_conv)
+        models_dictionary['temp_fe_UV'] = F_Fe_rebin_UV
+        p_init = [0.5]
+        p_vary = [True]
+        model_fe_templ_UV, param_fe_templ_UV = \
+            questfitfcn.set_up_fit_model_scale(p_init, p_vary, 'temp_fe_UV', 
+            'temp_fe_UV', maxamp=1.05*max(flux[index]) ) 
+        model += model_fe_templ_UV
+        param += param_fe_templ_UV
+
+    result = model.fit(flux_cut, param, **models_dictionary,
+                               max_nfev=int(1e5), method='least_squares',
+                               nan_policy='omit', **{'verbose': 2})
+    print(result.fit_report())
+
+    # extrapolate result to full wavelength vector
+    models_dictionary_B = {'x': lam}
+    if np.sum(ind_opt)>0:
+        F_Fe_opt_all = q3dmath.interp_lis(lam, wave_fe, F_Fe_opt_conv)
+        models_dictionary_B['temp_fe_opt'] = F_Fe_opt_all
+    if np.sum(ind_UV)>0:
+        F_Fe_UV_all = q3dmath.interp_lis(lam, wave_fe_UV, F_Fe_UV_conv)
+        models_dictionary_B['temp_fe_UV'] = F_Fe_UV_all
+
+    continuum = result.eval(**models_dictionary_B)
+    comp_best_fit = result.eval_components(**models_dictionary_B)
+    
+
+    ct_coeff = {'params_best_fit': result.params,
+                'comp_best_fit': comp_best_fit}
+
+    if isinstance(rows, list) or isinstance(rows, np.ndarray):
+        rows = rows[0]        
+    if isinstance(cols, list) or isinstance(cols, np.ndarray):
+        cols = cols[0]        
+    if rows is not None and cols is not None:
+        saveres = 'fit_result__{}_{}.txt'.format(cols, rows)
+    else:
+        saveres = 'fit_result.txt'
+
+    if outdir is not None:
+        with open(outdir+saveres, 'w') as fh:
+            fh.write(result.fit_report())
+            fh.write('\n')
+
+    return continuum, ct_coeff, None
+
+
+def Fe_flux_balmer(Fe_FWHM: float, 
+                   zstar: float, 
+                   specConv: object) \
+                    -> tuple[np.ndarray, np.ndarray]:
+    '''
+    Loads the optical FeII template, redshifts it,
+    convolves it with the intrinsic broadening, and convolves it 
+    with the instrumental resolution.
+
+    Parameters
+    ----------
+    Fe_FWHM
+        Defines the smoothing of the FeII template in km/s. FWHM of the
+        Gaussian smoothing that will be applied. Needs to be >900 km/s
+        (FWHM of template).
+    zstar
+        Redshift of the stellar continuum.
+    specConv
+        Instance of :py:class:`~q3dfit.spectConvol.spectConvol` specifying 
+        the instrumental spectral resolution convolution.
+
+    Returns
+    -------
+    np.ndarray
+        Convolved FeII template.
+    np.ndarray
+        Wavelength array of the FeII template.
+
+    '''
+    temp_fe = '../q3dfit/data/questfit_templates/fe_optical.txt'
+    data1 = np.loadtxt(temp_fe)
+    wave_fe = 10**data1[:,0] * (1. + zstar) /1e4
+    F_fe = data1[:,1]/np.max(data1[:,1])
+    # sig_conv in km/s. 900 km/s is the FWHM of the Vestergaard & 
+    # Wilkes 2001 template.
+    # sig_tot_BLR = (sig_temp^2+sig_add_broadening^2)^0.5
+    sig_conv = np.sqrt(Fe_FWHM ** 2 - 900.0 ** 2) / 2. / \
+        np.sqrt(2. * np.log(2.))
+    # 106.3 km/s is the dispersion for the BG92 FeII template 
+    # used by Vestergaard & Wilkes 2001
+    sig_pix = sig_conv / 106.3
+    xx = np.arange(0, 2*np.round(3.5*sig_pix+1, 0), 1) - \
+        np.round(3.5*sig_pix+1, 0)
+    kernel = np.exp(-xx ** 2 / (2 * sig_pix ** 2))
+    kernel = kernel / np.sum(kernel)
+    F_Fe_conv_intermed = np.convolve(F_fe, kernel, 'same')
+    F_Fe_opt_conv = F_Fe_conv_intermed
+    F_Fe_opt_conv = \
+        specConv.spect_convolver(wave_fe, F_Fe_conv_intermed, 
+                                 0.4861*(1. + zstar))
+    return F_Fe_opt_conv, wave_fe
+
+
+def Fe_flux_UV(Fe_FWHM, zstar, specConv):
+    '''
+    This function loads the UV FeII template, redshifts it,
+    convolves it with the intrinsic broadening, and convolves it
+    with the instrumental resolution.
+
+    Parameters
+    ----------
+    Fe_FWHM: float
+        Defines the smoothing of the FeII template in km/s. FWHM of the
+        Gaussian smoothing that will be applied. Needs to be >900 km/s
+        (FWHM of template).
+    zstar: float
+        Redshift of the stellar continuum.
+    specConv: instance of the spectConvol class
+
+    Returns
+    -------
+    F_Fe_uv_conv: array
+        Convolved FeII template.
+    wave_fe: array
+        Wavelength array of the FeII template. 
+    '''
+    temp_fe_uv = '../q3dfit/data/questfit_templates/fe_uv.txt'
+    data2 = np.loadtxt(temp_fe_uv)
+    wave_fe = 10**data2[:,0] * (1. + zstar) /1e4
+    F_fe = data2[:,1]/np.max(data2[:,1])
+    sig_conv = np.sqrt(Fe_FWHM ** 2 - 900.0 ** 2) / 2. / \
+        np.sqrt(2. * np.log(2.))
+    sig_pix = sig_conv / 106.3
+    xx = np.arange(0, 2*np.round(3.5*sig_pix+1, 0), 1) - \
+        np.round(3.5*sig_pix+1, 0)
+    kernel = np.exp(-xx ** 2 / (2 * sig_pix ** 2))
+    kernel = kernel / np.sum(kernel)
+    F_Fe_conv_intermed = np.convolve(F_fe, kernel, 'same')
+    F_Fe_uv_conv = F_Fe_conv_intermed
+    F_Fe_uv_conv = \
+        specConv.spect_convolver(wave_fe, F_Fe_conv_intermed, \
+                                 0.2800*(1. + zstar))
+    return F_Fe_uv_conv, wave_fe
 
 
 def quest_extract_QSO_contrib(ct_coeff, initdat):
@@ -1133,7 +1072,7 @@ def quest_extract_QSO_contrib(ct_coeff, initdat):
     qso_out_ext = np.array([])
     qso_out_intr = np.array([])
 
-    #config_file = questfitfcn.readcf(initdat['argscontfit']['config_file'])
+    #config_file = readcf(initdat['argscontfit']['config_file'])
     config_file = readcf(initdat.argscontfit['config_file'])
     if not 'qso' in list(config_file.keys())[1]:    ### This function assumes that in the config file the qso temple is the first template. Rudimentary check here.
         print('\n\nWARNING during QSO-host decomposition: \nThe function assumes that in the config file the qso template is the first template, but its name does not contain \"qso\". Pausing here as a checkpoint, press c for continuing.\n')
@@ -1195,3 +1134,50 @@ def quest_extract_QSO_contrib(ct_coeff, initdat):
 
     return qso_out_ext, host_out_ext, qso_out_intr, host_out_intr
 
+
+def readcf(filename: str) -> dict:
+    '''
+    Read in the configuration file for fitting with questfit.
+    
+    Parameters
+    ----------
+    filename
+        Name of, and path, to the configuration file.
+    
+    Returns
+    -------
+    dict
+        Dictionary with the configuration file. Keys are the names of the
+        components to be fitted, values are lists with the parameters for
+        the components.
+    '''
+    cf = np.loadtxt(filename, dtype=np.str_, comments="#")
+
+    # Cycle through rows
+    init_questfit = dict()
+    for i in cf:
+        if i[0] == 'template' or i[0] == 'powerlaw' or i[0] == 'blackbody' \
+        or i[0] == 'template_poly':
+            # populate initilization dictionary with
+            # col 0: filename (if nessesary; path hardcoded)
+            # col 1: lower wavelength limit or normalization factor
+            # col 2: upper wavelength limit or fix/free parameter (0 or 1) for normalization
+            # col 3: name of ext. curve or ice feature
+            # col 4: initial guess for Av
+            # col 5: fix/free parameter (0/1) for Av
+            # col 6: S,M = screen or mixed extinction
+            # col 7: initial guess for BB temperature or powerlaw index
+            # col 8: fix/free parameter (0/1) for BB temperature or powerlaw index
+            # col 9: ice name model
+            # col 10: intial guess for ice absorption tau
+            # col 11: fix/free parameter (0/1) for tau
+            init_questfit[i[0]+'_'+i[1]+'_'+i[4]+'_'+i[10]] = i[1:]
+
+        if i[0] == 'absorption' or i[0] == 'extinction':
+            #init_questfit[i[0]+'_'+i[1]+'_'+i[4]+'_'+i[10]] = i[1:]
+            init_questfit[i[4]] = [i[1], i[0]]
+
+        if i[0] == 'source':
+            init_questfit['source'] = i[1:]
+
+    return init_questfit

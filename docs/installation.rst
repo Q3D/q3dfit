@@ -4,14 +4,15 @@ Installation
 Downloading and Installing q3dfit
 =================================
 
-``q3dfit`` is only supported and tested for Python 3.7-3.9. We
-recommend installation via pip:
+``q3dfit`` is currently tested in python v3.11. It can be installed
+directly from GitHub or via pip:
 
     .. code-block:: console
 
 	pip install q3dfit
 
 Optional multi-processing capability
+
 ====================================
 
 ``q3dfit`` has the optional capability to parallelize fitting across multiple processor cores using the Message Passing Interface (MPI) standard. This is accomplished using the ``mpich`` package and its python wrapper ``mpi4py``. Installation instructions for ``mpich`` vary dependending on the user's system configurations. Some common methods include: 

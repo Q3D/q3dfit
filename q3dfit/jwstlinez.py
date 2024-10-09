@@ -222,3 +222,4 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit='micron',
         print('Under the directory : ', outdir)
 
     return lines_inrange
+

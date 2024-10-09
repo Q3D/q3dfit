@@ -1,8 +1,13 @@
 import importlib.resources as pkg_resources
+from astropy.table import Table, vstack
 from q3dfit.data import linelists
+from typing import Literal, Optional
 
 
-def linelist(inlines=None, linelab=True, waveunit='micron', vacuum=True):
+def linelist(inlines: Optional[list]=None, 
+             linelab: bool=True, 
+             waveunit: Literal['micron','Angstrom']='micron', 
+             vacuum: bool=True) -> Table:
     """
 Generates an astropy Table of lines from the master files provided in
 /data/linelist. No required parameters; by default the entire tables are read from
@@ -10,24 +15,25 @@ the linelist_air.tbl and linelist_vac.tbl, recomputed into vacuum and returned
 
 Parameters
 ----------
-
-inlines : list, optional, default=None
-    a list of strings to match against the 'name' part of the
-    master list (default is all)
-linelab : bool, optional, default=True
-    Whether to return the Tex-friendly labels for the lines
-vacuum : bool, optional, default=True
-    Whether to return wavelengths in vacuum (returns air wavelengths if false);
-    conversion is equation 3 from Morton et al. 1991 ApJSS 77 119
-waveunit : str, optional, default=micron
-    'Angstrom' or 'micron'
+inlines
+    Optional. A list of strings to match against the 'name' part of the
+    master list to return only the lines requested. Default is None, which returns all 
+    lines in the master list.
+linelab
+    Optional. Whether to return the Tex-friendly labels for the lines. Default is True.
+vacuum
+    Optional. Whether to return wavelengths in vacuum (returns air wavelengths if false);
+    conversion is equation 3 from Morton et al. 1991 ApJSS 77 119. Default is True.
+waveunit
+    Optional. Output wavelength unit of 'Angstrom' or 'micron'. Default is 'micron'.
 
 Returns
 -------
-
-outlines : astropy table
-    An astropy Table of lines with keywords 'name','linelab','lines'
-    Example: 'Lyalpha', 'Ly \$\alpha\$', 1215.67
+Table
+    Columns 'name', 'linelab', 'lines'. 'name' is the name of the line,
+    'linelab' is the LaTeX-friendly label, and 'lines' is the central
+    wavelength in the units requested.
+    Example: 'Lyalpha', 'Ly$\\alpha$', 1215.67
 
 
 Examples
@@ -75,7 +81,6 @@ formula for vacuum to air conversion, and remove the line lables.
 >>> mylist=['Paa', 'Halpha', 'junk', 'H2_00_S0']
 >>> u=linelist(inlines=mylist,vacuum=False,waveunit='Angstrom',linelab=False)
 
-
 To get the central wavelength for an individual feature by name:
 
 >>> wv=np.array(linelist(['Halpha'])['lines'])
@@ -86,10 +91,8 @@ OR
 >>> wv=np.array(u['lines'][(u['name']=='Halpha')])
 
     """
-    from astropy.table import Table, vstack
 
-    # I will have more files here, and hopefully the script will be able to
-    # handle them through this list, but the default is they are all in vacuum
+    # default is vacuum for input tables
     linetables = ['linelist_DSNR.tbl', 'linelist_H1.tbl', 'linelist_H2.tbl',
                   'linelist_fine_str.tbl', 'linelist_TSB.tbl']
     all_tables = []

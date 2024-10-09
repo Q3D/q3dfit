@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MIR Configuration &mdash; q3dfit 1.1.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=00f267c6"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="User modules" href="source/q3dfit.html" />
+    <link rel="prev" title="Fitting" href="fitting.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            q3dfit
+          </a>
+              <div class="version">
+                1.1.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">q3dfit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fitting.html">Fitting</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">MIR Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="source/q3dfit.html">User modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="source/q3dfit.html#classes">Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="source/q3dfit.html#internal-modules">Internal modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">q3dfit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">MIR Configuration</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/MIR-configuration.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="mir-configuration">
+<h1>MIR Configuration<a class="headerlink" href="#mir-configuration" title="Link to this heading"></a></h1>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The configuration of the MIR fit is in active development. This
+page will be updated as MIRI data from the Q3D program become
+available.</p>
+</div>
+<p><strong>How to set up configuration file for MIR fitting</strong></p>
+<p>Mid-infrared continuum of quasars and their host galaxies is affected by a multitude of absorption and emission components. In <code class="docutils literal notranslate"><span class="pre">q3dfit</span></code>, these components are incorporated via templates. The <code class="docutils literal notranslate"><span class="pre">q3dfit</span></code> user can choose which templates are included and / or supply their own templates, and build an emission and absorption continuum component via .cf (configuration) file.</p>
+<p>Here is an example configuration file as it is read by <code class="docutils literal notranslate"><span class="pre">q3dfit</span></code>:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">source        miritest.npy              11.55  13.45   dummy    0.0 0.0  X   0.0  0.0   _   _   _</span>
+<span class="go">template_poly miri_qsotemplate_flex.npy 0.059    1.    _        _   _    S   0.0  0.0   _   _   _</span>
+<span class="go">template      smith_nftemp4.npy         0.175    1.    global   1.5 1.   S   0.0  0.0   _   _   _</span>
+<span class="go">blackbody     warm                      0.1      1.    CHIAR06  1.5 1.   S 250.0  1.0   _   _   _</span>
+<span class="go">extinction    chiar06_i0857.npy         0.0      0.    CHIAR06  0.0 1.   X   0.0  0.0   _   _   _</span>
+<span class="go">absorption    ice+hc_abs.npy            0.0      0.    ice_hc   0.0 1.   X   0.0  0.0   _   _   _</span>
+</pre></div>
+</div>
+<p>Here is another, more complicated configuration file:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">source        miritest.npy              11.55    13.45 dummy    0.0 0.0  X   0.0  0.0   _   _   _</span>
+<span class="gp">#</span>Below<span class="w"> </span>are<span class="w"> </span>the<span class="w"> </span>emission<span class="w"> </span>components:<span class="w"> </span>templates<span class="w"> </span>we<span class="w"> </span>are<span class="w"> </span>fitting<span class="w"> </span>along<span class="w"> </span>with<span class="w"> </span>a<span class="w"> </span>single<span class="w"> </span>blackbody<span class="w"> </span>and<span class="w"> </span>a<span class="w"> </span>powerlaw.
+<span class="gp">#</span>The<span class="w"> </span>templates<span class="w"> </span>and<span class="w"> </span>the<span class="w"> </span>blackbody<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>extincted<span class="w"> </span>by<span class="w"> </span>CHIAR06<span class="w"> </span>and<span class="w"> </span>DRAIN03<span class="w"> </span>models<span class="w"> </span>and<span class="w"> </span>ice<span class="w"> </span>absorption.
+<span class="go">template      smith_nftemp3.npy         0.1      1.   CHIAR06   0.0 0.0  S   0.0  0.0 ice_hc 0.0  0.</span>
+<span class="go">template      smith_nftemp4.npy         0.1      1.   CHIAR06   0.0 0.0  S   0.0  0.0 ice_hc 0.0  0.</span>
+<span class="go">template  dens1e4:sifrom:run010002.npy  0.1      1.   DRAINE03  0.0 0.0  S   0.0  0.0  _   _   _</span>
+<span class="go">blackbody     warm                      0.1      1.   CHIAR06   0.0 0.0  S 250.0  1.0 ice_hc 0.0  1.</span>
+<span class="go">powerlaw      steep                     0.1      1.   DRAINE03  0.0 0.0  S    -1  1.0  _   _   _</span>
+<span class="gp">#</span>The<span class="w"> </span>last<span class="w"> </span>rows<span class="w"> </span>of<span class="w"> </span>the<span class="w"> </span>configuration<span class="w"> </span>file<span class="w"> </span>deal<span class="w"> </span>with<span class="w"> </span>dust<span class="w"> </span>and<span class="w"> </span>ice<span class="w"> </span>extinction<span class="w"> </span>and<span class="w"> </span>absorption<span class="w"> </span>that<span class="w"> </span>are<span class="w"> </span>used<span class="w"> </span>to<span class="w"> </span>extinct<span class="w"> </span>the<span class="w"> </span>emission.
+<span class="go">extinction    draine03.npy              0.0      0.   DRAINE03  0.0 0.0  X   0.0  0.0  _   _   _</span>
+<span class="go">extinction    chiar06_i0857.npy         0.0      0.   CHIAR06   0.0 0.0  X   0.0  0.0  _   _   _</span>
+<span class="go">absorption    ice+hc_abs.npy            0.0      0.   ice_hc    0.0 0.0  X   0.0  0.0  _   _   _</span>
+</pre></div>
+</div>
+<p>The .cf file consists of 13 space-separated text columns of any width. The hash symbol <code class="docutils literal notranslate"><span class="pre">#</span></code> indicates rows that are comments and are ignored by the code. Below is the detailed explanation for all the rows and columns, taking the first file as an example.</p>
+<table class="docutils align-default" id="id1">
+<caption><span class="caption-text">MIR configuration table</span><a class="headerlink" href="#id1" title="Link to this table"></a></caption>
+<colgroup>
+<col style="width: 10.0%" />
+<col style="width: 13.3%" />
+<col style="width: 6.7%" />
+<col style="width: 6.7%" />
+<col style="width: 10.0%" />
+<col style="width: 6.7%" />
+<col style="width: 6.7%" />
+<col style="width: 6.7%" />
+<col style="width: 6.7%" />
+<col style="width: 6.7%" />
+<col style="width: 6.7%" />
+<col style="width: 6.7%" />
+<col style="width: 6.7%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>A</p></th>
+<th class="head"><p>B</p></th>
+<th class="head"><p>C</p></th>
+<th class="head"><p>D</p></th>
+<th class="head"><p>E</p></th>
+<th class="head"><p>F</p></th>
+<th class="head"><p>G</p></th>
+<th class="head"><p>H</p></th>
+<th class="head"><p>I</p></th>
+<th class="head"><p>J</p></th>
+<th class="head"><p>K</p></th>
+<th class="head"><p>L</p></th>
+<th class="head"><p>M</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>source</p></td>
+<td><p>miritest.npy</p></td>
+<td><p>-1</p></td>
+<td><p>-1</p></td>
+<td><p>n/a</p></td>
+<td><p>0.0</p></td>
+<td><p>0</p></td>
+<td><ul class="simple">
+<li></li>
+</ul>
+</td>
+<td><p>0.0</p></td>
+<td><p>0</p></td>
+<td><p>_</p></td>
+<td><p>_</p></td>
+<td><p>_</p></td>
+</tr>
+<tr class="row-odd"><td><p>template_poly</p></td>
+<td><p>miri_qsotemplate_flex.npy</p></td>
+<td><p>0.059</p></td>
+<td><p>1</p></td>
+<td><p>_</p></td>
+<td><p>_</p></td>
+<td><p>_</p></td>
+<td><p>S</p></td>
+<td><p>0.0</p></td>
+<td><p>0</p></td>
+<td><p>_</p></td>
+<td><p>_</p></td>
+<td><p>_</p></td>
+</tr>
+<tr class="row-even"><td><p>template</p></td>
+<td><p>miri_qsotemplate_flex.npy</p></td>
+<td><p>0.175</p></td>
+<td><p>1</p></td>
+<td><p>global</p></td>
+<td><p>1.5</p></td>
+<td><p>1</p></td>
+<td><p>S</p></td>
+<td><p>0.0</p></td>
+<td><p>0</p></td>
+<td><p>_</p></td>
+<td><p>_</p></td>
+<td><p>_</p></td>
+</tr>
+<tr class="row-odd"><td><p>blackbody</p></td>
+<td><p>warm</p></td>
+<td><p>0.1</p></td>
+<td><p>1</p></td>
+<td><p>CHIAR06</p></td>
+<td><p>1.5</p></td>
+<td><p>1</p></td>
+<td><p>S</p></td>
+<td><p>250.0</p></td>
+<td><p>0</p></td>
+<td><p>_</p></td>
+<td><p>_</p></td>
+<td><p>_</p></td>
+</tr>
+<tr class="row-even"><td><p>extinction</p></td>
+<td><p>chiar06_i0857.npy</p></td>
+<td><p>0.0</p></td>
+<td><p>0</p></td>
+<td><p>CHIAR06</p></td>
+<td><p>0.0</p></td>
+<td><p>1</p></td>
+<td><ul class="simple">
+<li></li>
+</ul>
+</td>
+<td><p>0.0</p></td>
+<td><p>0</p></td>
+<td><p>_</p></td>
+<td><p>_</p></td>
+<td><p>_</p></td>
+</tr>
+<tr class="row-odd"><td><p>absorption</p></td>
+<td><p>ice+hc_abs.npy</p></td>
+<td><p>0.0</p></td>
+<td><ol class="arabic simple" start="0">
+<li></li>
+</ol>
+</td>
+<td><p>ice_hc</p></td>
+<td><p>0.0</p></td>
+<td><ol class="arabic simple">
+<li></li>
+</ol>
+</td>
+<td><ul class="simple">
+<li></li>
+</ul>
+</td>
+<td><p>0</p></td>
+<td><p>0</p></td>
+<td><p>_</p></td>
+<td><p>_</p></td>
+<td><p>_</p></td>
+</tr>
+</tbody>
+</table>
+<p>A: The type of data (template, blackbody, powerlaw, absorption, extinction, …). Put ‘source’ for the data to be fitted.</p>
+<p>B: This is the filename to read in. It will be ignored for types ‘blackbody’ or ‘powerlaw’ as these are generated in the code itself. Some popular templates are pre-loaded in <code class="docutils literal notranslate"><span class="pre">q3dfit/data/questfit_templates</span></code>. These include silicate opacity curves from <a class="reference external" href="https://ui.adsabs.harvard.edu/abs/2006ApJ...637..774C/abstract">Chiar and Tielens (2006)</a>, astronomical dust opacity curves from <a class="reference external" href="https://ui.adsabs.harvard.edu/abs/2003ApJ...598.1017D/abstract">Draine (2003)</a>, PAH templates from <a class="reference external" href="https://ui.adsabs.harvard.edu/abs/2007ApJ...656..770S/abstract">Smith et al. (2007)</a>, and absorption curves of ices and hydrocarbons from <a class="reference external" href="https://ui.adsabs.harvard.edu/abs/2004ApJS..154..184S/abstract">Spoon et al. (2004)</a>.</p>
+<dl>
+<dt>C: For source: lower wavelength limit. “-1” will use the lowest possible common wavelength. [Still in development.]</dt><dd><p>For template, blackbody, powerlaw: normalization factor.</p>
+<p>For absorption: tau_peak.</p>
+<p>For extinction: any float; this will be ignored.</p>
+</dd>
+<dt>D: For source: upper wavelength limit. “-1” will use the largest possible common wavelength. [Still in development.]</dt><dd><p>For template, blackbody, powerlaw: fix/free parameter for the normalization. 0=fixed, 1=free.</p>
+<p>For absorption: fix/free parameter for tau_peak. 1=fixed, 0=free. [Note: not clear this is correct; may do nothing]</p>
+</dd>
+<dt>E: For extinction: shorthand name for the extinction curve</dt><dd><p>For absorption:  shorthand name for the ice absorption curve.</p>
+<p>For template, blackbody, powerlaw: In case of individual extinction applied to each component, set which exctinction curve should be applied via the shorthand defined for the extinction curve.</p>
+<p><strong>NOTE:</strong> If this is set to ‘global’ for any row, the same global extinction and ice absorption will be applied to each fitting component (thus in the example above, the individual extinction settings will be ignored). If instead individual extinction is used and this is set to _ or -, then no extinction will be applied.</p>
+<p>For source: any string; will be ignored</p>
+</dd>
+<dt>F: For template, blackbody, powerlaw: extinction value (A_V)</dt><dd><p>For source, extinction, absorption: any float; will be ignored</p>
+</dd>
+<dt>G: For template, blackbody, powerlaw: fix/free parameter for A_V. 0=fixed, 1=free</dt><dd><p>For source, extinction, absorption: any float; will be ignored</p>
+</dd>
+<dt>H: For template, blackbody, powerlaw: S=screen extinction, M=mixed extinction. [Still in development; only S mode has been tested.]</dt><dd><p>For source, extinction, absorption: any string; will be ignored</p>
+</dd>
+</dl>
+<p>I: For blackbody: temperature (in K), for powerlaw: index.</p>
+<blockquote>
+<div><p>For source, template, absorption, extinction: any float; will be ignored</p>
+</div></blockquote>
+<dl>
+<dt>J: For blackbody: fix/free parameter for temperature. 0=fixed, 1=free</dt><dd><p>For powerlaw: fix/free parameter for powerlaw index. 0=fixed, 1=free.</p>
+<p>For source, template, absorption, extinction: any float; will be ignored</p>
+</dd>
+<dt>K: For template, blackbody, powerlaw: In case of individual extinction/absorption applied to each component, set which absorption should be applied by the shorthand defined in column E.</dt><dd><p>For source, extinction, absorption: any string; will be ignored.</p>
+<p><strong>NOTE:</strong> If this is set to _ or -, there will be no absorption applied to this curve (unless global is set for any component in column E which overrides this)</p>
+</dd>
+<dt>L: For template, blackbody, powerlaw: initial guess for the amplitude of the absorption</dt><dd><p>For source, extinction, absorption: any float/string; will be ignored.</p>
+</dd>
+<dt>M: For template, blackbody, powerlaw: fix/free parameter for absorption amplitude. 0=fixed, 1=free</dt><dd><p>For source, extinction, absorption: any float/string; will be ignored</p>
+</dd>
+</dl>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="fitting.html" class="btn btn-neutral float-left" title="Fitting" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="source/q3dfit.html" class="btn btn-neutral float-right" title="User modules" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, David Rupke and the Q3D Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

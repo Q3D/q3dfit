@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>q3dfit.linelist &mdash; q3dfit 1.1.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=00f267c6"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            q3dfit
+          </a>
+              <div class="version">
+                1.1.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">q3dfit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fitting.html">Fitting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../MIR-configuration.html">MIR Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html">User modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#classes">Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#internal-modules">Internal modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">q3dfit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">q3dfit.linelist</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for q3dfit.linelist</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">importlib.resources</span> <span class="k">as</span> <span class="nn">pkg_resources</span>
+<span class="kn">from</span> <span class="nn">astropy.table</span> <span class="kn">import</span> <span class="n">Table</span><span class="p">,</span> <span class="n">vstack</span>
+<span class="kn">from</span> <span class="nn">q3dfit.data</span> <span class="kn">import</span> <span class="n">linelists</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span>
+
+
+<div class="viewcode-block" id="linelist">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.linelist.linelist">[docs]</a>
+<span class="k">def</span> <span class="nf">linelist</span><span class="p">(</span><span class="n">inlines</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+             <span class="n">linelab</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+             <span class="n">waveunit</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;micron&#39;</span><span class="p">,</span><span class="s1">&#39;Angstrom&#39;</span><span class="p">]</span><span class="o">=</span><span class="s1">&#39;micron&#39;</span><span class="p">,</span> 
+             <span class="n">vacuum</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Table</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Generates an astropy Table of lines from the master files provided in</span>
+<span class="sd">/data/linelist. No required parameters; by default the entire tables are read from</span>
+<span class="sd">the linelist_air.tbl and linelist_vac.tbl, recomputed into vacuum and returned</span>
+
+<span class="sd">Parameters</span>
+<span class="sd">----------</span>
+<span class="sd">inlines</span>
+<span class="sd">    Optional. A list of strings to match against the &#39;name&#39; part of the</span>
+<span class="sd">    master list to return only the lines requested. Default is None, which returns all </span>
+<span class="sd">    lines in the master list.</span>
+<span class="sd">linelab</span>
+<span class="sd">    Optional. Whether to return the Tex-friendly labels for the lines. Default is True.</span>
+<span class="sd">vacuum</span>
+<span class="sd">    Optional. Whether to return wavelengths in vacuum (returns air wavelengths if false);</span>
+<span class="sd">    conversion is equation 3 from Morton et al. 1991 ApJSS 77 119. Default is True.</span>
+<span class="sd">waveunit</span>
+<span class="sd">    Optional. Output wavelength unit of &#39;Angstrom&#39; or &#39;micron&#39;. Default is &#39;micron&#39;.</span>
+
+<span class="sd">Returns</span>
+<span class="sd">-------</span>
+<span class="sd">Table</span>
+<span class="sd">    Columns &#39;name&#39;, &#39;linelab&#39;, &#39;lines&#39;. &#39;name&#39; is the name of the line,</span>
+<span class="sd">    &#39;linelab&#39; is the LaTeX-friendly label, and &#39;lines&#39; is the central</span>
+<span class="sd">    wavelength in the units requested.</span>
+<span class="sd">    Example: &#39;Lyalpha&#39;, &#39;Ly$\\alpha$&#39;, 1215.67</span>
+
+
+<span class="sd">Examples</span>
+<span class="sd">--------</span>
+
+<span class="sd">To get the central wavelengths in microns of all lines in Table 2 of</span>
+<span class="sd">Smith et al. 2007 ApJ 656 770 (PAHFIT paper) plus the high-ionization</span>
+<span class="sd">[NeVI] line typical of AGN:</span>
+
+<span class="sd">&gt;&gt;&gt; mylist=[&#39;H2_00_S7&#39;,&#39;H2_00_S6&#39;,&#39;H2_00_S5&#39;,&#39;[ArII]6.99&#39;,&#39;[NeVI]7.65&#39;,&#39;H2_00_S4&#39;,</span>
+<span class="sd">...        &#39;[ArIII]8.99&#39;,&#39;H2_00_S3&#39;,&#39;[SIV]10.51&#39;,&#39;H2_00_S2&#39;,&#39;[NeII]12.81&#39;,</span>
+<span class="sd">...        &#39;[NeIII]15.56&#39;,&#39;H2_00_S1&#39;,&#39;[SIII]18.71&#39;,&#39;[OIV]25.89&#39;,&#39;[FeII]25.99&#39;,</span>
+<span class="sd">...        &#39;H2_00_S0&#39;,&#39;[SIII]33.48&#39;,&#39;[SiII]34.82&#39;]</span>
+<span class="sd">&gt;&gt;&gt; u=linelist(mylist)</span>
+
+
+<span class="sd">To get the central wavelengths in microns of the strongest lines in</span>
+<span class="sd">Storchi-Bergmann et al. 2009 MNRAS 394, 1148 (NIFS spectra of AGN):</span>
+
+<span class="sd">&gt;&gt;&gt; mylist=[&#39;Pae&#39;,&#39;[SIII]0.9533&#39;,&#39;HeII1.0126&#39;,&#39;HeI1.0833&#39;,&#39;Pag&#39;, &#39;[SIX]1.2524&#39;,</span>
+<span class="sd">...        &#39;[FeII]1.2570&#39;, &#39;Pab&#39;, &#39;[FeII]1.6440&#39;, &#39;Br11&#39;, &#39;Br10&#39;,&#39;Brg&#39;,</span>
+<span class="sd">...        &#39;[SiVII]2.4833&#39;]</span>
+<span class="sd">&gt;&gt;&gt; u=linelist(mylist)</span>
+
+
+<span class="sd">Will return all lines in the catalog with labels and central wavelengths</span>
+<span class="sd">in vacuum in microns:</span>
+
+<span class="sd">&gt;&gt;&gt; u=linelist()</span>
+
+
+<span class="sd">Will produce a table of vacuum wavelengths in microns for three lines</span>
+<span class="sd">in the same order as given, and a warning there is a duplicated line</span>
+<span class="sd">in mylist:</span>
+
+<span class="sd">&gt;&gt;&gt; mylist=[&#39;Paa&#39;, &#39;Halpha&#39;, &#39;Paa&#39;]</span>
+<span class="sd">&gt;&gt;&gt; u=linelist(inlines=mylist)</span>
+
+
+<span class="sd">Will produce a table of air wavelengths in Angstroms for three lines, report</span>
+<span class="sd">that line &#39;junk&#39; is not in the line list, convert to air wavelengths and</span>
+<span class="sd">to microns, complain that H2_00_S0 is outside the validity of the Morton&#39;s</span>
+<span class="sd">formula for vacuum to air conversion, and remove the line lables.</span>
+
+<span class="sd">&gt;&gt;&gt; mylist=[&#39;Paa&#39;, &#39;Halpha&#39;, &#39;junk&#39;, &#39;H2_00_S0&#39;]</span>
+<span class="sd">&gt;&gt;&gt; u=linelist(inlines=mylist,vacuum=False,waveunit=&#39;Angstrom&#39;,linelab=False)</span>
+
+<span class="sd">To get the central wavelength for an individual feature by name:</span>
+
+<span class="sd">&gt;&gt;&gt; wv=np.array(linelist([&#39;Halpha&#39;])[&#39;lines&#39;])</span>
+
+<span class="sd">OR</span>
+
+<span class="sd">&gt;&gt;&gt; u=linelist()</span>
+<span class="sd">&gt;&gt;&gt; wv=np.array(u[&#39;lines&#39;][(u[&#39;name&#39;]==&#39;Halpha&#39;)])</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># default is vacuum for input tables</span>
+    <span class="n">linetables</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;linelist_DSNR.tbl&#39;</span><span class="p">,</span> <span class="s1">&#39;linelist_H1.tbl&#39;</span><span class="p">,</span> <span class="s1">&#39;linelist_H2.tbl&#39;</span><span class="p">,</span>
+                  <span class="s1">&#39;linelist_fine_str.tbl&#39;</span><span class="p">,</span> <span class="s1">&#39;linelist_TSB.tbl&#39;</span><span class="p">]</span>
+    <span class="n">all_tables</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">all_units</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">llist</span> <span class="ow">in</span> <span class="n">linetables</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">pkg_resources</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="n">linelists</span><span class="p">,</span> <span class="n">llist</span><span class="p">)</span> <span class="k">as</span> <span class="n">p</span><span class="p">:</span>
+            <span class="c1"># this sets float64 data types</span>
+            <span class="n">newtable</span> <span class="o">=</span> <span class="n">Table</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;ipac&#39;</span><span class="p">)</span>
+            <span class="n">all_tables</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Table</span><span class="p">(</span><span class="n">newtable</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;str&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">,</span> <span class="s1">&#39;str&#39;</span><span class="p">]))</span>
+            <span class="n">all_units</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">newtable</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unit</span><span class="p">)</span>
+
+    <span class="c1"># get everything on the user-requested units:</span>
+    <span class="k">if</span> <span class="p">((</span><span class="n">waveunit</span><span class="o">!=</span><span class="s1">&#39;Angstrom&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">waveunit</span><span class="o">!=</span><span class="s1">&#39;micron&#39;</span><span class="p">)):</span>
+           <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;Wave unit &#39;</span><span class="p">,</span><span class="n">waveunit</span><span class="p">,</span><span class="s1">&#39; not recognized, returning microns&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">waveunit</span><span class="o">==</span><span class="s1">&#39;Angstrom&#39;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">u</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">all_units</span><span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">u</span><span class="o">==</span><span class="s1">&#39;micron&#39;</span><span class="p">):</span>
+                <span class="n">all_tables</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">all_tables</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">1.e4</span>
+                <span class="n">all_tables</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unit</span><span class="o">=</span><span class="s1">&#39;Angstrom&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">u</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">all_units</span><span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">u</span><span class="o">==</span><span class="s1">&#39;Angstrom&#39;</span><span class="p">):</span>
+                <span class="n">all_tables</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">all_tables</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">1.e-4</span>
+                <span class="n">all_tables</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unit</span><span class="o">=</span><span class="s1">&#39;micron&#39;</span>
+    <span class="c1"># now everything is on the same units, let&#39;s stack all the tables:</span>
+    <span class="n">all_lines</span><span class="o">=</span><span class="n">vstack</span><span class="p">(</span><span class="n">all_tables</span><span class="p">)</span>
+    <span class="c1"># and this will be my output variable for the user</span>
+    <span class="n">outlines</span><span class="o">=</span><span class="n">all_lines</span>
+
+    <span class="c1"># a helper function that removes duplicate lines to check for duplicates</span>
+    <span class="c1"># https://stackoverflow.com/questions/12897374/get-unique-values-from-a-list-in-python</span>
+    <span class="k">def</span> <span class="nf">uniqlist</span><span class="p">(</span><span class="n">inlist</span><span class="p">):</span>
+        <span class="n">outlist</span><span class="o">=</span><span class="p">[]</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">inlist</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">outlist</span><span class="p">:</span>
+                <span class="n">outlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">outlist</span>
+
+    <span class="c1"># check if there is an input list of lines, those are the only ones we</span>
+    <span class="c1"># are retaining:</span>
+    <span class="k">if</span> <span class="n">inlines</span><span class="p">:</span>
+        <span class="c1"># first of all, let&#39;s check to see if any duplicate values in inlines:</span>
+        <span class="c1"># https://stackoverflow.com/questions/12897374/get-unique-values-from-a-list-in-python</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">inlines</span><span class="o">!=</span><span class="n">uniqlist</span><span class="p">(</span><span class="n">inlines</span><span class="p">)):</span>
+            <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;Multiple occurrences of the same lines, proceeding as user requested&#39;</span><span class="p">)</span>
+        <span class="n">outlines</span><span class="o">=</span><span class="n">Table</span><span class="p">(</span><span class="n">names</span><span class="o">=</span><span class="n">all_lines</span><span class="o">.</span><span class="n">colnames</span><span class="p">,</span>
+                       <span class="n">dtype</span><span class="o">=</span><span class="p">[</span><span class="n">all_lines</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">all_lines</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">all_lines</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="mi">2</span><span class="p">]])</span>
+        <span class="k">for</span> <span class="n">ind</span><span class="p">,</span><span class="n">inline</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">inlines</span><span class="p">):</span>
+            <span class="n">sub_table</span><span class="o">=</span><span class="n">all_lines</span><span class="p">[(</span><span class="n">all_lines</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="o">==</span><span class="n">inline</span><span class="p">)]</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sub_table</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;No line with name &#39;</span><span class="p">,</span><span class="n">inline</span><span class="p">,</span><span class="s1">&#39; was found&#39;</span><span class="p">)</span>
+            <span class="c1"># this error would only occur if the data table has duplications:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sub_table</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;Too many lines with name &#39;</span><span class="p">,</span> <span class="n">inline</span><span class="p">,</span> <span class="s1">&#39; were found in the database,&#39;</span><span class="p">)</span>
+                <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;Returning the first database occurrence&#39;</span><span class="p">)</span>
+                <span class="n">sub_table</span><span class="o">=</span><span class="n">sub_table</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">outlines</span><span class="o">=</span><span class="n">vstack</span><span class="p">([</span><span class="n">outlines</span><span class="p">,</span> <span class="n">sub_table</span><span class="p">])</span>
+        <span class="c1"># the healthy outcome is that the number of entries in the outlines</span>
+        <span class="c1"># is the same as the number of entries in the inlines</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">inlines</span><span class="p">)</span><span class="o">!=</span><span class="nb">len</span><span class="p">(</span><span class="n">outlines</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Input list size different from output table size, most likely&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;because some lines were not found in the database&#39;</span><span class="p">)</span>
+
+    <span class="c1"># if the user doesn&#39;t want Latex labels, remove them</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">linelab</span><span class="o">==</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">outlines</span><span class="o">.</span><span class="n">keep_columns</span><span class="p">([</span><span class="s1">&#39;name&#39;</span><span class="p">,</span><span class="s1">&#39;lines&#39;</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">vacuum</span><span class="o">!=</span><span class="kc">True</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">vacuum</span><span class="o">!=</span><span class="kc">False</span><span class="p">)):</span>
+        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;Incorrect input for vacuum vs air, proceeding with default (vacuum)&#39;</span><span class="p">)</span>
+        <span class="n">vacuum</span><span class="o">=</span><span class="kc">True</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">vacuum</span><span class="o">==</span><span class="kc">False</span><span class="p">):</span>
+        <span class="c1"># meaning air is desired; first let&#39;s check whether we need to issue</span>
+        <span class="c1"># a Morton warning:</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">outlines</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unit</span><span class="o">==</span><span class="s2">&quot;Angstrom&quot;</span><span class="p">):</span>
+            <span class="n">morton_fail</span><span class="o">=</span><span class="p">((</span><span class="n">outlines</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">&lt;</span><span class="mi">2000</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">outlines</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">&gt;</span><span class="mi">25000</span><span class="p">))</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">morton_fail</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">):</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Line(s) &#39;</span><span class="p">,</span><span class="n">outlines</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">][</span><span class="n">morton_fail</span><span class="p">],</span>
+                                           <span class="s1">&#39; outside of Morton validity for conversion to air&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">outlines</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unit</span><span class="o">==</span><span class="s2">&quot;micron&quot;</span><span class="p">):</span>
+            <span class="n">morton_fail</span><span class="o">=</span><span class="p">((</span><span class="n">outlines</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">&lt;</span><span class="mf">0.2</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">outlines</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">&gt;</span><span class="mf">2.5</span><span class="p">))</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">morton_fail</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">):</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Line(s) &#39;</span><span class="p">,</span><span class="n">outlines</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">][</span><span class="n">morton_fail</span><span class="p">],</span>
+                                           <span class="s1">&#39; outside of Morton validity for conversion to air&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">outlines</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unit</span><span class="o">==</span><span class="s2">&quot;Angstrom&quot;</span><span class="p">):</span>
+            <span class="n">temp</span><span class="o">=</span><span class="mf">1.e4</span><span class="o">/</span><span class="n">outlines</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">temp</span><span class="o">=</span><span class="mf">1.</span><span class="o">/</span><span class="n">outlines</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span>
+        <span class="n">outlines</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">outlines</span><span class="p">[</span><span class="s1">&#39;lines&#39;</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="mf">6.4328e-5</span><span class="o">+</span>
+                <span class="mf">2.94981e-2</span><span class="o">/</span><span class="p">(</span><span class="mf">146.</span><span class="o">-</span><span class="n">temp</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">+</span><span class="mf">2.5540e-4</span><span class="o">/</span><span class="p">(</span><span class="mf">41.</span><span class="o">-</span><span class="n">temp</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">outlines</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, David Rupke and the Q3D Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

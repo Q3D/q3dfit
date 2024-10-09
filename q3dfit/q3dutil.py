@@ -1,118 +1,41 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Nov 10 20:06:50 2022
-
-@author: drupke
+Utility functions that are used by multiple modules in the q3dfit package.
 """
+from __future__ import annotations
+
+from typing import Optional
 import numpy as np
-
-from q3dfit import spectConvol
 from q3dfit.exceptions import InitializationError
-from q3dfit.linelist import linelist
-from q3dfit.readcube import Cube
 
 
-def get_linelist(q3di):
-    '''
-    Get linelist
-
-    Parameters
-    ----------
-    q3di : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    listlines : TYPE
-        DESCRIPTION.
-
-    '''
-    vacuum = q3di.vacuum
-    if hasattr(q3di, 'lines'):
-        listlines = linelist(q3di.lines, vacuum=vacuum, **q3di.argslinelist)
-    else:
-        listlines = [] # linelist(q3di.lines, vacuum=vacuum, **q3di.argslinelist)
-    return listlines
-
-
-def get_dispersion(q3di):
-    '''
-    Instantiate spectConvol object with dispersion information for selected
-    gratings. Return value is None (no convolution) if q3di.spect_convol is
-    empty.
-
-    Parameters
-    ----------
-    q3di : object
-
-    Returns
-    -------
-    spectConvol : object
-
-    '''
-    if not q3di.spect_convol:
-        return None
-    else:
-        return spectConvol.spectConvol(q3di.spect_convol)
-
-
-def get_Cube(q3di, quiet=True, logfile=None):
-    '''
-    instantiate Cube object
-
-
-    Parameters
-    ----------
-    q3di : TYPE
-        DESCRIPTION.
-    quiet : TYPE
-        DESCRIPTION.
-    logfile : TYPE, optional
-        DESCRIPTION. The default is None.
-
-    Returns
-    -------
-    cube : TYPE
-        DESCRIPTION.
-    TYPE
-        DESCRIPTION.
-
-    '''
-    if logfile is None:
-        from sys import stdout
-        logfile = stdout
-
-    cube = Cube(q3di.infile, quiet=quiet,
-                logfile=logfile, datext=q3di.datext, varext=q3di.varext,
-                dqext=q3di.dqext, vormap=q3di.vormap, **q3di.argsreadcube)
-
-    return cube, q3di.vormap
-
-
-def get_q3dio(inobj):
+def get_q3dio(inobj: str | object) -> object:
     '''
     Load initialization or output object. Determine whether it's already an object,
     or needs to be loaded from file.
 
     Parameters
     ----------
-    q3dio : string or object
+    inobj
+        Input object. If a string, assume it's an input .npy file. If an ndarray,
+        assume the file's been loaded but not stripped to dict{}. If an object,
+        assume all is well.
 
     Raises
     ------
     InitializationError
-        DESCRIPTION.
 
     Returns
     -------
-    q3di/o object
+    object
+        :py:class:`~q3dfit.q3din.q3din` or :py:class:`~q3dfit.q3dout.q3dout` object.
 
     '''
 
     # If it's a string, assume it's an input .npy file
     if type(inobj) == str:
-        q3dioarr = np.load(inobj, allow_pickle=True)
+        q3dioarr = np.load(inobj, allow_pickle=True) # type: ignore
         q3dio = q3dioarr[()]
     # If it's an ndarray, assume the file's been loaded but not stripped
     # to dict{}
@@ -124,65 +47,49 @@ def get_q3dio(inobj):
     else:
         raise InitializationError('q3di/o not in expected format')
 
-    return(q3dio)
+    return q3dio
 
 
-def get_voronoi(cols, rows, vormap):
+def get_spaxels(ncols: int,
+                nrows: int,
+                cols: Optional[int | list | np.ndarray]=None,
+                rows: Optional[int | list | np.ndarray]=None) -> \
+                tuple[int, np.ndarray[int], np.ndarray[int]]:
     '''
-    construct voronoi map
-
-    Parameters
-    ----------
-    cols : TYPE
-        DESCRIPTION.
-    rows : TYPE
-        DESCRIPTION.
-    vormap : TYPE
-        DESCRIPTION.
-
-    Raises
-    ------
-    ValueError
-        DESCRIPTION.
-
-    Returns
-    -------
-    cols : TYPE
-        DESCRIPTION.
-
-    '''
-    if len(cols) == 1 and len(rows) == 1:
-        cols = vormap[cols[0]-1, rows[0]-1]
-        return cols
-    else:
-        raise ValueError('Q3DF: ERROR: Can only specify 1 spaxel, \
-                         or all spaxels, in Voronoi mode.')
-
-
-def get_spaxels(cube, cols=None, rows=None):
-    '''
-    Set up 1D arrays specifying column value and row value at each point to be
+    Set up 1D arrays specifying column value and row value for each spaxel to be
     fitted. These are zero-offset for indexing other arrays.
 
     Parameters
     ----------
-    cube : TYPE
-        DESCRIPTION.
-    cols : TYPE, optional
-        DESCRIPTION. The default is None.
-    rows : TYPE, optional
-        DESCRIPTION. The default is None.
+    ncols
+        Total number of columns in the data cube.
+    nrows
+        Total number of rows in the data cube.
+    cols
+        Optional. Column values for spaxels to be fitted. Default is None, which means
+        all columns will be fitted. If a scalar, only that column will be fitted. If a
+        2-element list or array, the elements are the starting and ending columns to be
+        fitted. Unity-offset values assumed.
+    rows
+        Optional. Row values for spaxels to be fitted. Default is None, which means
+        all rows will be fitted. If a scalar, only that row will be fitted. If a
+        2-element list or array, the elements are the starting and ending rows to be
+        fitted. Unity-offset values assumed.
 
     Returns
     -------
-    None.
-
+    int
+        Number of spaxels to be fitted.
+    np.ndarray[int]
+        1D array of column values for spaxels to be fitted.
+    np.ndarray[int]
+        1D array of row values for spaxels to be fitted.
     '''
     # Set up 2-element arrays with starting and ending columns/rows
     # These are unity-offset to reflect pixel labels
     if not cols:
-        cols = [1, cube.ncols]
-        ncols = cube.ncols
+        cols = [1, ncols]
+        ncols = ncols
         #   case: cols is a scalar
     elif not isinstance(cols, (list, np.ndarray)):
         cols = [cols, cols]
@@ -193,8 +100,8 @@ def get_spaxels(cube, cols=None, rows=None):
     else:
         ncols = cols[1]-cols[0]+1
     if not rows:
-        rows = [1, cube.nrows]
-        nrows = cube.nrows
+        rows = [1, nrows]
+        nrows = nrows
     elif not isinstance(rows, (list, np.ndarray)):
         rows = [rows, rows]
         nrows = 1
@@ -226,23 +133,90 @@ def get_spaxels(cube, cols=None, rows=None):
     return nspax, colarr, rowarr
 
 
+'''
+def get_voronoi(cols, rows, vormap):
+    construct voronoi map
+
+    Parameters
+    ----------
+    cols : TYPE
+        DESCRIPTION.
+    rows : TYPE
+        DESCRIPTION.
+    vormap : TYPE
+        DESCRIPTION.
+
+    Raises
+    ------
+    ValueError
+        DESCRIPTION.
+
+    Returns
+    -------
+    cols : TYPE
+        DESCRIPTION.
+
+    if len(cols) == 1 and len(rows) == 1:
+        cols = vormap[cols[0]-1, rows[0]-1]
+        return cols
+    else:
+        raise ValueError('Q3DF: ERROR: Can only specify 1 spaxel, \
+                         or all spaxels, in Voronoi mode.')
+'''
+
+
+def write_msg(message: str,
+              file: Optional[str]=None,
+              quiet: bool=True
+              ):
+    '''
+    Write message to log file and/or :py:func:`~sys.stdout`.
+
+    Parameters
+    ----------
+    message
+        Message to be written
+    logfile
+        Optional. Filename for progress messages. Default is None, which
+        means no message is written to a file.
+    quiet
+        Optional. Suppress progress messages to stdout. Default is True.
+    '''
+    if file is not None:
+        with open(file, 'a') as log:
+            log.write(message)
+    if not quiet:
+        print(message)
+
+
 class lmlabel():
     """
-Created on Wed Aug 25 14:07:30 2021
+    Remove characters from a label string that are incompatible with LMFIT's
+    parser; or reverse the operation.
 
-@author: drupke
+    All keys of a Parameters() instance must be strings and valid Python symbol
+    names. This class replaces incompatible characters with valid symbols.
 
-Remove characters from a label string that are incompatible with LMFIT's
-parser; or reverse the operation.
+    https://lmfit.github.io/lmfit-py/parameters.html#lmfit.parameter.Parameters
 
-"All keys of a Parameters() instance must be strings and valid Python symbol
-names, so that the name must match [a-z_][a-z0-9_]* and cannot be a Python
-reserved word."
+    Parameters
+    ----------
+    label
+        Input label string.
+    reverse
+        Optional. If set, reverse the operation. Default is False.
 
-https://lmfit.github.io/lmfit-py/parameters.html#lmfit.parameter.Parameters
-
+    Attributes
+    ----------
+    label
+        Original label string.
+    lmlabel
+        Label string with incompatible characters replaced by valid symbols.
     """
-    def __init__(self, label, reverse=False):
+    def __init__(self,
+                 label: str,
+                 reverse: bool=False):
+
         if reverse:
             lmlabel = label
             origlabel = label.replace('lb', '[').replace('rb', ']').\

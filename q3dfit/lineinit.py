@@ -1,70 +1,66 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from astropy.constants import c
-from astropy.table import QTable, Table
-from lmfit import Model
-from q3dfit.q3dutil import lmlabel
-from q3dfit.exceptions import InitializationError
+from typing import Optional
 import numpy as np
-import q3dfit.data
 import os
 
+from astropy.constants import c
+from astropy.table import QTable, Table
+from lmfit import Model, Parameters
 
-def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
-             specConv, lineratio=None, siglim=None, blrcomp=None, 
-             linevary=None, blrlines=None, blrsiglim=None, waves=None):
+import q3dfit.data
+from . import q3dutil
+from q3dfit.exceptions import InitializationError
+from q3dfit.spectConvol import spectConvol
+
+def lineinit(linelist: Table,
+             linelistz: dict,
+             linetie: dict,
+             linevary: dict[str, np.ndarray],
+             initflux: dict[str, np.ndarray],
+             initsig: dict[str, np.ndarray],
+             siglim: dict[str, np.ndarray],
+             ncomp: dict[str, np.ndarray],
+             specConv: Optional[spectConvol]=None,
+             lineratio: Optional[Table | QTable]=None,
+             waves: Optional[np.ndarray]=None):
     '''
 
     Initialize parameters for emission-line fitting.
 
     Parameters
     ----------
-    linelist : astropy Table
-        Table of emission lines.
-    linelistz : dict
-        Dictionary of line redshifts.
-    linetie : dict
-        Dictionary of line ties.
-    initflux : dict
-        Dictionary of initial fluxes.
-    initsig : dict
-        Dictionary of initial sigmas.
-    maxncomp : int
-        Maximum number of components.
-    ncomp : dict
-        Dictionary of number of components.
-    specConv : object
-        Spectral resolution object.
-    lineratio : astropy Table, optional
-        Table of line ratio constraints, beyond those in the doublets table.
-    siglim : list, optional
-        Sigma limits. The default is to set a lower limit of 5 and an upper
-        limit of 2000 km/s.
-    blrcomp : list, optional
-        List of components for broad-line region scattered component fit in fitqsohost. 
+    linelist
+        Emission lines to fit.
+    linelistz
+        Initial guess for line redshifts.
+    linetie
+        Line to which to tie each line.
+    linevary
+        Line parameter vary flags (fix/free).
+    initflux
+       Initial guess for line fluxes.
+    initsig
+        Initial guess for line sigmas.
+    siglim
+        Lower and upper limits for line sigmas.
+    ncomp
+        Number of components for each line.
+    specConv
+        Optional. Spectral resolution object. If set to None, no convolution
+        will be performed. The default is None.
+    lineratio
+        Optional. Table of line ratio constraints, beyond those in the doublets table.
         The default is None.
-    linevary : dict, optional
-        Dictionary of line parameter vary flags (fix/free). The default is to set
-        all parameters to free.
-    blrlines : list, optional
-        List of broad-line region scattered lines in fitqsohost. The default is None.
-    blrsiglim : list, optional
-        Sigma limits for broad-line region scattered component fit in fitqsohost.
+    waves
+        Optional. Wavelength array for determining if a line is in the fit range. 
         The default is None.
-    waves : array, optional
-        Wavelength array for determining if a line is in the fit range. The default
-        is None.
     
     Returns
     -------
-    totmod : lmfit Model
-        Total model object for fitting.
-    fit_params : lmfit Parameters
-        Fit parameter object
-    siglim : list
-        Sigma limits.
-
+    lmfit.Model
+    lmfit.Parameters
     '''
     # Get fixed-ratio doublet pairs for tying intensities
     data_path = os.path.abspath(q3dfit.data.__file__)[:-11]
@@ -77,12 +73,6 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
     for idx, name in enumerate(doublets['line1']):
         if doublets['fixed_ratio'][idx] == 1:
             dblt_pairs[doublets['line2'][idx]] = doublets['line1'][idx]
-
-    # A reasonable lower limit of 5d for physicality
-    if siglim is None:
-        siglim = np.array([5., 2000.], dtype='float64')
-    else:
-        siglim = np.array(siglim, dtype='float64')
 
     # converts the astropy.Table structure of linelist into a Python
     # dictionary that is compatible with the code downstream
@@ -98,7 +88,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
         # cycle through velocity components
         for i in range(0, ncomp[line]):
             # LMFIT parameters can only consist of letters,  numbers, or _
-            lmline = lmlabel(line)
+            lmline = q3dutil.lmlabel(line)
             mName = f'{lmline.lmlabel}_{i}_'
             imodel = Model(manygauss, prefix=mName, SPECRES=specConv)
             if isinstance(totmod, Model):
@@ -119,7 +109,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             lmline += psplit[i]  # string for line label
             if i != len(psplit)-3:
                 lmline += '_'
-        line = lmlabel(lmline, reverse=True)
+        line = q3dutil.lmlabel(lmline, reverse=True)
         inrange = True
         if waves is not None:
             if linelistz[line.label][0] > max(waves) or \
@@ -144,29 +134,24 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             # Check if it's a doublet; this will break if weaker line
             # is in list, but stronger line is not
             if line.label in dblt_pairs.keys():
-                dblt_lmline = lmlabel(dblt_pairs[line.label])
+                dblt_lmline = q3dutil.lmlabel(dblt_pairs[line.label])
                 idx_line = np.where(doublets['line1']==dblt_lmline.lmlabel.replace('lb', '[').replace('rb', ']'))[0]
                 ratio = doublets['ratio'][idx_line].value[0]
                 tied = f'{dblt_lmline.lmlabel}_{comp}_flx/(1.*{ratio})'
             else:
                 tied = ''
-            if linevary is None:
-                vary = True
-            else:
-                try:
-                    vary = linevary[line.label][gpar][comp]
-                except:
-                    print('lineinit: dict vary missing information')
+            try:
+                vary = linevary[line.label][gpar][comp]
+            except:
+                raise InitializationError('linevary not properly defined')
 
         elif gpar == 'cwv':
             value = linelistz[line.label][comp]
             limited = np.array([1, 1], dtype='uint8')
-            limits = np.array([linelistz[line.label][comp]*0.997,
-                               linelistz[line.label][comp]*1.003],
-                              dtype='float32')
+            limits = np.array([value*0.997, value*1.003], dtype='float32')
             # Check if line is tied to something else
             if linetie[line.label] != line.label:
-                linetie_tmp = lmlabel(linetie[line.label])
+                linetie_tmp = q3dutil.lmlabel(linetie[line.label])
                 tied = '{0:0.6e} / {1:0.6e} * {2}_{3}_cwv'.\
                     format(lines_arr[line.label],
                            lines_arr[linetie[line.label]],
@@ -174,40 +159,29 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             # This is pretty odd; it's a very special case
             # elif force_cwv_lines is not None:
             #     if line.label in force_cwv_lines and comp > 0:
-            #         linetie_tmp = lmlabel(linetie[line.label])
+            #         linetie_tmp = q3dutil.lmlabel(linetie[line.label])
             #         tied = '{}_0_cwv'.\
             #                 format(linetie_tmp.lmlabel)
             else:
                 tied = ''
-            if linevary is None:
-                vary = True
-            else:
-                try:
-                    vary = linevary[line.label][gpar][comp]
-                except:
-                    print('lineinit: dict vary missing information')
+            try:
+                vary = linevary[line.label][gpar][comp]
+            except:
+                raise InitializationError('linevary not properly defined')
 
         elif gpar == 'sig':
             value = initsig[line.label][comp]
             limited = np.array([1, 1], dtype='uint8')
-
-            limits = np.array(siglim, dtype='float64')
-            if blrlines is not None and blrcomp is not None and blrsiglim is not None:
-                if line.label in blrlines and comp in blrcomp:
-                    limits = np.array(blrsiglim, dtype='float64')
-
+            limits = siglim[line.label][comp]
             if linetie[line.label] != line.label:
-                linetie_tmp = lmlabel(linetie[line.label])
+                linetie_tmp = q3dutil.lmlabel(linetie[line.label])
                 tied = f'{linetie_tmp.lmlabel}_{comp}_sig'
             else:
                 tied = ''
-            if linevary is None:
-                vary = True
-            else:
-                try:
-                    vary = linevary[line.label][gpar][comp]
-                except:
-                    print('lineinit: dict vary missing information')
+            try:
+                vary = linevary[line.label][gpar][comp]
+            except:
+                raise InitializationError('linevary not properly defined')
 
 
         fit_params = \
@@ -230,8 +204,8 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
             line1 = lineratio['line1'][ilinrat]
             line2 = lineratio['line2'][ilinrat]
             comps = lineratio['comp'][ilinrat]
-            lmline1 = lmlabel(line1)
-            lmline2 = lmlabel(line2)
+            lmline1 = q3dutil.lmlabel(line1)
+            lmline2 = q3dutil.lmlabel(line2)
             for comp in comps:
                 if f'{lmline1.lmlabel}_{comp}_flx' in fit_params.keys() and \
                     f'{lmline2.lmlabel}_{comp}_flx' in fit_params.keys():
@@ -284,42 +258,42 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
                             lower = 1. / doublets['upper'][iline1][0]
                         fit_params[lmrat].min = lower.astype('float64')
 
-    # pass siglim_gas back because the default is set here, and it's needed
-    # downstream
-
-    return totmod, fit_params, siglim
+    return totmod, fit_params
 
 
-def set_params(fit_params, NAME, VALUE=None, VARY=True, LIMITED=None,
-               TIED=None, LIMITS=None):
+def set_params(fit_params: Parameters,
+               NAME: str,
+               VALUE: Optional[float]=None,
+               VARY: bool=True,
+               LIMITED: Optional[np.ndarray]=None,
+               TIED: Optional[str]=None,
+               LIMITS: Optional[np.ndarray]=None)->Parameters:
     '''
 
     Set parameters for the lmfit model using the lmfit Parameters object.
 
     Parameters
     ----------
-    fit_params : lmfit Parameters
+    fit_params
         Fit parameter object.
-    NAME : str
+    NAME
         Parameter name.
-    VALUE : float, optional
-        Initial value. The default is None.
-    VARY : bool, optional
-        Vary flag. The default is True.
-    LIMITED : list, optional
-        Whether or not to limit the parameter. The default is to set no limits.
-    TIED : str, optional
+    VALUE
+        Optional. Initial value. The default is None, in which case no value is set.
+    VARY
+        Vary flag. The default is True, in which case the parameter is free to vary.
+    LIMITED
+        Whether or not to limit the parameter. The default, None, is to set no limits.
+    TIED
         Expression for tying the parameter to another. The default is None.
-    LIMITS : list, optional
-        Limits for the parameter. The default is None.
+    LIMITS
+        Limits for the parameter. The default is None, in which case no limits are set.
     
     Returns
     -------
-    fit_params : lmfit Parameters
+    Parameters
         Modified fit parameter object.
-    
     '''
-
     # we can force the input to float64, but lmfit has values as float64 and
     # doesn't seem like we can change it. These astypes assume that the
     # VALUE is a numpy object
@@ -336,27 +310,31 @@ def set_params(fit_params, NAME, VALUE=None, VARY=True, LIMITED=None,
     return fit_params
 
 
-def manygauss(x, flx, cwv, sig, SPECRES=None):
+def manygauss(x: np.ndarray,
+              flx: np.ndarray,
+              cwv: float,
+              sig: float,
+              SPECRES: Optional[spectConvol]=None) -> np.ndarray:
     '''
     Generate a Gaussian model for a given set of parameters.
 
     Parameters
     ----------
-    x : array
+    x
         Wavelength array.
-    flx : array
+    flx
         Flux array.
-    cwv : float
+    cwv
         Central wavelength.
-    sig : float
+    sig
         Sigma.
-    SPECRES : object, optional
+    SPECRES
         Spectral resolution object, for convolving the Gaussian with the spectral 
         resolution. The default is None.
     
     Returns
     -------
-    gaussian : array
+    numpy.ndarray
         Gaussian model.
     
     '''

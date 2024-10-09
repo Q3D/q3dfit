@@ -7,6 +7,12 @@ execution.
 If called externally (i.e., if we run q3df_helperFunctions.py from the command line),
 this script will execute q3df_multiCore on multiple cores using MPI. This script
 is called by :py:mod:`~q3dfit.q3df.q3dfit` when running in a multi-core environment.
+Functions called by :py:mod:`~q3dfit.q3df.q3dfit` for single- and multi-threaded
+execution.
+
+If called externally (i.e., if we run q3df_helperFunctions.py from the command line),
+this script will execute q3df_multiCore on multiple cores using MPI. This script
+is called by :py:mod:`~q3dfit.q3df.q3dfit` when running in a multi-core environment.
 """
 import time
 from typing import Optional
@@ -270,4 +276,5 @@ if __name__ == "__main__":
     else:
         nocrash = False
 
+        
     q3df_multiCore(rank, size, inobj, cols, rows, onefit, quiet, nocrash=nocrash)

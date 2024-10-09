@@ -6,14 +6,16 @@ import copy
 import numpy as np
 import re
 import warnings
+from typing import Literal, Optional
+from numpy.typing import ArrayLike
 
 from astropy import units as u
 from astropy.constants import c
 from astropy.io import fits
-from scipy import interpolate
-from sys import stdout
+#from scipy import interpolate
 
 from q3dfit.exceptions import CubeError
+from . import q3dutil
 
 __all__ = [
     'Cube'
@@ -26,94 +28,103 @@ class Cube:
 
     Parameters
     -----------
-    infile : str
-         Name of input FITS file.
-    datext : int, optional
-    varext : int, optional
-    dqext : int, optional
-    wmapext : int, optional
-        Extension numbers of data, variance, data quality, and weight. Set to
-        None if not present. Defaults are 1, 2, 3, and 4.
-    wavext : int, optional
-        Extension number of wavelength data.
-    error : bool, optional
-    fluxnorm : float, optional
-        Factor by which to divide the data.
-    fluxunit_in : str, optional
-    fluxunit_out : str, optional
-        Flux unit of input data cube and unit carried by object.
-        Defaults are MJy/sr (JWST default) and erg/s/cm2/micron/sr. Must be
-        parseable by astropy.units.
-    invvar : bool, optional
-        If the variance extension contains errors or inverse variance rather
-        than variance, the routine will convert to variance.
-    linearize : bool, optional
-        Resample the input wavelength scale so it is linearized.
-    logfile : str, optional
-        File for progress messages.
-    pixarea_sqas : float, optional
-        Pixel (spaxel) area in square arcseconds. If present and flux units are
-        per sr or per square arcseconds, will convert surface brightness
-        units to flux per voxel.
-    quiet : bool, optional
-        Suppress progress messages.
-    usebunit : bool, optional, default=False
-        If BUNIT and fluxunit_in differ, default to BUNIT.
-    usecunit : bool, optional, default=False
-        If CUNIT and waveunit_in differ, default to CUNIT.
-    vormap : array_like, optional
-        2D array specifying a Voronoi bin to which each spaxel belongs.
-    waveunit_in : str, optional
-    waveunit_out : str, optional
-        Wavelength unit of input data cube and unit carried by object.
-        Default is micron; other option is Angstrom.
-    zerodq : bool, optional
-        Zero out the DQ array.
+    infile
+        Name of input FITS file.
+    datext
+        Optional. Extension number of data. Defaults to 1.
+    varext
+        Optional. Extension number of variance. Defaults to 2.
+    dqext
+        Optional. Extension number of data quality. Defaults to 3. If DQ
+        extension is not present, set to None. This will set all DQ values
+        to 0.
+    wmapext
+        Optional. Extension number  of weight. Defaults to 4. If weight
+        extension is not present, set to None.
+    wavext
+        Optional. Extension number of wavelength data. Defaults to None.
+    zerodq
+        Optional. Zero out the DQ array. Default is False. Even if dqext
+        is present, this will set all DQ values to 0.
+    error
+        Optional. If the variance extension contains errors rather than
+        variance, set to True. Defaults to False.
+    invvar
+        Optional. If the variance extension contains inverse variance rather
+        than variance, set to True. Defaults to False.
+    fluxnorm
+        Optional. Factor by which to divide the data. Defaults to 1.
+    fluxunit_in
+        Optional. Flux unit of input data cube. Default is `MJy/sr` (JWST 
+        default). Must be parseable by :py:mod:`~astropy.units`.
+    fluxunit_out
+        Optional. Flux unit carried by object. Default is 
+        `erg/s/cm2/micron/sr`. Must be parseable by :py:mod:`~astropy.units`.
+    usebunit
+        Optional. If BUNIT and fluxunit_in differ, default to BUNIT. 
+        Default is False.
+    pixarea_sqas
+        Optional. Spaxel area in square arcseconds. If present and 
+        flux units are per sr or per square arcseconds, will convert surface 
+        brightness units to flux per spaxel. Default is None. If set to None and
+        header contains PIXAR_A2, routine will use that value.
+    waveunit_in 
+        Optional. Wavelength unit of input data cube. Default is `micron`.
+    waveunit_out
+        Optional. Wavelength unit carried by object. Default is `micron`.
+    usecunit
+        Optional. If CUNIT and waveunit_in differ, default to CUNIT. 
+        Default is False.
+    logfile
+        Optional. Filename for progress messages. Default is None.
+    quiet
+        Optional. Send progress messages to stdout. Default is False.
 
     Attributes
     ----------
-    dat : ndarray
-    var : ndarray
-    err : ndarray
-    dq : ndarray
-    wmap : ndarray
-        Data, variance, error, data quality, and weight (1/variance) arrays.
-        Errors are recorded as nan when the variances are negative.
-    wave : ndarray
-        Wavelength array.
+    dat: numpy.ndarray
+        Data array (ncols, nrows, nwave).
+    var : numpy.ndarray
+        Variance array (ncols, nrows, nwave).
+    err : numpy.ndarray
+        Error array (ncols, nrows, nwave). Recorded as nan when the variance is negative.
+    dq : numpy.ndarray
+        Data quality array (ncols, nrows, nwave).
+    wmap : numpy.ndarray
+        Weight (1/variance) array (ncols, nrows, nwave). If wmap extension is not present, 
+        set to None.
+    wave : numpy.ndarray
+        Wavelength array (nwave).
     cdelt : float
+        Constant dispersion. If a wavelength extension is present, this is the difference
+        between the first two wavelengths.
     crpix : int
+        WCS pixel zero point, in unity-offset coordinates. If a wavelength extension is 
+        present, this is the first pixel (i.e., 1).
     crval : float
-        WCS wavelength variables.
-    header_phu :
-    header_dat :
-    header_var :
-    header_dq :
-    header_wmap :
-        Headers of the various extensions (phu = first, or primary, header
-        data unit)
+        WCS wavelength zero point. If a wavelength extension is present, this is the first
+        wavelength.
+    header_phu : astropy.io.fits.Header
+        Primary header data unit.
+    header_dat : astropy.io.fits.Header
+        Header for the data extension.
+    header_var : astropy.io.fits.Header
+        Header for the variance extension.
+    header_dq : astropy.io.fits.Header
+        Optional. Header for the data quality extension. If dq extension is not present, 
+        set to None.
+    header_wmap : astropy.io.fits.Header
+       Optional. Header for the wmap extension. If wmap extension is not present, 
+       set to None.
     cubedim : int
+        Number of dimensions of the "cube" (1, 2, or 3).
     ncols : int
+        Number of columns.  If the data are 1D, this is 1. If the data are 2D, this is the
+        number of spectra.
     nrows : int
+        Number of rows. If the data are 1D or 2D, this is 1.
     nwave : int
-        Dimensions of the cube.
-
-    Methods
-    -------
-    about()
-        Print information about the cube.
-    convolve()
-        Spatially smooth the cube.
-    makeqsotemplate()
-        Extract the quasar spectrum.
-    specextract()
-        Extract a spectrum.
-    reproject()
-        Reproject the cube onto a new WCS.
-    writefits()
-        Write the cube to a FITS file.
-    writespec()
-        Write a spectrum to a FITS file.
+        Number of wavelength elements.
 
     Examples
     --------
@@ -122,17 +133,30 @@ class Cube:
     >>> cube.convolve(2.5)
     >>> cube.writefits('outfile.fits')
 
-    Notes
-    -----
     '''
 
-    def __init__(self, infile, datext=1, varext=2, dqext=3, wmapext=4,
-                 error=False, fluxunit_in='MJy/sr',
-                 fluxnorm=1., fluxunit_out='erg/s/cm2/micron/sr',
-                 invvar=False, linearize=False, logfile=stdout, quiet=False,
-                 pixarea_sqas=None, usebunit=False, usecunit=False,
-                 vormap=None, waveunit_in='micron', waveunit_out='micron',
-                 wavext=None, zerodq=False):
+    def __init__(self,
+                 infile: str,
+                 datext: int=1,
+                 varext: int=2,
+                 dqext: Optional[int]=3,
+                 wmapext: Optional[int]=4,
+                 wavext: Optional[int]=None, 
+                 zerodq: bool=False,
+                 error: bool=False,
+                 invvar: bool=False,
+                 fluxnorm: float=1.,
+                 fluxunit_in: str='MJy/sr',
+                 fluxunit_out: str='erg/s/cm2/micron/sr',
+                 usebunit: bool=False, 
+                 pixarea_sqas: Optional[float]=None, 
+                 waveunit_in: str='micron', 
+                 waveunit_out: str='micron',
+                 usecunit: bool=False,
+#                 linearize: bool=False,
+#                 vormap=None,
+                 quiet: bool=False,
+                 logfile: Optional[str]=None):
 
         warnings.filterwarnings("ignore")
 
@@ -158,37 +182,33 @@ class Cube:
         # Uncertainty
         # This could be one of three expressions of uncertainty:
         # variance, error, or inverse variance.
-        if varext is not None:
-            try:
-                uncert = np.array((hdu[varext].data).T, dtype='float64')
-            except (IndexError or KeyError):
-                raise CubeError('Variance extension not properly specified ' +
-                                'or absent')
-                print('Variance extension not properly specified ' +
-                    'or absent', file=logfile)
-            # convert expression of uncertainty to variance and error
-            # if uncert = inverse variance:
-            if invvar:
-                self.var = 1./copy.copy(uncert)
-                self.err = 1./copy.copy(uncert) ** 0.5
-            # if uncert = error:
-            elif error:
-                if (uncert < 0).any():
-                    print('Cube: Negative values encountered in error ' +
-                          'array. Taking absolute value.', file=logfile)
-                self.err = np.abs(copy.copy(uncert))
-                self.var = np.abs(copy.copy(uncert)) ** 2.
-            # if uncert = variance:
-            else:
-                if (uncert < 0).any():
-                    print('Cube: Negative values encountered in variance ' + 
-                          'array. Taking absolute value.', file=logfile)
-                self.var = np.abs(copy.copy(uncert))
-                self.err = np.abs(copy.copy(uncert)) ** 0.5
+        try:
+            uncert = np.array((hdu[varext].data).T, dtype='float64')
+        except (IndexError or KeyError):
+            q3dutil.write_msg('Variance extension not properly specified ' +
+                'or absent', file=logfile, quiet=quiet)
+            raise CubeError('Variance extension not properly specified ' +
+                'or absent')
+        # convert expression of uncertainty to variance and error
+        # if uncert = inverse variance:
+        if invvar:
+            self.var = 1./copy.copy(uncert)
+            self.err = 1./copy.copy(uncert) ** 0.5
+        # if uncert = error:
+        elif error:
+            if (uncert < 0).any():
+                q3dutil.write_msg('Cube: Negative values encountered in error ' +
+                    'array. Taking absolute value.', file=logfile, quiet=quiet)
+            self.err = np.abs(copy.copy(uncert))
+            self.var = np.abs(copy.copy(uncert)) ** 2.
+        # if uncert = variance:
         else:
-            self.var = None
-            self.err = None
-
+            if (uncert < 0).any():
+                q3dutil.write_msg('Cube: Negative values encountered in variance ' + 
+                    'array. Taking absolute value.', file=logfile, quiet=quiet)
+            self.var = np.abs(copy.copy(uncert))
+            self.err = np.abs(copy.copy(uncert)) ** 0.5
+ 
         # Data quality
         if dqext is not None:
             try:
@@ -197,7 +217,7 @@ class Cube:
                 raise CubeError('DQ extension not properly specified ' +
                                 'or absent')
         else:
-            self.dq = None
+            zerodq=True
         # put all dq to good (0), data type bytes
         if zerodq:
             # data type mirrors JWST output DQ
@@ -217,12 +237,15 @@ class Cube:
         # headers
         self.header_phu = hdu[0].header
         self.header_dat = hdu[datext].header
-        if self.varext is not None:
-            self.header_var = hdu[varext].header
+        self.header_var = hdu[varext].header
         if self.dqext is not None:
             self.header_dq = hdu[dqext].header
+        else:
+            self.header_dq = None
         if self.wmapext is not None:
             self.header_wmap = hdu[wmapext].header
+        else:
+            self.header_wmap = None
         # copy of data header
         header = copy.copy(self.header_dat)
 
@@ -245,9 +268,8 @@ class Cube:
             BUNIT = 'BUNIT'
         # 1d array of spectra
         elif np.size(datashape) == 2:
-            if not quiet:
-                print('Cube: Reading 2D image. Assuming dispersion ' +
-                      'is along rows.', file=logfile)
+            q3dutil.write_msg('Cube: Reading 2D image. Assuming dispersion ' +
+                'is along rows.', file=logfile, quiet=quiet)
             nrows = 1
             ncols = (datashape)[1]
             nwave = (datashape)[-1]
@@ -288,29 +310,26 @@ class Cube:
             if cunitval == 'um':
                 cunitval = 'micron'
             if cunitval != waveunit_in and not usecunit:
-                if not quiet:
-                    print('Cube: Wave units in header (CUNIT) differ from ' +
-                          'waveunit_in='+waveunit_in+'; ignoring CUNIT. ' +
-                          'To override, set usecunit=True.', file=logfile)
+                q3dutil.write_msg('Cube: Wave units in header (CUNIT) differ from ' +
+                    'waveunit_in='+waveunit_in+'; ignoring CUNIT. ' +
+                    'To override, set usecunit=True.', file=logfile, quiet=quiet)
             else:
                 self.waveunit_in = cunitval
         except KeyError:
-            if not quiet:
-                print('Cube: No wavelength units in header; using ' +
-                      waveunit_in, file=logfile)
+            q3dutil.write_msg('Cube: No wavelength units in header; using ' +
+                waveunit_in, file=logfile, quiet=quiet)
         try:
             bunitval = header[BUNIT]
             if bunitval != fluxunit_in and not usebunit:
-                if not quiet:
-                    print('Cube: Flux units in header (BUNIT) differ from ' +
-                          'fluxunit_in='+fluxunit_in+'; ignoring BUNIT. ' +
-                          'To override, set usebunit=True.', file=logfile)
+                q3dutil.write_msg('Cube: Flux units in header (BUNIT='+bunitval+
+                    ') differ from ' +
+                    'fluxunit_in='+fluxunit_in+'; ignoring BUNIT. ' +
+                    'To override, set usebunit=True.', file=logfile, quiet=quiet)
             else:
                 self.fluxunit_in = bunitval
         except KeyError:
-            if not quiet:
-                print('Cube: No flux units in header; using ' + fluxunit_in,
-                      file=logfile)
+            q3dutil.write_msg('Cube: No flux units in header; using ' + fluxunit_in,
+                file=logfile, quiet=quiet)
         # Remove whitespace from units
         self.waveunit_in.strip()
         self.fluxunit_in.strip()
@@ -320,10 +339,10 @@ class Cube:
             self.pixarea_sqas = header['PIXAR_A2']
         except:
             self.pixarea_sqas = pixarea_sqas
-            if not quiet and pixarea_sqas is None:
-                print('Cube: No pixel area in header or specified in call; ' +
-                      'no correction for surface brightness flux units.',
-                      file=logfile)
+            if pixarea_sqas is None:
+                q3dutil.write_msg('Cube: No pixel area in header or specified in call; ' +
+                    'no correction for surface brightness flux units.',
+                    file=logfile, quiet=quiet)
 
         # cases of weirdo flux units
         # remove string literal '/A/'
@@ -335,8 +354,10 @@ class Cube:
             self.fluxunit_in = self.fluxunit_in.replace('/Ang', '/Angstrom')
         # remove scientific notation # and trailing whitespace
         # https://stackoverflow.com/questions/18152597/extract-scientific-number-from-string
-        match_number = re.compile('-?\ *[0-9]+\.?[0-9]*(?:[Ee]' +
-                                  '\ *-?\ *[0-9]+)\ *')
+        # with some modification
+        # https://developers.google.com/edu/python/regular-expressions
+        match_number = re.compile(r'-?\s+[0-9]+\.?[0-9]*(?:[Ee]' +
+                                  r'\s*-?\s*[0-9]+)\s*')
         self.fluxunit_in = re.sub(match_number, '', self.fluxunit_in)
 
         # reading wavelength from wavelength extension
@@ -344,11 +365,11 @@ class Cube:
         if wavext is not None:
             try:
                 self.wave = hdu[wavext].data
-                print("Assuming constant dispersion.")
+                q3dutil.write_msg("Assuming constant dispersion.", file=logfile, quiet=quiet)
             except (IndexError or KeyError):
                 raise CubeError('Wave extension not properly specified ' +
                                 'or absent')
-            self.crval = 0
+            self.crval = self.wave[0]
             self.crpix = 1
             # assume constant dispersion
             self.cdelt = self.wave[1]-self.wave[0]
@@ -378,6 +399,8 @@ class Cube:
             wave_in = self.wave * u.Unit(self.waveunit_in)
             self.wave = wave_in.to(u.Unit(self.waveunit_out)).value
 
+        '''
+        This feature is not currently implemented.
         # indexing of Voronoi-tessellated data
         if vormap:
             ncols = np.max(vormap)
@@ -400,6 +423,7 @@ class Cube:
             self.dat = vordat
             self.var = vorvar
             self.dq = vordq
+        '''
 
         # Flux unit conversions
         # default working flux unit is erg/s/cm^2/um/sr or erg/s/cm^2/um
@@ -453,6 +477,8 @@ class Cube:
         if self.err is not None:
             self.err = self.err / fluxnorm
         
+        '''
+        This feature is not currently implemented.
         # linearize in the wavelength direction
         if linearize:
             waveold = copy.copy(self.wave)
@@ -506,18 +532,15 @@ class Cube:
                     self.dq[ibd] = 1
             if self.var is not None:
                 self.err = copy.copy(self.var)**0.5
+        '''
 
         # close the fits file
         hdu.close()
 
+
     def about(self):
         '''
-        Print information about the cube.
-
-        Returns
-        -------
-        None
-
+        Print information about the cube to stdout.
         '''
         print(f"Size of data cube: [{self.ncols}, {self.nrows}, {self.nwave}]")
         print(f"Wavelength range: [{self.wave[0]:0.5f},",
@@ -530,28 +553,27 @@ class Cube:
         print(f"Output wave units: {self.waveunit_out}")
         print(f"NB: q3dfit uses output units for internal calculations.")
 
-    def convolve(self, refsize, wavescale=False, method='circle'):
 
-        import photutils
-        from astropy.convolution import convolve, Box2DKernel, Gaussian2DKernel, \
-            Tophat2DKernel
+    def convolve(self,
+                 refsize: float, 
+                 wavescale: bool=False,
+                 method: Literal['circle','Gaussian','boxcar']='circle'):
         '''
-        Spatially smooth a cube.
+        Spatially smooth a cube. Updates the data, variance, and error attributes.
 
         Parameters
         ----------
-        refsize : float
+        refsize
             Pixel size for smoothing algorithm.
-        wavescale : bool, optional
-            Option to scale smoothing size with wavelength. Default is False.
-        method : str, optional; default='circle'
-            Smoothing method. Options are 'circle', 'Gaussian', and 'boxcar'.
-
-        Returns
-        -------
-        None
-
+        wavescale
+            Optional. Scale smoothing size with wavelength. Default is False.
+        method
+            Optional. Smoothing method. Options are 'circle', 'Gaussian', and 
+            'boxcar'. Default is 'circle'.
         '''
+
+        from astropy.convolution import convolve, Box2DKernel, Gaussian2DKernel, \
+            Tophat2DKernel
 
         # check for flux/err = inf or bad dq
         # set to nan, as convolve will deal with nans
@@ -590,28 +612,34 @@ class Cube:
         self.err = np.sqrt(self.var)
 
 
-    def makeqsotemplate(self, outpy, col=None, row=None, norm=1., plot=True,
-                        radius=1.):
+    def makeqsotemplate(self,
+                        outpy: str,
+                        col: Optional[int]=None,
+                        row: Optional[int]=None,
+                        norm: float=1.,
+                        plot: bool=True,
+                        radius: float=1.):
         '''
-        Extract the quasar spectrum
+        Extract the quasar spectrum and save it to a numpy file.
 
         Parameters
         ----------
-        outpy : string
-            Name of the numpy save file for the resulting qso spectrum
-        col, row : float
-            x, y pixel coordinates of aperture center, in unity-offset
-            coordinates
-        norm : float, optional
-            Factor by which to divide output spectrum.
-        plot : bool, optional
-            Plot extracted spectrum.
-        radius : float, optional
-            Radius for circular extraction. Must be > 0.
-
-        Returns
-        -------
-        None
+        outpy
+            Name of the numpy save file for the resulting qso spectrum.
+        col
+            Optional. x value of aperture center, in unity-offset
+            coordinates. Default is None, in which case the cube is median-
+            collapsed in wavelength and the peak spaxel is used.
+        row
+            Optional.yx value of aperture center, in unity-offset
+            coordinates. Default is None, in which case the cube is median-
+            collapsed in wavelength and the peak spaxel is used.
+        norm
+            Optional. Factor by which to divide output spectrum. Default is 1.
+        plot
+            Optional. Plot extracted spectrum. Default is True.
+        radius
+            Optional. Radius for circular extraction. Must be > 0. Default is 1.
 
         '''
 
@@ -635,36 +663,43 @@ class Cube:
 
         np.save(outpy, qsotemplate)
 
-    def specextract(self, col, row, method='circle', norm=1., plot=True,
-                    radius=1., ylim=None):
 
-        import matplotlib.pyplot as plt
-        import photutils
-
+    def specextract(self,
+                    col: float,
+                    row: float,
+                    radius: float=1.,
+                    norm: float=1.,
+                    plot: bool=True,
+                    ylim: Optional[tuple]=None):
         '''
-        Extract a spectrum
+        Extract a spectrum in a single spaxel or a circular aperture.
 
         Parameters
         ----------
-        col, row : float
-            x, y pixel coordinates of aperture center, in unity-offset
-            coordinates
-        method : string, optional
-            Method of extraction. Default is circular aperture of radius r.
-        radius : float, optional
-            Radius for circular extraction. If 0, extract single spaxel.
-        norm : float, optional
-            Factor by which to divide output spectrum.
-        plot : bool, optional
-            Plot extracted spectrum.
+        col
+            x value of aperture center, in unity-offset coordinates.
+        row
+            y value of aperture center, in unity-offset coordinates.
+        radius
+            Optional. Radius for circular extraction. If 0, extract single 
+            spaxel. Default is 1.
+        norm
+            Optional. Factor by which to divide output spectrum. Default is 1.
+        plot
+            Optional. Plot extracted spectrum.
+        ylim
+            Optional. Y-axis limits for plot. Default is None, in which case
+            the plot will autoscale.
 
         Returns
         -------
-        spec : ndarray
+        numpy.ndarray
             Array of size nwave x (1-3), including data and var and/or dq if
             present.
-
         '''
+
+        import matplotlib.pyplot as plt
+        import photutils
 
         # second dimension of output array
         next = 1
@@ -702,9 +737,8 @@ class Cube:
                 spec[:, 2] = self.dq[intcol-1, introw-1, :]
         else:
             # create circular mask
-            if method == 'circle':
-                cent = np.array([row-1., col-1.])
-                aper = photutils.aperture.CircularAperture(cent, radius)
+            cent = np.array([row-1., col-1.])
+            aper = photutils.aperture.CircularAperture(cent, radius)
 
             # loop through wavelengths
             for i in np.arange(0, self.nwave):
@@ -734,24 +768,30 @@ class Cube:
 
         return spec
 
-    def reproject(self, newheader, new2dshape, newpixarea_sqas, parallel=True):
 
-        from reproject import reproject_exact
-
+    def reproject(self,
+                  newheader: object,
+                  new2dshape: ArrayLike,
+                  newpixarea_sqas: float,
+                  parallel: bool=True):
         '''
-        Reproject cube onto a new WCS.
+        Reproject cube onto a new WCS. Overwrites the data, variance, dq, and
+        error attributes. Also updates the pixel area, nrows, ncols, and
+        PIXEL_A2 keyword in the header.
 
         Parameters
         ----------
-        newheader : header object
-            Header containing new WCS information
-        new2dshape : list
-            2-element list containing (nrows, ncols)
-
-        Returns
-        -------
-        None
+        newheader
+            Header object containing new WCS information.
+        new2dshape
+            2-element array containing (nrows, ncols).
+        newpixarea_sqas
+            Pixel area in square arcseconds.
+        parallel
+            Optional. Use parallel processing when computing
+            reprojection. Default is True.
         '''
+        from reproject import reproject_exact
 
         head2d = copy.copy(self.header_dat)
         if 'NAXIS3' in head2d:
@@ -761,15 +801,8 @@ class Cube:
             head2d['NAXIS'] = 2
             head2d['WCSAXES'] = 2
 
-        nstack = 1
-        # check for var and dq planes
-        if self.varext is not None:
-            nstack += 1
-        if self.dqext is not None:
-            nstack += 1
-            dqind = 2
-            if self.varext is None:
-                dqind = 1
+        nstack = 3 # for dat, var, dq
+        dqind = 2
         # temporary array has size (nstack, ncols, nrows, nwave)
         # reproject needs (nrows, ncols), but cube stores data
         # as (ncols, nrows)
@@ -778,10 +811,8 @@ class Cube:
         stack_rp = np.ndarray((nstack,) + new2dshape[::-1] +
                               (self.nwave,))
         stack_in[0, :, :, :] = self.dat
-        if self.varext is not None:
-            stack_in[1, :, :, :] = self.var
-        if self.dqext is not None:
-            stack_in[dqind, :, :, :] = self.dq
+        stack_in[1, :, :, :] = self.var
+        stack_in[dqind, :, :, :] = self.dq
         for i in np.arange(self.nwave):
             # transpose data to (nrows, ncols)
             tmp_rp, _ = \
@@ -792,10 +823,8 @@ class Cube:
             # transpose back
             stack_rp[:, :, :, i] = np.transpose(tmp_rp, axes=(0, 2, 1))
         self.dat = stack_rp[0, :, :, :]
-        if self.varext is not None:
-            self.var = stack_rp[1, :, :, :]
-        if self.dqext is not None:
-            self.dq = stack_rp[dqind, :, :, :]
+        self.var = stack_rp[1, :, :, :]
+        self.dq = stack_rp[dqind, :, :, :]
         # do surface brightness conversion
         # reproject expects SB units
         if self.pixarea_sqas is not None:
@@ -818,19 +847,17 @@ class Cube:
         if 'PIXAR_A2' in self.header_dat:
             self.header_dat['PIXAR_A2'] = self.pixarea_sqas
 
-    def writefits(self, outfile):
+
+    def writefits(self,
+                  outfile: str):
         '''
         Write cube to file outfile. Assumes extension order empty phu (if
         present in original fits file), datext, varext, dqext, and wmapext.
 
         Parameters
         ----------
-        outfile : string
+        outfile
             Name of output file.
-
-        Returns
-        -------
-        None
 
         '''
 
@@ -854,32 +881,28 @@ class Cube:
             hdul = fits.HDUList([hdu1])
 
         # add variance, DQ, and wmap if present
-        if self.varext is not None:
-            hdul.append(fits.ImageHDU(self.var.T, header=self.header_var))
-        if self.dqext is not None:
-            hdul.append(fits.ImageHDU(self.dq.T, header=self.header_dq))
+        hdul.append(fits.ImageHDU(self.var.T, header=self.header_var))
+        hdul.append(fits.ImageHDU(self.dq.T, header=self.header_dq))
         if self.wmapext is not None:
             hdul.append(fits.ImageHDU(self.wmap.T, header=self.header_wmap))
 
         hdul.writeto(outfile, overwrite=True)
 
-    def writespec(self, spec, outfile):
+
+    def writespec(self,
+                  spec: np.ndarray[float],
+                  outfile: str):
         '''
         Write extracted spectrum to disk. Assumes extension order empty phu (if
         present in original fits file), datext, varext, dqext, and wmapext.
 
         Parameters
         ----------
-        spec : ndarray
+        spec
             Array of size nwave x (1-3), including data and var and/or dq if
             present.
-        outfile : string
+        outfile
             Name of output file.
-        
-        Returns
-        -------
-        None
-
         '''
 
         print("Output flux units: ", self.fluxunit_out)
@@ -908,15 +931,9 @@ class Cube:
             hdul = fits.HDUList([hdu1])
 
         # add variance, DQ, and wmap if present
-        if self.varext is not None:
-            hdul.append(fits.ImageHDU(spec[:, 1], header=hdr))
-        if self.dqext is not None:
-            hdul.append(fits.ImageHDU(spec[:, 2], header=hdr))
+        hdul.append(fits.ImageHDU(spec[:, 1], header=hdr))
+        hdul.append(fits.ImageHDU(spec[:, 2], header=hdr))
         # if self.wmapext is not None:
         #     hdul.append(fits.ImageHDU(self.wmap.T, header=self.header_wmap))
 
         hdul.writeto(outfile, overwrite=True)
-
-
-if __name__ == "__main__":
-    cube = Cube('data.fits')

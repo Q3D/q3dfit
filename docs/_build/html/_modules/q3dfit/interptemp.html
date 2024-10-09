@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>q3dfit.interptemp &mdash; q3dfit 1.1.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=00f267c6"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            q3dfit
+          </a>
+              <div class="version">
+                1.1.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">q3dfit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fitting.html">Fitting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../MIR-configuration.html">MIR Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html">Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/q3dfit.html#modules">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">q3dfit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">q3dfit.interptemp</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for q3dfit.interptemp</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">interpolate</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+
+
+<div class="viewcode-block" id="interptemp">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.interptemp.interptemp">[docs]</a>
+<span class="k">def</span> <span class="nf">interptemp</span><span class="p">(</span><span class="n">spec_lam</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+               <span class="n">temp_lam</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+               <span class="n">template</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    (Linearly) interpolate templates from template wavelength grid to data</span>
+<span class="sd">    wavelength grid.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    spec_lam</span>
+<span class="sd">        Wavelengths of data arrays.</span>
+<span class="sd">    temp_lam</span>
+<span class="sd">        Wavelengths of template arrays.</span>
+<span class="sd">    template</span>
+<span class="sd">        Model fluxes from templates. Second dimension is the number of</span>
+<span class="sd">        templates.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ArrayLike</span>
+<span class="sd">        The interpolated templates.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">template</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">ntemp</span> <span class="o">=</span> <span class="n">template</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">new_temp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">spec_lam</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ntemp</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ntemp</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">temp_lam</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">spec_lam</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;IFSF_INTERPTEMP: WARNING -- Extrapolating template from &#39;</span> <span class="o">+</span>
+              <span class="nb">str</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">temp_lam</span><span class="p">))</span> <span class="o">+</span> <span class="s1">&#39; to &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">spec_lam</span><span class="p">))</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">temp_lam</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">spec_lam</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;IFSF_INTERPTEMP: WARNING -- Extrapolating template from &#39;</span> <span class="o">+</span>
+              <span class="nb">str</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">temp_lam</span><span class="p">))</span> <span class="o">+</span> <span class="s1">&#39; to &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">spec_lam</span><span class="p">))</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Default interpolation for INTERPOL is linear</span>
+    <span class="k">if</span> <span class="n">ntemp</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ntemp</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">interpfunc</span> <span class="o">=</span> \
+                <span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">temp_lam</span><span class="p">,</span> <span class="n">template</span><span class="p">[:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">)</span>
+            <span class="n">new_temp</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">interpfunc</span><span class="p">(</span><span class="n">spec_lam</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">interpfunc</span> <span class="o">=</span> \
+            <span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">temp_lam</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span>
+                                 <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">new_temp</span> <span class="o">=</span> <span class="n">interpfunc</span><span class="p">(</span><span class="n">spec_lam</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">new_temp</span></div>
+
+
+
+<div class="viewcode-block" id="interp_lis">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.interptemp.interp_lis">[docs]</a>
+<span class="k">def</span> <span class="nf">interp_lis</span><span class="p">(</span><span class="n">spec_lam</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+               <span class="n">temp_lam_lis</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ArrayLike</span><span class="p">]</span> <span class="o">|</span> <span class="n">ArrayLike</span><span class="p">,</span>
+               <span class="n">template_lis</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ArrayLike</span><span class="p">]</span> <span class="o">|</span> <span class="n">ArrayLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function samples a single template or list of templates onto</span>
+<span class="sd">    the wavelength array of the input observed spectrum.  The output is</span>
+<span class="sd">    padded with NaN values instead of extrapolating beyond any template&#39;s</span>
+<span class="sd">    wavelength range.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    spec_lam</span>
+<span class="sd">        reference wavelength array onto which the templates(s) are interpolated</span>
+<span class="sd">    temp_lam_lis</span>
+<span class="sd">        Template wavelength array or list containing the wavelength arrays of the</span>
+<span class="sd">        different templates (not required to be at same length). (Also accepts 1D list,</span>
+<span class="sd">        list containing a 1D array, or list of lists)</span>
+<span class="sd">    template_lis</span>
+<span class="sd">        Template flux array or list containing the flux arrays of the different templates</span>
+<span class="sd">        (not required to be at same length). (Also accepts 1D list, list containing a 1D</span>
+<span class="sd">        array, or list of lists)</span>
+
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        Array containing the flux of the templates interpolated onto the spec_lam input</span>
+<span class="sd">        array.</span>
+<span class="sd">        If 2D, the 2nd dimension corresponds to the flux arrays of individual templates,</span>
+<span class="sd">        i.e. the newly sampled flux of template 0 can be accessed as new_temp[:,0], while</span>
+<span class="sd">        for template 1 this is new_temp[:,1], etc. The new_temp array is padded with NaN</span>
+<span class="sd">        values where the wavelength range of the respective template was more narrow than</span>
+<span class="sd">        the observed spectum.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+     <span class="c1"># -- Keyword to fill output array with NaNs beyond the interpolation range.</span>
+    <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span>
+
+    <span class="c1"># (not triggered for a single 1D list)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">template_lis</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">template_lis</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;__len__&quot;</span><span class="p">):</span>
+        <span class="n">ntemp</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">template_lis</span><span class="p">)</span>
+        <span class="n">new_temp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">spec_lam</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">ntemp</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">ntemp</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span> <span class="c1"># If a list containing just a 1D array is entered</span>
+            <span class="n">template_lis</span> <span class="o">=</span> <span class="n">template_lis</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span> <span class="n">temp_lam_lis</span><span class="o">=</span><span class="n">temp_lam_lis</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ntemp</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">if</span> <span class="n">ntemp</span> <span class="o">&gt;</span><span class="mi">1</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ntemp</span><span class="p">):</span>
+            <span class="n">interpfunc</span> <span class="o">=</span> \
+                <span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">temp_lam_lis</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">template_lis</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;cubic&#39;</span><span class="p">,</span> 
+                                     <span class="n">bounds_error</span><span class="o">=</span><span class="n">bounds_error</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">new_temp</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">interpfunc</span><span class="p">(</span><span class="n">spec_lam</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">interpfunc</span> <span class="o">=</span> \
+            <span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">temp_lam_lis</span><span class="p">,</span> <span class="n">template_lis</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> 
+                                 <span class="n">bounds_error</span><span class="o">=</span><span class="n">bounds_error</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+        <span class="n">new_temp</span> <span class="o">=</span> <span class="n">interpfunc</span><span class="p">(</span><span class="n">spec_lam</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">new_temp</span></div>
+
+
+
+<div class="viewcode-block" id="cutoff_NaNs">
+<a class="viewcode-back" href="../../source/q3dfit.html#q3dfit.interptemp.cutoff_NaNs">[docs]</a>
+<span class="k">def</span> <span class="nf">cutoff_NaNs</span><span class="p">(</span><span class="n">spec_lam</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+                <span class="n">new_temp</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function removes any NaN values from the output of the interp_lis() function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    spec_lam</span>
+<span class="sd">        reference wavelength array onto which the templates(s) are interpolated</span>
+<span class="sd">    new_temp</span>
+<span class="sd">        1D or 2D array with newly interpolated template fluxes, corresponding to the</span>
+<span class="sd">        output of interp_lis()</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    new_temp_NoNan</span>
+<span class="sd">        Same as new_temp, but without any NaN elements / rows containing at least one NaN</span>
+<span class="sd">        value</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">OKrow</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">new_temp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">new_temp</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="n">OKrow</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">OKrow</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+    <span class="n">spec_lam_NoNaN</span> <span class="o">=</span> <span class="n">spec_lam</span><span class="p">[</span><span class="n">OKrow</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_temp</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">new_temp_NoNan</span> <span class="o">=</span> <span class="n">new_temp</span><span class="p">[</span><span class="n">OKrow</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span> <span class="p">:]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">new_temp_NoNan</span> <span class="o">=</span> <span class="n">new_temp</span><span class="p">[</span><span class="n">OKrow</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">spec_lam_NoNaN</span><span class="p">,</span> <span class="n">new_temp_NoNan</span></div>
+
+
+
+<span class="c1"># def example_interp():</span>
+
+<span class="c1">#     source1 = np.load(&#39;../test/test_questfit/IRAS21219m1757_dlw_qst.npy&#39;, allow_pickle=True)</span>
+<span class="c1">#     if source1.shape[0]==1:	source1=source1[0]</span>
+<span class="c1">#     templ1 = np.load(&#39;../data/questfit_templates/smith_nftemp3.npy&#39;, allow_pickle=True)</span>
+<span class="c1">#     templ2 = np.load(&#39;../data/questfit_templates/smith_nftemp4.npy&#39;, allow_pickle=True)</span>
+
+<span class="c1">#     tpl_wave_lis = [templ1[&#39;WAVE&#39;], templ2[&#39;WAVE&#39;]]</span>
+<span class="c1">#     tpl_flux_lis = [templ1[&#39;FLUX&#39;], templ2[&#39;FLUX&#39;]]</span>
+<span class="c1">#     temp_flux = interp_lis(source1[&#39;WAVE&#39;], tpl_wave_lis, tpl_flux_lis)</span>
+
+<span class="c1">#     wave_noNaN, temp_flux_NoNaN = cutoff_NaNs(source1[&#39;WAVE&#39;], temp_flux)</span>
+<span class="c1">#     return wave_noNaN, temp_flux_NoNaN</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, David Rupke and the Q3D Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

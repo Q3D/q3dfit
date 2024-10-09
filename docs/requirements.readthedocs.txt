@@ -9,3 +9,4 @@ plotbin
 ppxf
 scikit-image
 scipy
+sphinx-rtd-theme

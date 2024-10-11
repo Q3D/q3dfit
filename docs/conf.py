@@ -22,7 +22,7 @@ copyright = '2023, David Rupke and the Q3D Team'
 author = 'David Rupke and the Q3D Team'
 
 # The full version, including alpha/beta/rc tags
-release = '1.1.4'
+release = '1.2.0-beta'
 
 
 # -- General configuration ---------------------------------------------------

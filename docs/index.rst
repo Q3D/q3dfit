@@ -102,8 +102,6 @@ Johns Hopkins University, and University of Maryland College Park.
    fitting
 
    MIR-configuration
-
-   modules
    
 ..   examples/one_spaxel
 

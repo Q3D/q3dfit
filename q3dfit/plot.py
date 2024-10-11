@@ -685,8 +685,11 @@ def plotline(q3do, nx=1, ny=1, figsize=(16,13), line=None, center_obs=None,
                 # otherwise
                 else:
                     idx = np.where(q3do.linelist['name'] == sub_linlab[i])
-                    linwav[i] = q3do.linelist['lines'][idx] * \
-                        (1. + q3do.zstar)
+                    if len(idx) > 0:
+                        linwav[i] = q3do.linelist['lines'][idx] * \
+                            (1. + q3do.zstar)
+                    else:
+                        raise InitializationError(f'Line {sub_linlab[i]} not fit.')
             else:
                 linwav[i] = 0.
     # If linelist not present, get cwavelength enter of plot window from list

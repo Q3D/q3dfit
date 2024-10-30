@@ -1,8 +1,17 @@
-1.2.0-beta (11 Oct 2023)
+2.0.0-alpha.0 (30 Oct 2024)
+---------------------------
+- Updated documentation through sphinx/autodoc -- 75% complete.
+- Refactoring of codebase, including typehints.
+- Bugfix: sphinx_autodoc_typehints now part of rtd requirements.
+- Bugfix: python version update for rtd
+
+1.2.0-beta (11 Oct 2024)
 ------------------------
+- New notebook for full-spectrum MIRI fitting.
 - Cube.convolve now allows Gaussian and boxcar convolutions.
 - Bugfix: Cube.convolve was not conserving flux.
 - Bugfix: sphinx_rtd_theme now part of rtd requirements.
+- Raise error when asked to plot line that wasn't fit.
 
 1.1.4 (11 Jul 2023)
 -------------------

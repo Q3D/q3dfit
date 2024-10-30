@@ -534,8 +534,8 @@ class q3din:
         except FileNotFoundError:
             print('Data cube not found.')
         
-        self.ncols = cube.ncols
-        self.nrows = cube.nrows
+        self.ncols: int = cube.ncols
+        self.nrows: int = cube.nrows
         self.cubedim = cube.cubedim
         if not quiet:
             cube.about()

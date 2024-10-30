@@ -39,6 +39,26 @@ Classes
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: q3dfit.q3dpro.Q3Dpro
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: q3dfit.q3dpro.OneLineData
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: q3dfit.q3dpro.LineData
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: q3dfit.q3dpro.ContData
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Internal modules
 ----------------
 

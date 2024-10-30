@@ -792,7 +792,7 @@ class Q3Dpro:
                 prelud = 'Ftot: '
             else:
                 prelud = 'Fc'+str(ni)+': '
-            ax[ni].set_title(f'{prelud}log$_{{10}}$ {lineratios[\'pltname\']}', fontsize=15, pad=45)
+            ax[ni].set_title(f'{prelud}log$_{{10}}$ {lineratios['pltname']}', fontsize=15, pad=45)
         frat10, frat10err = lineratios['lrat']['Ftot'][0], lineratios['lrat']['Ftot'][1]
         _display_pixels_wz(yy, xx, frat10, ax[0], CMAP=cmap,
                            VMIN=vminmax[0], VMAX=vminmax[1], NTICKS=5, COLORBAR=True)

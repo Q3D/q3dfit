@@ -10,3 +10,4 @@ ppxf
 scikit-image
 scipy
 sphinx-rtd-theme
+sphinx-autodoc-typehints

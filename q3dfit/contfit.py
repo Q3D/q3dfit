@@ -813,20 +813,29 @@ def questfit(wave: np.ndarray,
     return best_fit, ct_coeff, z
 
 
-def linfit_plus_FeII(lam, flux,weight, unused1, unused2, index, 
-                     zstar, specConv, outdir=None, quiet=False, refit=None, 
-                     rows=None, cols=None, Fe_FWHM=None, Fe_FWHM_UV=None, 
+def linfit_plus_FeII(lam,
+                     flux,
+                     weight,
+                     unused1,
+                     unused2,
+                     index, 
+                     zstar,
+                     specConv,
+                     outdir=None,
+                     quiet=False,
+                     refit=None, 
+                     rows=None,
+                     cols=None,
+                     Fe_FWHM=None,
+                     Fe_FWHM_UV=None, 
                      **kwargs):
     '''
     This function fits the continuum as a superposition of a linear fit and 
-    an FeII template. 
-    * Optical FeII template:  taken from Vestergaard & Wilkes (2001).
-    * UV FeII template: following the PyQSOFit code (Guo et al. 2018): 
-        template by Shen et al. (2019) - composite of 
-        Vestergaard & Wilkes (2001), Tsuzuki et al. (2006) and 
-        Salviander et al. (2007)
-    The UV and optical FeII templates are scaled up/down separately 
-    from each other.
+    an FeII template. Optical FeII template taken from Vestergaard & Wilkes (2001). UV FeII
+    template follows the PyQSOFit code (Guo et al. 2018) which uses the template by 
+    Shen et al. (2019). Which is in turn a composite of Vestergaard & Wilkes (2001), 
+    Tsuzuki et al. (2006) and Salviander et al. (2007). The UV and optical FeII templates 
+    are scaled up/down separately from each other.
 
     Parameters
     -----

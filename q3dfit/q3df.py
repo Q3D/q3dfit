@@ -69,4 +69,4 @@ def q3dfit(initproc, cols=None, rows=None, onefit=False, ncores=1,
             mpistr = mpipath + mpistr
         import sys
         call([mpistr, "-n", str(ncores), "python", filename,
-              initproc, cols, rows, str(onefit), str(quiet)])
+              initproc, cols, rows, str(onefit), str(quiet), str(nocrash)])

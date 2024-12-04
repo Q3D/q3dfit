@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from scipy import interpolate
-
+import os.path
 
 def interp_lis(spec_lam, temp_lam_lis, template_lis):
     """
@@ -97,10 +97,10 @@ def cutoff_NaNs(spec_lam, new_temp):
 
 def example_interp():
 
-    source1 = np.load('../test/test_questfit/IRAS21219m1757_dlw_qst.npy', allow_pickle=True)
+    source1 = np.load(os.path.normpath('../test/test_questfit/IRAS21219m1757_dlw_qst.npy'), allow_pickle=True)
     if source1.shape[0]==1:	source1=source1[0]
-    templ1 = np.load('../data/questfit_templates/smith_nftemp3.npy', allow_pickle=True)
-    templ2 = np.load('../data/questfit_templates/smith_nftemp4.npy', allow_pickle=True)
+    templ1 = np.load(os.path.normpath('../data/questfit_templates/smith_nftemp3.npy'), allow_pickle=True)
+    templ2 = np.load(os.path.normpath('../data/questfit_templates/smith_nftemp4.npy'), allow_pickle=True)
 
     tpl_wave_lis = [templ1['WAVE'], templ2['WAVE']]
     tpl_flux_lis = [templ1['FLUX'], templ2['FLUX']]

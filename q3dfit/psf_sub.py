@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from q3dfit.readcube import Cube
 from astropy.io import fits
 from q3dfit.cube_convolve import convolve_cube
+import os.path
 
 def make_PSF(datacube,cube,wavelength,plot=False):
 
@@ -105,12 +106,12 @@ def subtract_psf(infits,psf,datext=0, varext=1, dqext=2, wavext=None,
 
 
 if __name__ == "__main__":
-    #    cube = Cube(infile='../../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2.fits',datext=0, varext=1, dqext=2, wavext=None, wmapext=None)
+    #    cube = Cube(infile=os.path.normpath('../../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2.fits'),datext=0, varext=1, dqext=2, wavext=None, wmapext=None)
     
     wavelength_segments = [[10,100],[200,250]]
-    infits = '../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2.fits'
-    outfits = '../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2_psf_sub.fits'
-    #    infits = '../NIRspec_sim/NRS00001-QG-F100LP-G140H_comb_1234_g140h-f100lp_s3d.fits'
+    infits = os.path.normpath('../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2.fits')
+    outfits = os.path.normpath('../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2_psf_sub.fits')
+    #    infits = os.path.normpath('../NIRspec_sim/NRS00001-QG-F100LP-G140H_comb_1234_g140h-f100lp_s3d.fits')
     smoothed = convolve_cube(infits, datext=0, varext=1, dqext=2, wavext=None,
                              wmapext=None, plot=True,
                              waveunit_in='micron',wavelength_segments=[],waveunit_out='micron')
@@ -128,6 +129,6 @@ if __name__ == "__main__":
     plt.imshow(np.log10(NB_img),origin='lower')
 
 #    HDU= fits.PrimaryHDU(psf_sub_data)
-#    HDU.writeto('../NIRspec_sim/NRS00001-QG-F100LP-G140H_comb_1234_g140h-f100lp_s3d_psfsub.fits',overwrite=True)
+#    HDU.writeto(os.path.normpath('../NIRspec_sim/NRS00001-QG-F100LP-G140H_comb_1234_g140h-f100lp_s3d_psfsub.fits'),overwrite=True)
 
 

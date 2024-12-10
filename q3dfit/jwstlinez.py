@@ -7,7 +7,7 @@ from astropy.table import Table, vstack
 from astropy import units as u
 from q3dfit.data import linelists
 from q3dfit.data import jwst_tables
-
+import os.path
 """
 Created on Tue Jun 14 15:51:39 2022
 
@@ -215,7 +215,7 @@ def jwstlinez(z, gal, instrument, mode, grat_filt, waveunit='micron',
             print('There are no emission lines in the provided sampling range\n')
             print('Terminating table save...\n')
         else:
-            ascii.write(lines_inrange, outdir+filename, format='ipac',
+            ascii.write(lines_inrange, os.path.join(outdir, filename), format='ipac',
                         overwrite=True)
 
         print('File written as ' + filename, sep='')

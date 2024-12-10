@@ -8,7 +8,7 @@ from q3dfit.fitspec import fitspec
 
 import importlib
 import numpy as np
-
+import os.path
 
 def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
             onefit=False, quiet=True, logfile=None):
@@ -81,7 +81,7 @@ def fitloop(ispax, colarr, rowarr, cube, q3di, listlines, specConv,
         if not quiet:
             print(f'Reference coordinate: [col, row]=[{i+1}, {j+1}]')
 
-    outlab = '{0.outdir}{0.label}'.format(q3di)
+    outlab = os.path.join(q3di.outdir, q3di.label)
     if cube.dat.ndim > 1:
         outlab += '_{:04d}'.format(i+1)
     if cube.dat.ndim > 2:

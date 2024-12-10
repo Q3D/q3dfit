@@ -3,16 +3,17 @@ import numpy as np
 from astropy.io import fits
 import pandas as pd
 import pdb
+import os.path
 
-path_in = '../test/test_questfit/'
-file_in = path_in + '4978688_0.ideos.npy'
+path_in = os.path.normpath('../test/test_questfit/')
+file_in = os.path.join(path_in, '4978688_0.ideos.npy')
 data = np.load(file_in, allow_pickle=True)
 
-file_in = path_in + 'IRAS21219m1757_dlw_qst.npy'
+file_in = os.path.join(path_in, 'IRAS21219m1757_dlw_qst.npy')
 data = np.load(file_in, allow_pickle=True)[0]
 
 
-file_in = path_in+'22128896.csv'
+file_in = os.path.join(path_in, '22128896.csv')
 data2 = pd.read_csv(file_in)
 data = data2.rename(columns={"wavelength": "WAVE", "flux_jy": "FLUX",
                              "flux_jy_err": "EFLUX"}).to_records()

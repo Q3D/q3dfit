@@ -7,11 +7,11 @@ from skimage.transform import rescale
 from scipy.ndimage import fourier_shift, shift, rotate
 from astropy.io import fits
 from matplotlib import pyplot as plt
+import os.path
 
+volume = os.path.normpath('../../../MIRISIM/MIRI-ETC-SIM/')
 
-volume = '../../../MIRISIM/MIRI-ETC-SIM/'
-
-hdul = fits.open('../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_both.fits')
+hdul = fits.open(os.path.normpath('../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_both.fits'))
 #prihdu = fits.PrimaryHDU( header=hdul[0].header, data=hdul[0].data[:, 4:-5, :])
 prihdu = fits.PrimaryHDU( header=hdul[0].header, data=hdul[0].data[:, 5:-4, :])
 hdus_list = [prihdu]
@@ -20,13 +20,13 @@ for i in range(1,len(hdul)):
     hdus_list.append(fits.ImageHDU(data=hdul[i].data[:, 5:-4, :], header=hdul[i].header))
 
 thdulist = fits.HDUList(hdus_list)
-thdulist.writeto('../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_both_cut.fits', overwrite=True)
+thdulist.writeto(os.path.normpath('../../../MIRISIM/MIRI-ETC-SIM/miri_etc_cube_both_cut.fits'), overwrite=True)
 
 
-cube_both = readcube.CUBE(infile=volume+'miri_etc_cube_both_cut.fits',dataext=1, varext=2, dqext=3, waveext=None, wmapext=None)
-#cube_both = readcube.CUBE(infile='../NIRSpec_sim/NRS00001-QG-F100LP-G140H_comb_1234_g140h-f100lp_s3d.fits',dataext=1, varext=2, dqext=3, waveext=None)
-cube_psf = readcube.CUBE(infile=volume+'miri_etc_cube_quasar.fits',dataext=1, varext=2, dqext=3, waveext=None, wmapext=None)
-cube_galaxy = readcube.CUBE(infile=volume+'miri_etc_cube_galaxy.fits',dataext=1, varext=2, dqext=3, waveext=None, wmapext=None)
+cube_both = readcube.CUBE(infile=os.path.join(volume, 'miri_etc_cube_both_cut.fits'),dataext=1, varext=2, dqext=3, waveext=None, wmapext=None)
+#cube_both = readcube.CUBE(infile=os.path.normpath('../NIRSpec_sim/NRS00001-QG-F100LP-G140H_comb_1234_g140h-f100lp_s3d.fits'),dataext=1, varext=2, dqext=3, waveext=None)
+cube_psf = readcube.CUBE(infile=os.path.join(volume, 'miri_etc_cube_quasar.fits'),dataext=1, varext=2, dqext=3, waveext=None, wmapext=None)
+cube_galaxy = readcube.CUBE(infile=os.path.join(volume, 'miri_etc_cube_galaxy.fits'),dataext=1, varext=2, dqext=3, waveext=None, wmapext=None)
 
 
 def write_psfsubcube(file_in, file_out, datext, flux_psfsub):
@@ -185,7 +185,7 @@ def scale_cube(cube_in,shift_back = None,scaling = None):
         plt.xlabel('Wavelength')
         plt.ylabel('Flux')
         plt.legend()
-        plt.savefig('/Users/caroline/Documents/ARI-Heidelberg/Q3D/Plots_random/rescale_fct_output_6_9.png')
+        # plt.savefig('/Users/caroline/Documents/ARI-Heidelberg/Q3D/Plots_random/rescale_fct_output_6_9.png')
         plt.show()
         plt.close()
 
@@ -195,7 +195,7 @@ def scale_cube(cube_in,shift_back = None,scaling = None):
         plt.xlabel('Wavelength')
         plt.ylabel('Flux')
         plt.legend()
-        plt.savefig('/Users/caroline/Documents/ARI-Heidelberg/Q3D/Plots_random/rescale_fct_output_7_8.png')
+        # plt.savefig('/Users/caroline/Documents/ARI-Heidelberg/Q3D/Plots_random/rescale_fct_output_7_8.png')
         plt.show()
         plt.close()
 
@@ -221,21 +221,21 @@ if __name__ == "__main__":
     write_cube_cut = False
     if write_cube_cut:
         hdu=fits.PrimaryHDU(cube_scaled.T)
-        hdu.writeto(volume+'cube_scaled_cut.fits',overwrite='True')
+        hdu.writeto(os.path.join(volume, 'cube_scaled_cut.fits'),overwrite='True')
 
         hdu = fits.PrimaryHDU(psf_sub_i)
-        hdu.writeto(volume+'cube_psf_sub_cut.fits',overwrite=True)
+        hdu.writeto(os.path.join(volume, 'cube_psf_sub_cut.fits'),overwrite=True)
 
         hdu = fits.PrimaryHDU(psf_sub_i.T)
-        hdu.writeto(volume+'cube_psf_sub_cut_T.fits',overwrite=True)
+        hdu.writeto(os.path.join(volume, 'cube_psf_sub_cut_T.fits'),overwrite=True)
 
         hdu = fits.PrimaryHDU(psf.T)
-        hdu.writeto(volume+'psf_cut_T.fits',overwrite=True)
+        hdu.writeto(os.path.join(volume, 'psf_cut_T.fits'),overwrite=True)
 
 
     breakpoint()
 
-    write_psfsubcube(file_in=volume+'miri_etc_cube_both.fits', file_out=volume+'miri_etc_psf_sub.fits', datext=1, flux_psfsub=psf_sub_i.T)
+    write_psfsubcube(file_in=os.path.join(volume, 'miri_etc_cube_both.fits'), file_out=os.path.join(volume, 'miri_etc_psf_sub.fits'), datext=1, flux_psfsub=psf_sub_i.T)
 
 
 

@@ -236,10 +236,8 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True, compsortpar='sigma',
             flux = cube.dat[iuse, juse, :].flatten()
             err = cube.err[iuse, juse, :].flatten()
             dq = cube.dq[iuse, juse, :].flatten()
-            labin = '{0.outdir}{0.label}_{1:04d}_{2:04d}'.\
-                format(q3di, iuse+1, juse+1)
-            labout = '{0.outdir}{0.label}_{1:04d}_{2:04d}'.\
-                format(q3di, i+1, j+1)
+            labin = os.path.join(q3di.outdir, q3di.label+'_{0:04d}_{1:04d}'.format(iuse+1, juse+1))
+            labout = os.path.join(q3di.outdir, q3di.label+'_{0:04d}_{1:04d}'.format(i+1, j+1))
 
         # Restore fit after a couple of sanity checks
         # if vortile:

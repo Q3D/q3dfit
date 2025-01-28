@@ -68,7 +68,7 @@ def lineinit(linelist, linelistz, linetie, initflux, initsig, maxncomp, ncomp,
     '''
     # Get fixed-ratio doublet pairs for tying intensities
     data_path = os.path.abspath(q3dfit.data.__file__)[:-11]
-    doublets64 = Table.read(data_path+'linelists/doublets.tbl', format='ipac')
+    doublets64 = Table.read(os.path.join(data_path, 'linelists', 'doublets.tbl'), format='ipac')
     doublets = \
         Table(doublets64,
               dtype=['str', 'str', 'int', 'float64', 'float64', 'float64'])

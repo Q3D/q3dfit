@@ -14,8 +14,8 @@ def setup_spectral_library():
 	Naming scheme for the templates: <grid>/<subgrid>/(n)lte<Teff><log(g)><subgrid>.<grid>-HiRes.fits
 	(see Husser+2013)
 	'''
-	path = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/StellLib/PHOENIX/phoenix.astro.physik.uni-goettingen.de/data/MedResFITS/R10000FITS_all/'
-	files_all = glob.glob(path+'*')
+	# path = '/Users/caroline/Documents/ARI-Heidelberg/Q3D/StellLib/PHOENIX/phoenix.astro.physik.uni-goettingen.de/data/MedResFITS/R10000FITS_all/'
+	# files_all = glob.glob(path+'*')
 
 	metal = [-4., -3., -2. -1.5, -1., -0.5, 0., 0.5, 1.]
 	alpha = np.arange(-0.2, 1.4, step=0.2)

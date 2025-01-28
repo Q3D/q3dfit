@@ -17,7 +17,7 @@ from q3dfit.q3dutil import lmlabel
 from q3dfit.qsohostfcn import qsohostfcn
 from scipy import constants
 from scipy.interpolate import interp1d
-
+import os.path
 
 def load_q3dout(q3di, col, row, cubedim=None):
     """
@@ -45,7 +45,7 @@ def load_q3dout(q3di, col, row, cubedim=None):
     # convert from string to object if necessary.
     q3dii = q3dutil.get_q3dio(q3di)
 
-    filelab = '{0.outdir}{0.label}'.format(q3dii)
+    filelab = os.path.join(q3dii.outdir, q3dii.label)
     if cubedim is None:
         if hasattr(q3dii, 'cubedim'):
             cubedim = q3dii.cubedim

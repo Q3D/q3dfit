@@ -6,6 +6,7 @@ from astropy.io import ascii
 from astropy.table import Table, vstack
 from astropy import units as u
 from q3dfit.data import linelists
+import os.path
 """
 Created on Wed Jun 15 12:07:16 2022
 
@@ -225,7 +226,7 @@ def observedlinez(z, gal, lamb_min, lamb_max, vacuum=True, waveunit='micron',
         else:
             print('There are ' + str(list_len) + ' emission lines in the provided range.\n')
 
-            ascii.write(lines_inrange, outdir+filename, format = 'ipac',
+            ascii.write(lines_inrange, os.path.join(outdir, filename), format = 'ipac',
                     overwrite=True)
         
             print('File written as: ' + filename, sep='')

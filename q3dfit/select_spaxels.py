@@ -1,7 +1,7 @@
 import numpy as np
 from q3dfit.readcube import Cube
 import matplotlib.pyplot as plt
-
+import os.path
 
 def select_spaxels(infits, datext=0, varext=1, dqext=2, wavext=None,
                    wmapext=None, plot=True, waveunit_in='micron',
@@ -115,15 +115,15 @@ def M_N(v,i_v,m_0,m_1,n):
     return M_N
 
 if __name__ == "__main__":
-#    cube = Cube(infile='../../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2.fits',datext=0, varext=1, dqext=2, wavext=None, wmapext=None)
+#    cube = Cube(infile=os.path.normpath('../../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2.fits'),datext=0, varext=1, dqext=2, wavext=None, wmapext=None)
 
 #    wavelength_segments = [[10,100],[200,250]]
-#    infits = '../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2.fits'
+#    infits = os.path.normpath('../NIRSpec_ETC_sim/NIRSpec_etc_cube_both_2.fits')
 #    spaxles_to_fit = select_spaxels(infits, datext=0, dqext=2, varext=1, wavext=None,
 #               wmapext=None, plot=True, waveunit_in='micron',
 #               waveunit_out='micron',wavelength_segments=wavelength_segments)
 
-    infits = '/Volumes/My Passport for Mac/JWST/ERS/SDSS1652/jw01335/reduced_level_2/montage_new_CRDS_no_imprint/NRS1NRS2_s3d_psfsub.fits'
+    infits = os.path.normpath('/Volumes/My Passport for Mac/JWST/ERS/SDSS1652/jw01335/reduced_level_2/montage_new_CRDS_no_imprint/NRS1NRS2_s3d_psfsub.fits')
     wavelength_segments = [[670,730]]
     SNR_map,spaxels_to_fit = mom8_map(infits, datext=0, varext=1, dqext=None, wavext=None,
                    wmapext=None, plot=True, waveunit_in='micron',

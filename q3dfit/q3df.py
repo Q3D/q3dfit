@@ -66,7 +66,8 @@ def q3dfit(initproc, cols=None, rows=None, onefit=False, ncores=1,
         # Python script
         mpistr = "mpiexec"
         if mpipath is not None:
-            mpistr = mpipath + mpistr
+            from os.path import join
+            mpistr = join(mpipath, mpistr)
         import sys
         call([mpistr, "-n", str(ncores), "python", filename,
-              initproc, cols, rows, str(onefit), str(quiet)])
+              initproc, cols, rows, str(onefit), str(quiet), str(nocrash)])

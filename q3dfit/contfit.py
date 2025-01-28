@@ -152,7 +152,7 @@ def Fe_flux_balmer(Fe_FWHM, zstar, specConv):
         Wavelength array of the FeII template.
 
     '''
-    temp_fe = '../q3dfit/data/questfit_templates/fe_optical.txt'
+    temp_fe = os.path.normpath('../q3dfit/data/questfit_templates/fe_optical.txt')
     data1 = np.loadtxt(temp_fe)
     wave_fe = 10**data1[:,0] * (1. + zstar) /1e4
     F_fe = data1[:,1]/np.max(data1[:,1])
@@ -198,7 +198,7 @@ def Fe_flux_UV(Fe_FWHM, zstar, specConv):
     wave_fe: array
         Wavelength array of the FeII template. 
     '''
-    temp_fe_uv = '../q3dfit/data/questfit_templates/fe_uv.txt'
+    temp_fe_uv = os.path.normpath('../q3dfit/data/questfit_templates/fe_uv.txt')
     data2 = np.loadtxt(temp_fe_uv)
     wave_fe = 10**data2[:,0] * (1. + zstar) /1e4
     F_fe = data2[:,1]/np.max(data2[:,1])
@@ -356,7 +356,7 @@ def linfit_plus_FeII(lam, flux,weight, unused1, unused2, index,
         saveres = 'fit_result.txt'
 
     if outdir is not None:
-        with open(outdir+saveres, 'w') as fh:
+        with open(os.path.join(outdir, saveres), 'w') as fh:
             fh.write(result.fit_report())
             fh.write('\n')
 
@@ -929,7 +929,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
         with pkg_resources.path(questfit_templates, allcomps[i]) as p:
             temp_model = np.load(p, allow_pickle=True)
             if not os.path.exists(p):
-                temp_model = np.load(outdir+allcomps[i])
+                temp_model = np.load(os.path.join(outdir, allcomps[i]))
 
         # Check to see if we are using global extinction, where the total
         temp_wave=temp_model['WAVE']*(1.+z)
@@ -1075,7 +1075,7 @@ def questfit(wlambda, flux, weights, singletemplatelambda, singletemplateflux,
         saveres = 'fit_result__{}_{}.txt'.format(cols, rows)
     else:
         saveres = 'fit_result.txt'
-    with open(outdir+saveres, 'w') as fh:
+    with open(os.path.join(outdir, saveres), 'w') as fh:
         fh.write(result.fit_report())
         fh.write('\n')
 

@@ -13,7 +13,6 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../q3dfit'))
-sys.path.insert(0, os.path.abspath('..'))
 
 
 # -- Project information -----------------------------------------------------
@@ -23,8 +22,8 @@ copyright = '2025, David Rupke and the Q3D Team'
 author = 'David Rupke and the Q3D Team'
 
 # The full version, including alpha/beta/rc tags
-version = '2.0.0-alpha.0'
-release = '2.0.0-alpha.0'
+release = '1.2.0'
+
 
 # -- General configuration ---------------------------------------------------
 

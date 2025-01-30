@@ -677,7 +677,6 @@ class Q3Dpro:
                        'NiiHa' :{'lines':['[NII]6583','Halpha'],'pltname':'[NII]/H$\\alpha$','pltrange':[-1.8,0.1],
                                  'lrat':{'Ftot':None,'Fci':None}},
                       }
-
         BPTmod = {'OiiiHb/NiiHa':None,
                     'OiiiHb/SiiHa':None,
                     'OiiiHb/OiHa':None}
@@ -796,7 +795,6 @@ class Q3Dpro:
         cmap_r = cm.get_cmap(CMAP)
         cmap_r.set_bad(color=self.map_bkg)
         cf = 0
-
         for linrat in lineratios:
             if lineratios[linrat] != None :
                 xx,yy = xcol,ycol
@@ -1497,14 +1495,14 @@ def display_pixels_wz(x, y, datIN, PIXELSIZE=None, VMIN=None, VMAX=None,
     imgPLT = None
     if not PLOTLOG:
         imgPLT = AX.imshow(np.rot90(datIN, 1),
-                           # origin='lower',
+                            # origin='lower', 
                            cmap=CMAP,
                            extent=[xmin, xmax, ymin, ymax],
                            vmin=VMIN, vmax=VMAX,
                            interpolation='none')
     else:
         imgPLT = AX.imshow(np.rot90(datIN, 1),
-                           # origin='lower',
+                            # origin='lower',
                            cmap=CMAP,
                            extent=[xmin, xmax, ymin, ymax],
                            norm=LogNorm(vmin=VMIN, vmax=VMAX),

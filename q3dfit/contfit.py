@@ -73,6 +73,9 @@ def fitpoly(lam, flux, weight, unused1, unused2, index, unused3,
     iflux = iflux.reshape(ilam.size)
     iweight = iweight.reshape(ilam.size)
 
+    if len(ilam) <= fitord:
+    	fitord = len(ilam)-1
+
     if fitord==0:
         deg1=len(ilam)-1
         deg2=fitord

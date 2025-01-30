@@ -15,8 +15,7 @@ def datacube_convert(infile,CLOBBER=True):
         return infile
     else:
         # create new name
-        dfsplit = infile.split('/')
-        newfile = '/'.join(dfsplit[:-1])+'/'+dfsplit[-1].split('.fits')[0]+'_vardq.fits'
+        newfile = os.path.splitext(infile)[0]+'_vardq.fits'
         if not os.path.isfile(newfile):
             shutil.copy(infile,newfile)
             print('create',newfile)

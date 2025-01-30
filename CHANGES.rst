@@ -1,4 +1,15 @@
-1.1.4 (11 Jul 2023)
+1.2.0 (28 Jan 2025)
+------------------------
+- Minor changes for Windows compatibility.
+- Bugfix: Crashes ignored in multi-core.
+
+1.2.0-beta (11 Oct 2024)
+------------------------
+- Cube.convolve now allows Gaussian and boxcar convolutions.
+- Bugfix: Cube.convolve was not conserving flux.
+- Bugfix: sphinx_rtd_theme now part of rtd requirements.
+
+1.1.4 (11 Jul 2024)
 -------------------
 - Reverting lmfit method to least_squares for PG1411 test notebook.
 - Added two least_squares arguments to PG1411 test notebook to improve convergence.

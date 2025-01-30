@@ -17,7 +17,8 @@
 |             char|             char|        long|   double|   double|   double|
 |                 |                 |            |         |         |         |
 |             null|             null|        null|     null|     null|     null|
-          MgII2796          MgII2803            0      null        1.        2.
+           CIV1550           CIV1548            1        2.        2.        2.
+          MgII2796          MgII2803            1        1.        1.        2.
          [NeV]3426         [NeV]3345            1        3.        3.        3.
        [NeIII]3869       [NeIII]3967            1        3.        3.        3.
          [OII]3729         [OII]3726            0      null      0.35       1.5

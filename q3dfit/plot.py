@@ -8,7 +8,7 @@ import numpy as np
 from q3dfit.q3dmath import cmplin
 from q3dfit.q3dutil import lmlabel
 from q3dfit.exceptions import InitializationError
-from q3dfit import questfit_readcf
+from q3dfit.questfitfcn import readcf
 from matplotlib import rcParams
 from matplotlib import pyplot as plt
 
@@ -19,7 +19,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
              compcols=None, xstyle='log', ystyle='log',
              waveunit_in='micron',
              waveunit_out='micron',
-             fluxunit_in='flambda',
+             figsize=(10, 5), fluxunit_in='flambda',
              fluxunit_out='flambda',
              mode='light'
              ):
@@ -47,7 +47,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
         pltstyle = 'dark_background'
         dcolor = 'w'
     else:
-        pltstyle = 'seaborn-ticks'
+        pltstyle = 'seaborn-v0_8-ticks'
         dcolor = 'k'
 
     wave = q3do.wave
@@ -74,7 +74,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
         if fitran is not None:
             xran = fitran
         else:
-            xran = q3do.fitran
+            xran = q3do.fitrange
 
         if waveunit_in == 'Angstrom' and waveunit_out == 'micron':
             # convert angstrom to microns
@@ -121,7 +121,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
             # unreadable when saving the figure
             if mode == 'light':
                 rcParams['savefig.facecolor'] = 'white'
-            fig = plt.figure(figsize=(20, 10))
+            fig = plt.figure(figsize=figsize)
             # fig = plt.figure()
             plt.axis('off')  # so the subplots don't share a y-axis
 
@@ -233,7 +233,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
                 xtit = 'Observed Wavelength ($\AA$)'
 
             plt.style.use(pltstyle)
-            fig = plt.figure(figsize=(20, 20))
+            fig = plt.figure(figsize=figsize)
             plt.axis('off')  # so the subplots don't share a y-axis
 
             maximum = 0
@@ -322,7 +322,10 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
                 plt.suptitle(title, fontsize=40)
 
             if savefig and outfile is not None:
-                plt.savefig(outfile[0] + '.jpg')
+                if len(outfile[0])>1:
+                    plt.savefig(outfile[0] + '.jpg')
+                else:
+                    plt.savefig(outfile + '.jpg')
 
     # for IR spectra fit with questfit:
     else:
@@ -331,7 +334,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
 
         if xstyle == 'log' or ystyle == 'log':
             if IR:
-                fig = plt.figure(figsize=(50, 30))
+                fig = plt.figure(figsize=figsize)
                 gs = fig.add_gridspec(4,1)
                 ax1 = fig.add_subplot(gs[:3, :])
 
@@ -490,7 +493,7 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
             --nbottom
 
             plt.style.use(pltstyle)
-            fig = plt.figure(figsize=(10, 10))
+            fig = plt.figure(figsize=figsize)
             #fig = plt.figure()
             plt.axis('off')  # so the subplots don't share a y-axis
 
@@ -606,11 +609,15 @@ def plotcont(q3do, savefig=False, outfile=None, ct_coeff=None, q3di=None,
             plt.suptitle(title, fontsize=30)
 
         if savefig and outfile is not None:
-            plt.savefig(outfile[0] + '.jpg')
+            if len(outfile[0])>1:
+                plt.savefig(outfile[0] + '.jpg')
+            else:
+                plt.savefig(outfile + '.jpg')
 
 
-def plotline(q3do, nx=1, ny=1, line=None, center_obs=None, center_rest=None,
-             size=300., savefig=False, outfile=None, specConv=None):
+def plotline(q3do, nx=1, ny=1, figsize=(16,13), line=None, center_obs=None,
+             center_rest=None, size=300., savefig=False, outfile=None,
+             specConv=None):
     """
 
     Plot emission line fit and output to JPG
@@ -678,8 +685,11 @@ def plotline(q3do, nx=1, ny=1, line=None, center_obs=None, center_rest=None,
                 # otherwise
                 else:
                     idx = np.where(q3do.linelist['name'] == sub_linlab[i])
-                    linwav[i] = q3do.linelist['lines'][idx] * \
-                        (1. + q3do.zstar)
+                    if len(idx) > 0:
+                        linwav[i] = q3do.linelist['lines'][idx] * \
+                            (1. + q3do.zstar)
+                    else:
+                        raise InitializationError(f'Line {sub_linlab[i]} not fit.')
             else:
                 linwav[i] = 0.
     # If linelist not present, get cwavelength enter of plot window from list
@@ -706,7 +716,7 @@ def plotline(q3do, nx=1, ny=1, line=None, center_obs=None, center_rest=None,
     off = off.transpose()
 
     plt.style.use('dark_background')
-    fig = plt.figure(figsize=(16, 13))
+    fig = plt.figure(figsize=figsize)
     for i in range(0, nlin):
 
         outer = gridspec.GridSpec(ny, nx, wspace=0.2, hspace=0.2)
@@ -861,7 +871,10 @@ def plotline(q3do, nx=1, ny=1, line=None, center_obs=None, center_rest=None,
     fig.suptitle(xtit, fontsize=25)
 
     if savefig and outfile is not None:
-        fig.savefig(outfile[0] + '.jpg')
+        if len(outfile[0])>1:
+            fig.savefig(outfile[0] + '.jpg')
+        else:
+            fig.savefig(outfile + '.jpg')
 
 
 def adjust_ax(ax, fig, fs=20, minor=False):
@@ -926,23 +939,23 @@ def plotdecomp(q3do, q3di, savefig=True, outfile=None, templ_mask=[], do_lines=F
     if do_lines:
         plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile, 
             templ_mask=templ_mask, lines=q3do.linelist['lines'], linespec=q3do.line_fit, show=show, mode=mode, ymin=ymin, ymax=ymax, 
-            try_adjust_ax=try_adjust_ax)
+            try_adjust_ax=try_adjust_ax, row=q3do.row, col=q3do.col)
     else:
         plotquest(q3do.wave, q3do.spec, q3do.cont_fit, q3do.ct_coeff, q3di, zstar=q3do.zstar, savefig=savefig, outfile=outfile, 
-            templ_mask=templ_mask, show=show, mode=mode, ymin=ymin, ymax=ymax, try_adjust_ax=try_adjust_ax)
+            templ_mask=templ_mask, show=show, mode=mode, ymin=ymin, ymax=ymax, try_adjust_ax=try_adjust_ax, row=q3do.row, col=q3do.col)
 
 
 
 def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
             savefig=True, outfile=None, templ_mask=[], lines=[], linespec=[], show=False,
-            mode='light', ymin=-1, ymax=-1, try_adjust_ax=True):
+            mode='light', ymin=-1, ymax=-1, try_adjust_ax=True, row=-1, col=-1):
 
     # dark mode just for fun:
     if mode == 'dark':
         pltstyle = 'dark_background'
         dcolor = 'w'
     else:
-        pltstyle = 'seaborn-ticks'
+        pltstyle = 'seaborn-v0_8-ticks'
         dcolor = 'k'
 
     plt.style.use(pltstyle)
@@ -953,10 +966,11 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
 
     comp_best_fit = ct_coeff['comp_best_fit']
 
+
     plot_noext = False  # Remove dust contribution and plot intrinstic components
 
     if 'plot_decomp' in q3di.argscontfit:
-        config_file = questfit_readcf.readcf(q3di.argscontfit['config_file'])
+        config_file = readcf(q3di.argscontfit['config_file'])
         global_extinction = False
         for key in config_file:
             try:
@@ -965,9 +979,9 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
             except:
                 continue
 
-        fig = plt.figure(figsize=(6, 10))
-        gs = fig.add_gridspec(8,1)
-        ax1 = fig.add_subplot(gs[:6, :])
+        fig = plt.figure(figsize=(6, 9))
+        gs = fig.add_gridspec(6,1, top=0.95, bottom=0.08, left=0.2)
+        ax1 = fig.add_subplot(gs[:5, :])
 
         ax1.plot(MIRgdlambda, MIRgdflux,color='black')
         if len(lines)==0:
@@ -1025,11 +1039,14 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
                 if not ('_ext' in el or '_abs' in el):
                     spec_i = comp_best_fit[el]
                     label_i = el
-                    if plot_noext:
+
+                    if not plot_noext:
                       if el+'_ext' in comp_best_fit.keys():
-                          spec_i = spec_i/comp_best_fit[el+'_ext']
+                          spec_i = spec_i*comp_best_fit[el+'_ext']
                       if el+'_abs' in comp_best_fit.keys():
-                          spec_i = spec_i/comp_best_fit[el+'_abs']
+                          spec_i = spec_i*comp_best_fit[el+'_abs']
+
+
                     if count>len(colour_list)-1:
                       ax1.plot(MIRgdlambda_temp, spec_i, label=label_i,linestyle='--',alpha=0.5)
                     else:
@@ -1047,7 +1064,7 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
             adjust_ax(ax1, fig, minor=True)
         ax1.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False) # turn off major & minor ticks on the x-axis
 
-        ax2 = fig.add_subplot(gs[6:7, :], sharex=ax1)
+        ax2 = fig.add_subplot(gs[5:6, :], sharex=ax1)
         if len(lines)>=1:
             ax1.set_ylim(min(MIRcontinuum)/1e3, 3*max(MIRcontinuum + linespec))
             ax2.plot(MIRgdlambda,MIRgdflux/(MIRcontinuum + linespec),color='black')
@@ -1063,15 +1080,23 @@ def plotquest(MIRgdlambda, MIRgdflux, MIRcontinuum, ct_coeff, q3di, zstar=0.,
         ax2.set_xlabel('Wavelength [micron]')
 
         from matplotlib.ticker import ScalarFormatter
-        ax2.xaxis.set_major_formatter(ScalarFormatter()) 
+        ax2.xaxis.set_major_formatter(ScalarFormatter())
         ax2.xaxis.set_minor_formatter(ScalarFormatter())
         ax2.ticklabel_format(style='plain')
+
+        if row>-1 and col>-1:
+            ax1.set_title('Spaxel [{}, {}]'.format(col, row), fontsize=20)
 
         gs.update(wspace=0.0, hspace=0.05)
         adjust_ax(ax2, fig)
 
         if savefig and outfile is not None:
-            plt.savefig(outfile+'.jpg')
+            if len(outfile[0])>1:
+                plt.savefig(outfile[0]+'.jpg')
+            else:
+                plt.savefig(outfile+'.jpg')
+        else:
+            fig.savefig(outfile + '.jpg')
 
         if show:
             plt.show()

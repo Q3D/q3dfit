@@ -36,35 +36,30 @@ def get_linelist(q3di):
     return listlines
 
 
-def get_dispersion(q3di, cube, quiet=True):
+def get_dispersion(q3di):
     '''
-    read in the dispersion list and save to memory
-    default return value is None (no convolution)
+    Instantiate spectConvol object with dispersion information for selected
+    gratings. Return value is None (no convolution) if q3di.spect_convol is
+    empty.
 
     Parameters
     ----------
-    q3di : TYPE
-        DESCRIPTION.
-    cube : TYPE
-        DESCRIPTION.
-    quiet : TYPE, optional
-        DESCRIPTION. The default is True.
+    q3di : object
 
     Returns
     -------
-    TYPE
-        DESCRIPTION.
+    spectConvol : object
 
     '''
     if not q3di.spect_convol:
         return None
-    elif q3di.spect_convol:
-        return spectConvol.spectConvol(q3di, cube, quiet=quiet)
+    else:
+        return spectConvol.spectConvol(q3di.spect_convol)
 
 
 def get_Cube(q3di, quiet=True, logfile=None):
     '''
-    initialize Cube object
+    instantiate Cube object
 
 
     Parameters

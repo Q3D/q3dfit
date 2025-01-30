@@ -28,12 +28,66 @@ plt.rcParams['figure.constrained_layout.use'] = False
 
 
 class Q3Dpro:
-    # =========================================================================
-    # instantiate the q3dpro object
-    # =========================================================================
-    def __init__(self, q3di, SILENT=True, NOCONT=False, NOLINE=False,
-                 PLATESCALE=0.15,BACKGROUND='white'):
+    '''
+    Class to process the q3dfit output data
 
+    Attributes
+    ----------
+    q3dinit : object
+        q3dinit object. Added/updated by :method:init.
+    target_name : str
+        Label from q3dinit. Added/updated by :method:init.
+    silent : bool
+        Flag to suppress print statements. Default is True. 
+        Added/updated by :method:init.
+    pix : float
+        Plate scale of the data. Added/updated by :method:init.
+    bad : float
+        Value for bad data. Default is np.nan. Added/updated by :method:init.
+    dataDIR : str
+        Directory of the data, from q3dinit. Added/updated by :method:init.
+    contdat : object
+        Continuum data object. Added/updated by :method:init, using 
+        :class:ContData.
+    linedat : object
+        Emission line data object. Added/updated by :method:init, using 
+        :class:LineData.
+    map_bkg : str
+        Background color for the maps. Default is 'white'. Added/updated by 
+        :method:init.
+    zsys_gas : float
+        Systemic redshift of the galaxy. Added/updated by :method:init.
+    
+    Methods
+    -------
+    get_lineprop(LINESELECT)
+        Get the wavelength and line label of an emission line.
+    get_linemap(LINESELECT, APPLYMASK=True, SAVEDATA=False)
+    make_linemap(LINESELECT, SNRCUT=5., xyCenter=None, 
+        VMINMAX=None, XYSTYLE=None, PLTNUM=1, CMAP=None, VCOMP=None, 
+        SAVEDATA=False)
+    make_lineratio_map(lineA, lineB, SNRCUT=3, SAVEDATA=False, 
+        PLTNUM=5, KPC=False, VMINMAX=[-1,1])
+    make_BPT(SNRCUT=3, SAVEDATA=False, PLTNUM=5, KPC=False)
+    resort_line_components(dataOUT, NCOMP=None, COMP_SORT=None)
+
+    '''
+
+    def __init__(self, q3di, SILENT=True, NOCONT=False, NOLINE=False,
+                 PLATESCALE=0.15, BACKGROUND='white', BAD=np.nan, 
+                 zsys_gas=None):
+        '''
+        Initialize the Q3Dpro object.
+
+        Parameters
+        ----------
+        See class attributes.
+
+        Returns
+        -------
+        None.
+
+        '''
         # read in the q3di file and unpack
         self.q3dinit = q3dutil.get_q3dio(q3di)
         # unpack initproc
@@ -44,7 +98,7 @@ class Q3Dpro:
             print('Target name:', self.target_name)
 
         self.pix = PLATESCALE  # pixel size
-        self.bad = np.nan
+        self.bad = BAD
         self.dataDIR = self.q3dinit.outdir
         # instantiate the Continuum (npy) and Emission Line (npz) objects
         if not NOCONT:
@@ -53,28 +107,73 @@ class Q3Dpro:
             self.linedat = LineData(self.q3dinit)
         self.map_bkg = BACKGROUND
 
+        self.zsys_gas = zsys_gas
+
         return
 
-    # =============================================================================================
-    # processing the q3dfit cube data
-    # =============================================================================================
-    # def get_psfsubcube(self):
-    #     qso_subtract = self.contdat.host_mod - self.contdat.qso_mod
-    #     return qso_subtract
 
-    def get_lineprop(self, LINESELECT, LINEVAC=True):
-        listlines = linelist(self.linedat.lines,vacuum=LINEVAC)
+    def get_zsys_gas(self):
+        '''
+        Get the systemic redshift of the galaxy from the zsys_gas attribute
+        or q3dinit object, in that order.
+
+        Returns
+        -------
+        redshift : float
+            Systemic redshift of the galaxy.
+
+        '''
+        if self.zsys_gas is None:
+            if self.q3dinit.zsys_gas is None:
+                raise ValueError('Redshift not set in q3dinit or q3dpro ' +
+                                 'objects. Please use zsys_gas parameter ' +
+                                 'in q3dpro to set the systemic redshift ' +
+                                 'of the galaxy for computing line properties.')
+            else:
+                redshift = self.q3dinit.zsys_gas
+        else:
+            redshift = self.zsys_gas
+        return redshift
+    
+
+    def get_lineprop(self, LINESELECT):
+        '''
+        Get the wavelength and line label of an emission line.
+
+        Parameters
+        ----------
+        LINESELECT : str
+            Name of the line to select.
+        
+        Returns
+        -------
+        linewave : float
+            Wavelength of the line in microns.
+        linename : str
+            Label of the line.
+
+        '''
+        listlines = linelist(self.linedat.lines, vacuum=self.q3dinit.vacuum)
         ww = np.where(listlines['name'] == LINESELECT)[0]
         linewave = listlines['lines'][ww].value[0]
         linename = listlines['linelab'][ww].value[0]
         # output in MICRON
         return linewave, linename
 
-    def get_linemap(self,LINESELECT,LINEVAC=True,APPLYMASK=True,SAVEDATA=False):
+    def get_linemap(self, LINESELECT, APPLYMASK=True, SAVEDATA=False):
+        '''
+        Create maps of properties of an emission line.
+
+        Parameters
+        ----------
+        LINESELECT : str
+            Name of the line for which to create maps.
+        
+        '''
         print('getting line data...',LINESELECT)
 
-        redshift = self.q3dinit.zsys_gas
-        ncomp = self.q3dinit.ncomp[LINESELECT][0,0]
+        redshift = self.get_zsys_gas()
+        ncomp = np.max(self.q3dinit.ncomp[LINESELECT])
 
         # kpc_arcsec = cosmo.kpc_proper_per_arcmin(redshift).value/60.
         # arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
@@ -83,9 +182,7 @@ class Q3Dpro:
 
         # cid = -1 # index of the component to plot, -1 is the broadest component
         # central wavelength --> need to get from linereader
-        wave0,linetext = self.get_lineprop(LINESELECT, LINEVAC=LINEVAC)
-
-        ncomp = self.q3dinit.ncomp[LINESELECT][0,0]
+        wave0,linetext = self.get_lineprop(LINESELECT)
 
         fluxsum     = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['flux']
         fluxsum_err = self.linedat.get_flux(LINESELECT,FLUXSEL='ftot')['fluxerr']
@@ -154,18 +251,30 @@ class Q3Dpro:
 
         return wave0,linetext,dataOUT
 
-    def make_linemap(self, LINESELECT, SNRCUT=5., LINEVAC=True,
+    def make_linemap(self, LINESELECT, SNRCUT=5.,
                      xyCenter=None, VMINMAX=None,
                      XYSTYLE=None, PLTNUM=1, CMAP=None,
                      VCOMP=None,
                      SAVEDATA=False):
+        '''
+        Create maps of properties of an emission line.
+
+        Parameters
+        ----------
+        LINESELECT : str
+            Name of the line for which to create maps.
+        SNRCUT : float
+            SNR cut for the data. Default is 5.
+        xyCenter : list
+            Center of the map. Default is None.
+        '''
 
         print('Plotting emission line maps')
         if self.silent is False:
             print('create linemap:', LINESELECT)
 
-        redshift = self.q3dinit.zsys_gas
-        ncomp = self.q3dinit.ncomp[LINESELECT][0,0]
+        redshift = self.get_zsys_gas()
+        ncomp = np.max(self.q3dinit.ncomp[LINESELECT])
 
         kpc_arcsec = cosmo.kpc_proper_per_arcmin(redshift).value/60.
         # arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
@@ -174,13 +283,14 @@ class Q3Dpro:
 
         # cid = -1 # index of the component to plot, -1 is the broadest component
         # central wavelength --> need to get from linereader
-        # wave0,linetext = self.get_lineprop(LINESELECT,LINEVAC=LINEVAC)
+        # wave0,linetext = self.get_lineprop(LINESELECT)
 
         # --------------------------
         # EXTRACT THE DATA HERE
         # --------------------------
-        wave0,linetext,dataOUT = self.get_linemap(LINESELECT,LINEVAC=LINEVAC,APPLYMASK=True)
-        dataOUT,ncomp = self.resort_line_components(dataOUT,NCOMP=ncomp,COMP_SORT=VCOMP)
+        wave0, linetext, dataOUT = self.get_linemap(LINESELECT, APPLYMASK=True)
+        dataOUT, ncomp = self.resort_line_components(dataOUT, NCOMP=ncomp, 
+                                                     COMP_SORT=VCOMP)
         # EXTRACT TOTAL FLUX
         # sn_tot = fluxsum/fluxsum_err
         # w80 = sigma*2.563   # w80 linewidth from the velocity dispersion
@@ -188,7 +298,8 @@ class Q3Dpro:
         fluxsum     = dataOUT['Ftot']['data']
         fluxsum_err = dataOUT['Ftot']['err']
 
-        fluxsum_snc,gdindx,bdindx = snr_cut(fluxsum,fluxsum_err,SNRCUT=SNRCUT)
+        fluxsum_snc, gdindx, bdindx = snr_cut(fluxsum, fluxsum_err, 
+                                              SNRCUT=SNRCUT)
         matrix_size = (fluxsum.shape[0],fluxsum.shape[1],ncomp)
         FLUXLOG = False
 
@@ -239,7 +350,9 @@ class Q3Dpro:
             if icomp == 'Ftot':
                 NTICKS = 4
                 ici=''
-                vticks =  [vminmax[0],np.power(10,np.median([np.log10(vminmax[0]),np.log10(vminmax[1])])),vminmax[1]]
+                vticks = \
+                    [vminmax[0], np.power(10, np.median([np.log10(vminmax[0]),
+                    np.log10(vminmax[1])])), vminmax[1]]
                 if 'fluxlog' in VMINMAX :
                     FLUXLOG = VMINMAX['fluxlog']
             else:
@@ -247,14 +360,15 @@ class Q3Dpro:
                 if icomp.lower() == 'fci' :
                     j = 0
                     NTICKS = 3
-                    vticks =  [vminmax[0],np.power(10,np.median([np.log10(vminmax[0]),np.log10(vminmax[1])])),vminmax[1]]
+                    vticks = \
+                        [vminmax[0], np.power(10, np.median([np.log10(vminmax[0]),
+                        np.log10(vminmax[1])])),vminmax[1]]
                     if 'fluxlog' in VMINMAX :
                         FLUXLOG = VMINMAX['fluxlog']
                 if icomp.lower() == 'sig':
                     j+=1
                     CMAP = 'YlOrBr_r'
                     NTICKS  = 3
-                    #vticks = [vminmax[0],np.median([np.log10(vminmax[0]),np.log10(vminmax[1])]),vminmax[1]]
                     vticks = [vminmax[0],(vminmax[0]+vminmax[1])/2.,vminmax[1]]
                     FLUXLOG = False
                 elif icomp.lower() == 'v50' :
@@ -334,24 +448,24 @@ class Q3Dpro:
     # def make_contmap(self):
     #     return
 
-    def make_lineratio_map(self, lineA, lineB, SNRCUT=3, LINEVAC=True,
-                           SAVEDATA=False, PLTNUM=5, KPC=False, VMINMAX=[-1,1]):
+    def make_lineratio_map(self, lineA, lineB, SNRCUT=3, SAVEDATA=False, 
+                           PLTNUM=5, KPC=False, VMINMAX=[-1,1]):
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # first identify the lines, extract fluxes, and apply the SNR cuts
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         linelist = {lineA:None,lineB:None}
 
-        redshift = self.q3dinit.zsys_gas
+        redshift = self.get_zsys_gas()
 
         arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
         mshaps = [None,None]
         li = 0
         for lin in self.linedat.lines:
             if lin in linelist:
-                ncomp = self.q3dinit.ncomp[lin][0,0]
+                ncomp = np.max(self.q3dinit.ncomp[lin])
                 # fluxsum     = self.linedat.get_flux(lin,FLUXSEL='ftot')['flux']
                 # fluxsum_err = self.linedat.get_flux(lin,FLUXSEL='ftot')['fluxerr']
-                wave0,linetext,dataOUT = self.get_linemap(lin,LINEVAC=LINEVAC,APPLYMASK={})
+                wave0, linetext, dataOUT = self.get_linemap(lin, APPLYMASK={})
                 istruct = {'wavcen':wave0,'wname':linetext,'data':dataOUT,'snr':{}}
                 for ditem in dataOUT:
                     if len(dataOUT[ditem]['data'].shape) > 2:
@@ -504,8 +618,7 @@ class Q3Dpro:
         return
 
 
-    def make_BPT(self, SNRCUT=3, LINEVAC=True, SAVEDATA=False, PLTNUM=5,
-                 KPC=False):
+    def make_BPT(self, SNRCUT=3, SAVEDATA=False, PLTNUM=5, KPC=False):
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # first identify the lines, extract fluxes, and apply the SNR cuts
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -518,17 +631,17 @@ class Q3Dpro:
                     '[SII]6716':None,
                     '[SII]6731':None}
 
-        redshift = self.q3dinit.zsys_gas
+        redshift = self.get_zsys_gas()
 
         arckpc = cosmo.kpc_proper_per_arcmin(redshift).value/60.
         mshaps = [None,None]
         li = 0
         for lin in self.linedat.lines:
             if lin in BPTlines:
-                ncomp = self.q3dinit.ncomp[lin][0,0]
+                ncomp = np.max(self.q3dinit.ncomp[lin])
                 # fluxsum     = self.linedat.get_flux(lin,FLUXSEL='ftot')['flux']
                 # fluxsum_err = self.linedat.get_flux(lin,FLUXSEL='ftot')['fluxerr']
-                wave0,linetext,dataOUT = self.get_linemap(lin,LINEVAC=LINEVAC,APPLYMASK={})
+                wave0, linetext, dataOUT = self.get_linemap(lin, APPLYMASK={})
                 istruct = {'wavcen':wave0,'wname':linetext,'data':dataOUT,'snr':{}}
                 for ditem in dataOUT:
                     if len(dataOUT[ditem]['data'].shape) > 2:
@@ -914,13 +1027,11 @@ class LineData:
     Attributes
     ----------
     lines : dict
-    zgas : dict
+        Line names.
     maxncomp : int
+        Maximum number of components fit to a line.
     data : dict
-    ncols : int
-    nrows : int
-    bad : float
-
+        Contents of the line data (.npz) file.
     Examples
     --------
     >>>
@@ -938,7 +1049,6 @@ class LineData:
             print('ERROR: emission line ('+filename+') file does not exist')
             return
         self.lines = q3di.lines
-        self.zgas = q3di.zinit_gas
         self.maxncomp = q3di.maxncomp
         self.data = self.read_npz(datafile)
         # book-keeping inheritance from initproc
@@ -1087,9 +1197,10 @@ class OneLineData:
 
     Attributes
     ----------
-    line : str
     flux : ndarray(ncols, nrows, maxncomp)
     fpklux : ndarray(ncols, nrows, maxncomp)
+    line : str
+    ncomp : ndarray(ncols, nrows)
     sig : ndarray(ncols, nrows, maxncomp)
     wave : ndarray(ncols, nrows, maxncomp)
 
@@ -1483,6 +1594,8 @@ def set_figSize(dim,plotsize,SQUARE=False):
     dim = np.array(dim, dtype='float')
     xy = [12.,14.]
     figSIZE = 5.*np.round(np.array(plotsize, dtype='float')/5.)[0:2]
+    if figSIZE[0]==0 and figSIZE[1]==0:
+        figSIZE = plotsize
     figSIZE = figSIZE/np.min(figSIZE)
     if dim[0] == dim[1] :
         if figSIZE[0] >= figSIZE[1]:

@@ -11,7 +11,8 @@ from q3dfit.data import linelists
 
 
 def q3dcollect(q3di, cols=None, rows=None, quiet=True, compsortpar='sigma',
-               compsortdir='up'):
+               compsortdir='up', ignoreres=False):
+    
     """
     Routine to collate spaxel information together.
 
@@ -30,12 +31,26 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True, compsortpar='sigma',
         two-element vector listing the first and last rows to fit.
     quiet: in, optional, type=boolean
         Print error and progress messages. Propagates to most/all subroutines.
+    compsortpar: in, optional, type=string, default='sigma'
+        Parameter by which to sort components. Options are 'sigma', 'flux', 
+        'wave'.
+    compsortdir: in, optional, type=string, default='up'
+        Direction in which to sort components. Options are 'up' and 'down'.
+    ignoreres: in, optional, type=boolean, default=False
+        Parameter passed to sepfitpars(). Ignore spectral resolution in 
+        computing observed sigmas and peak  fluxes. This is mainly for 
+        backward compatibility with old versions, which did not store the 
+        spectral resolution in an easily accessible way in the specConv object.
 
     Returns
     -------
+    None
+
+    Raises
+    ------
+    None
 
     """
-    bad = np.nan
 
     #load initialization object
     q3di = q3dutil.get_q3dio(q3di)
@@ -100,33 +115,33 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True, compsortpar='sigma',
         for line in lines_with_doublets:
             emlncomp[line] = np.zeros((cube.ncols, cube.nrows), dtype=int)
             emlweq['ftot'][line] = np.zeros((cube.ncols, cube.nrows),
-                                            dtype=float) + bad
+                                            dtype=float) + np.nan
             emlflx['ftot'][line] = np.zeros((cube.ncols, cube.nrows),
-                                            dtype=float) + bad
+                                            dtype=float) + np.nan
             emlflxerr['ftot'][line] = np.zeros((cube.ncols, cube.nrows),
-                                               dtype=float) + bad
+                                               dtype=float) + np.nan
             for k in range(0, q3di.maxncomp):
                 cstr = 'c' + str(k + 1)
                 emlwav[cstr][line] = np.zeros((cube.ncols, cube.nrows),
-                                              dtype=float) + bad
+                                              dtype=float) + np.nan
                 emlwaverr[cstr][line] = np.zeros((cube.ncols, cube.nrows),
-                                                 dtype=float) + bad
+                                                 dtype=float) + np.nan
                 emlsig[cstr][line] = np.zeros((cube.ncols, cube.nrows),
-                                              dtype=float) + bad
+                                              dtype=float) + np.nan
                 emlsigerr[cstr][line] = np.zeros((cube.ncols, cube.nrows),
-                                                 dtype=float) + bad
+                                                 dtype=float) + np.nan
                 emlweq['f'+cstr][line] = np.zeros((cube.ncols, cube.nrows),
-                                                  dtype=float) + bad
+                                                  dtype=float) + np.nan
                 emlflx['f'+cstr][line] = np.zeros((cube.ncols, cube.nrows),
-                                                  dtype=float) + bad
+                                                  dtype=float) + np.nan
                 emlflxerr['f'+cstr][line] = np.zeros((cube.ncols, cube.nrows),
-                                                     dtype=float) + bad
+                                                     dtype=float) + np.nan
                 emlflx['f'+cstr+'pk'][line] = \
                     np.zeros((cube.ncols, cube.nrows),
-                             dtype=float) + bad
+                             dtype=float) + np.nan
                 emlflxerr['f'+cstr+'pk'][line] = \
                     np.zeros((cube.ncols, cube.nrows),
-                             dtype=float) + bad
+                             dtype=float) + np.nan
 
     # create output cubes
     if q3di.docontfit:
@@ -137,16 +152,16 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True, compsortpar='sigma',
                                           cube.nwave)),
                     'norm_sub': np.zeros((cube.ncols, cube.nrows,
                                           cube.nwave))}
-        contcube = {'npts': np.zeros((cube.ncols, cube.nrows)) + bad,
-                    'stel_rchisq': np.zeros((cube.ncols, cube.nrows)) + bad,
-                    'stel_z': np.zeros((cube.ncols, cube.nrows)) + bad,
-                    'stel_z_err': np.zeros((cube.ncols, cube.nrows, 2)) + bad,
-                    'stel_ebv': np.zeros((cube.ncols, cube.nrows)) + bad,
+        contcube = {'npts': np.zeros((cube.ncols, cube.nrows)) + np.nan,
+                    'stel_rchisq': np.zeros((cube.ncols, cube.nrows)) + np.nan,
+                    'stel_z': np.zeros((cube.ncols, cube.nrows)) + np.nan,
+                    'stel_z_err': np.zeros((cube.ncols, cube.nrows, 2)) + np.nan,
+                    'stel_ebv': np.zeros((cube.ncols, cube.nrows)) + np.nan,
                     'stel_ebv_err':
-                        np.zeros((cube.ncols, cube.nrows, 2)) + bad,
-                    'stel_sigma': np.zeros((cube.ncols, cube.nrows)) + bad,
+                        np.zeros((cube.ncols, cube.nrows, 2)) + np.nan,
+                    'stel_sigma': np.zeros((cube.ncols, cube.nrows)) + np.nan,
                     'stel_sigma_err':
-                        np.zeros((cube.ncols, cube.nrows, 2)) + bad}
+                        np.zeros((cube.ncols, cube.nrows, 2)) + np.nan}
 
         if q3di.decompose_ppxf_fit:
             contcube['all_mod'] = np.zeros((cube.ncols, cube.nrows,
@@ -189,7 +204,7 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True, compsortpar='sigma',
         # set this to false unless we're using Voronoi binning
         # and the tiling is missing
         # vortile = True
-        labin = '{0.outdir}{0.label}'.format(q3di)
+        labin = os.path.join(q3di.outdir, q3di.label)
         if cube.dat.ndim == 1:
             flux = cube.dat
             err = cube.err
@@ -208,7 +223,7 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True, compsortpar='sigma',
             # TODO
             # if q3di.vormap is not None:
             #    if np.isfinite(q3di.vormap[i][j]) and \
-            #            q3di.vormap[i][j] is not bad:
+            #            q3di.vormap[i][j] is not np.nan:
             #        iuse = vorcoords[q3di.vormap[i][j] - 1, 0]
             #        juse = vorcoords[q3di.vormap[i][j] - 1, 1]
             #    else:
@@ -221,10 +236,8 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True, compsortpar='sigma',
             flux = cube.dat[iuse, juse, :].flatten()
             err = cube.err[iuse, juse, :].flatten()
             dq = cube.dq[iuse, juse, :].flatten()
-            labin = '{0.outdir}{0.label}_{1:04d}_{2:04d}'.\
-                format(q3di, iuse+1, juse+1)
-            labout = '{0.outdir}{0.label}_{1:04d}_{2:04d}'.\
-                format(q3di, i+1, j+1)
+            labin = os.path.join(q3di.outdir, q3di.label+'_{0:04d}_{1:04d}'.format(iuse+1, juse+1))
+            labout = os.path.join(q3di.outdir, q3di.label+'_{0:04d}_{1:04d}'.format(i+1, j+1))
 
         # Restore fit after a couple of sanity checks
         # if vortile:
@@ -250,7 +263,7 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True, compsortpar='sigma',
             if q3do.dolinefit:
 
                 # process line fit parameters
-                q3do.sepfitpars(tflux=True, doublets=doublets)
+                q3do.sepfitpars(doublets=doublets, ignoreres=ignoreres)
 
                 # get correct number of components in this spaxel
                 thisncomp = 0
@@ -399,7 +412,7 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True, compsortpar='sigma',
 
     # Save emission line and continuum dictionaries
     if q3di.dolinefit:
-        outfile = '{0.outdir}{0.label}'.format(q3di)+'.line.npz'
+        outfile = os.path.join(q3di.outdir, q3di.label)+'.line.npz'
         np.savez(outfile,
                  emlwav=emlwav, emlwaverr=emlwaverr,
                  emlsig=emlsig, emlsigerr=emlsigerr,
@@ -408,22 +421,6 @@ def q3dcollect(q3di, cols=None, rows=None, quiet=True, compsortpar='sigma',
                  ncols=cube.ncols, nrows=cube.nrows)
         print('q3dcollect: Saving emission-line fit results into '+outfile)
     if q3di.docontfit:
-        outfile = '{0.outdir}{0.label}'.format(q3di)+'.cont.npy'
+        outfile = os.path.join(q3di.outdir, q3di.label)+'.cont.npy'
         np.save(outfile, contcube)
         print('q3dcollect: Saving continuum fit results into '+outfile)
-
-# def cap_range(x1, x2, n):
-#     a = np.zeros(1, dtype=float)
-#     interval = (x2 - x1) / (n - 1)
-#     #    print(interval)
-#     num = x1
-#     for i in range(0, n):
-#         a = np.append(a, num)
-#         num += interval
-#     a = a[1:]
-#     return a
-# def array_indices(array, index):
-#     height = len(array[0])
-#     x = index // height
-#     y = index % height
-#     return x, y

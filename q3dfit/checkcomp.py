@@ -3,17 +3,16 @@
 import numpy as np
 
 
-def checkcomp(linepars, linetie, ncomp, siglim, sigcut=3., subone=False,
-              ignore=[]):
+def checkcomp(linepars, linetie, ncomp, siglim, sigcut=3., subone=False, ignore=[]):
     """
     Automatically search for "good" components.
 
     Parameters
     ----------
-    linepars: dict
-        Output from IFSF_SEPFITPARS
+    linepars: dicts
+        line_fitpars attribute of a q3dout object
     linetie: dict
-        Lines to which each fitted line is tied to
+        linetie attribute of a q3din object
     ncomp: dict
         # of components for each fitted line
     siglim: float
@@ -31,9 +30,9 @@ def checkcomp(linepars, linetie, ncomp, siglim, sigcut=3., subone=False,
 
     Returns
     -------
-    dict
-        NEWNCOMP, dictionary of # of components for each unique linetie anchor.
-        The input dictionary NCOMP is also updated to reflect correct new # of
+    newncomp: dict
+        dictionary of # of components for each unique linetie anchor.
+        The input dictionary ncomp is also updated to reflect correct new # of
         components.
 
     Notes
@@ -78,12 +77,19 @@ def checkcomp(linepars, linetie, ncomp, siglim, sigcut=3., subone=False,
                     # Peak flux is insensitive to issues with sigma
                     #    (linepars['flux'][line][:ncomp[line]] >
                     #     sigcut*linepars['fluxerr'][line][:ncomp[line]]) \
-                    igd = \
-                        (linepars['fluxpk'][line][:ncomp[line]] >
-                         sigcut*linepars['fluxpkerr'][line][:ncomp[line]]) \
-                        & (linepars['fluxerr'][line][:ncomp[line]] > 0.) \
-                        & (linepars['sigma'][line][:ncomp[line]] > siglim[0]) \
-                        & (linepars['sigma'][line][:ncomp[line]] < siglim[1])
+                    igdflx = \
+                        (linepars['fluxpk_obs'][line][:ncomp[line]] >
+                         sigcut*linepars['fluxpkerr_obs'][line][:ncomp[line]])
+                    igdsiglo = \
+                        (linepars['sigma'][line][:ncomp[line]] > siglim[0])
+                    igdsighi = \
+                        (linepars['sigma'][line][:ncomp[line]] < siglim[1])
+                    igd = igdflx & igdsiglo & igdsighi
+                    # Removing this criterion fixes issues where
+                    # fitter can't return parameter errors; focusing on
+                    # fluxpkerr means can use empirical estimate rather
+                    # than estimate from covariance matrix
+                    #& (linepars['fluxerr'][line][:ncomp[line]] > 0.) \
                     if igd.any():
                         goodcomp[np.where(igd)] = 1
             tmpncomp = goodcomp.sum()

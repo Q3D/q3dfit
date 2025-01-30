@@ -98,7 +98,7 @@ OR
         with pkg_resources.path(linelists, llist) as p:
             # this sets float64 data types
             newtable = Table.read(p, format='ipac')
-            all_tables.append(Table(newtable, dtype=['str', 'float32', 'str']))
+            all_tables.append(Table(newtable, dtype=['str', 'float64', 'str']))
             all_units.append(newtable['lines'].unit)
 
     # get everything on the user-requested units:

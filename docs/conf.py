@@ -10,26 +10,26 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../q3dfit'))
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'q3dfit'
-copyright = '2023, David Rupke and the Q3D Team'
+copyright = '2025, David Rupke and the Q3D Team'
 author = 'David Rupke and the Q3D Team'
 
 # The full version, including alpha/beta/rc tags
-release = '1.1.4'
+release = '1.2.0'
 
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = []
+extensions = ['sphinx.ext.napoleon','sphinx.ext.autodoc']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

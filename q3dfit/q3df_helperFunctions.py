@@ -61,7 +61,7 @@ def execute_fitloop(nspax, colarr, rowarr, cube, q3di, linelist, specConv,
                 continue
         else:           # Regular run; no continuation in case of crash
             fitloop(ispax, colarr, rowarr, cube, q3di, linelist, specConv,
-                            onefit=onefit, quiet=quiet, logfile=logfile)
+                    onefit=onefit, quiet=quiet, logfile=logfile)
 
 def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
                  quiet=True, nocrash=False):
@@ -98,14 +98,15 @@ def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
         logfile = None
 
     cube, vormap = q3dutil.get_Cube(q3di, quiet=quiet, logfile=logfile)
-    specConv = q3dutil.get_dispersion(q3di, cube, quiet=quiet)
+    specConv = q3dutil.get_dispersion(q3di)
     if cols and rows and vormap:
         cols = q3dutil.get_voronoi(cols, rows, vormap)
         rows = 1
     nspax, colarr, rowarr = q3dutil.get_spaxels(cube, cols, rows)
     # execute FITLOOP
     execute_fitloop(nspax, colarr, rowarr, cube, q3di,
-                    linelist, specConv, onefit, quiet, logfile=logfile, nocrash=nocrash)
+                    linelist, specConv, onefit, quiet, logfile=logfile,
+                    nocrash=nocrash)
     if logfile is None:
         from sys import stdout
         logtmp = stdout
@@ -119,7 +120,7 @@ def q3df_oneCore(inobj, cols=None, rows=None, onefit=False,
 
 
 def q3df_multiCore(rank, size, inobj, cols=None, rows=None,
-                   onefit=False, ncores=1, quiet=True):
+                   onefit=False, ncores=1, quiet=True, nocrash=False):
 
     '''
     q3df setup for multi-threaded execution
@@ -156,7 +157,7 @@ def q3df_multiCore(rank, size, inobj, cols=None, rows=None,
         logfile = None
 
     cube, vormap = q3dutil.get_Cube(q3di, quiet=quiet, logfile=logfile)
-    specConv = q3dutil.get_dispersion(q3di, cube, quiet=quiet)
+    specConv = q3dutil.get_dispersion(q3di)
     if cols and rows and vormap:
         cols = q3dutil.get_voronoi(cols, rows, vormap)
         rows = 1
@@ -171,7 +172,7 @@ def q3df_multiCore(rank, size, inobj, cols=None, rows=None,
     # execute FITLOOP
     execute_fitloop(nspax_thisCore, colarr, rowarr, cube, q3di,
                     linelist, specConv, onefit, quiet, logfile=logfile,
-                    core=rank+1)
+                    core=rank+1, nocrash=nocrash)
     if logfile is None:
         from sys import stdout
         logtmp = stdout
@@ -222,4 +223,10 @@ if __name__ == "__main__":
         quiet = True
     else:
         quiet = False
-    q3df_multiCore(rank, size, inobj, cols, rows, onefit, quiet)
+    # nocrash option
+    if argv[6].startswith("T"):
+        nocrash = True
+    else:
+        nocrash = False
+
+    q3df_multiCore(rank, size, inobj, cols, rows, onefit, quiet, nocrash=nocrash)

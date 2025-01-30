@@ -20,7 +20,8 @@ from scipy.interpolate import interp1d
 
 from . import q3dutil, q3din
 from q3dfit.qsohostfcn import qsohostfcn
-
+from q3dfit.contfit import readcf
+from q3dfit.exceptions import InitializationError
 
 class q3dout:
     '''
@@ -800,9 +801,8 @@ class q3dout:
 
             # CB: adding option to plot decomposed QSO fit if questfit is used
             elif q3dii.fcncontfit == 'questfit':
-                from q3dfit.contfit import quest_extract_QSO_contrib
                 self.qsomod, self.hostmod, qsomod_intr, hostmod_intr = \
-                    quest_extract_QSO_contrib(self.ct_coeff, q3dii)
+                    self.quest_extract_QSO_contrib(q3dii)
                 # qsomod_polynorm = 1.
                 # qsomod_notweak = self.qsomod
                 qsoflux = self.qsomod.copy()/np.median(self.qsomod)
@@ -992,6 +992,106 @@ class q3dout:
 
         else:
             print('plot_cont: no continuum to plot!')
+
+
+    def quest_extract_QSO_contrib(self,
+                                  q3di: q3din.q3din) \
+                                    -> tuple[np.ndarray, np.ndarray, 
+                                             np.ndarray, np.ndarray]:
+        '''
+        Recover the QSO-host decomposition after running questfit.
+
+        Parameters
+        ----------
+        q3di
+            :py:class:`~q3dfit.q3din.q3din` object.
+        
+        Returns
+        -------
+        numpy.ndarray
+            QSO component of the fit, extincted.
+        numpy.ndarray
+            Host component of the fit, extincted.
+        numpy.ndarray
+            QSO component of the fit, intrinsic.
+        numpy.ndarray
+            Host component of the fit, intrinsic.
+        '''
+        comp_best_fit = self.ct_coeff['comp_best_fit']
+        qso_out_ext = np.array([])
+        qso_out_intr = np.array([])
+
+        config_file = readcf(q3di.argscontfit['config_file'])
+        if not 'qso' in list(config_file.keys())[1]:
+            raise InitializationError(\
+                'During QSO-host decomposition, the function assumes that in the '+
+                'config file the qso template is the first template, but its name '+
+                'does not contain \"qso\".')
+
+        global_extinction = False
+        for key in config_file:
+            if len(config_file[key]) > 3:
+                if 'global' in config_file[key][3]:
+                    global_extinction = True
+
+        if global_extinction:
+            str_global_ext = list(comp_best_fit.keys())[-2]
+            str_global_ice = list(comp_best_fit.keys())[-1]
+            # global_ext is a multi-dimensional array
+            if len(comp_best_fit[str_global_ext].shape) > 1:
+                comp_best_fit[str_global_ext] = comp_best_fit[str_global_ext] [:,0,0]
+            if len(comp_best_fit[str_global_ice].shape) > 1:
+                comp_best_fit[str_global_ice] = comp_best_fit[str_global_ice] [:,0,0]
+            host_out_ext = np.zeros(len(comp_best_fit[str_global_ext]))
+            host_out_intr = np.zeros(len(comp_best_fit[str_global_ext]))
+
+            for i, el in enumerate(comp_best_fit):
+                if (el != str_global_ext) and (el != str_global_ice):
+                    if len(comp_best_fit[el].shape) > 1:
+                        comp_best_fit[el] = comp_best_fit[el] [:,0,0]
+                    if hasattr(q3di, 'decompose_qso_fit'):
+                        # NOTE on i==0: This only works if in the config file the 
+                        # qso temple is the first template
+                        if q3di.decompose_qso_fit and i==0:
+                            qso_out_ext = comp_best_fit[el]*\
+                                comp_best_fit[str_global_ext]*\
+                                    comp_best_fit[str_global_ice]
+                            qso_out_intr = comp_best_fit[el]
+                        else:
+                            host_out_ext += comp_best_fit[el]*\
+                                comp_best_fit[str_global_ext]*\
+                                    comp_best_fit[str_global_ice]
+                            host_out_intr += comp_best_fit[el]
+        else:
+            el1 = list(comp_best_fit.keys())[0]
+            host_out_ext = np.zeros(len(comp_best_fit[el1]))
+            host_out_intr = np.zeros(len(comp_best_fit[el1]))
+
+            spec_i = np.array([])
+            for i, el in enumerate(comp_best_fit):
+
+                if len(comp_best_fit[el].shape) > 1:
+                    comp_best_fit[el] = comp_best_fit[el] [:,0,0]
+
+                if not ('_ext' in el or '_abs' in el):
+                    spec_i = comp_best_fit[el]
+                    intr_spec_i = comp_best_fit[el].copy()
+                    if el+'_ext' in comp_best_fit.keys():
+                        spec_i = spec_i*comp_best_fit[el+'_ext']
+                    if el+'_abs' in comp_best_fit.keys():
+                        spec_i = spec_i*comp_best_fit[el+'_abs']
+
+                    if hasattr(q3di, 'decompose_qso_fit'):
+                        if q3di.decompose_qso_fit and i==0:
+                            qso_out_ext = spec_i
+                            qso_out_intr = intr_spec_i
+                        else:
+                            host_out_ext += spec_i
+                            host_out_intr += intr_spec_i
+
+        return qso_out_ext, host_out_ext, qso_out_intr, host_out_intr
+
+
 
 
 

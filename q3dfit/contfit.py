@@ -4,7 +4,7 @@ Continuum fitting routines and subroutines.
 from __future__ import annotations
 
 __all__ = ['fitpoly', 'fitqsohost', 'questfit', 'linfit_plus_FeII',
-           'Fe_flux_balmer', 'Fe_flux_UV', 'quest_extract_QSO_contrib']
+           'Fe_template_vw01', 'readcf']
 
 from typing import Optional, Any
 from numpy.typing import ArrayLike
@@ -813,82 +813,69 @@ def questfit(wave: np.ndarray,
     return best_fit, ct_coeff, z
 
 
-def linfit_plus_FeII(lam,
-                     flux,
-                     weight,
-                     unused1,
-                     unused2,
-                     index, 
-                     zstar,
-                     specConv,
-                     outdir=None,
-                     quiet=False,
-                     refit=None, 
-                     rows=None,
-                     cols=None,
-                     Fe_FWHM=None,
-                     Fe_FWHM_UV=None, 
+def linfit_plus_FeII(lam: np.ndarray,
+                     flux: np.ndarray,
+                     weight: np.ndarray,
+                     index: np.ndarray, 
+                     logfile: Optional[str]=None,
+                     quiet: bool=True,
+                     specConv: Optional[spectConvol]=None,
+                     Fe_z: float=0.,
+                     Fe_FWHM_opt: Optional[float]=None,
+                     Fe_FWHM_uv: Optional[float]=None,
+                     tempdir: Optional[str]=None,
                      **kwargs):
     '''
-    This function fits the continuum as a superposition of a linear fit and 
-    an FeII template. Optical FeII template taken from Vestergaard & Wilkes (2001). UV FeII
-    template follows the PyQSOFit code (Guo et al. 2018) which uses the template by 
-    Shen et al. (2019). Which is in turn a composite of Vestergaard & Wilkes (2001), 
-    Tsuzuki et al. (2006) and Salviander et al. (2007). The UV and optical FeII templates 
-    are scaled up/down separately from each other.
+    Fit the continuum as a superposition of a linear fit and 
+    an FeII template. Optical FeII template taken from Vestergaard & Wilkes (2001). 
+    UV FeII template follows the PyQSOFit code (Guo et al. 2018) which uses the 
+    template by Shen et al. (2019). Which is in turn a composite of VW01, 
+    Tsuzuki et al. (2006) and Salviander et al. (2007). The UV and optical FeII 
+    templates are scaled up/down separately from each other.
 
     Parameters
-    -----
-    lam: array
-        wavelength
-    flux: array
-        Flux values to be fit
-    weight: array
-        Weights of each individual pixel to be fit
-    unused1:
-        Not used in this function.
-    unused2:
-        Not used in this function.
-    index: array
-        Pixels used in the fit
-    zstar: float
-        redshift of the stellar continuum
-    specConv: instance of the spectConvol class
-        specifying the instrumental spectral resolution convolution
-    outdir: string
-        directory for saving the output log
-    quiet: bool
-        not used in this function
-    refit: bool
-        not used in this function
-    rows, cols: int
-        row(s) and column(s) of the input cube in which the fitting is done. 
-        Used only to define the name of the output log
-    Fe_FWHM: float
-        Defines the smoothing of the FeII template in km/s. FWHM of the Gaussian smoothing that will be applied. Needs to be >900 km/s (FWHM of template).
+    ----------
+    lam
+        Wavelengths
+    flux
+        Fluxes
+    weight
+        Weights
+    index
+        Points used in the fit.
+    logfile
+        Optional. Name of the log file. Default is None.
+    quiet
+        Optional. Suppress output to stdout? Default is True.
+    specConv
+        Optional. Spectral resolution object. If set to None, no convolution
+        will be performed. The default is None.
+    Fe_z
+        Optional. Redshift of the FeII template. Default is 0.
+    Fe_FWHM_opt
+        Optional. The smoothing kernel of the optical FeII template,
+        in km/s. Default is None, which means no smoothing.
+    Fe_FWHM_uv
+        Optional. The smoothing kernel of the optical FeII template,
+        in km/s. Default is None, which means no smoothing.
+    tempdir
+        Optional. Directory containing the templates, to search if default
+        directory does not contain template. Default is None.
 
     Returns
     -------
-    continuum: array
-        best fit continuum model
-    ct_coeff: dictionary or lmfit best fit params structure
-        best fit parameters
+    numpy.ndarray
+        Best fit continuum model.
+    dict[str, Any]
+        Best fit parameters.
     '''
 
     flux_cut = flux[index]
     lam_cut = lam[index]
 
     models_dictionary = {'x': lam_cut}
-
-    temp_fe = '../q3dfit/data/questfit_templates/fe_optical.txt'
-    temp_fe_uv = '../q3dfit/data/questfit_templates/fe_uv.txt'
-    ind_opt = (lam_cut > 0.3686*(1.+zstar))&(lam_cut < 0.7484*(1.+zstar))
-    ind_UV = (lam_cut > 0.120*(1.+zstar))&(lam_cut < 0.350*(1.+zstar))
-
-    if Fe_FWHM is None:
-        print('\n\nFitting with FeII template, but no broadening applied. \
-              Please supply argscontfit with Fe_FWHM... Halting.')
-        import sys; sys.exit()
+    ind_opt = (lam_cut > 0.3686*(1.+Fe_z))&(lam_cut < 0.7484*(1.+Fe_z))
+    ind_UV = (lam_cut > 0.120*(1.+Fe_z))&(lam_cut < 0.350*(1.+Fe_z))
 
     model_linfit = LinearModel(independent_vars=['x'], prefix='lincont', 
                                nan_policy='raise', **kwargs)
@@ -899,10 +886,12 @@ def linfit_plus_FeII(lam,
 
     if np.sum(ind_opt)>0:
         F_fe_rebin = np.zeros(len(lam_cut))
-        F_Fe_opt_conv, wave_fe = Fe_flux_balmer(Fe_FWHM, zstar, specConv)
+        F_Fe_opt_conv, wave_fe = \
+            Fe_template_vw01('fe_optical', Fe_z=Fe_z, Fe_FWHM=Fe_FWHM_opt, 
+                             specConv=specConv, wavecen=4861.*(1. + Fe_z),
+                             tempdir=tempdir)
         F_fe_rebin[ind_opt] = \
-            q3dmath.interp_lis(lam_cut[ind_opt], wave_fe, 
-                                         F_Fe_opt_conv)
+            q3dmath.interp_lis(lam_cut[ind_opt], wave_fe, F_Fe_opt_conv)
         models_dictionary['temp_fe_opt'] = F_fe_rebin
         p_init = [0.5]
         p_vary = [True]
@@ -913,13 +902,15 @@ def linfit_plus_FeII(lam,
         param += param_fe_templ_opt
 
     if np.sum(ind_UV)>0:
-        if Fe_FWHM_UV is None:
-            Fe_FWHM_UV = Fe_FWHM
+        if Fe_FWHM_uv is None:
+            Fe_FWHM_uv = Fe_FWHM_opt
         F_Fe_rebin_UV = np.zeros(len(lam_cut))
-        F_Fe_UV_conv, wave_fe_UV = Fe_flux_UV(Fe_FWHM_UV, zstar, specConv)
+        F_Fe_UV_conv, wave_fe_UV = \
+            Fe_template_vw01('fe_uv', Fe_z=Fe_z, Fe_FWHM=Fe_FWHM_uv, 
+                             specConv=specConv, wavecen=2800.*(1. + Fe_z),
+                             tempdir=tempdir)
         F_Fe_rebin_UV[ind_UV] = \
-            q3dmath.interp_lis(lam_cut[ind_UV], wave_fe_UV, 
-                                         F_Fe_UV_conv)
+            q3dmath.interp_lis(lam_cut[ind_UV], wave_fe_UV, F_Fe_UV_conv)
         models_dictionary['temp_fe_UV'] = F_Fe_rebin_UV
         p_init = [0.5]
         p_vary = [True]
@@ -930,8 +921,8 @@ def linfit_plus_FeII(lam,
         param += param_fe_templ_UV
 
     result = model.fit(flux_cut, param, **models_dictionary,
-                               max_nfev=int(1e5), method='least_squares',
-                               nan_policy='omit', **{'verbose': 2})
+                       max_nfev=int(1e5), method='least_squares',
+                       nan_policy='omit', **{'verbose': 2})
     print(result.fit_report())
 
     # extrapolate result to full wavelength vector
@@ -946,10 +937,11 @@ def linfit_plus_FeII(lam,
     continuum = result.eval(**models_dictionary_B)
     comp_best_fit = result.eval_components(**models_dictionary_B)
     
-
     ct_coeff = {'params_best_fit': result.params,
                 'comp_best_fit': comp_best_fit}
 
+    '''
+    # Not sure why this is necessary
     if isinstance(rows, list) or isinstance(rows, np.ndarray):
         rows = rows[0]        
     if isinstance(cols, list) or isinstance(cols, np.ndarray):
@@ -963,185 +955,84 @@ def linfit_plus_FeII(lam,
         with open(outdir+saveres, 'w') as fh:
             fh.write(result.fit_report())
             fh.write('\n')
-
+    '''
     return continuum, ct_coeff, None
 
 
-def Fe_flux_balmer(Fe_FWHM: float, 
-                   zstar: float, 
-                   specConv: object) \
-                    -> tuple[np.ndarray, np.ndarray]:
+def Fe_template_vw01(filename: str,
+                     Fe_z: Optional[float]=None,
+                     Fe_FWHM: Optional[float]=None,
+                     specConv: Optional[object]=None,
+                     wavecen: Optional[float]=None,
+                     tempdir: Optional[str]=None) \
+                        -> tuple[np.ndarray, np.ndarray]:
     '''
-    Loads the optical FeII template, redshifts it,
-    convolves it with the intrinsic broadening, and convolves it 
-    with the instrumental resolution.
+    Load the Vestergaard & Wilkes 2001 FeII template; redshift it; 
+    convolve it with intrinsic broadening;
+    and convolve it with the instrumental resolution.
 
     Parameters
     ----------
+    filename
+        Name of the FeII template file.
+    Fe_z
+        Optional. Redshift to apply to the FeII template. Default is None, which
+        means no redshift is applied.
     Fe_FWHM
-        Defines the smoothing of the FeII template in km/s. FWHM of the
-        Gaussian smoothing that will be applied. Needs to be >900 km/s
-        (FWHM of template).
-    zstar
-        Redshift of the stellar continuum.
+        Optional. The Gaussian smoothing kernel for the FeII template in km/s. 
+        Default is None, which means no smoothing is applied.
     specConv
-        Instance of :py:class:`~q3dfit.spectConvol.spectConvol` specifying 
-        the instrumental spectral resolution convolution.
+        Optional. Instance of :py:class:`~q3dfit.spectConvol.spectConvol` specifying 
+        the instrumental spectral resolution convolution. Default is None, which
+        means no convolution is applied.
+    wavecen
+        Optional. Central wavelength for creating specConv instance, to find
+        proper gratings. Default is None, which means no convolution is applied.
+    tempdir
+        Optional. Directory containing the templates, to search if default
+        directory does not contain template. Default is None.
 
     Returns
     -------
     np.ndarray
-        Convolved FeII template.
+        Flux array of the FeII template.
     np.ndarray
         Wavelength array of the FeII template.
 
     '''
-    temp_fe = '../q3dfit/data/questfit_templates/fe_optical.txt'
-    data1 = np.loadtxt(temp_fe)
-    wave_fe = 10**data1[:,0] * (1. + zstar) /1e4
+    with pkg_resources.path(questfit_templates, filename) as p:
+        data1 = np.loadtxt(p)
+        if not os.path.exists(p) and tempdir is not None:
+            temp_model = np.load(tempdir+filename)
+        else:
+            raise InitializationError('Cannot locate template specified in config file.')
+
+    wave_fe = 10**data1[:,0]/1e4
+    # normalize template
     F_fe = data1[:,1]/np.max(data1[:,1])
-    # sig_conv in km/s. 900 km/s is the FWHM of the Vestergaard & 
-    # Wilkes 2001 template.
-    # sig_tot_BLR = (sig_temp^2+sig_add_broadening^2)^0.5
-    sig_conv = np.sqrt(Fe_FWHM ** 2 - 900.0 ** 2) / 2. / \
-        np.sqrt(2. * np.log(2.))
-    # 106.3 km/s is the dispersion for the BG92 FeII template 
-    # used by Vestergaard & Wilkes 2001
-    sig_pix = sig_conv / 106.3
-    xx = np.arange(0, 2*np.round(3.5*sig_pix+1, 0), 1) - \
-        np.round(3.5*sig_pix+1, 0)
-    kernel = np.exp(-xx ** 2 / (2 * sig_pix ** 2))
-    kernel = kernel / np.sum(kernel)
-    F_Fe_conv_intermed = np.convolve(F_fe, kernel, 'same')
-    F_Fe_opt_conv = F_Fe_conv_intermed
-    F_Fe_opt_conv = \
-        specConv.spect_convolver(wave_fe, F_Fe_conv_intermed, 
-                                 0.4861*(1. + zstar))
-    return F_Fe_opt_conv, wave_fe
+    # redshift if requested
+    if Fe_z is not None:
+        wave_fe *= 1. + Fe_z
+    # intrinsic convolution
+    if Fe_FWHM is not None:
+        if Fe_FWHM <= 900.:
+            raise InitializationError('FWHM of the FeII template must be >900 km/s.')
+        # Start by computing the *additional* convolution required.
+        sig_conv = np.sqrt(Fe_FWHM ** 2 - 900.0 ** 2) / 2. / \
+            np.sqrt(2. * np.log(2.))
+        # 106.3 km/s is the dispersion for the BG92 FeII template 
+        # used by Vestergaard & Wilkes 2001
+        sig_pix = sig_conv / 106.3
+        xx = np.arange(0, 2*np.round(3.5*sig_pix+1, 0), 1) - \
+            np.round(3.5*sig_pix+1, 0)
+        # normalized Gaussian kernal in pixel space
+        kernel = np.exp(-xx ** 2 / (2 * sig_pix ** 2))
+        kernel = kernel / np.sum(kernel)
+        F_fe = np.convolve(F_fe, kernel, 'same')
+    if specConv is not None and wavecen is not None:
+        F_fe = specConv.spect_convolver(wave_fe, F_fe, wavecen)
 
-
-def Fe_flux_UV(Fe_FWHM, zstar, specConv):
-    '''
-    This function loads the UV FeII template, redshifts it,
-    convolves it with the intrinsic broadening, and convolves it
-    with the instrumental resolution.
-
-    Parameters
-    ----------
-    Fe_FWHM: float
-        Defines the smoothing of the FeII template in km/s. FWHM of the
-        Gaussian smoothing that will be applied. Needs to be >900 km/s
-        (FWHM of template).
-    zstar: float
-        Redshift of the stellar continuum.
-    specConv: instance of the spectConvol class
-
-    Returns
-    -------
-    F_Fe_uv_conv: array
-        Convolved FeII template.
-    wave_fe: array
-        Wavelength array of the FeII template. 
-    '''
-    temp_fe_uv = '../q3dfit/data/questfit_templates/fe_uv.txt'
-    data2 = np.loadtxt(temp_fe_uv)
-    wave_fe = 10**data2[:,0] * (1. + zstar) /1e4
-    F_fe = data2[:,1]/np.max(data2[:,1])
-    sig_conv = np.sqrt(Fe_FWHM ** 2 - 900.0 ** 2) / 2. / \
-        np.sqrt(2. * np.log(2.))
-    sig_pix = sig_conv / 106.3
-    xx = np.arange(0, 2*np.round(3.5*sig_pix+1, 0), 1) - \
-        np.round(3.5*sig_pix+1, 0)
-    kernel = np.exp(-xx ** 2 / (2 * sig_pix ** 2))
-    kernel = kernel / np.sum(kernel)
-    F_Fe_conv_intermed = np.convolve(F_fe, kernel, 'same')
-    F_Fe_uv_conv = F_Fe_conv_intermed
-    F_Fe_uv_conv = \
-        specConv.spect_convolver(wave_fe, F_Fe_conv_intermed, \
-                                 0.2800*(1. + zstar))
-    return F_Fe_uv_conv, wave_fe
-
-
-def quest_extract_QSO_contrib(ct_coeff, initdat):
-    '''
-    This function can be used to recover the QSO-host decomposition after running questfit
-
-    :Params:
-        ct_coeff: in, required, type=dict
-            dict returned by questfit containing the continuum fitting results
-        initdat: in, required, type=dict
-            dict that was used to initialize the fit
-
-        qso_out_ext: out, type=array
-            spectrum of the QSO component (with dust extinction and ice absorption)
-        host_out_ext:  out, type=array
-            spectrum of the host component (with dust extinction and ice absorption)
-    '''
-    comp_best_fit = ct_coeff['comp_best_fit']
-    qso_out_ext = np.array([])
-    qso_out_intr = np.array([])
-
-    #config_file = readcf(initdat['argscontfit']['config_file'])
-    config_file = readcf(initdat.argscontfit['config_file'])
-    if not 'qso' in list(config_file.keys())[1]:    ### This function assumes that in the config file the qso temple is the first template. Rudimentary check here.
-        print('\n\nWARNING during QSO-host decomposition: \nThe function assumes that in the config file the qso template is the first template, but its name does not contain \"qso\". Pausing here as a checkpoint, press c for continuing.\n')
-        import pdb; pdb.set_trace()
-
-    global_extinction = False
-    for key in config_file:
-        if len(config_file[key]) > 3:
-            if 'global' in config_file[key][3]:
-                global_extinction = True
-
-    if global_extinction:
-        str_global_ext = list(comp_best_fit.keys())[-2]
-        str_global_ice = list(comp_best_fit.keys())[-1]
-        if len(comp_best_fit[str_global_ext].shape) > 1:  # global_ext is a multi-dimensional array
-          comp_best_fit[str_global_ext] = comp_best_fit[str_global_ext] [:,0,0]
-        if len(comp_best_fit[str_global_ice].shape) > 1:  # global_ice is a multi-dimensional array
-          comp_best_fit[str_global_ice] = comp_best_fit[str_global_ice] [:,0,0]
-        host_out_ext = np.zeros(len(comp_best_fit[str_global_ext]))
-        host_out_intr = np.zeros(len(comp_best_fit[str_global_ext]))
-
-        for i, el in enumerate(comp_best_fit):
-          if (el != str_global_ext) and (el != str_global_ice):
-            if len(comp_best_fit[el].shape) > 1:              # component is a multi-dimensional array
-              comp_best_fit[el] = comp_best_fit[el] [:,0,0]
-            if hasattr(initdat, 'decompose_qso_fit'):
-              if initdat.decompose_qso_fit and i==0:     ### NOTE on i==0: This only works is in the config file the qso temple is the first template
-                qso_out_ext = comp_best_fit[el]*comp_best_fit[str_global_ext]*comp_best_fit[str_global_ice]
-                qso_out_intr = comp_best_fit[el]
-              else:
-                host_out_ext += comp_best_fit[el]*comp_best_fit[str_global_ext]*comp_best_fit[str_global_ice]
-                host_out_intr += comp_best_fit[el]
-    else:
-        el1 = list(comp_best_fit.keys())[0]
-        host_out_ext = np.zeros(len(comp_best_fit[el1]))
-        host_out_intr = np.zeros(len(comp_best_fit[el1]))
-
-        spec_i = np.array([])
-        for i, el in enumerate(comp_best_fit):
-            if len(comp_best_fit[el].shape) > 1:
-              comp_best_fit[el] = comp_best_fit[el] [:,0,0]
-
-            if not ('_ext' in el or '_abs' in el):
-                spec_i = comp_best_fit[el]
-                intr_spec_i = comp_best_fit[el].copy()
-                if el+'_ext' in comp_best_fit.keys():
-                    spec_i = spec_i*comp_best_fit[el+'_ext']
-                if el+'_abs' in comp_best_fit.keys():
-                    spec_i = spec_i*comp_best_fit[el+'_abs']
-
-                if hasattr(initdat, 'decompose_qso_fit'):
-                    if initdat.decompose_qso_fit and i==0:
-                        qso_out_ext = spec_i
-                        qso_out_intr = intr_spec_i
-                    else:
-                        host_out_ext += spec_i
-                        host_out_intr += intr_spec_i
-                        #breakpoint()
-
-    return qso_out_ext, host_out_ext, qso_out_intr, host_out_intr
+    return F_fe, wave_fe
 
 
 def readcf(filename: str) -> dict:

@@ -24,12 +24,11 @@ from lmfit.models import LinearModel
 from ppxf.ppxf import ppxf
 from scipy import interpolate
 
-from . import q3dmath, q3dutil, qsohostfcn, questfitfcn
+from . import q3dmath, q3dutil, qsohostfcn, questfitfcn, spectConvol
 from q3dfit import questfitfcn
 from q3dfit.data import questfit_templates
 #from q3dfit.data.questfit_templates import silicatemodels
 from q3dfit.exceptions import InitializationError
-
 
 def fitpoly(wave: np.ndarray, 
             flux: np.ndarray, 

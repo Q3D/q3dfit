@@ -3,6 +3,9 @@
 """
 @author: Yuzo Ishikawa
 """
+
+from typing import Literal, Optional, Union
+
 #import copy
 import numpy as np
 import os
@@ -32,7 +35,7 @@ class spectConvol:
     Parameters
     ----------
     spect_convol : {'ws_instrum': dict[str, str], 'dispdir': Union[str, None]}
-        'ws_instrum` contains instrument/grating combinations.
+        `ws_instrum` contains instrument/grating combinations.
         `dispdir` is the directory of dispersion files. If set to None (default), 
         the q3dfit dispersion_file directory is used.
 
@@ -49,23 +52,9 @@ class spectConvol:
     InstGratObjs
         Nested dictionary whose keys are instrument/grating combinations.
         The values are dispersion objects.
-       
-    Methods
-    -------
-    spect_convolver(wave, flux, wavecen=None, oversample=1)
-        Convolves an input spectrum by the spectral resolution.
-    selectInstGrat(wavecen=None)
-        Make a list of inst/grat objects for convolution.
-    get_InstGrat_waveDlam(InstGratSelect)
-        Get wavelength and dlambda for selected grating(s).
-    get_R(wave)
-        Compute resolving power for a wavelength, interpolated from
-        dispersion curves.
     '''
-
-
     def __init__(self,
-                 spect_convol):
+                 spect_convol: dict[str, Union[dict[str, str], str, None]]):
         # full directory of dispersion files in repo
         #self.dispdir = os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],
         #    'dispersion_files')
@@ -103,7 +92,7 @@ class spectConvol:
                         # look for convolution method and dispersion
                         # in grating name
                         flattype = ''.join(re.findall("[a-zA-Z]", grat))
-                        flatdisp = '.'.join(re.findall("\d+", grat))
+                        flatdisp = '.'.join(re.findall(r"\d+", grat))
                         self.InstGratObjs[inst][grat] = \
                             FlatDispersion(float(flatdisp), flattype)
                     else:
@@ -116,26 +105,32 @@ class spectConvol:
                     self.InstGratObjs[inst][grat].get_MRS_Rdlam()
 
 
-    def spect_convolver(self, wave, flux, wavecen=None, oversample=1):
+    def spect_convolver(self,
+                        wave: np.ndarray,
+                        flux: np.ndarray,
+                        wavecen: Optional[float]=None,
+                        oversample: int=1):
         '''
         Convolves an input spectrum by the spectral resolution.
 
         Parameters
         ----------
-        wave : array
+        wave
             Wavelength array of input spectrum
-        flux : array
+        flux
             Flux array of input spectrum
-        wavecen : float, optional
-            Central wavelength of a spectral feature, to check if it falls in the range
-            of a grating. Default is None.
-        oversample : int, optional
-            Oversample the spectrum by this factor before convolution. 
+        wavecen
+            Optional. Central wavelength of a spectral feature, to check if it falls 
+            in the range of a grating. Default is None, which means no check is performed.
+        oversample
+            Optional. Oversample the spectrum by this factor before convolution. Default
+            is 1, which means no oversampling is performed. Passed to 
+            :py:func:`~ppxf.ppxf_util.varsmooth`.
 
         Returns
         -------
-        fluxconv : array
-            Convolved spectrum
+        np.ndarray
+            Convolved spectrum.
 
         '''
 
@@ -182,7 +177,8 @@ class spectConvol:
             return np.concatenate((flux[w1x], fluxconv, flux[w2x]))
 
 
-    def selectInstGrat(self, wavecen=None):
+    def selectInstGrat(self,
+                       wavecen: Optional[float]=None) -> list:
         '''
         Make a list of instrument/grating combinations to use for convolution.
         If wavecen is not specified, all instrument/grating combinations are
@@ -194,15 +190,14 @@ class spectConvol:
         
         Parameters
         ----------
-        wavecen : float, optional
-            Wavelength to check. Default is None, which means all
+        wavecen
+            Optional. Wavelength to check. Default is None, which means all
             instrument/grating combinations are used.
         
         Returns
         -------
-        InstGratSelect : list
-            List of inst/grat objects to use for convolution. Must
-            have a length of 1 or 2.
+        list
+            Inst/grat objects to use for convolution. Must have a length of 1 or 2.
 
         Raises
         ------
@@ -237,7 +232,8 @@ class spectConvol:
         return InstGratSelect
     
 
-    def get_InstGrat_waveDlam(self, InstGratSelect):
+    def get_InstGrat_waveDlam(self,
+                              InstGratSelect: list) -> tuple:
         '''
         Get wavelength and dlambda for selected grating(s). If one grating,
         return the wavelength and dlambda. If two gratings, return the
@@ -247,15 +243,15 @@ class spectConvol:
 
         Parameters
         ----------
-        InstGratSelect : list
+        InstGratSelect
             List of instrument/grating combinations. The length of the list is 
             1 or 2. If 2 are specified, they must have overlapping wavelengths.
         
         Returns
         -------
-        gwave : array
+        Optional[float, np.ndarray]
             Wavelength of the grating(s).
-        dlam : float
+        Optional[float, np.ndarray]
             Delta lambda of the grating(s).
         '''
 
@@ -310,15 +306,21 @@ class spectConvol:
         return gwave, gdlam
 
 
-    def get_R(self, wave):
+    def get_R(self,
+              wave: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         '''
         Interpolate a dispersion curve to a new wavelength(s). This is
         used to get the resolving power at a new wavelength.
 
         Parameters
         ----------
-        wave : float or array
+        wave
             Wavelength(s) to which to interpolate.
+
+        Returns
+        -------
+        Union[float, np.ndarray]
+            Resolving power at the input wavelength(s).
         '''
 
         instgrat = self.selectInstGrat(wavecen=wave)
@@ -331,9 +333,19 @@ class spectConvol:
         return R
 
 
-    def is_dispobj_mrs(self, InstGratObj):
+    def is_dispobj_mrs(self,
+                       InstGratObj: list) -> bool:
         '''
         Convenience method to check if the dispersion object is for MRS.
+
+        Parameters
+        ----------
+        InstGratObj
+            Instrument/grating to check.
+        Returns
+        -------
+        bool
+            True if the instrument/grating is MRS, False otherwise.
         '''
         if isinstance(InstGratObj, InstGratDispersion):
             if InstGratObj.inst == 'JWST_MIRI':
@@ -350,23 +362,22 @@ class dispersion(object):
 
     Attributes
     ----------
-    wave : array
-        Wavelength.
-    R : array
-        Resolving power.
-    dlam : array
-        Delta lambda.
     dispdir : str
-        Directory that holds the file of the dispersion data, if any.
+        Directory that holds the file of the dispersion data, if any. Added by
+        constructor and populated by :py:meth:`~q3dfit.spectConvol.dispersion.setdir`.
+    dlam : np.ndarray
+        Delta lambda. Added by constructor and populated by
+        :py:meth:`~q3dfit.spectConvol.dispersion.compute_Rdlam`.
     filename : str
-        Filename of the dispersion data file, if any.
-    
-    Methods:
-    --------
-    setdir(dispdir=None)
-        Set the directory of the associated dispersion file.
-    
-    
+        Filename of the dispersion data file. Added by constructor and populated by
+        subclasses as needed.
+    R : np.ndarray
+        Resolving power. Added by constructor and populated by
+        :py:meth:`~q3dfit.spectConvol.dispersion.compute_Rdlam`.
+    wave : np.ndarray
+        Wavelength. Added by constructor and populated by 
+        :py:meth:`~q3dfit.spectConvol.dispersion.read` or
+        :py:meth:`~q3dfit.spectConvol.dispersion.compute_Rdlam`.            
     '''
 
     def __init__(self):
@@ -380,9 +391,10 @@ class dispersion(object):
         self.dispdir = None
         self.filename = None
 
-    def setdir(self, dispdir=None):
+    def setdir(self,
+               dispdir: Optional[str]=None):
         '''
-        Set the directory of the associated dispersion file.
+        Set the attribute carrying the directory of the associated dispersion file.
         '''
         if dispdir is not None:
             self.dispdir = dispdir
@@ -392,7 +404,8 @@ class dispersion(object):
         #        os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],
         #        'dispersion_files')
 
-    def read(self, filename):
+    def read(self,
+             filename: str):
         '''
         Get dispersion data from a dispersion file(s). The file must be in
         FITS format. The dispersion file must have a wavelength array and
@@ -403,12 +416,12 @@ class dispersion(object):
 
         Parameters
         ----------
-        filename : str
+        filename
             Filename and path of the dispersion file to load. 
-        
-        Returns
-        -------
-        None.
+
+        Raises
+        ------
+        SystemExit
         '''
 
         with fits.open(filename) as hdul:
@@ -419,8 +432,8 @@ class dispersion(object):
         try: 
             self.wave = indisp['WAVELENGTH']  # wavelength [μm]
         except:
-            raise SystemExit("dispersion.read: no wavelength array found in " +
-                "dispersion file.")
+            raise SystemExit(f"No wavelength array found in " +
+                "dispersion file {filename}.")
         
         # types of dispersion, in order of preference
         # if more than one is present, the first one is used
@@ -434,16 +447,21 @@ class dispersion(object):
                 type = t
                 break
         if type is None:
-            raise SystemExit("dispersion.read: no viable type found in " +
-                "dispersion file. Options are 'R', 'DVEL', or 'DLAMBDA'.")
+            raise SystemExit(f"No viable type found in " +
+                "dispersion file {filename}. Options are 'R', "+
+                "'DVEL', or 'DLAMBDA'.")
 
         # Compute R and dlam from the dispersion array. This will read
         # wavelength from the object.
         self.compute_Rdlam(disp, type=type)
 
 
-    def write(self, filename, wave=None, disp=None, type='R', 
-              overwrite=False):
+    def write(self,
+              filename: str,
+              wave: Optional[np.ndarray]=None, 
+              disp: Optional[np.ndarray]=None,
+              type: Literal['R', 'DVEL', 'LAMBDA']='R', 
+              overwrite: bool=False):
         '''
         Write dispersion file from dispersion data. Can specify the
         dispersion quantity (disp) and type (type) to write. If not
@@ -452,22 +470,19 @@ class dispersion(object):
 
         Parameters
         ----------
-        filename : str
+        filename
             Filename and full path of the output dispersion file.
-        wave : array, optional
-            Wavelength array. Take from the object if not provided.
-        disp : array, optional
-            Dispersion array; either R, dlambda, or dvel. If not 
-            specified, the method uses the dispersion data in the object.
-        type : str, optional
-            Type of dispersion. Options are 'R', 'DVEL', or 'DLAMBDA'.
+        wave
+            Optional. Wavelength array. Default is None, which 
+            means take from the object.
+        disp
+            Optional. Dispersion array. Default is None, which means
+            use the dispersion data in the object.
+        type
+            Optional. Type of dispersion. Options are 'R', 'DVEL', or 'DLAMBDA'.
             Default is 'R'.
-        overwrite : bool, optional
-            Overwrite existing dispersion file. Default is False.
-        
-        Returns
-        -------
-        None
+        overwrite
+            Optional. Overwrite existing dispersion file. Default is False.
 
         Raises
         ------
@@ -477,12 +492,10 @@ class dispersion(object):
 
         if wave is None:
             if self.wave is None:
-                raise SystemExit("dispersion.write: no wavelength array " +
-                                 "provided.")
+                raise SystemExit("No wavelength array provided.")
             wave = self.wave
         if type is None:
-            raise SystemExit("dispersion.write: no dispersion type " +
-                                 "provided.")
+            raise SystemExit("No dispersion type provided.")
         c1 = fits.Column(name='WAVELENGTH', format='E', array=wave)
         clist = [c1]
         # If no dispersion array is provided, use the one in the object.
@@ -504,7 +517,9 @@ class dispersion(object):
         tbhdu.writeto(filename, overwrite=overwrite)
 
 
-    def compute_Rdlam(self, disp, type=None, wave=None):
+    def compute_Rdlam(self,
+                      disp: Literal['R','DVEL','DLAMBDA']='R',
+                      type: Optional[str]=None, wave=None):
         '''
         Compute R and dlam for the dispersion curve from dispersion 
         value(s). If wave is not given, and the object does not have
@@ -540,15 +555,12 @@ class dispersion(object):
         if isinstance(disp, (int, float)):
             disparr = np.full(self.wave.__len__(), disp)
         elif disp.__len__() != self.wave.__len__():
-            raise SystemExit("dispersion.compute_Rdlam: dispersion and " + 
-                             "wavelength arrays must have the same length.")
+            raise SystemExit("Dispersion and wavelength arrays must "+
+                             "have the same length.")
         else:
             disparr = disp
 
-        if type is None:
-            raise SystemExit("dispersion.compute_Rdlam: incorrect syntax. " +
-                             "TYPE must be 'R', 'kms' , or 'dlambda'")
-        elif type.upper() == 'R':
+        if type.upper() == 'R':
             self.R = disparr
             self.dlam = self.wave/self.R
         elif type.upper() == 'DVEL':
@@ -561,7 +573,10 @@ class dispersion(object):
 
 class InstGratDispersion(dispersion):
 
-    def __init__(self, inst, grat, dispdir=None):
+    def __init__(self,
+                 inst: str,
+                 grat: str,
+                 dispdir: Optional[str]=None):
         '''
         Instantiate the InstGratDispersion class. This is a subclass of
         dispersion, specifically designed for instruments/gratings
@@ -570,14 +585,20 @@ class InstGratDispersion(dispersion):
 
         Parameters
         ----------
-        inst : str
+        inst
             Instrument name.
-        grat : str
+        grat
             Grating name.
+        dispdir
+            Optional. Directory to read/write the dispersion file.
+            Default is None.
 
-        Returns
-        -------
-        None
+        Attributes
+        ----------
+        filename : str
+            Filename of the dispersion file. This is a combination of
+            the instrument and grating names, lowercased, with '_disp.fits'
+            appended to it.
 
         '''
 
@@ -599,21 +620,27 @@ class InstGratDispersion(dispersion):
                 ' cannot be read.')
         
 
-    def writeInstGrat(self, wave=None, disp=None, type='R', overwrite=False):
+    def writeInstGrat(self,
+                      wave: Optional[np.ndarray]=None, 
+                      disp: Optional[np.ndarray]=None,
+                      type: Literal['R','DVEL','DLAMBDA']='R',
+                      overwrite: bool=False):
         '''
         Write the dispersion file.
 
         Parameters
         ----------
-        wave : array, optional
-            Wavelength array. Default is None, which means the object's
+        wave
+            Optional. Wavelength array. Default is None, which means the object's
             wavelength array is used.
-        disp : array, optional
-            Dispersion array. Default is None, which means the object's
+        disp
+            Optional. Dispersion array. Default is None, which means the object's
             dispersion array is used.
-        type : str, optional
-            Type of dispersion. Default is 'R'. Options are 'R', 'DVEL',
+        type
+            Optional. Type of dispersion. Default is 'R'. Options are 'R', 'DVEL',
             or 'DLAMBDA'.
+        overwrite
+            Optional. Overwrite existing dispersion file. Default is False. 
 
         '''
         self.write(os.path.join(self.dispdir, self.filename), 
@@ -637,7 +664,10 @@ class InstGratDispersion(dispersion):
 
 class FlatDispersion(dispersion):
 
-    def __init__(self, disp, type, wave=None):
+    def __init__(self,
+                 disp: float,
+                 type: Literal['R', 'DLAMBDA', 'DVEL'],
+                 wave: Optional[np.ndarray]=None):
         '''
         Instantiate the FlatDispersion class. This is a subclass of
         dispersion, specifically designed for flat dispersion curves --
@@ -647,14 +677,22 @@ class FlatDispersion(dispersion):
 
         Parameters
         ----------
-        disp : value
-        type : str
-        wave : array, optional
+        disp
+            Flat dispersion value. This is a float, and it is the
+            dispersion value for the entire wavelength range.
+        type
+            Type of dispersion. Options are 'R', 'DLAMBDA', or 'DVEL'.
+        wave
+            Optional. Wavelength array. Default is None, which means
+            the object's wavelength array is used. If the object does not
+            have a wavelength array, a default wavelength array is used.
 
-        Returns
-        -------
-        None
-
+        Attributes
+        ----------
+        flatdisp : float
+            Flat dispersion value.
+        flattype : str
+            Type of flat dispersion. Options are 'R', 'DLAMBDA', or 'DVEL'.
         '''
         super().__init__()
         self.flatdisp = disp
@@ -662,19 +700,22 @@ class FlatDispersion(dispersion):
         self.compute_Rdlam(disp, type, wave=wave)
 
 
-    def writeFlat(self, dispdir=None, wave=None, overwrite=False):
+    def writeFlat(self,
+                  dispdir: Optional[str]=None,
+                  wave: Optional[np.ndarray]=None,
+                  overwrite: bool=False):
         '''
         Write the flat dispersion file.
 
         Parameters
         ----------
-        dispdir : str, optional
-            Directory to write the dispersion file. Default is None.
-        wave : array, optional
-            Wavelength array. Default is None, which means the object's
+        dispdir
+            Optional. Directory to write the dispersion file. Default is None.
+        wave
+            Optional. Wavelength array. Default is None, which means the object's
             wavelength array is used.
-        overwrite : bool, optional
-            Overwrite existing dispersion file. Default is False.
+        overwrite
+            Optional. Overwrite existing dispersion file. Default is False.
         '''
     
         self.filename = 'flat_'+self.flattype.lower()+ \
@@ -685,7 +726,7 @@ class FlatDispersion(dispersion):
                    overwrite=overwrite)
 
 
-def MRS_dispersion(wave):
+def MRS_dispersion(wave: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     '''
     Calculate resolution vs. wavelength from Jones et al. 2023
     https://ui.adsabs.harvard.edu/abs/2023MNRAS.523.2519J/abstract
@@ -693,14 +734,14 @@ def MRS_dispersion(wave):
 
     Parameters
     ----------
-    wave : array
+    wave
         Wavelength array.
     
     Returns
     -------
-    R : array
+    np.ndarray
         Resolving power
-    dlam : array
+    np.ndarray
         Delta lambda
     '''
 

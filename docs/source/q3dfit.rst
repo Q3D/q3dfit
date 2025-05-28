@@ -59,6 +59,26 @@ Classes
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: q3dfit.spectConvol.spectConvol
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: q3dfit.spectConvol.dispersion
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: q3dfit.spectConvol.InstGratDispersion
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: q3dfit.spectConvol.FlatDispersion
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Internal modules
 ----------------
 

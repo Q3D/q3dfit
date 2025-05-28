@@ -314,7 +314,7 @@ class Q3Dpro:
             dataOUT['w80']['err'][:,:,ci]  = isger#*isgmsk
 
             dataOUT['Fci']['name'].append('F$_{c'+str(ici)+'}$')
-            dataOUT['Sig']['name'].append('$\sigma_{c'+str(ici)+'}$')
+            dataOUT['Sig']['name'].append('$\\sigma_{c'+str(ici)+'}$')
             dataOUT['v50']['name'].append('v$_{50,c'+str(ici)+'}$')
             dataOUT['w80']['name'].append('w$_{80,c'+str(ici)+'}$')
 
@@ -1243,7 +1243,7 @@ class Q3Dpro:
                         # this tracks the output component index and the sort range
                         for sri, sr in enumerate(sort_rang):
                             dataOUT['Fci']['name'].append('F$_{c'+str(sri)+'}$')
-                            dataOUT['Sig']['name'].append('$\sigma_{c'+str(sri)+'}$')
+                            dataOUT['Sig']['name'].append('$\\sigma_{c'+str(sri)+'}$')
                             dataOUT['v50']['name'].append('v$_{50,c'+str(sri)+'}$')
                             dataOUT['w80']['name'].append('w$_{80,c'+str(sri)+'}$')
                             if sr[0] <= sortDat['data'][ii,jj,cc] <= sr[1]:

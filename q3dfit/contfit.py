@@ -22,7 +22,7 @@ from astropy.modeling import models, fitting
 # from lmfit.models import ExpressionModel
 from lmfit.models import LinearModel
 from ppxf.ppxf import ppxf
-from scipy import interpolate
+from scipy.interpolate import interp1d
 
 from . import q3dmath, q3dutil, qsohostfcn, questfitfcn, spectConvol
 from q3dfit import questfitfcn
@@ -38,7 +38,7 @@ def fitpoly(wave: np.ndarray,
             quiet: bool=True,
             fitord: int=3, 
             refit: Optional[dict[str, ArrayLike]] = None) \
-                -> tuple[np.ndarray, ArrayLike, None]:
+                -> tuple[np.ndarray, dict[str, ArrayLike], None]:
     '''
     Fit the continuum as a polynomial.
 
@@ -68,8 +68,8 @@ def fitpoly(wave: np.ndarray,
     -------
     np.ndarray
         best fit continuum model
-    ArrayLike
-        Polynomial coefficients.
+    dict[str, ArrayLike]
+        Dictionary with single key-value pair, 'poly' and the polynomial coefficients.
     None
         Unused
     '''
@@ -105,10 +105,10 @@ def fitpoly(wave: np.ndarray,
     fluxfitparam = fluxfit.parameters
 
     #flip for numpy.poly1d
-    ct_coeff = np.flip(fluxfitparam)
+    ct_coeff = {'poly': np.flip(fluxfitparam)}
     # this is a class:
     # https://numpy.org/doc/stable/reference/generated/numpy.poly1d.html
-    ct_poly = np.poly1d(ct_coeff, variable='lambda')
+    ct_poly = np.poly1d(ct_coeff['poly'], variable='lambda')
     continuum = ct_poly(wave)
     icontinuum = continuum[index]
 
@@ -157,6 +157,7 @@ def fitqsohost(wave: np.ndarray,
                index_log: Optional[np.ndarray]=None,
                siginit_stars: float=50.,
                add_poly_degree: int=30,
+               ct_av: Optional[float]=None,
                fitran: Optional[ArrayLike]=None,
                qsoord: Optional[int]=None,
                hostord: Optional[int]=None, 
@@ -239,6 +240,9 @@ def fitqsohost(wave: np.ndarray,
     add_poly_degree
          Optional. Degree of the additive polynomial for the pPXF fit. Default is 
          30.
+    ct_av
+        Optional. Initial guess for stellar reddening, used in the pPXF fit.
+        Default is None, which means no reddening is applied.
     qsoxdr
         Path and filename for the quasar template.
 
@@ -247,11 +251,14 @@ def fitqsohost(wave: np.ndarray,
     numpy.ndarray
         Best fit continuum model.
     dict[str, Any]
-        Best fit parameters. The exact form will depend on the value of the 
-        refit parameter. If refit is None, this will be the best fit parameters 
-        from the initial fit. If refit is 'ppxf', this will be a dictionary with 
-        keys 'qso_host', 'stel', 'poly', and 'ppxf_sigma'. If refit is 'questfit', 
-        this will be a dictionary with keys 'qso_host', 'stel', and 'poly'.
+        Best fit parameters. It contains a the key 'qso_host', which contains the 
+        parameters as a :py:class:`~lmfit.Parameters` object. If `refit` is also set 
+        to True in :py:func:`~q3dfit.q3din.q3din`, then it also contains the key
+        'ppxf', which contains the best fit parameters from the pPXF fit as 
+        another dictionary with keys 'stelmod', 'polymod', 'stelweights',
+        'polyweights', 'sigma', 'sigma_err', and 'av'. If `refit` is set to
+        'questfit', it will contain the best fit parameters with keys set
+        by the :py:func:`~q3dfit.contfit.questfit` function.
     float
         Best fit stellar redshift if refit='ppxf'. Otherwise, the input redshift.
     '''
@@ -286,7 +293,7 @@ def fitqsohost(wave: np.ndarray,
     # ierr = err[index]
 
     # Fit the quasar and a featureless host continuum
-    ymod, params = \
+    _, ymod, params = \
         qsohostfcn.qsohostfcn(wave, params_fit=None, qsoonly=qsoonly,
             qsoord=qsoord, hostonly=hostonly, hostord=hostord,
             blronly=blronly, blrpar=blrpar, qsoflux=qsoflux,
@@ -331,7 +338,7 @@ def fitqsohost(wave: np.ndarray,
     # plt.legend(loc='best')
     # plt.show()
 
-    ct_coeff = result.params
+    ct_coeff = {'qso_host': result.params}
 
     # Refit the residual after subtracting the quasar component
     if refit == 'ppxf' and \
@@ -360,36 +367,50 @@ def fitqsohost(wave: np.ndarray,
         start = [0, siginit_stars]  # (km/s), starting guess for [V, sigma]
         pp = ppxf(temp_log, resid_log, err_log, velscale, start,
                   goodpixels=index_log,  quiet=quiet,  # plot=True, moments=2
-                  degree=add_poly_degree)  # clean=False
+                  reddening=ct_av, degree=add_poly_degree)  # clean=False
 
-        # resample additive polynomial to linear grid
-        # poly_log = pp.apoly
-        # pinterp = \
-        #     interpolate.interp1d(residlambda_log, poly_log,
-        #                          kind='cubic', fill_value="extrapolate")
-        # poly = pinterp(np.log(wave))
+        # Errors in best-fit velocity and dispersion.
+        # From PPXF docs:
+        # These errors are meaningless unless Chi^2/DOF~1.
+        # However if one *assumes* that the fit is good ...
+        solerr = copy.copy(pp.error)
+        ct_rchisq = pp.chi2
+        solerr *= np.sqrt(pp.chi2)
 
-        ct_coeff = {'qso_host': result.params,
-                    'stel': pp.weights,
-                    'poly': pp.polyweights,
-                    'ppxf_sigma': pp.sol[1]}
+        # Resample the best fit into linear space
+        cinterp = interp1d(lambda_log, pp.bestfit,
+                        kind='cubic', fill_value="extrapolate")
+        resid_mod = cinterp(np.log(wave))
+        if add_poly_degree > 0:
+            pinterp = interp1d(lambda_log, pp.apoly,
+                                kind='cubic', fill_value="extrapolate")
+            cont_fit_poly = pinterp(np.log(wave))
+        else:
+            cont_fit_poly = np.zeros_like(wave)
+
+        ct_coeff_ppxf = dict()
+        ct_coeff_ppxf['polymod'] = cont_fit_poly
+        ct_coeff_ppxf['stelmod'] = resid_mod - cont_fit_poly
+        ct_coeff_ppxf['polyweights'] = pp.polyweights
+        ct_coeff_ppxf['stelweights'] = pp.weights
+        ct_coeff_ppxf['av'] = pp.reddening
+        ct_coeff_ppxf['sigma'] = pp.sol[1]
+        ct_coeff_ppxf['sigma_err'] = solerr[1]
+ 
+        ct_coeff['ppxf'] = ct_coeff_ppxf
 
         # From ppxf docs:
         # IMPORTANT: The precise relation between the output pPXF velocity
         # and redshift is Vel = c*np.log(1 + z).
         # See Section 2.3 of Cappellari (2017) for a detailed explanation.
         zstar += np.exp(pp.sol[0]/c.to('km/s').value)-1.
+        #zstar_err = (np.exp(solerr[0]/c.to('km/s').value))-1.
 
         # host can't be negative
         #ineg = np.where(continuum < 0)
-        continuum[continuum < 0] = 0
+        #continuum[continuum < 0] = 0
 
-        ppxfcontinuum_log = pp.bestfit
-        cinterp = interpolate.interp1d(lambda_log, ppxfcontinuum_log,
-                                       kind='cubic', fill_value='extrapolate')
-
-        ppxfcont_resid = cinterp(np.log(wave))
-        continuum += ppxfcont_resid
+        continuum += resid_mod
 
     elif refit == 'questfit':
 

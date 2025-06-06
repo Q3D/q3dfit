@@ -39,6 +39,11 @@ Classes
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: q3dfit.q3dout.q3dout
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. autoclass:: q3dfit.q3dpro.Q3Dpro
    :members:
    :undoc-members:

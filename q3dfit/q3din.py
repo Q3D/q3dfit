@@ -359,7 +359,7 @@ class q3din:
                      siginit: float=50., 
                      zinit: Optional[float]=None,
                      dividecont: bool=False,
-                     ebv_star: Optional[float]=None,
+                     av_star: Optional[float]=None,
                      keepstarz: bool=False,
                      maskwidths: Optional[Table | dict[str, np.ndarray]]=None,
                      maskwidths_def: float=500.,
@@ -368,8 +368,6 @@ class q3din:
                      nomaskran: ArrayLike=None,
                      startempfile: Optional[str]=None,
                      startempvac: bool=True,
-                     decompose_qso_fit: bool=False,
-                     decompose_ppxf_fit: bool=False,
                      quiet: bool=False
                      #tweakcntfit=None,
                      #fcnconvtemp: str=None,
@@ -402,10 +400,10 @@ class q3din:
         dividecont
             Optional. Divide data by continuum fit. Default is to subtract.
             Also sets the attribute :py:attr:`~q3dfit.q3din.q3din.dividecont`.
-        ebv_star
-            Optional. Initial guess for E(B-V) for stellar template fitting in 
+        av_star
+            Optional. Initial guess for A_V for stellar template fitting in 
             :py:func:`~ppxf.ppxf`. Default is None, which means no extinction
-            is applied. Also sets the attribute :py:attr:`~q3dfit.q3din.q3din.ebv_star`.
+            is applied. Also sets the attribute :py:attr:`~q3dfit.q3din.q3din.av_star`.
         keepstarz
             Optional. If True, don't redshift stellar template before fitting. Default
             is False. Also sets the attribute :py:attr:`~q3dfit.q3din.q3din.keepstarz`.
@@ -456,19 +454,13 @@ class q3din:
         argsconvtemp
             Optional. Arguments for the template convolution function fcnconvtemp.
             Default is an empty dict. (Not yet implemented.)
-        decompose_qso_fit
-            Optional. Decompose QSO fit when running 
-            :py:meth:`~q3dfit.q3dout.q3dout.sepcontpars`. Default is False.
-        decompose_ppxf_fit
-            Optional. Decompose pPXF fit when running
-            :py:meth:`~q3dfit.q3dout.q3dout.sepcontpars`. Default is False.
 
         '''
 
         self.fcncontfit = fcncontfit
         self.argscontfit = argscontfit
         self.dividecont = dividecont
-        self.ebv_star = ebv_star
+        self.av_star = av_star
         self.keepstarz = keepstarz
         self.maskwidths = maskwidths
         self.maskwidths_def = maskwidths_def
@@ -477,9 +469,6 @@ class q3din:
         self.nomaskran = nomaskran
         self.startempfile = startempfile
         self.startempvac = startempvac
-
-        self.decompose_qso_fit = decompose_qso_fit
-        self.decompose_ppxf_fit = decompose_ppxf_fit
 
         # flip this switch
         self.docontfit = True
@@ -556,7 +545,12 @@ class q3din:
         if not self.spect_convol:
             return None
         else:
-            return spectConvol.spectConvol(self.spect_convol)
+            # check for non-default wavelength unit
+            argsspecconv = dict()
+            if hasattr(self, 'argsreadcube'):
+                if 'waveunit_out' in self.argsreadcube:
+                    argsspecconv['waveunit'] = self.argsreadcube['waveunit_out']
+            return spectConvol.spectConvol(self.spect_convol, **argsspecconv)
 
 
     def get_linelist(self) -> Table | list:
@@ -573,7 +567,11 @@ class q3din:
         '''
         vacuum = self.vacuum
         if hasattr(self, 'lines'):
-            listlines = linelist.linelist(self.lines, vacuum=vacuum, **self.argslinelist)
+            if hasattr(self, 'argsreadcube'):
+                if 'waveunit_out' in self.argsreadcube:
+                    self.argslinelist['waveunit'] = self.argsreadcube['waveunit_out']
+            listlines = linelist.linelist(self.lines, vacuum=vacuum,
+                                          **self.argslinelist)
         else:
             listlines = []
         return listlines

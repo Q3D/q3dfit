@@ -295,7 +295,9 @@ def qsohostfcn(wave: np.ndarray,
                hostord: Optional[int]=None,
                blronly: bool=False,
                blrpar: Optional[ArrayLike]=None,
-               medflux: Optional[float]=None):
+               medflux: Optional[float]=None) -> tuple[Optional[np.ndarray], 
+                                                       Optional[lmfit.Model], 
+                                                       Optional[lmfit.Parameters]]:
     '''
     Set up or evaluate the model for the QSO and host galaxy featureless 
     continuum fit.
@@ -337,6 +339,13 @@ def qsohostfcn(wave: np.ndarray,
     medflux
         Optional. Estimate for the continuum level for setting initial guesses.
         Default is None, which sets the continuum level to 1.
+
+    Returns
+    -------
+    tuple
+        If params_fit is not None, returns a tuple of the evaluated model,
+        None, None. If params_fit is None, returns a tuple of None, the lmfit
+        model object, and the lmfit parameters object.
     '''
     # maximum model legendre polynomial order
     legordmax = 10
@@ -441,6 +450,6 @@ def qsohostfcn(wave: np.ndarray,
     if params_fit is not None:
         continuum = ymod.eval(params_fit, wave=wave, qsotemplate=qsoflux,
                               x=wave)
-        return continuum
+        return continuum, None, None
     else:
-        return ymod, params
+        return None, ymod, params

@@ -6,6 +6,8 @@ from q3dfit.fitspec import fitspec
 import importlib
 from typing import Optional
 
+import os
+
 import numpy as np
 from astropy.table import Table
 
@@ -187,8 +189,7 @@ def fitloop(ispax: int,
                     listlinesz[k] = \
                         np.array(listlines['lines'][(listlines['name'] == k)], 
                             dtype=np.float64) * (1. + q3di.zinit_gas[k][i, j, ])
-                    
-          
+
             if q3di.docontfit:
 
                 # initialize for this spaxel:

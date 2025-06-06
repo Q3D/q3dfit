@@ -6,7 +6,7 @@ from typing import Literal, Optional
 
 def linelist(inlines: Optional[list]=None, 
              linelab: bool=True, 
-             waveunit: Literal['micron','Angstrom']='micron', 
+             waveunit: Literal['micron','Angstrom']='micron',
              vacuum: bool=True) -> Table:
     """
 Generates an astropy Table of lines from the master files provided in

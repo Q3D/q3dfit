@@ -35,7 +35,7 @@ def interptemp(spec_lam: ArrayLike,
     """
 
     if len(template.shape) == 2:
-        ntemp = template.shape(1)
+        ntemp = template.shape[1]
         new_temp = np.zeros((spec_lam.shape[0], ntemp))
     else:
         ntemp = 1
@@ -47,7 +47,6 @@ def interptemp(spec_lam: ArrayLike,
         print('IFSF_INTERPTEMP: WARNING -- Extrapolating template from ' +
               str(max(temp_lam)) + ' to ' + str(max(spec_lam)) + '.')
 
-    # Default interpolation for INTERPOL is linear
     if ntemp != 1:
         for i in range(ntemp - 1):
             interpfunc = \

@@ -24,7 +24,7 @@ def lineinit(linelist: Table,
              ncomp: dict[str, np.ndarray],
              specConv: Optional[spectConvol]=None,
              lineratio: Optional[Table | QTable]=None,
-             waves: Optional[np.ndarray]=None):
+             waves: Optional[np.ndarray]=None) -> tuple[Model, Parameters]:
     '''
 
     Initialize parameters for emission-line fitting.
@@ -59,8 +59,8 @@ def lineinit(linelist: Table,
     
     Returns
     -------
-    lmfit.Model
-    lmfit.Parameters
+    tuple[Model, Parameters]
+        A tuple containing the LMFIT Model and the fit parameters.
     '''
     # Get fixed-ratio doublet pairs for tying intensities
     data_path = os.path.abspath(q3dfit.data.__file__)[:-11]

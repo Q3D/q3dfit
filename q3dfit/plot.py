@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+from __future__ import annotations
+
+from typing import Literal, Optional
+from numpy.typing import ArrayLike
+
 import math
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,48 +13,59 @@ from matplotlib import gridspec, rcParams
 
 from q3dfit.contfit import readcf
 from q3dfit.exceptions import InitializationError
+from q3dfit.q3din import q3din
+from q3dfit.q3dout import q3dout
 from q3dfit.q3dutil import lmlabel
 
-
-def plotcont(q3do,
-             savefig=False,
-             outfile=None,
-             ct_coeff=None,
-             q3di=None,
-             compspec=None,
-             comptitles=None,
-             ps=None,
-             title=None,
+def plotcont(q3do: q3dout,
+             savefig: bool=False,
+             outfile: Optional[str]=None,
+             q3di: Optional[q3din]=None,
+             compspec: Optional[np.ndarray]=None,
+             comptitles: Optional[list]=None,
+             title: Optional[str]=None,
              fitran=None,
              yranminmax=None,
-             IR=False,
+             IR: bool=False,
              compcols=None,
-             xstyle='log',
-             ystyle='log',
-             waveunit_in='micron',
-             waveunit_out='micron',
-             figsize=(10, 5),
-             fluxunit_in='flambda',
-             fluxunit_out='flambda',
-             mode='light'
+             xstyle: Literal['log', 'lin']='log',
+             ystyle: Literal['log', 'lin']='log',
+             figsize: tuple=(10, 5),
+             waveunit_in: Literal['micron','Angstrom']='micron',
+             waveunit_out: Optional[str]=None,
+             fluxunit_out: Literal['flambda', 'lambdaflambda', 'fnu'] = 'flambda',
+             mode: Literal['dark', 'light'] = 'dark'
              ):
     '''
     Created on Tue Jun  1 13:32:37 2021
-
     @author: annamurphree
 
     Plots continuum fit of optical data (fit by fitqsohost or ppxf)
     or IR data (fit by questfit).
 
-    Init file optional parameters ('argscontplot'):
-        xstyle = log or lin (linear),
-        ystyle = log or lin (linear),
-        waveunit_in = micron or Angstrom,
-        waveunit_out = micron or Angstrom,
-        fluxunit_in = flambda, lambdaflambda (= nufnu), or fnu,
-        fluxunit_out = flambda, lambdaflambda (= nufnu), or fnu,
-        mode = light or dark
-        The first options are the defaults.
+    Parameters
+    ----------
+    q3do
+        :py:class:`~q3dfit.q3dout.q3dout` object containing results of fit.
+    savefig
+        Optional. If True, saves the plot to a file. Defaults to False.
+    outfile
+        Optional. Full path and name of output plot. Defaults to None, which
+        means no output file is created.
+    q3di
+        Optional. :py:class:`~q3dfit.q3din.q3din` object containing fit initialization.
+        Only needed for IR spectra fit by questfit. Defaults to None.
+    compspec
+        Optional. Array of component spectra to plot. If None, no components are plotted.
+    comptitles
+        Optional. List of titles for component spectra. Defaults to None.
+    waveunit_in
+        Optional. Input wavelength unit, either 'micron' or 'Angstrom'.
+        Defaults to 'micron'.
+    waveunit_out
+        Optional. Output wavelength unit, either 'micron' or 'Angstrom'.
+        If None, defaults to waveunit_in.
+
     '''
 
     rcParamsOrig = rcParams.copy()
@@ -64,6 +81,10 @@ def plotcont(q3do,
     wave = q3do.wave
     specstars = q3do.cont_dat
     modstars = q3do.cont_fit
+
+    if waveunit_out is None:
+        # if no output wavelength unit is specified, use the input wavelength unit
+        waveunit_out = waveunit_in
 
     # for optical spectra fit by fitqsohost or ppxf:
     if not IR:
@@ -100,7 +121,7 @@ def plotcont(q3do,
             # speed of light in angstroms/s
             c = 2.998e+18
 
-        if fluxunit_in == 'flambda' and fluxunit_out == 'lambdaflambda':
+        if fluxunit_out == 'lambdaflambda':
             # multiply the flux by wavelength
             specstars = list(np.multiply(specstars, wave))
             modstars = list(np.multiply(modstars, wave))
@@ -108,7 +129,7 @@ def plotcont(q3do,
                 for i in range(0, ncomp):
                     compspec[i] = list(np.multiply(compspec[i], wave))
             ytit = '$\lambda$F$_\lambda$'
-        elif fluxunit_in == 'flambda' and fluxunit_out == 'fnu':
+        elif fluxunit_out == 'fnu':
             # multiply the flux by wavelength^2/c
             specstars = \
                 list(np.multiply(specstars,
@@ -198,7 +219,7 @@ def plotcont(q3do,
             plt.gcf().subplots_adjust(bottom=0.1)
 
             if title is not None:
-                plt.suptitle(title, fontsize=30)
+                plt.suptitle(title, fontsize=20)
 
             if savefig and outfile is not None:
                 plt.savefig(outfile[0] + '.jpg')
@@ -301,10 +322,10 @@ def plotcont(q3do,
                         xticks = np.arange(np.around(xrans[group][0],1)-0.025,
                                            np.around(xrans[group][1],1), 0.025)[:-1]
                         plt.xticks(xticks, fontsize=10)
-                    elif waveunit_out == 'Angstrom':
-                        xticks = np.arange(math.floor(xrans[group][0]/100.0)*100,
-                                           (math.floor(xrans[group][1]/100)*100)+100, 100)
-                        plt.xticks(xticks, fontsize=10)
+                    #elif waveunit_out == 'Angstrom':
+                    #    xticks = np.arange(math.floor(xrans[group][0]/100.0)*100,
+                    #                       (math.floor(xrans[group][1]/100)*100)+100, 100)
+                    #    plt.xticks(xticks, fontsize=10)
                     if np.nanmin(ydat) > 1e-10:
                         # this will fail if fluxes are very low (<~1e-10)
                         plt.yticks(np.arange(yran[0], yran[1],
@@ -330,7 +351,7 @@ def plotcont(q3do,
             #plt.gcf().subplots_adjust(bottom=0.1)
 
             if title is not None:
-                plt.suptitle(title, fontsize=40)
+                plt.suptitle(title, fontsize=20)
 
             if savefig and outfile is not None:
                 if len(outfile[0])>1:
@@ -362,7 +383,7 @@ def plotcont(q3do,
                     # convert angstroms to microns
                     MIRgdlambda = list(np.divide(MIRgdlambda, 10**4))
 
-                if fluxunit_in == 'flambda' and fluxunit_out == 'lambdaflambda':
+                if fluxunit_out == 'lambdaflambda':
                     # multiply the flux by wavelength
                     MIRgdflux = list(np.multiply(MIRgdflux, MIRgdlambda))
                     MIRcontinuum = list(np.multiply(MIRcontinuum, MIRgdlambda))
@@ -372,7 +393,7 @@ def plotcont(q3do,
                                 np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
                                             MIRgdlambda)
                     ytit = '$\lambda$F$_\lambda$'
-                elif fluxunit_in == 'flambda' and fluxunit_out == 'fnu':
+                elif fluxunit_out == 'fnu':
                     # multiply the flux by wavelength^2/c
                     MIRgdflux = list(np.multiply(MIRgdflux, MIRgdlambda))
                     MIRcontinuum = list(np.multiply(MIRgdflux, MIRgdlambda))
@@ -454,7 +475,7 @@ def plotcont(q3do,
                 MIRgdlambda = list(np.divide(MIRgdlambda, 10**4))
                 xtit = 'Observed Wavelength ($\mu$m)'
 
-            if fluxunit_in == 'flambda' and fluxunit_out == 'lambdaflambda':
+            if fluxunit_out == 'lambdaflambda':
                 # multiply the flux by wavelength
                 MIRgdflux = list(np.multiply(MIRgdflux, MIRgdlambda))
                 MIRcontinuum = list(np.multiply(MIRcontinuum, MIRgdlambda))
@@ -464,7 +485,7 @@ def plotcont(q3do,
                             list(np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
                                              MIRgdlambda))
                 ytit = '$\lambda$F$_\lambda$'
-            elif fluxunit_in == 'flambda' and fluxunit_out == 'fnu':
+            elif fluxunit_out == 'fnu':
                 # multiply the flux by wavelength
                 MIRgdflux = list(np.multiply(MIRgdflux, MIRgdlambda))
                 MIRcontinuum = list(np.multiply(MIRgdflux, MIRgdlambda))
@@ -618,7 +639,7 @@ def plotcont(q3do,
         plt.gcf().subplots_adjust(right=0.85)
 
         if title is not None:
-            plt.suptitle(title, fontsize=30)
+            plt.suptitle(title, fontsize=20)
 
         if savefig and outfile is not None:
             if len(outfile[0])>1:

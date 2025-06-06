@@ -361,10 +361,6 @@ def fitspec(wlambda: np.ndarray,
             if zstarout is not None:
                 q3do.zstar = copy.copy(zstarout)
 
-            if 'refit' in argscontfit.keys():
-                if argscontfit['refit'] == 'ppxf':
-                    q3do.ct_ppxf_sigma = q3do.ct_coeff['ppxf_sigma']
-
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         # # Option 2: PPXF
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -382,38 +378,51 @@ def fitspec(wlambda: np.ndarray,
                     add_poly_degree = q3di.argscontfit['add_poly_degree']
 
             # run ppxf
-            pp = ppxf(temp_log, gdflux_log, gderr_log, velscale[0],
+            pp = ppxf(temp_log, gdflux_log, gderr_log, velscale,
                       [0, siginit_stars], goodpixels=ct_indx_log,
                       degree=add_poly_degree, quiet=quiet,
-                      reddening=q3di.ebv_star)
-            # poly_mod = pp.apoly
-            continuum_log = pp.bestfit
-            q3do.ct_add_poly_weights = pp.polyweights
-            q3do.ct_coeff = pp.weights
-            q3do.ct_ebv = pp.reddening
-            sol = pp.sol
-            solerr = pp.error
+                      reddening=q3di.av_star)
 
+
+            # Errors in best-fit velocity and dispersion.
+            # From PPXF docs:
+            # These errors are meaningless unless Chi^2/DOF~1.
+            # However if one *assumes* that the fit is good ...
+            solerr = copy.copy(pp.error)
+            q3do.ct_rchisq = pp.chi2
+            solerr *= np.sqrt(pp.chi2)
+
+            # best-fit in log space
+            continuum_log = pp.bestfit
             # Resample the best fit into linear space
             cinterp = interp1d(gdlambda_log, continuum_log,
                                kind='cubic', fill_value="extrapolate")
             q3do.cont_fit = cinterp(np.log(gdlambda))
+            if add_poly_degree > 0:
+                pinterp = interp1d(gdlambda_log, pp.apoly,
+                                   kind='cubic', fill_value="extrapolate")
+                cont_fit_poly = pinterp(np.log(gdlambda))
+            else:
+                cont_fit_poly = np.zeros_like(gdlambda)
 
+            ct_coeff = dict()
+            ct_coeff['polymod'] = cont_fit_poly
+            ct_coeff['stelmod'] = q3do.cont_fit - cont_fit_poly
+            ct_coeff['polyweights'] = pp.polyweights
+            ct_coeff['stelweights'] = pp.weights
+            ct_coeff['av'] = pp.reddening
+            ct_coeff['sigma'] = pp.sol[1]
+            ct_coeff['sigma_err'] = solerr[1]
+            q3do.ct_coeff = ct_coeff
+
+    
             # Adjust stellar redshift based on fit
             # From ppxf docs:
             # IMPORTANT: The precise relation between the output pPXF velocity
             # and redshift is Vel = c*np.log(1 + z).
             # See Section 2.3 of Cappellari (2017) for a detailed explanation.
-            q3do.zstar += np.exp(sol[0]/c.to('km/s').value)-1.
-            q3do.ct_ppxf_sigma = sol[1]
-
-            # From PPXF docs:
-            # These errors are meaningless unless Chi^2/DOF~1.
-            # However if one *assumes* that the fit is good ...
-            q3do.ct_rchisq = pp.chi2
-            solerr *= np.sqrt(pp.chi2)
+            q3do.zstar += np.exp(pp.sol[0]/c.to('km/s').value)-1.
             q3do.zstar_err = (np.exp(solerr[0]/c.to('km/s').value))-1.
-            q3do.ct_ppxf_sigma_err = solerr[1]
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # # Option to tweak cont. fit with local polynomial fits
@@ -581,8 +590,8 @@ def fitspec(wlambda: np.ndarray,
             # are set up by fitloop
             emlmod, q3do.parinit = \
                 run_fcnlineinit(listlines, listlinesz, q3di.linetie, linevary, 
-                                peakinit, siginit_gas, siglim_gas, ncomp, specConv=specConv,
-                                **argslineinit)
+                                peakinit, siginit_gas, siglim_gas, ncomp, 
+                                specConv=specConv, **argslineinit)
 
 
             # Actual fit

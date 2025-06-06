@@ -38,6 +38,8 @@ class spectConvol:
         `ws_instrum` contains instrument/grating combinations.
         `dispdir` is the directory of dispersion files. If set to None (default), 
         the q3dfit dispersion_file directory is used.
+    waveunit
+        Optional. Wavelength unit, either 'micron' or 'Angstrom'. Default is 'micron'.
 
     Raises
     ------
@@ -54,7 +56,8 @@ class spectConvol:
         The values are dispersion objects.
     '''
     def __init__(self,
-                 spect_convol: dict[str, Union[dict[str, str], str, None]]):
+                 spect_convol: dict[str, Union[dict[str, str], str, None]],
+                 waveunit: Literal['micron', 'Angstrom'] = 'micron'):
         # full directory of dispersion files in repo
         #self.dispdir = os.path.join(os.path.abspath(q3dfit.data.__file__)[:-11],
         #    'dispersion_files')
@@ -84,6 +87,9 @@ class spectConvol:
             raise SystemExit('Error in loading spect_convol dictionary ' +
                 'in q3dinit.')
     
+        # set the wavelength unit
+        self.waveunit = waveunit
+
         # Create and populate the dispersion objects
         for inst, gratlist in self.InstGratObjs.items():
             for grat in gratlist:
@@ -94,16 +100,18 @@ class spectConvol:
                         flattype = ''.join(re.findall("[a-zA-Z]", grat))
                         flatdisp = '.'.join(re.findall(r"\d+", grat))
                         self.InstGratObjs[inst][grat] = \
-                            FlatDispersion(float(flatdisp), flattype)
+                            FlatDispersion(float(flatdisp), flattype,
+                                           waveunit=self.waveunit)
                     else:
                         self.InstGratObjs[inst][grat] = \
-                            InstGratDispersion(inst, grat, dispdir=self.dispdir)
+                            InstGratDispersion(inst, grat, dispdir=self.dispdir,
+                                               waveunit=self.waveunit)
                         self.InstGratObjs[inst][grat].readInstGrat()
                 else:
                     self.InstGratObjs[inst][grat] = \
-                        InstGratDispersion(inst, grat, dispdir=self.dispdir)
+                        InstGratDispersion(inst, grat, dispdir=self.dispdir,
+                                           waveunit=self.waveunit)  
                     self.InstGratObjs[inst][grat].get_MRS_Rdlam()
-
 
     def spect_convolver(self,
                         wave: np.ndarray,
@@ -217,17 +225,17 @@ class spectConvol:
         # Not sure if this deserves a SystemExit, but it's a way to
         # catch the length errors.
         if InstGratSelect.__len__() == 0:
-            raise SystemExit('spectConvol.selectInstGrat: ' +
-                'No specified inst/grat combination covers the line ' +
-                'at ' + wavecen.__str__() + ' μm.')
+            raise SystemExit(f'spectConvol.selectInstGrat: ' +
+                f'No specified inst/grat combination covers the line ' +
+                f'at {wavecen.__str__()} {self.waveunit}.')
         elif InstGratSelect.__len__() > 2:
             if wavecen is None:
                 raise SystemExit('spectConvol.selectInstGrat: ' +
-                    'More than 2 inst/grat combinations are specified.')
+                    f'More than 2 inst/grat combinations are specified.')
             else:
-                raise SystemExit('spectConvol.selectInstGrat: ' +
-                    'More than 2 inst/grat combinations cover the line ' +
-                    'at ' + wavecen.__str__() + ' μm.')
+                raise SystemExit(f'spectConvol.selectInstGrat: ' +
+                    f'More than 2 inst/grat combinations cover the line ' +
+                    f'at {wavecen.__str__()} {self.waveunit}.')
 
         return InstGratSelect
     
@@ -377,7 +385,9 @@ class dispersion(object):
     wave : np.ndarray
         Wavelength. Added by constructor and populated by 
         :py:meth:`~q3dfit.spectConvol.dispersion.read` or
-        :py:meth:`~q3dfit.spectConvol.dispersion.compute_Rdlam`.            
+        :py:meth:`~q3dfit.spectConvol.dispersion.compute_Rdlam`.
+    waveunit : str
+        Wavelength unit. Default is 'micron'. Can be set to 'Angstrom' if needed.           
     '''
 
     def __init__(self):
@@ -385,6 +395,7 @@ class dispersion(object):
         Instantiate the dispersion class.
         '''
         self.wave = None
+        self.waveunit = 'micron'  # default wavelength unit
         self.R = None
         self.dlam = None
 
@@ -519,7 +530,8 @@ class dispersion(object):
 
     def compute_Rdlam(self,
                       disp: Literal['R','DVEL','DLAMBDA']='R',
-                      type: Optional[str]=None, wave=None):
+                      type: Optional[str]=None,
+                      wave=None):
         '''
         Compute R and dlam for the dispersion curve from dispersion 
         value(s). If wave is not given, and the object does not have
@@ -545,9 +557,15 @@ class dispersion(object):
         if wave is None:
             # Get it from the object if it's already there
             if self.wave is None:
-                # Default wavelength array is 0.05 to 100 micron,
-                # spacing of 0.01 micron = 100 Angstrom
-                self.wave = np.linspace(0.05, 100., int((100.-0.05)/0.01))
+                # Default wavelength array
+                if self.waveunit == 'micron':
+                    # 0.05 to 100 micron,
+                    # spacing of 0.01 micron = 100 Angstrom
+                    self.wave = np.linspace(0.05, 100., int((100.-0.05)/0.01))
+                elif self.waveunit == 'Angstrom':
+                    # 500 to 100000 Angstrom,
+                    # spacing of 10 Angstrom
+                    self.wave = np.linspace(500., 100000., int((100000.-500.)/10.))
         else:
             self.wave = wave
 
@@ -576,7 +594,8 @@ class InstGratDispersion(dispersion):
     def __init__(self,
                  inst: str,
                  grat: str,
-                 dispdir: Optional[str]=None):
+                 dispdir: Optional[str]=None,
+                 waveunit: Literal['micron', 'Angstrom'] = 'micron'):
         '''
         Instantiate the InstGratDispersion class. This is a subclass of
         dispersion, specifically designed for instruments/gratings
@@ -592,6 +611,9 @@ class InstGratDispersion(dispersion):
         dispdir
             Optional. Directory to read/write the dispersion file.
             Default is None.
+        waveunit
+            Optional. Wavelength unit, either 'micron' or 'Angstrom'.
+            Default is 'micron'.
 
         Attributes
         ----------
@@ -605,6 +627,7 @@ class InstGratDispersion(dispersion):
         super().__init__()
         self.inst = inst
         self.grat = grat
+        self.waveunit = waveunit
         self.filename = '_'.join([inst, grat]).lower() + '_disp.fits'
         self.setdir(dispdir)
     
@@ -654,6 +677,8 @@ class InstGratDispersion(dispersion):
         needed if MRS dispersion files are provided.
 
         This updates attributes R and dlam, and wave if self.wave is None.
+
+        Assumes waveunit is 'micron', but doesn't check for it.
         '''
         if self.wave is None:
             # Default range. This is the range of the MRS.
@@ -667,7 +692,8 @@ class FlatDispersion(dispersion):
     def __init__(self,
                  disp: float,
                  type: Literal['R', 'DLAMBDA', 'DVEL'],
-                 wave: Optional[np.ndarray]=None):
+                 wave: Optional[np.ndarray]=None,
+                 waveunit: Literal['micron', 'Angstrom'] = 'micron'):
         '''
         Instantiate the FlatDispersion class. This is a subclass of
         dispersion, specifically designed for flat dispersion curves --
@@ -686,6 +712,9 @@ class FlatDispersion(dispersion):
             Optional. Wavelength array. Default is None, which means
             the object's wavelength array is used. If the object does not
             have a wavelength array, a default wavelength array is used.
+        waveunit
+            Optional. Wavelength unit, either 'micron' or 'Angstrom'.
+            Default is 'micron'.
 
         Attributes
         ----------
@@ -697,6 +726,7 @@ class FlatDispersion(dispersion):
         super().__init__()
         self.flatdisp = disp
         self.flattype = type
+        self.waveunit = waveunit
         self.compute_Rdlam(disp, type, wave=wave)
 
 
@@ -731,6 +761,8 @@ def MRS_dispersion(wave: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     Calculate resolution vs. wavelength from Jones et al. 2023
     https://ui.adsabs.harvard.edu/abs/2023MNRAS.523.2519J/abstract
     https://jwst-docs.stsci.edu/jwst-mid-infrared-instrument/miri-observing-modes/miri-medium-resolution-spectroscopy#MIRIMediumResolutionSpectroscopy-wavelengthMRSwavelengthcoverageandspectralresolution
+
+    Assumes waveunit is 'micron', but doesn't check for it.
 
     Parameters
     ----------

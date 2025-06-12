@@ -330,36 +330,37 @@ def fitspec(wlambda: np.ndarray,
             else:
                 argscontfit = dict()
             if q3di.fcncontfit == 'fitqsohost':
-                argscontfit['template_wave'] = templatelambdaz
-                argscontfit['template_flux'] = template['flux']
                 argscontfit['fitran'] = fitran
-                argscontfit['zstar'] = (copy.copy(zstar)).astype(usetype)
             if q3di.fcncontfit == 'questfit':
                 argscontfit['fluxunit'] = fluxunit
                 #argscontfit['waveunit'] = waveunit
             if 'refit' in argscontfit.keys():
+                argscontfit['zstar'] = (copy.copy(zstar)).astype(usetype)
                 if argscontfit['refit'] == 'ppxf':
+                    argscontfit['template_wave'] = templatelambdaz
+                    argscontfit['template_flux'] = template['flux']
                     argscontfit['index_log'] = ct_indx_log
                     argscontfit['flux_log'] = gdflux_log
                     argscontfit['err_log'] = gderr_log
                     argscontfit['siginit_stars'] = siginit_stars
+                    if hasattr(q3di, 'av_star'):
+                        argscontfit['av_star'] = q3di.av_star
                 if argscontfit['refit'] == 'questfit':
                     argscontfit['fluxunit'] = fluxunit
                     #argscontfit['waveunit'] = waveunit
             if q3di.fcncontfit == 'linfit_plus_FeII':
                 argscontfit['specConv'] = specConv
-            #if zstar is None:
-            #    zstarin = np.nan
-            #else:
-            #    zstarin = copy.copy(zstar)
-            q3do.cont_fit, q3do.ct_coeff, zstarout = \
+            q3do.cont_fit, q3do.ct_coeff, zstarout, zstarouterr = \
                 fcncontfit(gdlambda.astype(usetype),
                            gdflux.astype(usetype),
                            gdinvvar.astype(usetype),
                            q3do.ct_indx, logfile=q3di.logfile,
                            quiet=quiet, **argscontfit)
+            # 
             if zstarout is not None:
                 q3do.zstar = copy.copy(zstarout)
+            if zstarouterr is not None:
+                q3do.zstar_err = copy.copy(zstarouterr)
 
         # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         # # Option 2: PPXF
@@ -639,7 +640,8 @@ def fitspec(wlambda: np.ndarray,
                 fit_kws['full_output'] = True
                 # increase number of max iterations; this is the default for this algorithm
                 # https://github.com/lmfit/lmfit-py/blob/7710da6d7e878ffee0dc90a85286f1ec619fc20f/lmfit/minimizer.py#L1624
-                max_nfev = 2000*(len(q3do.parinit)+1)
+                if 'max_nfev' not in fit_kws:
+                    max_nfev = 2000*(len(q3do.parinit)+1)
 
 
             lmout = emlmod.fit(q3do.line_dat, q3do.parinit, x=gdlambda,

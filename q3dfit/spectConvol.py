@@ -117,7 +117,7 @@ class spectConvol:
                         wave: np.ndarray,
                         flux: np.ndarray,
                         wavecen: Optional[float]=None,
-                        oversample: int=1):
+                        oversample: int=1) -> np.ndarray:
         '''
         Convolves an input spectrum by the spectral resolution.
 

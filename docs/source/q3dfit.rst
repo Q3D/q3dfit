@@ -17,7 +17,14 @@ contfit
    :undoc-members:
    :show-inheritance:
 
+lineunit
+========
 
+.. automodule:: q3dfit.lineutil
+   :members:
+   :undoc-members:
+   :show-inheritance:
+      
 q3dcollect
 ==========
 
@@ -25,6 +32,7 @@ q3dcollect
    :members:
    :undoc-members:
    :show-inheritance:
+
 
 Classes
 -------
@@ -125,6 +133,14 @@ linelist
 .. automodule:: q3dfit.linelist
    :members:
    :undoc-members:
+   :show-inheritance:
+
+plot
+====
+
+.. automodule:: q3dfit.plot
+   :members:
+   :exclude-members: adjust_ax, plotdecomp
    :show-inheritance:
 
 q3df_helperFunctions

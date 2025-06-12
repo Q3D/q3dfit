@@ -51,8 +51,15 @@ def lineinit(linelist: Table,
         Optional. Spectral resolution object. If set to None, no convolution
         will be performed. The default is None.
     lineratio
-        Optional. Table of line ratio constraints, beyond those in the doublets table.
-        The default is None.
+        Optional. Table of line ratio constraints, beyond those in the doublets table,
+        https://github.com/Q3D/q3dfit/blob/main/q3dfit/data/linelists/doublets.tbl.
+        The default is None. The table must contain the columns `line1`, `line2`,
+        `comp`, and optionally `value`, `fixed`, `lower`, and `upper`.\n
+        - `line1`/`line2`: the names of the two lines to which the ratio `line1`/`line2` applies. These are the labels found in the linelist Table.
+        - `comp`: an array of velocity components (zero-indexed) on which to apply the constraints, one array for each pair of lines.
+        - `value`: the initial value of `line1`/`line2`. Presently, if `value` is specified for one pair of lines, it must be specified for all. Otherwise, the initial value is determined from the data.
+        - `fixed`: The ratio can be `fixed` to the initial value. Presently, if `fixed` is defined, it must be set to `True` or `False` for all pairs of line.
+        - `lower`/`upper`: If the ratio is not `fixed`, `lower` and `upper` limits can also be specified. (If they are not, and the line pair is a doublet in the doublets.tbl file, then the lower and upper limits are set using the data in that file.) Presently, if `lower` or `upper` is defined here for one set of lines, it must be defined here for every pair of lines.
     waves
         Optional. Wavelength array for determining if a line is in the fit range. 
         The default is None.

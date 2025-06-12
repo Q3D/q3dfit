@@ -25,9 +25,8 @@ from ppxf.ppxf import ppxf
 from scipy.interpolate import interp1d
 
 from . import q3dmath, q3dutil, qsohostfcn, questfitfcn, spectConvol
-from q3dfit import questfitfcn
 from q3dfit.data import questfit_templates
-#from q3dfit.data.questfit_templates import silicatemodels
+from q3dfit.data.questfit_templates import silicatemodels
 from q3dfit.exceptions import InitializationError
 
 def fitpoly(wave: np.ndarray, 
@@ -38,7 +37,7 @@ def fitpoly(wave: np.ndarray,
             quiet: bool=True,
             fitord: int=3, 
             refit: Optional[dict[str, ArrayLike]] = None) \
-                -> tuple[np.ndarray, dict[str, ArrayLike], None]:
+                -> tuple[np.ndarray, dict[str, ArrayLike], None, None]:
     '''
     Fit the continuum as a polynomial.
 
@@ -72,6 +71,8 @@ def fitpoly(wave: np.ndarray,
         Dictionary with single key-value pair, 'poly' and the polynomial coefficients.
     None
         Unused
+    None
+        Unused
     '''
     iwave = np.array(wave[index])
     iflux = np.array(flux[index])
@@ -83,8 +84,8 @@ def fitpoly(wave: np.ndarray,
     iflux = iflux.reshape(iwave.size)
     iweight = iweight.reshape(iwave.size)
 
-    if len(ilam) <= fitord:
-    	fitord = len(ilam)-1
+    if len(iwave) <= fitord:
+    	fitord = len(iwave)-1
 
     if fitord==0:
         deg1=len(iwave)-1
@@ -139,7 +140,7 @@ def fitpoly(wave: np.ndarray,
             # now add in the refitted continuum to the full continuum
             continuum += cont_refit
 
-    return continuum, ct_coeff, None
+    return continuum, ct_coeff, None, None
 
 
 def fitqsohost(wave: np.ndarray,
@@ -151,13 +152,13 @@ def fitqsohost(wave: np.ndarray,
                refit: Optional[str]=None,
                template_wave: Optional[np.ndarray]=None,
                template_flux: Optional[np.ndarray]=None, 
-               zstar: float=0.,
+               zstar: Optional[float]=None,
                flux_log: Optional[np.ndarray]=None,
                err_log: Optional[np.ndarray]=None,
                index_log: Optional[np.ndarray]=None,
                siginit_stars: float=50.,
                add_poly_degree: int=30,
-               ct_av: Optional[float]=None,
+               av_star: Optional[float]=None,
                fitran: Optional[ArrayLike]=None,
                qsoord: Optional[int]=None,
                hostord: Optional[int]=None, 
@@ -167,7 +168,8 @@ def fitqsohost(wave: np.ndarray,
                blronly: bool=False,
                fluxunit: Optional[str]=None,
                *, qsoxdr: str,
-               **kwargs) -> tuple[np.ndarray, dict[str, Any], float]:
+               **kwargs) -> tuple[np.ndarray, dict[str, Any], 
+                                  Optional[float], Optional[float]]:
     '''
     Fit the continuum using a quasar template and a stellar template. Calls
     :py:func:`~q3dfit.qsohostfcn.qsohostfcn` to jointly fit the quasar and host
@@ -215,16 +217,16 @@ def fitqsohost(wave: np.ndarray,
         Optional. Fit only the broad line region scattering model. Default is False.
     refit
         Optional. Refit the continuum residual after subtracting the quasar. 
-        Options are 'ppxf' or 'questfit'.
+        Options are 'ppxf' or 'questfit'. Default is None, which means no refit.
     template_wave
         Optional, but must be set if refit='ppxf'. Wavelength array of the stellar 
         template used as model for stellar continuum.
     template_flux
-        Optional, but must be set if refit='ppxf'. Wavelength array of the stellar 
+        Optional, but must be set if refit='ppxf'. Flux array of the stellar 
         template used as model for stellar continuum.
     zstar
         Optional, but must be set if refit='ppxf'. Input guess for redshift of the 
-        stellar continuum. Default is 0.
+        stellar continuum. Default is None.
     flux_log
         Optional, but must be set if refit='ppxf'. Flux values for the log-rebinned 
         pixels.
@@ -240,7 +242,7 @@ def fitqsohost(wave: np.ndarray,
     add_poly_degree
          Optional. Degree of the additive polynomial for the pPXF fit. Default is 
          30.
-    ct_av
+    av_star
         Optional. Initial guess for stellar reddening, used in the pPXF fit.
         Default is None, which means no reddening is applied.
     qsoxdr
@@ -259,8 +261,11 @@ def fitqsohost(wave: np.ndarray,
         'polyweights', 'sigma', 'sigma_err', and 'av'. If `refit` is set to
         'questfit', it will contain the best fit parameters with keys set
         by the :py:func:`~q3dfit.contfit.questfit` function.
-    float
-        Best fit stellar redshift if refit='ppxf'. Otherwise, the input redshift.
+    Optional[float]
+        Best fit stellar redshift if refit='ppxf'. Otherwise, the input redshift
+        or None if not set.
+    Optional[float]
+        Best fit stellar redshift error if refit='ppxf'. Otherwise, None.
     '''
 
     # Load quasar template
@@ -292,7 +297,7 @@ def fitqsohost(wave: np.ndarray,
     iweight = weight[index]
     # ierr = err[index]
 
-    # Fit the quasar and a featureless host continuum
+    # Instantiate the quasar + featureless host continuum model
     _, ymod, params = \
         qsohostfcn.qsohostfcn(wave, params_fit=None, qsoonly=qsoonly,
             qsoord=qsoord, hostonly=hostonly, hostord=hostord,
@@ -300,12 +305,42 @@ def fitqsohost(wave: np.ndarray,
             medflux=np.median(iflux))
 
     # Set the fitting method
-    # default is scipy.optimize.least_squares
+
+    fit_kws = {}
+    # Maximum # evals cannot be specified as a keyword to the minimzer,
+    # as it's a parameter of the fit method. Default for 'least_squares'
+    # with 'trf' method (which is what lmfit assumes)
+    # is 100*npar, but lmfit changes this to 2000*(npar+1)
+    # https://github.com/lmfit/lmfit-py/blob/b930ddef320d93f984181db19fec8e9c9a41be8f/lmfit/minimizer.py#L1526
+    # We'll change default to 200*(npar+1).
+    # Note that lmfit method 'least_squares’ with default least_squares
+    # method 'lm' counts function calls in
+    # Jacobian estimation if numerical Jacobian is used (again the default)
+    max_nfev = 200*(len(params)+1)
+    iter_cb = None
     method = 'least_squares'
+
+    # Add additional parameter settings for scipy.optimize.least_squares
+    if 'argslmfit' in kwargs:
+        for key, val in kwargs['argslmfit'].items():
+            # have to treat 'method' separately, as it is a parameter
+            # of the fit function, not a parameter of the fit
+            if key == 'method':
+                method = val
+            # max_nfev goes in as parameter to fit method instead
+            elif key == 'max_nfev':
+                max_nfev = val
+            # iter_cb goes in as parameter to fit method instead
+            elif key == 'iter_cb':
+                iter_cb = globals()[val]
+            else:
+                fit_kws[key] = val
+
+    # Could also set the method here, but better
+    # to set it in argslmfit
     if 'method' in kwargs:
         method = kwargs['method']
 
-    fit_kws = {}
     if method == 'least_squares':
         if quiet:
             lmverbose = 0  # verbosity for scipy.optimize.least_squares
@@ -313,32 +348,27 @@ def fitqsohost(wave: np.ndarray,
             lmverbose = 2
         fit_kws = {'verbose': lmverbose}
 
-    # Add additional parameter settings for scipy.optimize.least_squares
-    if 'argslmfit' in kwargs:
-        for key, val in kwargs['argslmfit'].items():
-            fit_kws[key] = val
+    if method == 'leastsq':
+        # to get mesg output
+        fit_kws['full_output'] = True
+        # increase number of max iterations; this is the default for this algorithm
+        # https://github.com/lmfit/lmfit-py/blob/7710da6d7e878ffee0dc90a85286f1ec619fc20f/lmfit/minimizer.py#L1624
+        if 'max_nfev' not in fit_kws:
+            max_nfev = 2000*(len(params)+1)
 
     result = ymod.fit(iflux, params, weights=np.sqrt(iweight),
                       qsotemplate=qsoflux[index],
                       wave=iwave, x=iwave, method=method,
-                      nan_policy='raise', fit_kws=fit_kws)
+                      nan_policy='raise', max_nfev=max_nfev,
+                      fit_kws=fit_kws)
 
     q3dutil.write_msg(result.fit_report(), file=logfile, quiet=quiet)
 
     # comps = result.eval_components(wave=wave, qso_model=qsoflux, x=wave)
     continuum = result.eval(wave=wave, qsotemplate=qsoflux, x=wave)
-    # Test plot
-    # import matplotlib.pyplot as plt
-    # for i in comps.keys():
-    #     plt.plot(wave, comps[i], label=i)
-    # plt.plot(wave, continuum, label='best-fit')
-    # plt.plot(wave, flux, label='flux')
-    # plt.plot(wave, flux-continuum, label='resid')
-    # plt.plot(wave, test_qsofcn, label='test')
-    # plt.legend(loc='best')
-    # plt.show()
 
     ct_coeff = {'qso_host': result.params}
+    zstar_err = None # default value if not refitting
 
     # Refit the residual after subtracting the quasar component
     if refit == 'ppxf' and \
@@ -367,7 +397,7 @@ def fitqsohost(wave: np.ndarray,
         start = [0, siginit_stars]  # (km/s), starting guess for [V, sigma]
         pp = ppxf(temp_log, resid_log, err_log, velscale, start,
                   goodpixels=index_log,  quiet=quiet,  # plot=True, moments=2
-                  reddening=ct_av, degree=add_poly_degree)  # clean=False
+                  reddening=av_star, degree=add_poly_degree)  # clean=False
 
         # Errors in best-fit velocity and dispersion.
         # From PPXF docs:
@@ -404,7 +434,7 @@ def fitqsohost(wave: np.ndarray,
         # and redshift is Vel = c*np.log(1 + z).
         # See Section 2.3 of Cappellari (2017) for a detailed explanation.
         zstar += np.exp(pp.sol[0]/c.to('km/s').value)-1.
-        #zstar_err = (np.exp(solerr[0]/c.to('km/s').value))-1.
+        zstar_err = np.exp(solerr[0]/c.to('km/s').value)-1.
 
         # host can't be negative
         #ineg = np.where(continuum < 0)
@@ -416,9 +446,10 @@ def fitqsohost(wave: np.ndarray,
 
         resid = flux - continuum
         argscontfit_use = kwargs['args_questfit']
-        cont_resid, ct_coeff, zstar = questfit(wave, resid, weight, index, 
-                                               logfile=logfile, quiet=quiet, z=zstar, 
-                                               fluxunit=fluxunit, **argscontfit_use)
+        cont_resid, ct_coeff, zstar, zstar_err = \
+            questfit(wave, resid, weight, index, 
+                     logfile=logfile, quiet=quiet, z=zstar, 
+                     fluxunit=fluxunit, **argscontfit_use)
 
         from . import plot
         from matplotlib import pyplot as plt
@@ -431,7 +462,7 @@ def fitqsohost(wave: np.ndarray,
         continuum += cont_resid
         ct_coeff['qso_host'] = result.params
 
-    return continuum, ct_coeff, zstar
+    return continuum, ct_coeff, zstar, zstar_err
 
 
 def questfit(wave: np.ndarray, 
@@ -440,10 +471,12 @@ def questfit(wave: np.ndarray,
              index: np.ndarray, 
              logfile: Optional[str]=None,
              quiet: bool=True, 
-             z: float=0.,
+             z: Optional[float]=None,
              fluxunit: Optional[str]=None,
              tempdir: Optional[str]=None,
-             *, config_file: str) -> tuple[np.ndarray, dict[str, Any], float]:
+             *, config_file: str,
+             **kwargs) -> tuple[np.ndarray, dict[str, Any], 
+                                Optional[float], Optional[float]]:
     '''
     Fit the MIR continuum. Calls :py:func:`~q3dfit.contfit.questfitfcn` to fit the
     continuum using the templates specified in the configuration file.
@@ -462,7 +495,7 @@ def questfit(wave: np.ndarray,
         Optional. Suppress output? Default is True.
     z
         Optional. Redshift of the source, for redshifting the templates. 
-        Default is 0.
+        Default is None.
     fluxunit
         Optional. Units of the flux, as defined by :py:class:`~q3dfit.readcube.Cube`.
         Default is None. The templates are assumed to be in f_nu. If this
@@ -484,8 +517,10 @@ def questfit(wave: np.ndarray,
         containing the best fit parameters. Key 'comp_best_fit' is a dictionary
         containing with key/value pairs of the component names and their values
         evaluated at the best fit parameters.
-    z
-        Same as input z.
+    Optional[float]
+        Input redshift, if set. Otherwise, None.
+    Optional[float]
+        None, as the redshift error is not calculated in this function.
     '''
 
     # models dictionary holds extinction, absorption models
@@ -725,13 +760,18 @@ def questfit(wave: np.ndarray,
     for i in allcomps.keys():
         #if qsoflux is not None:
         with pkg_resources.path(questfit_templates, allcomps[i]) as p:
-            temp_model = np.load(p, allow_pickle=True)
-            if not os.path.exists(p) and tempdir is not None:
-                temp_model = np.load(tempdir+allcomps[i])
+            if os.path.exists(p):
+                temp_model = np.load(p, allow_pickle=True)
             else:
-                raise InitializationError('Cannot locate template specified in config file.')
+                if tempdir is not None:
+                    temp_model = np.load(tempdir+allcomps[i])
+                else:
+                    raise InitializationError(f'Cannot locate template in default '+
+                                              'directory and no tempdir specified')
         # Check to see if we are using global extinction, where the total
-        temp_wave=temp_model['WAVE']*(1.+z)
+        temp_wave=temp_model['WAVE']
+        if z is not None:
+            temp_wave = np.float64(temp_wave*(1.+z))
         temp_value=temp_model['FLUX']
 
         temp_value_rebin = \
@@ -749,14 +789,22 @@ def questfit(wave: np.ndarray,
     # loop over emission template dictionary, load them in and resample.
     for i in emcomps.keys():
         if 'sifrom' in emcomps[i]:
-            tempdir = questfit_templates.silicatemodels
+            tempdir = silicatemodels #questfit_templates.silicatemodels
         else:
             tempdir = questfit_templates
         with pkg_resources.path(tempdir, emcomps[i]) as p:
-             temp_model = np.load(p, allow_pickle=True)
-
+            if os.path.exists(p):
+                temp_model = np.load(p, allow_pickle=True)
+            else:
+                if tempdir is not None:
+                    temp_model = np.load(tempdir+emcomps[i])
+                else:
+                    raise InitializationError(f'Cannot locate template {emcomps[i]} '+
+                                              'in default directory and no tempdir specified')
         try:
-            temp_wave = np.float64(temp_model['WAVE']*(1.+z))
+            temp_wave = np.float64(temp_model['WAVE'])
+            if z is not None:
+                temp_wave = np.float64(temp_wave*(1.+z))
             temp_value = np.float64(temp_model['FLUX'])
         except:
             # if a QSO template generated by makeqsotemplate() is included,
@@ -789,11 +837,40 @@ def questfit(wave: np.ndarray,
             allcomps_cut[el] = allcomps_cut[el][index]
 
     # Get ready for fit
+
+    fit_kws = {}
+    # Maximum # evals cannot be specified as a keyword to the minimzer,
+    # as it's a parameter of the fit method. Default for 'least_squares'
+    # with 'trf' method (which is what lmfit assumes)
+    # is 100*npar, but lmfit changes this to 2000*(npar+1)
+    # https://github.com/lmfit/lmfit-py/blob/b930ddef320d93f984181db19fec8e9c9a41be8f/lmfit/minimizer.py#L1526
+    # We'll change default to 200*(npar+1).
+    # Note that lmfit method 'least_squares’ with default least_squares
+    # method 'lm' counts function calls in
+    # Jacobian estimation if numerical Jacobian is used (again the default)
+    max_nfev = 200*(len(param)+1)
+    iter_cb = None
     method = 'least_squares'
+
+    # Add additional parameter settings for scipy.optimize.least_squares
+    if 'argslmfit' in kwargs:
+        for key, val in kwargs['argslmfit'].items():
+            # max_nfev goes in as parameter to fit method instead
+            if key == 'max_nfev':
+                max_nfev = val
+            # iter_cb goes in as parameter to fit method instead
+            elif key == 'iter_cb':
+                iter_cb = globals()[val]
+            elif key == 'method':
+                method = val
+            else:
+                fit_kws[key] = val
+
+    # Could also set the method here, but better
+    # to set it in argslmfit
     if 'method' in kwargs:
         method = kwargs['method']
 
-    fit_kws = {}
     if method == 'least_squares':
         if quiet:
             lmverbose = 0  # verbosity for scipy.optimize.least_squares
@@ -802,15 +879,19 @@ def questfit(wave: np.ndarray,
             lmverbose = 2
         fit_kws = {'verbose': lmverbose}
 
-    # Add additional parameter settings for scipy.optimize.least_squares
-    if 'argslmfit' in kwargs:
-        for key, val in kwargs['argslmfit'].items():
-            fit_kws[key] = val
+    if method == 'leastsq':
+        # to get mesg output
+        fit_kws['full_output'] = True
+        # increase number of max iterations; this is the default for this algorithm
+        # https://github.com/lmfit/lmfit-py/blob/7710da6d7e878ffee0dc90a85286f1ec619fc20f/lmfit/minimizer.py#L1624
+        if 'max_nfev' not in fit_kws:
+            max_nfev = 2000*(len(param)+1)
 
     # FIT!
     result = model.fit(flux_cut, param, **allcomps_cut,
-                       max_nfev=int(1e5), method=method,
-                       nan_policy='raise', fit_kws=fit_kws)
+                       max_nfev=max_nfev, method=method,
+                       nan_policy='raise', iter_cb=iter_cb,
+                       fit_kws=fit_kws)
 
     q3dutil.write_msg(result.fit_report(), file=logfile, quiet=quiet)
 
@@ -830,7 +911,7 @@ def questfit(wave: np.ndarray,
     ct_coeff = {'MIRparams': result.params,
                 'comp_best_fit': comp_best_fit}
 
-    return best_fit, ct_coeff, z
+    return best_fit, ct_coeff, z, None
 
 
 def linfit_plus_FeII(lam: np.ndarray,
@@ -976,7 +1057,7 @@ def linfit_plus_FeII(lam: np.ndarray,
             fh.write(result.fit_report())
             fh.write('\n')
     '''
-    return continuum, ct_coeff, None
+    return continuum, ct_coeff, None, None
 
 
 def Fe_template_vw01(filename: str,

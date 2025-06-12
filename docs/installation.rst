@@ -12,7 +12,6 @@ directly from GitHub or via pip:
 	pip install q3dfit
 
 Optional multi-processing capability
-
 ====================================
 
 ``q3dfit`` has the optional capability to parallelize fitting across multiple processor cores using the Message Passing Interface (MPI) standard. This is accomplished using the ``mpich`` package and its python wrapper ``mpi4py``. Installation instructions for ``mpich`` vary dependending on the user's system configurations. Some common methods include: 
@@ -48,7 +47,7 @@ or
 
         .. code-block:: console
 
-            pip install mpi4py==3.1.3
+            pip install mpi4py
 
 .. toctree::
 

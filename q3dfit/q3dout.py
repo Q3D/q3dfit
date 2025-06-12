@@ -72,6 +72,10 @@ class q3dout:
     dolinefit : bool
         Do line fit. Added by constructor. Defaults to False. Updated by
         :py:func:`~q3dfit.q3dout.q3dout.init_linefit()`.
+    add_poly_degree
+        Degree of additive polynomial in the pPXF fit.
+        Default is -1, which means no additive polynomial. Added by
+        :py:func:`~q3dfit.q3dout.q3dout.sepcontpars()`.
     stelmod: float
         Stellar component of continuum fit. Added/updated by 
         :py:func:`~q3dfit.q3dout.q3dout.sepcontpars()`.
@@ -86,21 +90,21 @@ class q3dout:
         Added/updated by :py:func:`~q3dfit.q3dout.q3dout.sepcontpars()`.
     line_fitpars : dict
         Line fit parameters. Added/updated by 
-        :py:func:`~q3dfit.q3dout.q3dout.sepfitpars()`. Contains the following keys:
-        - 'flux': Table with total fluxes of emission lines.
-        - 'fluxerr': Table with total flux errors of emission lines.
-        - 'fluxpk': Table with peak fluxes of emission lines.
-        - 'fluxpkerr': Table with peak flux errors of emission lines.
-        - 'fluxpk_obs': Table with peak fluxes of emission lines, corrected for spectral resolution.
-        - 'fluxpkerr_obs': Table with peak flux errors of emission lines, corrected for spectral resolution.
-        - 'sigma': Table with line widths (sigmas) of emission lines.
-        - 'sigmaerr': Table with line width errors (sigmas) of emission lines.
-        - 'sigma_obs': Table with line widths (sigmas) of emission lines, corrected for spectral resolution.
-        - 'sigmaerr_obs': Table with line width errors (sigmas) of emission lines, corrected for spectral resolution.
-        - 'wave': Table with line central wavelengths of emission lines.
-        - 'waveerr': Table with line central wavelength errors of emission lines.
-        - 'tflux': Total fluxes of emission lines, summed over components.
-        - 'tfluxerr': Total flux errors of emission lines, summed over components.
+        :py:func:`~q3dfit.q3dout.q3dout.sepfitpars()`. Contains the following keys:\n
+        - `flux`: Table with total fluxes of emission lines.
+        - `fluxerr`: Table with total flux errors of emission lines.
+        - `fluxpk`: Table with peak fluxes of emission lines.
+        - `fluxpkerr`: Table with peak flux errors of emission lines.
+        - `fluxpk_obs`: Table with peak fluxes of emission lines, corrected for spectral resolution.
+        - `fluxpkerr_obs`: Table with peak flux errors of emission lines, corrected for spectral resolution.
+        - `sigma`: Table with line widths (sigmas) of emission lines.
+        - `sigmaerr`: Table with line width errors (sigmas) of emission lines.
+        - `sigma_obs`: Table with line widths (sigmas) of emission lines, corrected for spectral resolution.
+        - `sigmaerr_obs`: Table with line width errors (sigmas) of emission lines, corrected for spectral resolution.
+        - `wave`: Table with line central wavelengths of emission lines.
+        - `waveerr`: Table with line central wavelength errors of emission lines.
+        - `tflux`: Total fluxes of emission lines, summed over components.
+        - `tfluxerr`: Total flux errors of emission lines, summed over components.
     filelab : str
         File label for plotting methods. Added/updated by 
         :py:func:`~q3dfit.q3dout.q3dout.load_q3dout()`.
@@ -344,7 +348,10 @@ class q3dout:
         return flux
 
 
-    def sepfitpars(self, waveran=None, doublets=None, ignoreres=False):
+    def sepfitpars(self,
+                   waveran=None,
+                   doublets=None,
+                   ignoreres=False):
         """
         Convert output of LMFIT, with best-fit line parameters in a single
         array, into a dictionary with separate arrays for different line
@@ -688,8 +695,7 @@ class q3dout:
     def sepcontpars(self,
                     q3di,
                     decompose_qso_fit: Optional[bool]=None,
-                    decompose_ppxf_fit: Optional[bool]=None,
-                    add_poly_degree: int=-1):
+                    decompose_ppxf_fit: Optional[bool]=None):
         '''
         Separate continuum fit parameters into individual components.
 
@@ -704,12 +710,9 @@ class q3dout:
             :py:func:`~q3dfit.contfit.fitqsohost`, and False otherwise.
         decompose_ppxf_fit
             Optional. Decompose pPXF fit if continuum fit method
-            is :py:module:`~ppxf.ppxf`. Default is None,
+            is :py:mod:`~ppxf.ppxf`. Default is None,
             which means True if the continuum fit method is
-            :py:module:`~ppxf.ppxf`, and False otherwise.
-        add_poly_degree
-            Optional. Degree of additive polynomial in the pPXF fit.
-            Default is -1, which means no additive polynomial.
+            :py:mod:`~ppxf.ppxf`, and False otherwise.
         '''
         q3dii: q3din.q3din = q3dutil.get_q3dio(q3di)
 
@@ -810,7 +813,7 @@ class q3dout:
             # CB: adding option to plot decomposed QSO fit if questfit is used
             elif q3dii.fcncontfit == 'questfit':
                 self.qsomod, self.hostmod, qsomod_intr, hostmod_intr = \
-                    self.quest_extract_QSO_contrib(q3dii)
+                    self._quest_extract_QSO_contrib(q3dii)
                 # qsomod_polynorm = 1.
                 # qsomod_notweak = self.qsomod
                 qsoflux = self.qsomod.copy()/np.median(self.qsomod)
@@ -819,16 +822,37 @@ class q3dout:
 
 
     def plot_line(self,
-                  q3di,
-                  fcn='plotline',
-                  savefig=False,
-                  outfile=None,
-                  plotargs={}):
+                  q3di: q3din.q3din,
+                  fcn: str='plotline',
+                  savefig: bool=False,
+                  outfile: Optional[str]=None,
+                  argssavefig: dict={'bbox_inches': 'tight',
+                                     'dpi': 300},
+                  plotargs: dict={}):
         '''
-        '''
+        Line plotting function.
 
-        # if inline is False:
-        #    mpl.use('agg')
+        Parameters
+        ----------
+        q3di
+            :py:class:`~q3dfit.q3din.q3din` object with input parameters.
+        fcn
+            Name of the plotting function to use. Default is 
+            :py:func:`~q3dfit.plot.plotcont`.
+        savefig
+            If True, save the figure to a file. Default is False.
+        outfile
+            If savefig is True, the name of the output file to save the figure.
+            Default is None, which means the output file will be named
+            `<filelab>_cnt` where `<filelab>` is the path+filename set
+            by :py:meth:`~q3dfit.q3dout.q3dout.load_q3dout`.
+        argssavefig
+            Optional. Dictionary of arguments to pass to 
+            :py:meth:`~matplotlib.pyplt.savefig()`. Defaults to
+            {'bbox_inches': 'tight', 'dpi': 300}.
+        plotargs
+            Additional keyword arguments to pass to the plotting function.
+        '''
 
         q3dii = q3dutil.get_q3dio(q3di)
 
@@ -855,15 +879,18 @@ class q3dout:
                 specConv = None
 
             plotline(self, savefig=savefig, outfile=outfile, specConv=specConv,
-                     **plotargs)
+                     argssavefig=argssavefig, waveunit_in=self.waveunit, **plotargs)
         else:
             print('plot_line: no lines to plot!')
+
 
     def plot_cont(self,
                   q3di: q3din.q3din,
                   fcn: str='plotcont',
                   savefig: bool=False,
                   outfile: Optional[str]=None,
+                  argssavefig: dict={'bbox_inches': 'tight',
+                                     'dpi': 300},
                   plotargs: dict={}):
         '''
         Continuum plotting function.
@@ -874,6 +901,20 @@ class q3dout:
             :py:class:`~q3dfit.q3din.q3din` object with input parameters.
         fcn
             Name of the plotting function to use. Default is 
+            :py:func:`~q3dfit.plot.plotcont`.
+        savefig
+            If True, save the figure to a file. Default is False.
+        outfile
+            If savefig is True, the name of the output file to save the figure.
+            Default is None, which means the output file will be named
+            `<filelab>_cnt` where `<filelab>` is the path+filename set
+            by :py:meth:`~q3dfit.q3dout.q3dout.load_q3dout`.
+        argssavefig
+            Optional. Dictionary of arguments to pass to 
+            :py:meth:`~matplotlib.pyplt.savefig()`. Defaults to
+            {'bbox_inches': 'tight', 'dpi': 300}.
+        plotargs
+            Additional keyword arguments to pass to the plotting function.
         '''
 
         if self.docontfit:
@@ -907,11 +948,11 @@ class q3dout:
                 if 'refit' in q3dii.argscontfit:
                     compspec = np.array([self.polymod_refit, self.stelmod])
                                             #self.hostmod-self.polymod_refit])
-                    comptitles = [f'ord. {self.add_poly_degree}' +
+                    complabs = [f'ord. {self.add_poly_degree}' +
                                     ' Leg. poly.', 'stel. temp.']
                 else:
                     compspec = [self.hostmod.copy()]
-                    comptitles = ['exponential terms']
+                    complabs = ['exponential terms']
 
                 # Create copies of the current object
                 # for input to the plotcont function.
@@ -921,9 +962,9 @@ class q3dout:
                 q3do_host.cont_dat -= self.qsomod
                 q3do_host.cont_fit -= self.qsomod
                 plotcont(q3do_host, savefig=savefig, outfile=outfilehost,
-                            compspec=compspec, comptitles=comptitles,
-                            title='Host', fitran=q3dii.fitrange,
-                            q3di=q3dii, waveunit_in=self.waveunit, **plotargs)
+                            compspec=compspec, complabs=complabs,
+                            title='Host', q3di=q3dii, waveunit_in=self.waveunit, 
+                            **plotargs)
 
                 # QSO only plot
                 if 'blrpar' in q3dii.argscontfit and \
@@ -933,11 +974,11 @@ class q3dout:
                     compspec = np.array([self.qsomod_normonly,
                                             self.qsomod_blronly *
                                             qsomod_blrnorm])
-                    comptitles = ['raw template', 'scattered*' +
-                                    str(qsomod_blrnorm)]
+                    complabs = ['raw template', 
+                                f'scattered x {qsomod_blrnorm:0.2f}']
                 else:
                     compspec = [self.qsomod_normonly.copy()]
-                    comptitles = ['raw template']
+                    complabs = ['raw template']
 
                 q3do_qso: q3dout = copy.deepcopy(self)
                 # Remove host model from data, continuum data, and fit
@@ -946,44 +987,46 @@ class q3dout:
                 q3do_qso.cont_fit -= self.hostmod
                 if q3dii.fcncontfit != 'questfit':
                     plotcont(q3do_qso, savefig=savefig, outfile=outfileqso,
-                                compspec=compspec, comptitles=comptitles,
-                                title='QSO', fitran=q3dii.fitrange,
-                                q3di=q3dii, waveunit_in=self.waveunit, **plotargs)
+                                argssavefig=argssavefig,
+                                compspec=compspec, complabs=complabs,
+                                title='QSO', q3di=q3dii, waveunit_in=self.waveunit, 
+                                **plotargs)
                 else:
                     plotcont(q3do_qso, savefig=savefig, outfile=outfileqso,
+                                argssavefig=argssavefig,
                                 compspec=[q3do_qso.cont_fit],
-                                title='QSO', fitran=q3dii.fitrange,
-                                comptitles=['QSO'], q3di=q3dii,
+                                title='QSO', complabs=['QSO'], q3di=q3dii,
                                 waveunit_in=self.waveunit, **plotargs)
 
                 # Total plot
                 plotcont(self, savefig=savefig, outfile=outfilecnt,
+                            argssavefig=argssavefig,
                             compspec=np.array([self.qsomod, self.hostmod]),
-                            title='Total', comptitles=['QSO', 'host'],
-                            fitran=q3dii.fitrange, q3di=q3dii,
-                            waveunit_in=self.waveunit, **plotargs)
+                            title='Total', complabs=['QSO', 'host'],
+                            q3di=q3dii, waveunit_in=self.waveunit, **plotargs)
 
             # Plot pPXF components
             elif self.decompose_ppxf_fit and self.add_poly_degree > 0:
                 plotcont(self, savefig=savefig, outfile=outfilecnt,
+                            argssavefig=argssavefig,
                             compspec=np.array([self.stelmod,
                                                self.polymod]),
                             title='Total',
-                            comptitles=['stel. temp.',
+                            complabs=['stel. temp.',
                                         f'ord. {self.add_poly_degree} Leg.poly'],
-                            fitran=q3dii.fitrange, q3di=q3dii,
-                            waveunit_in=self.waveunit, **plotargs)
+                            q3di=q3dii, waveunit_in=self.waveunit, **plotargs)
             # Plot total continuum fit in all other cases
             else:
                 plotcont(self, savefig=savefig, outfile=outfilecnt,
-                            fitran=q3dii.fitrange, q3di=q3dii,
-                            title='Total', waveunit_in=self.waveunit, **plotargs)
+                            argssavefig=argssavefig,
+                            q3di=q3dii, title='Total', waveunit_in=self.waveunit, 
+                            **plotargs)
 
 
-    def quest_extract_QSO_contrib(self,
-                                  q3di: q3din.q3din) \
-                                    -> tuple[np.ndarray, np.ndarray, 
-                                             np.ndarray, np.ndarray]:
+    def _quest_extract_QSO_contrib(self,
+                                   q3di: q3din.q3din) \
+                                     -> tuple[np.ndarray, np.ndarray, 
+                                              np.ndarray, np.ndarray]:
         '''
         Recover the QSO-host decomposition after running questfit.
 
@@ -1079,7 +1122,13 @@ def load_q3dout(q3di: str | q3din.q3din,
                 cubedim: Optional[int]=None,
                 quiet: bool=False) -> q3dout:
     """
-    Load :py:class:`~q3dfit.q3dout.q3dout` after it's been saved to a file.
+    Load :py:class:`~q3dfit.q3dout.q3dout` after it's been saved to a file. It will
+    set the `<filelab>` attribute as follows, where `<outdir>` and `<label>` are the 
+    attributes from :py:class:`~q3dfit.q3din.q3din`, `<col>` is the column index, 
+    and `<row>`is the row index.\n
+    - If the data are 1D, then `<filelab>` = `<outdir>/<label>.npy`.
+    - If the data are 2D, then `<filelab>` = `<outdir>/<label>_<col>.npy`.
+    - If the data are 3D, then `<filelab>` = `<outdir>/<label>_<col>_<row>.npy`.
 
     Parameters
     ----------

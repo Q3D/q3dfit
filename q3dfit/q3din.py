@@ -216,11 +216,12 @@ class q3din:
             This can be overridden by setting :py:attr:`~q3dfit.q3din.q3din.zinit_gas` for
             individual lines, spaxels, and components after initialization.
         fcnlineinit
-            Optional. Name of routine to initialize line fit. Default is 'lineinit'.
-            Also sets the attribute :py:attr:`~q3dfit.q3din.q3din.fcnlineinit`.
+            Optional. Name of routine to initialize line fit. Default is 
+            :py:func:`~q3dfit.lineinit.lineinit`. Also sets the attribute 
+            :py:attr:`~q3dfit.q3din.q3din.fcnlineinit`.
         argslineinit
-            Optional. Arguments for the line initialization function
-            fcnlineinit. Default is an empty dict. Also sets the attribute 
+            Optional. Arguments for the line initialization function specified by
+            `fcnlineinit`. Default is an empty dict. Also sets the attribute 
             :py:attr:`~q3dfit.q3din.q3din.argslineinit`.
         argslinelist
             Optional. Arguments for :py:func:`~q3dfit.linelist.linelist`. 
@@ -386,7 +387,7 @@ class q3din:
         argscontfit
             Optional. Arguments for the continuum fitting function fcncontfit.
             Default is an empty dict. Also sets the attribute
-            :py:attr:`~q3dfit.q3din.q3din.argscontfit`.
+            :py:attr:`~q3dfit.q3din.q3din.argscontfit`. 
         siginit
             Optional. Uniform initial guess for stellar velocity dispersion in km/s,
             if fitting a stellar template. Default is 50. This can be overridden by 

@@ -1580,7 +1580,7 @@ class OneLineData:
         dz = np.sqrt((1. + beta)/(1. - beta)) - 1.
 
         # central (rest) wavelength of the line in question
-        listlines = linelist.linelist([self.line])
+        listlines = linelist([self.line])
         cwv = listlines['lines'].value[0]
         modwaves = cwv*(1. + dz)*(1. + zref)
 
@@ -1757,7 +1757,7 @@ class OneLineData:
                         mfc='red', fmt='*', markersize=10, zorder=2)
         ax.set_xlabel(XYtitle, fontsize=12)
         ax.set_ylabel(XYtitle, fontsize=12)
-        ax.set_title(f'{self.target_name} {self.line} v{pct:0d} (km/s)',
+        ax.set_title(f'{self.target_name} {self.line} v{int(pct)} (km/s)',
             fontsize=16, pad=45)
         #axi.set_title(ipdat['name'][ci],fontsize=20,pad=45)
 
@@ -1774,7 +1774,7 @@ class OneLineData:
         fig.set_dpi(dpi)
 
         if saveData:
-            pltsave_name = f'{self.target_name}-{self.line}-v{pct:0d}-map.{saveFormat}'
+            pltsave_name = f'{self.target_name}-{self.line}-v{int(pct)}-map.{saveFormat}'
             q3dutil.write_msg(f'Saving {pltsave_name} to {self.dataDIR}.', quiet=self.quiet)
             plt.savefig(os.path.join(self.dataDIR, pltsave_name))
         plt.show()

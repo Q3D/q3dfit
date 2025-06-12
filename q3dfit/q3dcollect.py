@@ -102,6 +102,9 @@ def q3dcollect(q3di: str | q3din.q3din,
 
     # Create output line dictionaries
     if q3dii.dolinefit:
+
+        shape2d = (int(cube.ncols), int(cube.nrows))
+        shape3d = (int(cube.ncols), int(cube.nrows), int(cube.nwave))
         emlwav = dict()
         emlwaverr = dict()
         emlsig = dict()
@@ -125,78 +128,54 @@ def q3dcollect(q3di: str | q3din.q3din,
             emlflx['f' + cstr + 'pk'] = dict()
             emlflxerr['f' + cstr + 'pk'] = dict()
         for line in lines_with_doublets:
-            emlncomp[line] = np.zeros((cube.ncols, cube.nrows), dtype=int)
-            emlweq['ftot'][line] = np.zeros((cube.ncols, cube.nrows),
-                                            dtype=float) + np.nan
-            emlflx['ftot'][line] = np.zeros((cube.ncols, cube.nrows),
-                                            dtype=float) + np.nan
-            emlflxerr['ftot'][line] = np.zeros((cube.ncols, cube.nrows),
-                                               dtype=float) + np.nan
+            emlncomp[line] = np.zeros(shape2d, dtype=int)
+            emlweq['ftot'][line] = np.zeros(shape2d, dtype=float) + np.nan
+            emlflx['ftot'][line] = np.zeros(shape2d, dtype=float) + np.nan
+            emlflxerr['ftot'][line] = np.zeros(shape2d, dtype=float) + np.nan
             for k in range(0, q3dii.maxncomp):
                 cstr = 'c' + str(k + 1)
-                emlwav[cstr][line] = np.zeros((cube.ncols, cube.nrows),
-                                              dtype=float) + np.nan
-                emlwaverr[cstr][line] = np.zeros((cube.ncols, cube.nrows),
-                                                 dtype=float) + np.nan
-                emlsig[cstr][line] = np.zeros((cube.ncols, cube.nrows),
-                                              dtype=float) + np.nan
-                emlsigerr[cstr][line] = np.zeros((cube.ncols, cube.nrows),
-                                                 dtype=float) + np.nan
-                emlweq['f'+cstr][line] = np.zeros((cube.ncols, cube.nrows),
-                                                  dtype=float) + np.nan
-                emlflx['f'+cstr][line] = np.zeros((cube.ncols, cube.nrows),
-                                                  dtype=float) + np.nan
-                emlflxerr['f'+cstr][line] = np.zeros((cube.ncols, cube.nrows),
-                                                     dtype=float) + np.nan
+                emlwav[cstr][line] = np.zeros(shape2d, dtype=float) + np.nan
+                emlwaverr[cstr][line] = np.zeros(shape2d, dtype=float) + np.nan
+                emlsig[cstr][line] = np.zeros(shape2d, dtype=float) + np.nan
+                emlsigerr[cstr][line] = np.zeros(shape2d, dtype=float) + np.nan
+                emlweq['f'+cstr][line] = np.zeros(shape2d, dtype=float) + np.nan
+                emlflx['f'+cstr][line] = np.zeros(shape2d, dtype=float) + np.nan
+                emlflxerr['f'+cstr][line] = np.zeros(shape2d, dtype=float) + np.nan
                 emlflx['f'+cstr+'pk'][line] = \
-                    np.zeros((cube.ncols, cube.nrows),
-                             dtype=float) + np.nan
+                    np.zeros(shape2d, dtype=float) + np.nan
                 emlflxerr['f'+cstr+'pk'][line] = \
-                    np.zeros((cube.ncols, cube.nrows),
-                             dtype=float) + np.nan
+                    np.zeros(shape2d, dtype=float) + np.nan
 
     # create output cubes
     if q3dii.docontfit:
-        hostcube = {'dat': np.zeros((cube.ncols, cube.nrows, cube.nwave)),
-                    'err': np.zeros((cube.ncols, cube.nrows, cube.nwave)),
-                    'dq':  np.zeros((cube.ncols, cube.nrows, cube.nwave)),
-                    'norm_div': np.zeros((cube.ncols, cube.nrows,
-                                          cube.nwave)),
-                    'norm_sub': np.zeros((cube.ncols, cube.nrows,
-                                          cube.nwave))}
-        contcube = {'npts': np.zeros((cube.ncols, cube.nrows)) + np.nan,
-                    'stel_rchisq': np.zeros((cube.ncols, cube.nrows)) + np.nan,
-                    'stel_z': np.zeros((cube.ncols, cube.nrows)) + np.nan,
+        hostcube = {'dat': np.zeros(shape3d),
+                    'err': np.zeros(shape3d),
+                    'dq':  np.zeros(shape3d),
+                    'norm_div': np.zeros(shape3d),
+                    'norm_sub': np.zeros(shape3d)}
+        contcube = {'npts': np.zeros(shape2d) + np.nan,
+                    'stel_rchisq': np.zeros(shape2d) + np.nan,
+                    'stel_z': np.zeros(shape2d) + np.nan,
                     'stel_z_err': np.zeros((cube.ncols, cube.nrows, 2)) + np.nan,
-                    'stel_ebv': np.zeros((cube.ncols, cube.nrows)) + np.nan,
-                    'stel_ebv_err':
+                    'stel_av': np.zeros(shape2d) + np.nan,
+                    'stel_av_err':
                         np.zeros((cube.ncols, cube.nrows, 2)) + np.nan,
-                    'stel_sigma': np.zeros((cube.ncols, cube.nrows)) + np.nan,
+                    'stel_sigma': np.zeros(shape2d) + np.nan,
                     'stel_sigma_err':
                         np.zeros((cube.ncols, cube.nrows, 2)) + np.nan}
 
-        if q3dii.decompose_ppxf_fit:
-            contcube['all_mod'] = np.zeros((cube.ncols, cube.nrows,
-                                            cube.nwave))
-            contcube['stel_mod'] = np.zeros((cube.ncols, cube.nrows,
-                                             cube.nwave))
-            contcube['poly_mod'] = np.zeros((cube.ncols, cube.nrows,
-                                             cube.nwave))
-        elif q3dii.decompose_qso_fit:
-            contcube['qso_mod'] = np.zeros((cube.ncols, cube.nrows,
-                                            cube.nwave))
-            # contcube['qso_poly_mod'] = np.zeros((cube.ncols, cube.nrows,
-            #                                      cube.nwave))
-            contcube['host_mod'] = np.zeros((cube.ncols, cube.nrows,
-                                             cube.nwave))
-            contcube['poly_mod'] = np.zeros((cube.ncols, cube.nrows,
-                                             cube.nwave))
-            if q3dii.decompose_qso_fit:
-                contcube['all_mod'] = np.zeros((cube.ncols, cube.nrows,
-                                            cube.nwave))
+        if q3dii.fcncontfit == 'ppxf':
+            contcube['all_mod'] = np.zeros(shape3d)
+            contcube['stel_mod'] = np.zeros(shape3d)
+            contcube['poly_mod'] = np.zeros(shape3d)
+        elif q3dii.fcncontfit == 'fitqsohost':
+            contcube['qso_mod'] = np.zeros(shape3d)
+            contcube['host_mod'] = np.zeros(shape3d)
+            contcube['stel_mod'] = np.zeros(shape3d)
+            contcube['poly_mod'] = np.zeros(shape3d)
+            contcube['all_mod'] = np.zeros(shape3d)
         else:
-            contcube['all_mod'] = np.zeros((cube.ncols, cube.nrows,
-                                            cube.nwave))
+            contcube['all_mod'] = np.zeros(shape3d)
 
     # LOOP THROUGH SPAXELS
 
@@ -359,65 +338,60 @@ def q3dcollect(q3di: str | q3din.q3din,
                 hostcube['norm_sub'][i, j, q3do.fitran_indx] \
                     = np.subtract(q3do.cont_dat, q3do.cont_fit)
 
-                if q3dii.decompose_ppxf_fit:
+                if q3dii.fcncontfit == 'ppxf':
                     # Total flux from different components
                     contcube['all_mod'][i, j, q3do.fitran_indx] = q3do.cont_fit
                     contcube['stel_mod'][i, j, q3do.fitran_indx] = \
-                        q3do.cont_fit_stel
+                        q3do.stelmod
                     contcube['poly_mod'][i, j, q3do.fitran_indx] = \
-                        q3do.cont_fit_poly
-                    contcube['stel_sigma'][i, j] = q3do.ct_ppxf_sigma
+                        q3do.polymod
+                    contcube['stel_sigma'][i, j] = q3do.ct_coeff['sigma']
                     contcube['stel_z'][i, j] = q3do.zstar
+                    contcube['stel_sigma_err'][i, j, :] = \
+                            np.full(2, q3do.ct_coeff['sigma_err'], dtype='float64')
+                    contcube['stel_z_err'][i, j, :] = \
+                            np.full(2, q3do.zstar_err, dtype='float64')
+                    if q3dii.av_star is not None:
+                        contcube['stel_av'][i, j] = q3do.ct_coeff['av']
 
-                    if q3do.ct_ppxf_sigma_err is not None:
-                        contcube['stel_sigma_err'][i, j, :] = \
-                            q3do.ct_ppxf_sigma_err
-                    if q3do.zstar_err is not None:
-                        contcube['stel_z_err'][i, j, :] = q3do.zstar_err
-
-                elif q3dii.decompose_qso_fit:
+                elif q3dii.fcncontfit in ['fitqsohost', 'questfit']:
                     if q3dii.fcncontfit == 'fitqsohost':
-                        if 'refit' in q3dii.argscontfit and \
-                            'args_questfit' not in q3dii.argscontfit:
-
-                            contcube['stel_sigma'][i, j] = \
-                                q3do.ct_coeff['ppxf_sigma']
-                            contcube['stel_z'][i, j] = q3do.zstar
-
-                            if q3do.ct_ppxf_sigma_err is not None:
+                        if 'refit' in q3dii.argscontfit:
+                            if q3dii.argscontfit['refit'] == 'ppxf':
+                                contcube['stel_mod'][i, j, q3do.fitran_indx] = \
+                                    q3do.stelmod
+                                contcube['poly_mod'][i, j, q3do.fitran_indx] = \
+                                    q3do.polymod_refit
+                                contcube['stel_sigma'][i, j] = \
+                                    q3do.ct_coeff['ppxf']['sigma']
+                                contcube['stel_z'][i, j] = q3do.zstar
                                 contcube['stel_sigma_err'][i, j, :] \
-                                    = q3do.ct_ppxf_sigma_err
-                            if q3do.zstar_err is not None:
+                                    = np.full(2, q3do.ct_coeff['ppxf']['sigma_err'], 
+                                              dtype='float64')
                                 contcube['stel_z_err'][i, j, :] \
-                                    = q3do.zstar_err
+                                    = np.full(2, q3do.zstar_err, 
+                                              dtype='float64')
+                                if q3dii.av_star is not None:
+                                    contcube['stel_av'][i, j] = \
+                                        q3do.ct_coeff['ppxf']['av']
+
+                        hostcube['dat'][i, j, q3do.fitran_indx] = \
+                            q3do.cont_dat - q3do.qsomod
+                        contcube['all_mod'][i, j, q3do.fitran_indx] = \
+                            q3do.cont_fit
+                        contcube['qso_mod'][i, j, q3do.fitran_indx] = \
+                            q3do.qsomod
+                        contcube['host_mod'][i, j, q3do.fitran_indx] = \
+                            q3do.hostmod
 
                     elif q3dii.fcncontfit == 'questfit':
 
                         contcube['all_mod'][i, j, q3do.fitran_indx] = \
                             q3do.cont_fit
-                        contcube['stel_z'][i, j] = q3do.zstar
+                        if q3do.zstar is not None:
+                            contcube['stel_z'][i, j] = q3do.zstar
                         if q3do.zstar_err is not None:
                             contcube['stel_z_err'][i, j, :] = q3do.zstar_err
-
-                # continuum attenuation
-                if q3do.ct_ebv is not None:
-                    contcube['stel_ebv'][i, j] = q3do.ct_ebv
-
-                if q3dii.decompose_qso_fit:
-                    hostcube['dat'][i, j, q3do.fitran_indx] \
-                        = q3do.cont_dat - q3do.qsomod
-                    contcube['qso_mod'][i, j, q3do.fitran_indx] = \
-                        q3do.qsomod
-                    # contcube['qso_poly_mod'][i, j, q3do.fitran_indx] = \
-                    #     q3do.qsomod_polynorm
-                    contcube['host_mod'][i, j, q3do.fitran_indx] = \
-                        q3do.hostmod
-                    contcube['poly_mod'][i, j, q3do.fitran_indx] = \
-                        q3do.polymod_refit
-
-                # if 'remove_scattered' in q3dii:
-                #     contcube['host_mod'][i, j, q3do.fitran_indx] -= \
-                #         q3do.polymod_refit
 
     # Save emission line and continuum dictionaries
     if q3dii.dolinefit:

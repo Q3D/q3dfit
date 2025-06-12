@@ -206,11 +206,11 @@ def q3df_multiCore(rank: int,
     execute_fitloop(nspax_thisCore, colarr, rowarr, cube, q3di,
                     linelist, specConv, onefit, quiet, 
                     core=rank+1, nocrash=nocrash)
-    if logfile is None:
+    if q3di.logfile is None:
         from sys import stdout
-        logtmp = stdout
-    else:
-        logtmp = logfile
+        #logtmp = stdout
+    #else:
+        #logtmp = q3di.logfile
     timediff = time.time()-starttime
     q3dutil.write_msg(f'Q3DF: Total time for calculation: {timediff:.2f} s.',
                       file=q3di.logfile, quiet=quiet)

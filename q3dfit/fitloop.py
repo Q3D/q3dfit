@@ -230,8 +230,9 @@ def fitloop(ispax: int,
                 write_msg('FITLOOP: Aborting fit; no good data to fit.',
                     file=q3di.logfile, quiet=quiet)
             else:
-                write_msg('FIT STATUS: '+str(q3do_init.fitstatus), 
-                    file=q3di.logfile, quiet=quiet)
+                if q3di.dolinefit:
+                    write_msg('FIT STATUS: '+str(q3do_init.fitstatus), 
+                              file=q3di.logfile, quiet=quiet)
 
             # Second fit
 
@@ -280,7 +281,9 @@ def fitloop(ispax: int,
                                quiet=quiet,
                                fluxunit=cube.fluxunit_out,
                                waveunit=cube.waveunit_out)
-                write_msg('FIT STATUS: '+str(q3do.fitstatus), file=q3di.logfile, quiet=quiet)
+                if q3do_init.dolinefit:
+                    write_msg('FIT STATUS: '+str(q3do.fitstatus),
+                              file=q3di.logfile, quiet=quiet)
 
             elif onefit and not abortfit:
 
@@ -293,24 +296,25 @@ def fitloop(ispax: int,
                 q3do = q3do_init
 
             # Check components
+            if q3di.dolinefit:
+                if q3di.checkcomp and not onefit and not abortfit:
 
-            if q3di.checkcomp and q3do.dolinefit and \
-                not onefit and not abortfit:
+                    q3do.sepfitpars()
 
-                q3do.sepfitpars()
+                    ccModule = \
+                        importlib.import_module('q3dfit.' +
+                                                q3di.fcncheckcomp)
+                    fcncheckcomp = getattr(ccModule, q3di.fcncheckcomp)
+                    # Note that this modifies the value of ncomp if necessary
+                    newncomp = fcncheckcomp(q3do.line_fitpars, q3di.linetie, ncomp,
+                                            siglim_gas, **q3di.argscheckcomp)
 
-                ccModule = \
-                    importlib.import_module('q3dfit.' +
-                                            q3di.fcncheckcomp)
-                fcncheckcomp = getattr(ccModule, q3di.fcncheckcomp)
-                # Note that this modifies the value of ncomp if necessary
-                newncomp = fcncheckcomp(q3do.line_fitpars, q3di.linetie, ncomp,
-                                        siglim_gas, **q3di.argscheckcomp)
-
-                if len(newncomp) > 0:
-                    for line, nc in newncomp.items():
-                        write_msg(f'FITLOOP: Repeating the fit of {line} with ' +
-                              f'{nc} components.', file=q3di.logfile, quiet=quiet)
+                    if len(newncomp) > 0:
+                        for line, nc in newncomp.items():
+                            write_msg(f'FITLOOP: Repeating the fit of {line} with ' +
+                                    f'{nc} components.', file=q3di.logfile, quiet=quiet)
+                    else:
+                        dofit = False
                 else:
                     dofit = False
             else:

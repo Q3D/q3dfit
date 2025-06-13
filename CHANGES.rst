@@ -1,3 +1,11 @@
+2.0.0-rc.1 (13 Jun 2025)
+------------------------
+- Complete documenation through spinx/autodoc.
+- Complete refactoring of codebase, including typehints.
+- Enhancement: lmfit options to continuum fits; ppxf fits validated.
+- New example notebooks: fit to single spectrum with ppxf and emission lines; fit to single spectrum in the rest frame mid-IR with continuum dust features and emission lines.
+- Various bug fixes.
+
 2.0.0-alpha.0 (30 Oct 2024)
 ---------------------------
 - Updated documentation through sphinx/autodoc -- 75% complete.

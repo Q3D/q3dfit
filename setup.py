@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name='q3dfit',
-    version='2.0.0-alpha.0',    
-    url='https://q3dfit.readthedocs.io/en/latest/index.html',
+    version='2.0.0-rc.1',    
+    url='https://q3dfit.readthedocs.io/',
     author='David Rupke and the Q3D Team',
     author_email='drupke@gmail.com',
     license='GPL-3',
@@ -15,9 +15,9 @@ setup(
 
     install_requires=[
         'astropy',
-        'lmfit>=1.0.3',
+        'lmfit',
         'matplotlib',
-        'numpy>=1.22',
+        'numpy',
         'pandas',
         'photutils',
         'plotbin',

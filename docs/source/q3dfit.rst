@@ -17,7 +17,7 @@ contfit
    :undoc-members:
    :show-inheritance:
 
-lineunit
+lineutil
 ========
 
 .. automodule:: q3dfit.lineutil

@@ -28,7 +28,7 @@ Descriptions of the use of ``q3dfit`` can be found in the *Q3D* papers:
 
 - J1652 (z=2.949) NIRSpec: `Wylezalek et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...940L...7W/abstract>`_, `Vayner et al. 2023 <https://ui.adsabs.harvard.edu/abs/2023ApJ...955...92V/abstract>`_, and `Vayner et al. 2024 <https://ui.adsabs.harvard.edu/abs/2024ApJ...960..126V/abstract>`_
 
-- J1652 MIRI: `Bertemes et al. 2024, submitted <https://ui.adsabs.harvard.edu/abs/2024arXiv240414475B/abstract>`_
+- J1652 MIRI: `Bertemes et al. 2025 <https://ui.adsabs.harvard.edu/abs/2025A%26A...693A.176B/abstract>`_
 
 - XID 2028 (z=1.593) NIRSpec: `Veilleux et al. 2023 <https://ui.adsabs.harvard.edu/abs/2023ApJ...953...56V/abstract>`_
   

@@ -1,3 +1,12 @@
+# Remove directories
+prune docs
+prune jnb
+prune q3dfit/bak
+
 include q3dfit/data/linelists/*
 include q3dfit/data/dispersion_files/*
 include q3dfit/data/questfit_templates/*
+
+# Remove individual files
+exclude .gitignore
+exclude .readthedocs.yaml

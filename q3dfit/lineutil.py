@@ -12,15 +12,6 @@ from q3dfit.data import jwst_tables
 import os.path
 
 
-#helper function to identify lines in instrument range
-def _inrange(table, key_colnames):
-    colnames = [name for name in table.colnames if name  in key_colnames]
-    for colname in colnames:
-        if np.any(table[colname] < lamb_min) or np.any(table[colname] > lamb_max):
-            return False
-        return True
-
-
 def jwstlinez(z: float,
               gal: str,
               instrument: Literal['NIRSpec','MIRI'],
@@ -147,6 +138,13 @@ def jwstlinez(z: float,
     #adds column to lines table corresponding w/ redshifted wavelengths
     lines['observed'] = round_lines
 
+    #helper function to identify lines in instrument range
+    def _inrange(table, key_colnames):
+        colnames = [name for name in table.colnames if name  in key_colnames]
+        for colname in colnames:
+            if np.any(table[colname] < lamb_min) or np.any(table[colname] > lamb_max):
+                return False
+            return True
 
     tg = lines.group_by('observed')
     lines_inrange = tg.groups.filter(_inrange)
@@ -362,6 +360,14 @@ def observedlinez(z: float,
     #adds column to lines table corresponding w/ redshifted wavelengths
     lines['observed'] = round_lines
     
+        #helper function to identify lines in instrument range
+    def _inrange(table, key_colnames):
+        colnames = [name for name in table.colnames if name  in key_colnames]
+        for colname in colnames:
+            if np.any(table[colname] < lamb_min) or np.any(table[colname] > lamb_max):
+                return False
+            return True
+
     #grouping by wavelength then filtering by inrange()
     tg = lines.group_by('observed')
     lines_inrange = tg.groups.filter(_inrange)
@@ -542,6 +548,14 @@ def restline(gal: str,
         #adds column to lines table corresponding w/ redshifted wavelengths
     lines['lines'] = round_lines
  
+    #helper function to identify lines in instrument range
+    def _inrange(table, key_colnames):
+        colnames = [name for name in table.colnames if name  in key_colnames]
+        for colname in colnames:
+            if np.any(table[colname] < lamb_min) or np.any(table[colname] > lamb_max):
+                return False
+            return True
+
     #grouping by wavelength then filtering by inrange()
     tg = lines.group_by('lines')
     lines_inrange = tg.groups.filter(_inrange)

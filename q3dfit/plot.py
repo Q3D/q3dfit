@@ -943,7 +943,8 @@ def plotline(q3do: q3dout,
                             flux = q3do.cmplin(line, j)
                             #import pdb; pdb.set_trace()
                             if specConv is not None:
-                                conv = specConv.spect_convolver(wave, flux, refwav)
+                                conv = specConv.spect_convolver(wave, flux, 
+                                                                wavecen=refwav)
                             else:
                                 conv = flux
                             ax0.plot(wave, yran[0] + conv, color=colors[j],

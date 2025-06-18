@@ -162,7 +162,8 @@ class q3dout:
                      dof: Optional[int]=None,
                      redchisq: Optional[float]=None,
                      nfev: Optional[int]=None,
-                     covar: Optional[ArrayLike]=None):
+                     covar: Optional[ArrayLike]=None,
+                     errorbars: Optional[bool]=None):
         '''
         Initialize output line fit parameters.
 
@@ -185,7 +186,7 @@ class q3dout:
             Initial parameters, output from the line initialization routine.
         param
             Dictionary with parameter names as keys, and best-fit values as values.
-            Copy of :py:attr:`~lmfit.ModelResult.best_values`.
+            Copy of :py:attr:`~lmfit.model.ModelResult.best_values`.
         perror
             Parameter errors. Dictionary with parameter names as keys, and
             errors as values. Values are copies of :py:attr:`~lmfit.Parameters.stderr`.
@@ -211,17 +212,20 @@ class q3dout:
             Fit status, passed from the fitting routine. If method is set
             to 'least_squares' by :py:attr:`~q3dfit.q3din.q3din.argslinefit`, then
             this is described by the status attribute of 
-            :py:meth:`~scipy.optimize.least_squares`. If the method is set
+            :py:func:`~scipy.optimize.least_squares`. If the method is set
             to `leastsq`, then this is the `ier` integer return code from
-            :py:meth:`~scipy.optimize.leastsq`.
+            :py:func:`~scipy.optimize.leastsq`.
         dof
-            Degrees of freedom. Copy of :py:attr:`~lmfit.ModelResult.nfree`.
+            Degrees of freedom. Copy of :py:attr:`~lmfit.model.ModelResult.nfree`.
         redchisq
-            Reduced chi-squared. Copy of :py:attr:`~lmfit.ModelResult.redchi`.
+            Reduced chi-squared. Copy of :py:attr:`~lmfit.model.ModelResult.redchi`.
         nfev
-            Number of function evaluations. Copy of :py:attr:`~lmfit.ModelResult.nfev`.
+            Number of function evaluations. Copy of :py:attr:`~lmfit.model.ModelResult.nfev`.
         covar
-            Covariance matrix. Copy of :py:attr:`~lmfit.ModelResult.covar`.
+            Covariance matrix. Copy of :py:attr:`~lmfit.model.ModelResult.covar`.
+        errorbars
+            If True, then no errors are computed for the line fit. Copy of 
+            :py:attr:`~lmfit.model.ModelResult.errorbars`.
         '''
         self.dolinefit = True
 
@@ -241,6 +245,7 @@ class q3dout:
         self.perror_errspec = perror_errspec
         self.perror_resid = perror_resid
         self.redchisq = redchisq
+        self.errorbars = errorbars
 
 
     def init_contfit(self,
@@ -349,29 +354,30 @@ class q3dout:
 
 
     def sepfitpars(self,
-                   waveran=None,
-                   doublets=None,
-                   ignoreres=False):
+                   waveran: Optional[ArrayLike]=None,
+                   doublets: Optional[dict]=None,
+                   ignoreres: bool=False):
         """
         Convert output of LMFIT, with best-fit line parameters in a single
         array, into a dictionary with separate arrays for different line
         parameters. Compute total line fluxes from the best-fit line
         parameters.
 
+        This routine sets :py:attr:`~q3dfit.q3dout.q3dout.line_fitpars`.
+
         Parameters
         ----------
-        waveran: ndarray, optional
+        waveran
             Set to upper and lower limits to return line parameters only
             for lines within the given wavelength range. Lines outside this
             range have fluxes set to 0.
-        doublets: dict, optional
+        doublets
             Dictionary of doublet lines for which to combine fluxes.
-        ignoreres: bool, optional
+        ignoreres
             Ignore spectral resolution in computing observed sigmas and peak 
             fluxes. This is mainly for backward compatibility with old versions,
             which did not store the spectral resolution in an easily accessible
             way in the specConv object.
-
         """
 
         def gaussflux(norm: float,
@@ -412,12 +418,13 @@ class q3dout:
             sigmaerr_obs = Table(basearr, names=self.linelist['name'])
             wave = Table(basearr, names=self.linelist['name'])
             waveerr = Table(basearr, names=self.linelist['name'])
+            z = Table(basearr, names=self.linelist['name'])
+            zerr = Table(basearr, names=self.linelist['name'])
 
             tf = Table(basearr_1comp, names=self.linelist['name'])
             tfe = Table(basearr_1comp, names=self.linelist['name'])
 
             #   Populate Tables
-
             for line in self.linelist['name']:
 
                 for i in range(0, self.maxncomp):
@@ -434,10 +441,16 @@ class q3dout:
                     if iwave in self.param.keys():
 
                         wave[line][i] = self.param[iwave]
+                        z[line][i] = \
+                            (wave[line][i]/\
+                                self.linelist[self.linelist['name']==line]['lines'][0])-1.
                         sigma[line][i] = self.param[isigma]
                         fluxpk[line][i] = self.param[ifluxpk]
 
                         waveerr[line][i] = self.perror[iwave]
+                        zerr[line][i] = \
+                            waveerr[line][i]/\
+                                self.linelist[self.linelist['name']==line]['lines'][0]
                         sigmaerr[line][i] = self.perror[isigma]
                         fluxpkerr[line][i] = self.perror[ifluxpk]
 
@@ -684,6 +697,7 @@ class q3dout:
             self.line_fitpars = {'flux': flux, 'fluxerr': fluxerr,
                                  'fluxpk': fluxpk, 'fluxpkerr': fluxpkerr,
                                  'wave': wave, 'waveerr': waveerr,
+                                 'z': z, 'zerr': zerr,
                                  'sigma': sigma, 'sigmaerr': sigmaerr,
                                  'sigma_obs': sigma_obs,
                                  'sigmaerr_obs': sigmaerr_obs,
@@ -1114,6 +1128,22 @@ class q3dout:
                         host_out_intr += intr_spec_i
 
         return qso_out_ext, host_out_ext, qso_out_intr, host_out_intr
+
+    def print_stelpars(self):
+        '''
+        Print stellar fit parameters.
+
+        '''
+        if hasattr(self, 'decompose_ppxf_fit'):
+            if self.decompose_ppxf_fit:
+                print('Stellar fit parameters')
+                print('----------------------')
+                print(f'Attenuation: {self.ct_coeff['av']:.2f}')
+                print(f'Velocity dispersion: {self.ct_coeff['sigma']:.0f}'+
+                      f'+/-{self.ct_coeff['sigma_err']:.0f} km/s')
+                print(f'Redshift: {self.zstar:.5f}+/-{self.zstar_err:.5f}')
+        else:
+            print('Run q3dout.sepcontpars first!')
 
 
 def load_q3dout(q3di: str | q3din.q3din,

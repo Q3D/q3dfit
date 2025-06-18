@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+from numpy.typing import ArrayLike
+
 from typing import Optional
 import numpy as np
 import os
@@ -17,11 +20,11 @@ from q3dfit.spectConvol import spectConvol
 def lineinit(linelist: Table,
              linelistz: dict,
              linetie: dict,
-             linevary: dict[str, np.ndarray],
              initflux: dict[str, np.ndarray],
              initsig: dict[str, np.ndarray],
              siglim: dict[str, np.ndarray],
              ncomp: dict[str, np.ndarray],
+             linevary: Optional[dict[str, np.ndarray]]=None,
              specConv: Optional[spectConvol]=None,
              lineratio: Optional[Table | QTable]=None,
              waves: Optional[np.ndarray]=None) -> tuple[Model, Parameters]:
@@ -37,8 +40,6 @@ def lineinit(linelist: Table,
         Initial guess for line redshifts.
     linetie
         Line to which to tie each line.
-    linevary
-        Line parameter vary flags (fix/free).
     initflux
        Initial guess for line fluxes.
     initsig
@@ -47,6 +48,9 @@ def lineinit(linelist: Table,
         Lower and upper limits for line sigmas.
     ncomp
         Number of components for each line.
+    linevary
+        Optional. Line parameter vary flags (fix/free). If set to None,
+        all parameters are set to vary=True. The default is None.
     specConv
         Optional. Spectral resolution object. If set to None, no convolution
         will be performed. The default is None.
@@ -71,15 +75,18 @@ def lineinit(linelist: Table,
     '''
     # Get fixed-ratio doublet pairs for tying intensities
     data_path = os.path.abspath(q3dfit.data.__file__)[:-11]
-    doublets64 = Table.read(os.path.join(data_path, 'linelists', 'doublets.tbl'), format='ipac')
+    doublets64 = Table.read(os.path.join(data_path, 
+                                         'linelists', 'doublets.tbl'), format='ipac')
     doublets = \
         Table(doublets64,
               dtype=['str', 'str', 'int', 'float64', 'float64', 'float64'])
-
+    
     dblt_pairs = dict()
+    # key the doublet pairs by the line listed in the second column
+    #  Ratio value is of the first line divided by the second
     for idx, name in enumerate(doublets['line1']):
-        if doublets['fixed_ratio'][idx] == 1:
-            dblt_pairs[doublets['line2'][idx]] = doublets['line1'][idx]
+        #if doublets['fixed_ratio'][idx] == 1:
+        dblt_pairs[doublets['line2'][idx]] = doublets['line1'][idx]
 
     # converts the astropy.Table structure of linelist into a Python
     # dictionary that is compatible with the code downstream
@@ -105,6 +112,13 @@ def lineinit(linelist: Table,
 
     # Create parameter dictionary
     fit_params = totmod.make_params()
+
+    # dictionary for ratios if needed
+    rat_params = Parameters()
+    # this is so we can reset the lower bound for the lower line
+    # otherwise it defaults to the lower value of the ratio, for unknown
+    # reasons
+    rat_lines2 = list()
 
     # Cycle through parameters
     for i, parname in enumerate(fit_params.keys()):
@@ -138,19 +152,59 @@ def lineinit(linelist: Table,
             limited = np.array([1, 0], dtype='uint8')
             limits = np.array([np.finfo(float).eps, np.finfo(float).eps],
                               dtype='float64')
+            
             # Check if it's a doublet; this will break if weaker line
             # is in list, but stronger line is not
+            # The label is the second line in the doublet
             if line.label in dblt_pairs.keys():
+                # we'll index the doublets table by the first line
                 dblt_lmline = q3dutil.lmlabel(dblt_pairs[line.label])
                 idx_line = np.where(doublets['line1']==dblt_lmline.lmlabel.replace('lb', '[').replace('rb', ']'))[0]
-                ratio = doublets['ratio'][idx_line].value[0]
-                tied = f'{dblt_lmline.lmlabel}_{comp}_flx/(1.*{ratio})'
+                # This is for doublets with fixed ratios
+                if doublets['fixed_ratio'][idx_line].value[0] == 1:
+                    ratio = doublets['ratio'][idx_line].value[0]
+                    # this is ties the second line flux to equal
+                    # the first line flux divided by the ratio
+                    tied = f'{dblt_lmline.lmlabel}_{comp}_flx/{ratio}'
+                # This is for doublets with lower and upper limits
+                else:
+                    # for the case where the initial value is  set
+                    # in the doublets table
+                    if not isinstance(doublets['ratio'][idx_line].value[0],
+                                      np.ma.MaskedArray):
+                        ratio = doublets['ratio'][idx_line].value[0]
+                    # otherwise, use the initial flux values
+                    else:
+                        ratio = initflux[dblt_pairs[line.label]][comp] / \
+                            initflux[line.label][comp]
+                        # if the ratio is outside the limits, set it to the 
+                        # average of the limits
+                        if ratio < doublets['lower'][idx_line].value[0] or \
+                            ratio > doublets['upper'][idx_line].value[0]:
+                            ratio = (doublets['upper'][idx_line].value[0] + 
+                                     doublets['lower'][idx_line].value[0]) / 2.
+                    # free ratio, so tie to first line divided by ratio
+                    dblt_lmline2 = q3dutil.lmlabel(line.label)
+                    # create new parameter for the ratio
+                    lmrat = f'{dblt_lmline.lmlabel}_div_{dblt_lmline2.lmlabel}_{comp}'
+                    tied = f'{dblt_lmline.lmlabel}_{comp}_flx/{lmrat}'
+                    # set limits for the ratio
+                    limits = np.array([doublets['lower'][idx_line].value[0],
+                                       doublets['upper'][idx_line].value[0]],
+                                      dtype='float64')
+                    rat_params.add(lmrat)
+                    rat_params = set_params(rat_params, lmrat, VALUE=ratio,
+                                            VARY=True, LIMITED=[1,1], LIMITS=limits)
+                    rat_lines2.append(f'{dblt_lmline2.lmlabel}_{comp}_flx')
             else:
                 tied = ''
-            try:
-                vary = linevary[line.label][gpar][comp]
-            except:
-                raise InitializationError('linevary not properly defined')
+            if linevary is None:
+                vary = True
+            else:
+                try:
+                    vary = linevary[line.label][gpar][comp]
+                except:
+                    raise InitializationError('linevary not properly defined')
 
         elif gpar == 'cwv':
             value = linelistz[line.label][comp]
@@ -171,10 +225,13 @@ def lineinit(linelist: Table,
             #                 format(linetie_tmp.lmlabel)
             else:
                 tied = ''
-            try:
-                vary = linevary[line.label][gpar][comp]
-            except:
-                raise InitializationError('linevary not properly defined')
+            if linevary is None:
+                vary = True
+            else:
+                try:
+                    vary = linevary[line.label][gpar][comp]
+                except:
+                    raise InitializationError('linevary not properly defined')
 
         elif gpar == 'sig':
             value = initsig[line.label][comp]
@@ -185,16 +242,23 @@ def lineinit(linelist: Table,
                 tied = f'{linetie_tmp.lmlabel}_{comp}_sig'
             else:
                 tied = ''
-            try:
-                vary = linevary[line.label][gpar][comp]
-            except:
-                raise InitializationError('linevary not properly defined')
+            if linevary is None:
+                vary = True
+            else:
+                try:
+                    vary = linevary[line.label][gpar][comp]
+                except:
+                    raise InitializationError('linevary not properly defined')
 
 
         fit_params = \
             set_params(fit_params, parname, VALUE=value,
                        VARY=vary, LIMITED=limited, TIED=tied,
                        LIMITS=limits)
+
+    # add ratio parameters to fit_params
+    if len(rat_params) > 0:
+        fit_params.update(rat_params)
 
     # logic for bounding or fixing line ratios
     if lineratio is not None:
@@ -225,10 +289,21 @@ def lineinit(linelist: Table,
                                 fit_params[f'{lmline1.lmlabel}_{comp}_flx'],
                                 fit_params[f'{lmline2.lmlabel}_{comp}_flx'])
                     lmrat = f'{lmline1.lmlabel}_div_{lmline2.lmlabel}_{comp}'
-                    fit_params.add(lmrat, value=initval.astype('float64'))
-                    # tie second line to first line divided by the ratio
-                    fit_params[f'{lmline2.lmlabel}_{comp}_flx'].expr = \
-                        f'{lmline1.lmlabel}_{comp}_flx'+'/'+lmrat
+                    # make sure the user didn't invert the order of the lines
+                    if f'{lmline2.lmlabel}_div_{lmline1.lmlabel}_{comp}' \
+                        in fit_params.keys():
+                        raise InitializationError(
+                            f'Line ratio {line2} / {line1} ' +
+                            f'is inverted')
+                    # add the ratio parameter if it doesn't exist
+                    if lmrat not in fit_params.keys():
+                        fit_params.add(lmrat, value=initval.astype('float64'))
+                        # tie second line to first line divided by the ratio
+                        fit_params[f'{lmline2.lmlabel}_{comp}_flx'].expr = \
+                            f'{lmline1.lmlabel}_{comp}_flx'+'/'+lmrat
+                    # if it already exists, set the value
+                    elif 'value' in lineratio.colnames:
+                        fit_params[lmrat].value = initval.astype('float64')
                     # fixed or free
                     if 'fixed' in lineratio.colnames:
                         if lineratio['fixed'][ilinrat]:
@@ -264,6 +339,14 @@ def lineinit(linelist: Table,
                         if doublets['line1'][iline1] == line2:
                             lower = 1. / doublets['upper'][iline1][0]
                         fit_params[lmrat].min = lower.astype('float64')
+                    rat_lines2.append(f'{lmline2.lmlabel}_{comp}_flx')
+
+    if len(rat_lines2) > 0:
+        # this is to reset the lower bound for the second line in the ratio
+        # otherwise it defaults to the lower value of the ratio, for unknown
+        # reasons
+        for ratline2 in rat_lines2:
+            fit_params[ratline2].min = np.finfo(float).eps
 
     return totmod, fit_params
 
@@ -272,7 +355,7 @@ def set_params(fit_params: Parameters,
                NAME: str,
                VALUE: Optional[float]=None,
                VARY: bool=True,
-               LIMITED: Optional[np.ndarray]=None,
+               LIMITED: Optional[ArrayLike]=None,
                TIED: Optional[str]=None,
                LIMITS: Optional[np.ndarray]=None)->Parameters:
     '''

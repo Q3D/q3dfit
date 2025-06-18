@@ -116,6 +116,7 @@ class spectConvol:
     def spect_convolver(self,
                         wave: np.ndarray,
                         flux: np.ndarray,
+                        dsig: Optional[np.ndarray]=None,
                         wavecen: Optional[float]=None,
                         oversample: int=1) -> np.ndarray:
         '''
@@ -127,6 +128,10 @@ class spectConvol:
             Wavelength array of input spectrum
         flux
             Flux array of input spectrum
+        dsig
+            Optional. Native dispersion of the input spectrum. If not specified,
+            the input spectrum is assumed to have perfect resolution.
+            Default is None.
         wavecen
             Optional. Central wavelength of a spectral feature, to check if it falls 
             in the range of a grating. Default is None, which means no check is performed.
@@ -177,6 +182,11 @@ class spectConvol:
             idlam = dlam_interp_fcn(iwave)
 
         idsig = idlam/gaussian_sigma_to_fwhm
+        if dsig is not None:
+            # if the input spectrum has a native dispersion,
+            # convolve the spectrum by the difference of the
+            # native dispersion and the grating dispersion
+            idsig = np.sqrt(idsig**2 - dsig[ww]**2)
         fluxconv = varsmooth(iwave, iflux, idsig, oversample=oversample)
 
         if self.is_dispobj_mrs(InstGratSelect[0]):

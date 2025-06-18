@@ -230,7 +230,7 @@ def fitloop(ispax: int,
                 write_msg('FITLOOP: Aborting fit; no good data to fit.',
                     file=q3di.logfile, quiet=quiet)
             else:
-                if q3di.dolinefit:
+                if q3di.dolinefit and ncomp is not None:
                     write_msg('FIT STATUS: '+str(q3do_init.fitstatus), 
                               file=q3di.logfile, quiet=quiet)
 
@@ -258,6 +258,14 @@ def fitloop(ispax: int,
                     for col in maskwidths.columns:
                         maskwidths[col] *= q3di.masksig_secondfit
                     peakinit = q3do_init.line_fitpars['fluxpk_obs']
+                    # # If initial guess is too low, set to something minimum to prevent
+                    # # fitter from choking (since we limit peak to be >= 0)
+                    # peakinit_min = \
+                    # np.sqrt(np.median(q3do_init.line_dat[q3do_init.gd_indx]**2.))
+                    # for line in peakinit.columns:
+                    #     peakinit[line] = \
+                    #         np.where(peakinit[line] < peakinit_min, 
+                    #                  peakinit_min, peakinit[line])
                     siginit_gas = q3do_init.line_fitpars['sigma']
 
                 write_msg('FITLOOP: Second call to FITSPEC', file=q3di.logfile, quiet=quiet)
@@ -281,7 +289,7 @@ def fitloop(ispax: int,
                                quiet=quiet,
                                fluxunit=cube.fluxunit_out,
                                waveunit=cube.waveunit_out)
-                if q3do_init.dolinefit:
+                if q3do_init.dolinefit and ncomp is not None:
                     write_msg('FIT STATUS: '+str(q3do.fitstatus),
                               file=q3di.logfile, quiet=quiet)
 
@@ -297,7 +305,10 @@ def fitloop(ispax: int,
 
             # Check components
             if q3di.dolinefit:
-                if q3di.checkcomp and not onefit and not abortfit:
+                if q3di.checkcomp \
+                    and not onefit \
+                    and not abortfit \
+                    and ncomp:
 
                     q3do.sepfitpars()
 
@@ -313,6 +324,14 @@ def fitloop(ispax: int,
                         for line, nc in newncomp.items():
                             write_msg(f'FITLOOP: Repeating the fit of {line} with ' +
                                     f'{nc} components.', file=q3di.logfile, quiet=quiet)
+                        # Check that # components being fit to at least one line 
+                        # is > 0
+                        nonzerocomp = np.where(np.array(list(ncomp.values())) != 0)[0]
+                        if len(nonzerocomp) == 0:
+                            write_msg('FITLOOP: No lines with non-zero components. ' +
+                                    'Repeating fit with coninuum only.', 
+                                    file=q3di.logfile, quiet=quiet)
+                            ncomp = None
                     else:
                         dofit = False
                 else:

@@ -368,11 +368,10 @@ class q3din:
                      nolinemask: bool=False,
                      nomaskran: ArrayLike=None,
                      startempfile: Optional[str]=None,
+                     startempwaveunit: Literal['micron', 'Angstrom']='micron',
                      startempvac: bool=True,
                      quiet: bool=False
-                     #tweakcntfit=None,
-                     #fcnconvtemp: str=None,
-                     #argsconvtemp: dict={},
+                     #tweakcntfit=None
                      ):
         '''
         Initialize continuum fit.
@@ -432,13 +431,29 @@ class q3din:
             wavelength limits of regions not to mask. Default is None.
             Also sets the attribute :py:attr:`~q3dfit.q3din.q3din.nomaskran`.
         startempfile
-            Optional. Name of numpy save file containing stellar templates. Default is None.
-            Also sets the attribute :py:attr:`~q3dfit.q3din.q3din.startempfile`. Must
-            be set for stellar template fitting to work. Save file must contain a
-            dictionary with keys 'wave' and 'flux'. 'wave' is a 1d numpy array. 'flux'
-            is a 2d array, with the second dimension being the number of templates.
+            Optional. Name of numpy save file containing stellar templates. 
+            Default is None. Also sets the attribute 
+            :py:attr:`~q3dfit.q3din.q3din.startempfile`. Must be set for stellar 
+            template fitting to work. To create the file, use the :py:func:`~numpy.save`
+            function on a dictionary containing the keys 'wave' and 'flux'. 
+            'wave' is a 1d numpy array with rest wavelengths. 'flux' is a 2d array, 
+            with the first dimension being the number of wavelengths and the second 
+            dimension being the number of templates. If the key 'sigma' is present,
+            it is a 1d numpy array with the resolution the template(s) at each wavelength 
+            in the input wavelength unit. The resolution is expressed as
+            the sigma of a Gaussian. This is used to convolve the
+            template to the resolution of the data cube using
+            :py:meth:`~q3dfit.spectConvol.spectConvol.spect_convolver`.
             If the stellar template is not in vacuum wavelengths, set 
-            :py:attr:`~q3dfit.q3din.q3din.startempvac` to False.
+            :py:attr:`~q3dfit.q3din.q3din.startempvac` to False. If it is in
+            'Angstroms' rather than 'micron', set 
+            :py:attr:`~q3dfit.q3din.q3din.startempwaveunit` to 'Angstrom'.
+        startempwaveunit
+            Optional. Wavelength unit for stellar template. Options are 'micron'
+            and 'Angstroms.' Default is 'micron.' Conversion is done to
+            match the output wavelength unit of the data cube, 
+            which is set in :py:class:`~q3dfit.readcube.Cube`. Also sets the attribute
+            :py:attr:`~q3dfit.q3din.q3din.startempwaveunit`.
         startempvac
             Optional. Is the stellar template in vacuum wavelengths? If True and the
             data are in air wavelengths, the template is converted to air wavelengths
@@ -449,13 +464,6 @@ class q3din:
         tweakcntfit
             Optional. Tweak the continuum fit using local polynomial fitting.
             Default is None. (Not yet implemented.)
-        fcnconvtemp
-            Optional. Function with which to convolve template before fitting.
-            Default is None. (Not yet implemented.)
-        argsconvtemp
-            Optional. Arguments for the template convolution function fcnconvtemp.
-            Default is an empty dict. (Not yet implemented.)
-
         '''
 
         self.fcncontfit = fcncontfit
@@ -470,6 +478,7 @@ class q3din:
         self.nomaskran = nomaskran
         self.startempfile = startempfile
         self.startempvac = startempvac
+        self.startempwaveunit = startempwaveunit
 
         # flip this switch
         self.docontfit = True

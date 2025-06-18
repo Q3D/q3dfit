@@ -10,6 +10,7 @@ from typing import Literal, Optional
 
 from astropy.constants import c
 from astropy.table import Table
+from astropy import units as u
 from numpy.typing import ArrayLike
 from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
@@ -77,9 +78,10 @@ def fitspec(wlambda: np.ndarray,
     linevary
         Optional. Dictionary specifying which parameters to vary for each line.
         Nested dictionary with line names as keys, and dictionaries as values.
+        This is passed to :py:mod:`~q3dfit.lineinit.lineinit`, or another
+        function specified in :py:attr:`~q3dfit.q3din.q3din.fcnlineinit`. 
         These dictionaries have keys 'flx', 'cen', and 'sig', with boolean arrays
-        as values. Default is None, which if emission-line fit is done,
-        means varying all parameters.
+        as values. Default is None.
     maskwidths
         Optional. Widths, in km/s, of emission-line regions to mask from continuum fit. 
         If set to None, routine will look for `maskwidths` attribute in 
@@ -139,17 +141,27 @@ def fitspec(wlambda: np.ndarray,
         templatelambdaz = np.copy(template['lambda'])
         if not q3di.keepstarz:
             templatelambdaz *= 1. + zstar
+            # We also need to adjust 'sigma' if it exists
+            if 'sigma' in template:
+                template['sigma'] *= 1. + zstar
         # Need option for when template is in vac and data in air ...
         if q3di.vacuum and not q3di.startempvac:
             templatelambdaz = airtovac(templatelambdaz, logfile=q3di.logfile, quiet=quiet)
-        # if 'waveunit' in q3di:
+        if waveunit is not None:
+            if q3di.startempwaveunit != waveunit:
+                lambda_tmp = templatelambdaz * u.Unit(waveunit)
+                templatelambdaz = lambda_tmp.to(u.Unit(q3di.startempwaveunit)).value
         #     templatelambdaz *= q3di['waveunit']
-        # Template convolution with the spectral resolution is not yet implemented
-        #if q3di.fcnconvtemp is not None:
-        #    impModule = import_module('q3dfit.'+q3di.fcnconvtemp)
-        #    fcnconvtemp = getattr(impModule, q3di.fcnconvtemp)
-        #    newtemplate = fcnconvtemp(templatelambdaz, template,
-        #                              **q3di.argsconvtemp)
+        if specConv is not None and 'sigma' in template:
+            # Convolve stellar template to match instrumental resolution
+            if template['flux'].ndim == 1:
+                # If template is 1D, convolve it directly
+                template['flux'] = specConv.spect_convolver(
+                    templatelambdaz, template['flux'], dsig=template['sigma'])
+            else:
+                for i in range(template['flux'].shape[1]):
+                    template['flux'][:,i] = specConv.spect_convolver(
+                        templatelambdaz, template['flux'][:,i], dsig=template['sigma'])
     else:
         templatelambdaz = wlambda
 
@@ -212,8 +224,9 @@ def fitspec(wlambda: np.ndarray,
         gderr_log = np.sqrt(gderrsq_log)
         # gdinvvar_log = 1./np.power(gderr_log, 2.)
 
-        # Find where flux is <= 0 or error is <= 0 or infinite or NaN or dq != 0
+        # Find where flux is <= 0 or error is <= 0 or infinite or dq != 0
         # these index the fitted data range
+        # We ignore nans because we'll set bad points to nan later
         zerinf_indx_1 = np.where(gdflux == 0.)[0]
         zerinf_indx_2 = np.where(gderr <= 0.)[0]
         zerinf_indx_3 = np.where(np.isinf(gdflux))[0]
@@ -223,13 +236,19 @@ def fitspec(wlambda: np.ndarray,
                                            zerinf_indx_3, zerinf_indx_4,
                                            zerinf_indx_5]))
 
+        # Have to treat nans and infs in log space separately
+        # "NumPy uses the IEEE Standard for Binary Floating-Point for Arithmetic 
+        # (IEEE 754). This means that Not a Number is not equivalent to infinity."
         zerinf_indx_1 = np.where(gdflux_log == 0.)[0]
         zerinf_indx_2 = np.where(gderr_log <= 0.)[0]
         zerinf_indx_3 = np.where(np.isinf(gdflux_log))[0]
         zerinf_indx_4 = np.where(np.isinf(gderr_log))[0]
+        zerinf_indx_5 = np.where(np.isnan(gdflux_log))[0]
+        zerinf_indx_6 = np.where(np.isnan(gderr_log))[0]
         # to-do: log rebin dq and apply here?
         zerinf_indx_log = np.unique(np.hstack([zerinf_indx_1, zerinf_indx_2,
-                                               zerinf_indx_3, zerinf_indx_4]))
+                                               zerinf_indx_3, zerinf_indx_4,
+                                               zerinf_indx_5, zerinf_indx_6]))
         # good indices for log arrays
         ctfitran = len(gdflux_log)
         gd_indx_log = np.arange(ctfitran)
@@ -284,7 +303,9 @@ def fitspec(wlambda: np.ndarray,
 
         # Mask emission lines
         # Column names are line labels, rows are components
-        if q3di.dolinefit and not q3di.nolinemask:
+        # Check on ncomp is needed in case that we started with a line fit
+        # but all components were masked out by checkcomp
+        if q3di.dolinefit and not q3di.nolinemask and ncomp is not None:
             if maskwidths is None:
                 if q3di.maskwidths is not None:
                     maskwidths = q3di.maskwidths
@@ -374,16 +395,20 @@ def fitspec(wlambda: np.ndarray,
 
             # Check polynomial degree
             add_poly_degree = 4
-            if q3di.argscontfit is not None:
-                if 'add_poly_degree' in q3di.argscontfit:
-                    add_poly_degree = q3di.argscontfit['add_poly_degree']
+            mult_poly_degree = 0
+            if 'add_poly_degree' in q3di.argscontfit:
+                add_poly_degree = q3di.argscontfit['add_poly_degree']
+            if 'mult_poly_degree' in q3di.argscontfit:
+                mult_poly_degree = q3di.argscontfit['mult_poly_degree']
 
             # run ppxf
             pp = ppxf(temp_log, gdflux_log, gderr_log, velscale,
                       [0, siginit_stars], goodpixels=ct_indx_log,
-                      degree=add_poly_degree, quiet=quiet,
-                      reddening=q3di.av_star)
-
+                      degree=add_poly_degree, 
+                      mdegree=mult_poly_degree,
+                      reddening=q3di.av_star,
+                      lam=np.exp(gdlambda_log),
+                      quiet=quiet)
 
             # Errors in best-fit velocity and dispersion.
             # From PPXF docs:
@@ -405,9 +430,17 @@ def fitspec(wlambda: np.ndarray,
                 cont_fit_poly = pinterp(np.log(gdlambda))
             else:
                 cont_fit_poly = np.zeros_like(gdlambda)
+            if mult_poly_degree > 0:
+                mpinterp = interp1d(gdlambda_log, pp.mpoly,
+                                   kind='cubic', fill_value="extrapolate")
+                cont_fit_mpoly = mpinterp(np.log(gdlambda))
+            else:
+                cont_fit_mpoly = np.zeros_like(gdlambda)
 
             ct_coeff = dict()
             ct_coeff['polymod'] = cont_fit_poly
+            ct_coeff['mpolymod'] = cont_fit_mpoly
+            # this includes the multiplicative polynomial
             ct_coeff['stelmod'] = q3do.cont_fit - cont_fit_poly
             ct_coeff['polyweights'] = pp.polyweights
             ct_coeff['stelweights'] = pp.weights
@@ -415,7 +448,6 @@ def fitspec(wlambda: np.ndarray,
             ct_coeff['sigma'] = pp.sol[1]
             ct_coeff['sigma_err'] = solerr[1]
             q3do.ct_coeff = ct_coeff
-
     
             # Adjust stellar redshift based on fit
             # From ppxf docs:
@@ -476,18 +508,14 @@ def fitspec(wlambda: np.ndarray,
 
         continuum = gdflux.copy()
 
-
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # Fit emission lines
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    if q3di.dolinefit and not q3do.nogood:
+    if q3di.dolinefit and not q3do.nogood and ncomp is not None:
 
         q3do.init_linefit(listlines, q3di.lines, q3di.maxncomp,
                           line_dat=continuum.astype(usetype))
-
-        # Check that # components being fit to at least one line is > 0
-        nonzerocomp = np.where(np.array(list(ncomp.values())) != 0)[0]
 
         # Make sure line within fitrange
         # To deal with case of truncated data where continuum can be fit but
@@ -502,9 +530,10 @@ def fitspec(wlambda: np.ndarray,
                     line_in_good_range = True
                     break
 
-        if len(nonzerocomp) > 0 and line_in_good_range:
+        if line_in_good_range:
 
             # Initial guesses for emission line peak fluxes (above continuum)
+            peakinit_min = np.sqrt(np.median(q3do.line_dat[gd_indx]**2.))
             if peakinit is None:
                 #if q3di.peakinit is not None and isinstance(q3di.peakinit, Table):
                 #    peakinit = q3di.peakinit
@@ -568,15 +597,17 @@ def fitspec(wlambda: np.ndarray,
                                 q3do.line_dat is not None:
                                 peakinit[line][icomp] = \
                                 np.nanmax(q3do.line_dat[ilamwin[0]:ilamwin[1]])
-                            # if it's still all nans, just set to 0.
+                            # if it's still all nans, just set to something low
                             if np.isnan(peakinit[line][icomp]):
-                                peakinit[line][icomp] = 0.
-                        # If initial guess is negative, set to 0 to prevent
-                        # fitter from choking (since we limit peak to be >= 0)
-                        peakinit[line] = \
-                            np.where(peakinit[line] < 0., 0., peakinit[line])
+                                peakinit[line][icomp] = peakinit_min
                     # re-cast if needed
                     peakinit[line] = peakinit[line].astype(usetype)
+
+            for line in q3di.lines:
+                # If initial guess is too low, set to something minimum to prevent
+                # fitter from choking (since we limit peak to be >= 0)
+                peakinit[line] = np.where(peakinit[line] < peakinit_min, 
+                                          peakinit_min, peakinit[line])
 
             # Fill out parameter structure with initial guesses and constraints
             impModule = import_module('q3dfit.' + q3di.fcnlineinit)
@@ -590,9 +621,10 @@ def fitspec(wlambda: np.ndarray,
             # Note that if we do a line fit, siginit_gas, siglim_gas, ncomp
             # are set up by fitloop
             emlmod, q3do.parinit = \
-                run_fcnlineinit(listlines, listlinesz, q3di.linetie, linevary, 
+                run_fcnlineinit(listlines, listlinesz, q3di.linetie, 
                                 peakinit, siginit_gas, siglim_gas, ncomp, 
-                                specConv=specConv, **argslineinit)
+                                linevary=linevary, specConv=specConv, 
+                                **argslineinit)
 
 
             # Actual fit
@@ -643,7 +675,6 @@ def fitspec(wlambda: np.ndarray,
                 if 'max_nfev' not in fit_kws:
                     max_nfev = 2000*(len(q3do.parinit)+1)
 
-
             lmout = emlmod.fit(q3do.line_dat, q3do.parinit, x=gdlambda,
                                method=method, weights=np.sqrt(gdinvvar_nocnt),
                                nan_policy='omit', max_nfev=max_nfev,
@@ -657,6 +688,7 @@ def fitspec(wlambda: np.ndarray,
             q3do.dof = lmout.nfree
             q3do.redchisq = lmout.redchi
             q3do.nfev = lmout.nfev
+            q3do.errorbars = lmout.errorbars
 
             '''
             error messages corresponding to LMFIT, plt
@@ -701,6 +733,9 @@ def fitspec(wlambda: np.ndarray,
             q3do.perror = dict()
             for p in lmout.params:
                 q3do.perror[p] = lmout.params[p].stderr
+                # If no error is returned, set to 0.
+                if not q3do.errorbars:
+                    q3do.perror[p] = 0.
             # Get flux peak errors from error spectrum and std dev of residual
             q3do.perror_errspec = copy.deepcopy(q3do.perror)
             q3do.perror_resid = copy.deepcopy(q3do.perror)
@@ -731,47 +766,15 @@ def fitspec(wlambda: np.ndarray,
                             np.std((q3do.line_dat - q3do.line_fit)
                                    [ipklo:ipkhi+1])
                         # Deal with flux pegging at boundary and no error
-                        # from lmfit. Check for both Nones and nans:
+                        # from lmfit. Check for Nones, nans, and 0s
                         if q3do.perror[fluxlab] is None:
                             q3do.perror[fluxlab] = q3do.perror_errspec[fluxlab]
-                        elif np.isnan(q3do.perror[fluxlab]):
+                        elif np.isnan(q3do.perror[fluxlab]) or \
+                            q3do.perror[fluxlab] == 0.:
                             q3do.perror[fluxlab] = q3do.perror_errspec[fluxlab]
                         if q3di.perror_useresid and \
                             q3do.perror_resid[fluxlab] > q3do.perror[fluxlab]:
                             q3do.perror[fluxlab] = q3do.perror_resid[fluxlab]
-
-            # Flux peak errors from fit residual.
-            # resid = gdflux - continuum - specfit
-            # q3do.perror_resid = copy.deepcopy(q3do.perror)
-            # sigrange = 20.
-            # for line in lines_arr:
-            #     iline = np.array([ip for ip, item in enumerate(parinit)
-            #                       if item['line'] == line])
-            #     ifluxpk = \
-            #         np.intersect1d(iline,
-            #                        np.array([ip for ip, item in enumerate(parinit)
-            #                                  if item['parname'] == 'flux_peak']))
-            #     ctfluxpk = len(ifluxpk)
-            #     isigma = \
-            #         np.intersect1d(iline,
-            #                        np.array([ip for ip, item in enumerate(parinit)
-            #                                  if item['parname'] == 'sigma']))
-            #     iwave = \
-            #         np.intersect1d(iline,
-            #                        np.array([ip for ip, item in enumerate(parinit)
-            #                                  if item['parname'] == 'wavelength']))
-            #     for i in range(0, ctfluxpk):
-            #         waverange = \
-            #             sigrange * np.sqrt(np.power((param[isigma[i]] /
-            #                                          c*param[iwave[i]]), 2.) +
-            #                                np.power(param[2], 2.))
-            #         wlo = np.searchsorted(gdlambda, param[iwave[i]] - waverange/2.)
-            #         whi = np.searchsorted(gdlambda, param[iwave[i]] + waverange/2.)
-            #         if whi == len(gdlambda)+1:
-            #             whi = len(gdlambda)-1
-            #         if param[ifluxpk[i]] > 0:
-            #             perror_resid[ifluxpk[i]] = \
-            #                 np.sqrt(np.mean(np.power(resid[wlo:whi], 2.)))
 
             q3do.cont_dat = gdflux.copy() - q3do.line_fit
 

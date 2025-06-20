@@ -1138,9 +1138,19 @@ class q3dout:
             if self.decompose_ppxf_fit:
                 print('Stellar fit parameters')
                 print('----------------------')
-                print(f'Attenuation: {self.ct_coeff['av']:.2f}')
+                if self.ct_coeff['av'] is not None:
+                    print(f'Attenuation: {self.ct_coeff['av']:.2f}')
                 print(f'Velocity dispersion: {self.ct_coeff['sigma']:.0f}'+
                       f'+/-{self.ct_coeff['sigma_err']:.0f} km/s')
+                print(f'Redshift: {self.zstar:.5f}+/-{self.zstar_err:.5f}')
+            if self.decompose_qso_fit and \
+                'ppxf' in self.ct_coeff:
+                print('Stellar fit parameters')
+                print('----------------------')
+                if self.ct_coeff['ppxf']['av'] is not None:
+                    print(f'Attenuation: {self.ct_coeff['ppxf']['av']:.2f}')
+                print(f'Velocity dispersion: {self.ct_coeff['ppxf']['sigma']:.0f}'+
+                        f'+/-{self.ct_coeff['ppxf']['sigma_err']:.0f} km/s')
                 print(f'Redshift: {self.zstar:.5f}+/-{self.zstar_err:.5f}')
         else:
             print('Run q3dout.sepcontpars first!')

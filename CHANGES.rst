@@ -1,6 +1,15 @@
+2.0.0-rc.2 (20 Jun 2025)
+------------------------
+- Improved ppxf integration, including multiplicative polynomial, convolution of templates and BPASS ingestion routines.
+- Changed initial conditions for emission line fitting and continuum fitting with fitqsohost so it doesn't default at lower fit boundary of 0.
+- Doublet limits for density-sensitive ratios are now handled automatically. User changes to default doublet ratios are now handled properly.
+- Bugfix: Input nan values are properly handled before being handed to ppxf.
+- Bugfix: Reddening fit handled correctly by ppxf.
+- Bugfix: fitloop.py choking in some cases if ncomp changed to 0 by checkcomp.py.
+  
 2.0.0-rc.1 (13 Jun 2025)
 ------------------------
-- Complete documenation through spinx/autodoc.
+- Complete documentation through spinx/autodoc.
 - Complete refactoring of codebase, including typehints.
 - Enhancement: lmfit options to continuum fits; ppxf fits validated.
 - New example notebooks: fit to single spectrum with ppxf and emission lines; fit to single spectrum in the rest frame mid-IR with continuum dust features and emission lines.

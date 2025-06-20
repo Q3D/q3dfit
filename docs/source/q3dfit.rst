@@ -33,6 +33,14 @@ q3dcollect
    :undoc-members:
    :show-inheritance:
 
+templates
+=========
+
+.. automodule:: q3dfit.templates
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 Classes
 -------

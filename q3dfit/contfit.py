@@ -158,6 +158,7 @@ def fitqsohost(wave: np.ndarray,
                index_log: Optional[np.ndarray]=None,
                siginit_stars: float=50.,
                add_poly_degree: int=30,
+               mult_poly_degree: int=0,
                av_star: Optional[float]=None,
                fitran: Optional[ArrayLike]=None,
                qsoord: Optional[int]=None,
@@ -242,6 +243,9 @@ def fitqsohost(wave: np.ndarray,
     add_poly_degree
          Optional. Degree of the additive polynomial for the pPXF fit. Default is 
          30.
+    mult_poly_degree
+         Optional. Degree of the multiplicative polynomial for the pPXF fit. Default is 
+         0.
     av_star
         Optional. Initial guess for stellar reddening, used in the pPXF fit.
         Default is None, which means no reddening is applied.
@@ -396,8 +400,11 @@ def fitqsohost(wave: np.ndarray,
         # t = clock()
         start = [0, siginit_stars]  # (km/s), starting guess for [V, sigma]
         pp = ppxf(temp_log, resid_log, err_log, velscale, start,
-                  goodpixels=index_log,  quiet=quiet,  # plot=True, moments=2
-                  reddening=av_star, degree=add_poly_degree)  # clean=False
+                  goodpixels=index_log,
+                  reddening=av_star,
+                  lam=np.exp(lambda_log),
+                  degree=add_poly_degree,
+                  quiet=quiet)
 
         # Errors in best-fit velocity and dispersion.
         # From PPXF docs:
@@ -417,9 +424,16 @@ def fitqsohost(wave: np.ndarray,
             cont_fit_poly = pinterp(np.log(wave))
         else:
             cont_fit_poly = np.zeros_like(wave)
+        if mult_poly_degree > 0:
+            mpinterp = interp1d(lambda_log, pp.mpoly,
+                                kind='cubic', fill_value="extrapolate")
+            cont_fit_mpoly = mpinterp(np.log(wave))
+        else:
+            cont_fit_mpoly = np.zeros_like(np.log(wave))
 
         ct_coeff_ppxf = dict()
         ct_coeff_ppxf['polymod'] = cont_fit_poly
+        ct_coeff_ppxf['mpolymod'] = cont_fit_mpoly
         ct_coeff_ppxf['stelmod'] = resid_mod - cont_fit_poly
         ct_coeff_ppxf['polyweights'] = pp.polyweights
         ct_coeff_ppxf['stelweights'] = pp.weights

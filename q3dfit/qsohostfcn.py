@@ -77,7 +77,7 @@ def setup_qso_mult_exp(p: np.ndarray) -> tuple[lmfit.Model, lmfit.Parameters]:
                     independent_vars=['wave', 'qsotemplate'],
                     prefix=model_name)
     qso_mult_exp_pars = qsotemplate_x_exp.make_params()
-    
+
     for counter, i in enumerate(['a', 'b', 'c', 'd', 'e',
                                  'f', 'g', 'h', 'i']):
         if not np.isnan(p[counter]):
@@ -355,15 +355,28 @@ def qsohostfcn(wave: np.ndarray,
 
     # Additive starlight component:
     if not qsoonly and not blronly:
+        # scaling for initial guesses of host and QSO is half the median flux
+        medfluxuse = medflux/2.
+        # if there's also an additive legendre polynomial for the stars,
+        # then the median flux is divided by 2 again, so that the
+        # multiplicative term is not too large.
+        if hostord is not None:
+            medfluxuse /= 2.
+        if hostonly:
+            medfluxuse *= 2.
         # Terms with exponentials
-        initvals = np.concatenate((np.array([medflux/2.]),np.zeros(8)))
+        #initvals = np.concatenate((np.array([medflux/2.]),np.zeros(8)))
+        initvals = np.array([medfluxuse/2., medfluxuse/8., 1.,
+                             medfluxuse/8., 1., medfluxuse/8.,
+                             1., medfluxuse/8., 1.])
         stars_add = setup_stars_add_exp(initvals)
         ymod = stars_add[0]
         params = stars_add[1]
         # optional legendre polynomials up to order ordmax
         if hostord is not None:
             if hostord <= legordmax and hostord > 0:
-                initvals = np.zeros(legordmax)
+                #initvals = np.zeros(legordmax)
+                initvals = np.full(legordmax, medfluxuse/float(legordmax))
                 for ind in np.arange(legordmax, hostord, -1):
                     initvals[ind-1] = np.nan
                 stars_add = setup_stars_add_leg(initvals)
@@ -376,11 +389,26 @@ def qsohostfcn(wave: np.ndarray,
 
     # Scaled QSO component
     if not hostonly and not blronly:
-        # Terms with exponentials
+        # scaling for initial guesses of host and QSO is half the median flux
         medfluxuse = medflux/2.
+        # if there's also an additive legendre polynomial for the QSO,
+        # then the median flux is divided by 2 again, so that the
+        # multiplicative term is not too large.
+        if qsoord is not None:
+            medfluxuse /= 2.
         if qsoonly:
             medfluxuse *= 2.
-        initvals = np.concatenate((np.array([medfluxuse]),np.zeros(8)))
+        # Terms with exponentials
+        #initvals = np.concatenate((np.array([medfluxuse]),np.zeros(8)))
+        # assign half the desired flux to the constant term
+        # and the rest to the exponential terms
+        # the 1. is the constant term (e^-cx), so the exponential decay and rise
+        # are similar to the 0 to 1 rescaled wavelength range.
+        # smaller value would be a slower decay/rise,
+        # larger value would be a faster decay/rise.
+        initvals = np.array([medfluxuse/2., medfluxuse/8., 1.,
+                             medfluxuse/8., 1., medfluxuse/8.,
+                             1., medfluxuse/8., 1.])
         qso_mult = setup_qso_mult_exp(initvals)
         if 'ymod' not in vars():
             ymod = qso_mult[0] 
@@ -391,7 +419,8 @@ def qsohostfcn(wave: np.ndarray,
         # optional legendre polynomials
         if qsoord is not None:
             if qsoord <= legordmax and qsoord > 0:
-                initvals = np.zeros(legordmax)
+                #initvals = np.zeros(legordmax)
+                initvals = np.full(legordmax, medfluxuse/float(legordmax))
                 for ind in np.arange(legordmax, qsoord, -1):
                     initvals[ind-1] = np.nan
                 qso_mult = setup_qso_mult_leg(initvals)

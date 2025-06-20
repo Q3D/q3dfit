@@ -352,6 +352,7 @@ def fitspec(wlambda: np.ndarray,
                 argscontfit = dict()
             if q3di.fcncontfit == 'fitqsohost':
                 argscontfit['fitran'] = fitran
+                argscontfit['medflux'] = np.median(gdflux[q3do.ct_indx])
             if q3di.fcncontfit == 'questfit':
                 argscontfit['fluxunit'] = fluxunit
                 #argscontfit['waveunit'] = waveunit
@@ -403,7 +404,8 @@ def fitspec(wlambda: np.ndarray,
 
             # run ppxf
             pp = ppxf(temp_log, gdflux_log, gderr_log, velscale,
-                      [0, siginit_stars], goodpixels=ct_indx_log,
+                      [0, siginit_stars],
+                      goodpixels=ct_indx_log,
                       degree=add_poly_degree, 
                       mdegree=mult_poly_degree,
                       reddening=q3di.av_star,

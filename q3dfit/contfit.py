@@ -6,7 +6,7 @@ from __future__ import annotations
 __all__ = ['fitpoly', 'fitqsohost', 'questfit', 'linfit_plus_FeII',
            'Fe_template_vw01', 'readcf']
 
-from typing import Optional, Any
+from typing import Optional, Any, Literal
 from numpy.typing import ArrayLike
 
 import copy

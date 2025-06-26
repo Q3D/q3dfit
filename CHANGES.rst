@@ -1,3 +1,10 @@
+2.0.0-rc.3 (26 Jun 2025)
+------------------------
+- Improved unit handling; testing 'microns' and 'Angstroms' for wavelength units.
+- V. minor updates to plotting and continuum fitting.
+- Various bugfixes.
+
+
 2.0.0-rc.2 (20 Jun 2025)
 ------------------------
 - Improved ppxf integration, including multiplicative polynomial, convolution of templates and BPASS ingestion routines.

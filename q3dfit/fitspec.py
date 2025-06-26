@@ -149,11 +149,16 @@ def fitspec(wlambda: np.ndarray,
             templatelambdaz = airtovac(templatelambdaz, logfile=q3di.logfile, quiet=quiet)
         if waveunit is not None:
             if q3di.startempwaveunit != waveunit:
-                lambda_tmp = templatelambdaz * u.Unit(waveunit)
-                templatelambdaz = lambda_tmp.to(u.Unit(q3di.startempwaveunit)).value
+                lambda_tmp = templatelambdaz * u.Unit(q3di.startempwaveunit)
+                templatelambdaz = lambda_tmp.to(u.Unit(waveunit)).value
         #     templatelambdaz *= q3di['waveunit']
         if specConv is not None and 'sigma' in template:
             # Convolve stellar template to match instrumental resolution
+            # Need to ensure templates and data have the same wavelength units
+            if waveunit is not None:
+                if q3di.startempwaveunit != waveunit:
+                    sigma_tmp = template['sigma'] * u.Unit(q3di.startempwaveunit)
+                    template['sigma'] = sigma_tmp.to(u.Unit(waveunit)).value
             if template['flux'].ndim == 1:
                 # If template is 1D, convolve it directly
                 template['flux'] = specConv.spect_convolver(
@@ -285,6 +290,11 @@ def fitspec(wlambda: np.ndarray,
         gdflux = np.array((0.))
         q3do = q3dout.q3dout(0., 0., 0.,  nogood=True)
 
+    if fluxunit is not None:
+        q3do.fluxunit = fluxunit
+    if waveunit is not None:
+        q3do.waveunit = waveunit
+
     # timer
     fit_time0 = time.time()
 
@@ -365,6 +375,7 @@ def fitspec(wlambda: np.ndarray,
                     argscontfit['flux_log'] = gdflux_log
                     argscontfit['err_log'] = gderr_log
                     argscontfit['siginit_stars'] = siginit_stars
+                    argscontfit['waveunit'] = waveunit
                     if hasattr(q3di, 'av_star'):
                         argscontfit['av_star'] = q3di.av_star
                 if argscontfit['refit'] == 'questfit':
@@ -401,15 +412,28 @@ def fitspec(wlambda: np.ndarray,
                 add_poly_degree = q3di.argscontfit['add_poly_degree']
             if 'mult_poly_degree' in q3di.argscontfit:
                 mult_poly_degree = q3di.argscontfit['mult_poly_degree']
+            if 'bounds' in q3di.argscontfit:
+                bounds = q3di.argscontfit['bounds']
+            else:
+                bounds = [[-1000., 1000.], [0., 1000.]]
+
+            # Rest wavelength if reddening is applied
+            # must be in Angstroms
+            redlam = np.exp(gdlambda_log)/(1. + q3do.zstar)
+            if waveunit is not None:
+                if waveunit == 'micron':
+                    redlam *= 1.e4
 
             # run ppxf
+            #import pdb; pdb.set_trace()
             pp = ppxf(temp_log, gdflux_log, gderr_log, velscale,
                       [0, siginit_stars],
+                      bounds=bounds,
                       goodpixels=ct_indx_log,
                       degree=add_poly_degree, 
                       mdegree=mult_poly_degree,
                       reddening=q3di.av_star,
-                      lam=np.exp(gdlambda_log),
+                      lam=redlam,
                       quiet=quiet)
 
             # Errors in best-fit velocity and dispersion.

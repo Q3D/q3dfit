@@ -552,16 +552,21 @@ class q3din:
             :py:class:`~q3dfit.spectConvol.spectConvol` object, or None (no convolution) if 
             q3di.spect_convol is an empty dictionary.
         '''
-        if not self.spect_convol:
+        if self.spect_convol is None:
             return None
-        else:
+        elif self.spect_convol == {}:
+            return None
+        elif isinstance(self.spect_convol, dict):
             # check for non-default wavelength unit
             argsspecconv = dict()
             if hasattr(self, 'argsreadcube'):
                 if 'waveunit_out' in self.argsreadcube:
                     argsspecconv['waveunit'] = self.argsreadcube['waveunit_out']
             return spectConvol.spectConvol(self.spect_convol, **argsspecconv)
-
+        else:
+            raise InitializationError(
+                'q3di.get_dispersion: q3di.spect_convol must be a dict or None, not ' +
+                f'{type(self.spect_convol)}')
 
     def get_linelist(self) -> Table | list:
         '''

@@ -18,6 +18,7 @@ from ppxf.ppxf_util import varsmooth
 from scipy.interpolate import CubicSpline
 
 import q3dfit.data.dispersion_files
+from . import q3dutil
 
 
 class spectConvol:
@@ -110,7 +111,7 @@ class spectConvol:
                 else:
                     self.InstGratObjs[inst][grat] = \
                         InstGratDispersion(inst, grat, dispdir=self.dispdir,
-                                           waveunit=self.waveunit)  
+                                           waveunit=self.waveunit)
                     self.InstGratObjs[inst][grat].get_MRS_Rdlam()
 
     def spect_convolver(self,
@@ -435,6 +436,10 @@ class dispersion(object):
         of preference dvel, R, dlambda, if more than one is present.
         It then computes R and dlambda and adds these to the object.
 
+        The method also checks the wavelength unit in the file
+        header and converts the wavelength and dispersion arrays to the
+        object's wavelength unit, if necessary.
+
         Parameters
         ----------
         filename
@@ -447,15 +452,32 @@ class dispersion(object):
 
         with fits.open(filename) as hdul:
             indisp = hdul[1].data
+            inhead = hdul[1].header
 
         # Some methods here assume wavelength is in increasing order
         # Should really do a check here for that ...
         try: 
-            self.wave = indisp['WAVELENGTH']  # wavelength [μm]
+            self.wave = indisp['WAVELENGTH']  # wavelength
         except:
             raise SystemExit(f"No wavelength array found in " +
                 "dispersion file {filename}.")
-        
+        try: 
+            waveunit_in = inhead['TUNIT1'].lower()
+            # Correcting for common typos in the wavelength unit
+            if waveunit_in == 'microns':
+                waveunit_in = 'micron'
+            elif waveunit_in not in ['micron', 'Angstrom']:
+                q3dutil.write_msg(f"Invalid wavelength unit '{waveunit_in}' " +
+                    f"in dispersion file {filename}. Must be 'micron' or 'Angstrom'. " +
+                    "Assuming 'micron' as default.",
+                    quiet=False)
+                waveunit_in = 'micron'
+        except:
+            q3dutil.write_msg(f"No wavelength unit (TUNIT1) found in header of " +
+                f"dispersion file {filename}. Assuming 'micron' as default.",
+                quiet=False)
+            waveunit_in = 'micron'
+
         # types of dispersion, in order of preference
         # if more than one is present, the first one is used
         types = ['DVEL', 'R', 'DLAMBDA']
@@ -472,6 +494,19 @@ class dispersion(object):
                 "dispersion file {filename}. Options are 'R', "+
                 "'DVEL', or 'DLAMBDA'.")
 
+        # Convert the wavelength unit to the object's wavelength unit
+        if self.waveunit != waveunit_in:
+            if self.waveunit == 'micron':
+                # Convert Angstrom to micron
+                self.wave = self.wave / 10000.0
+                if type == 'DLAMBDA':
+                    disp = disp / 10000.0
+            elif self.waveunit == 'Angstrom':
+                # Convert micron to Angstrom
+                self.wave = self.wave * 10000.0
+                if type == 'DLAMBDA':
+                    disp = disp * 10000.0
+
         # Compute R and dlam from the dispersion array. This will read
         # wavelength from the object.
         self.compute_Rdlam(disp, type=type)
@@ -480,6 +515,7 @@ class dispersion(object):
     def write(self,
               filename: str,
               wave: Optional[np.ndarray]=None, 
+              waveunit: Optional[Literal['micron','Angstrom']]=None,
               disp: Optional[np.ndarray]=None,
               type: Literal['R', 'DVEL', 'LAMBDA']='R', 
               overwrite: bool=False):
@@ -496,6 +532,9 @@ class dispersion(object):
         wave
             Optional. Wavelength array. Default is None, which 
             means take from the object.
+        waveunit
+            Optional. Wavelength unit, either 'micron' or 'Angstrom'.
+            Default is None, which means use the object's wavelength unit.
         disp
             Optional. Dispersion array. Default is None, which means
             use the dispersion data in the object.
@@ -517,7 +556,8 @@ class dispersion(object):
             wave = self.wave
         if type is None:
             raise SystemExit("No dispersion type provided.")
-        c1 = fits.Column(name='WAVELENGTH', format='E', array=wave)
+        c1 = fits.Column(name='WAVELENGTH', format='E', array=wave,
+                         unit=waveunit if waveunit is not None else self.waveunit)
         clist = [c1]
         # If no dispersion array is provided, use the one in the object.
         # Start with R, then dlambda.
@@ -655,6 +695,7 @@ class InstGratDispersion(dispersion):
 
     def writeInstGrat(self,
                       wave: Optional[np.ndarray]=None, 
+                      waveunit: Optional[Literal['micron','Angstrom']]=None,
                       disp: Optional[np.ndarray]=None,
                       type: Literal['R','DVEL','DLAMBDA']='R',
                       overwrite: bool=False):
@@ -666,6 +707,9 @@ class InstGratDispersion(dispersion):
         wave
             Optional. Wavelength array. Default is None, which means the object's
             wavelength array is used.
+        waveunit
+            Optional. Wavelength unit, either 'micron' or 'Angstrom'.
+            Default is None, which means the object's wavelength unit is used.
         disp
             Optional. Dispersion array. Default is None, which means the object's
             dispersion array is used.
@@ -687,14 +731,21 @@ class InstGratDispersion(dispersion):
         needed if MRS dispersion files are provided.
 
         This updates attributes R and dlam, and wave if self.wave is None.
-
-        Assumes waveunit is 'micron', but doesn't check for it.
         '''
         if self.wave is None:
             # Default range. This is the range of the MRS.
             # Spacing of 0.01 micron.
             self.wave = np.linspace(5.0, 28.8, int((28.8-5.0)/0.01))
-        self.R, self.dlam = MRS_dispersion(self.wave)
+            if self.waveunit == 'Angstrom':
+                # Convert to Angstroms
+                self.wave *= 10000.0
+        # Compute R and dlam from the MRS dispersion formula
+        # MRS_dispersion expects the wavelength in microns
+        self.R, self.dlam = MRS_dispersion(self.wave if self.waveunit == 'micron'
+                                           else self.wave/10000.0)
+        if self.waveunit == 'Angstrom':
+            # Convert dlam to Angstroms if necessary
+            self.dlam *= 10000.0
 
 
 class FlatDispersion(dispersion):
@@ -743,6 +794,7 @@ class FlatDispersion(dispersion):
     def writeFlat(self,
                   dispdir: Optional[str]=None,
                   wave: Optional[np.ndarray]=None,
+                  waveunit: Optional[Literal['micron','Angstrom']]=None,
                   overwrite: bool=False):
         '''
         Write the flat dispersion file.
@@ -754,6 +806,9 @@ class FlatDispersion(dispersion):
         wave
             Optional. Wavelength array. Default is None, which means the object's
             wavelength array is used.
+        waveunit
+            Optional. Wavelength unit, either 'micron' or 'Angstrom'.
+            Default is None, which means the object's wavelength unit is used.
         overwrite
             Optional. Overwrite existing dispersion file. Default is False.
         '''
@@ -763,7 +818,7 @@ class FlatDispersion(dispersion):
         self.setdir(dispdir)
         self.write(os.path.join(self.dispdir, self.filename), 
                    wave=wave, disp=self.flatdisp, type=self.flattype, 
-                   overwrite=overwrite)
+                   waveunit=waveunit, overwrite=overwrite)
 
 
 def MRS_dispersion(wave: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

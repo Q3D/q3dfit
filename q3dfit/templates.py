@@ -88,15 +88,16 @@ def read_bpass(infile: str,
         flux = data[:, 1:]
         # find the indices of the wavelengths that are within the desired range
         indices = np.where((wave >= waverange[0]) & (wave <= waverange[1]))[0]
+        # normalize fluxes over desired wavelength range
+        for i in range(flux.shape[1]):
+            flux[indices, i] /= np.mean(flux[indices, i])
         # write the fluxes to the output array
         fluxall[:, iz * int(nages):(iz + 1) * int(nages)] = flux[indices, :]
 
     # save the output array to a numpy file
-    np.save(outfile, {
-        'lambda': waveall,
-        'flux': fluxall,
-        'ages': agesall,
-        'zs': zall
-    })
+    np.save(outfile, {'lambda': waveall,
+                      'flux': fluxall,
+                      'ages': agesall,
+                      'zs': zall})
 
     print(f'BPASS templates saved to {outfile}')

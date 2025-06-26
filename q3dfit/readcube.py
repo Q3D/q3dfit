@@ -262,7 +262,6 @@ class Cube:
             CDELT = 'CDELT3'
             CRVAL = 'CRVAL3'
             CRPIX = 'CRPIX3'
-            CDELT = 'CDELT3'
             CD = 'CD3_3'
             CUNIT = 'CUNIT3'
             BUNIT = 'BUNIT'
@@ -276,7 +275,6 @@ class Cube:
             CDELT = 'CDELT1'
             CRVAL = 'CRVAL1'
             CRPIX = 'CRPIX1'
-            CDELT = 'CDELT1'
             CD = 'CD1_1'
             CUNIT = 'CUNIT1'
             BUNIT = 'BUNIT'
@@ -288,7 +286,6 @@ class Cube:
             CDELT = 'CDELT1'
             CRVAL = 'CRVAL1'
             CRPIX = 'CRPIX1'
-            CDELT = 'CDELT1'
             CD = 'CD1_1'
             CUNIT = 'CUNIT1'
             BUNIT = 'BUNIT'
@@ -398,6 +395,8 @@ class Cube:
         if self.waveunit_in != self.waveunit_out:
             wave_in = self.wave * u.Unit(self.waveunit_in)
             self.wave = wave_in.to(u.Unit(self.waveunit_out)).value
+            cdelt_in = self.cdelt * u.Unit(self.waveunit_in)
+            self.cdelt = cdelt_in.to(u.Unit(self.waveunit_out)).value
 
         '''
         This feature is not currently implemented.
@@ -699,7 +698,7 @@ class Cube:
         '''
 
         import matplotlib.pyplot as plt
-        import photutils
+        from photutils import aperture
 
         # second dimension of output array
         next = 1
@@ -738,24 +737,24 @@ class Cube:
         else:
             # create circular mask
             cent = np.array([row-1., col-1.])
-            aper = photutils.aperture.CircularAperture(cent, radius)
+            aper = aperture.CircularAperture(cent, radius)
 
             # loop through wavelengths
             for i in np.arange(0, self.nwave):
                 specdat = \
-                    photutils.aperture.aperture_photometry(
+                    aperture.aperture_photometry(
                         self.dat[:, :, i], aper)
                 spec[i, 0] = specdat['aperture_sum'].data[0] / norm
                 # for now simply sum var as well
                 if self.var is not None:
                     specvar = \
-                        photutils.aperture.aperture_photometry(
+                        aperture.aperture_photometry(
                             self.var[:, :, i], aper)
                     spec[i, 1] = specvar['aperture_sum'].data[0] / norm / norm
                 # for now simply sum dq
                 if self.dq is not None:
                     specdq = \
-                        photutils.aperture.aperture_photometry(
+                        aperture.aperture_photometry(
                             self.dq[:, :, i], aper)
                     spec[i, 2] = specdq['aperture_sum'].data[0]
 

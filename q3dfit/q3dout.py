@@ -494,7 +494,8 @@ class q3dout:
                                 sigma_obs[line][i]/sigma[line][i]
                             fluxpk_obs[line][i] = self.param[ifluxpk] * \
                                 sigma[line][i]/sigma_obs[line][i]
-                            fluxpkerr_obs[line][i] = self.perror[ifluxpk]
+                            fluxpkerr_obs[line][i] = self.perror[ifluxpk] * \
+                                sigma[line][i]/sigma_obs[line][i]
                         else:
                             sigma_obs[line][i] = sigma[line][i]
                             sigmaerr_obs[line][i] = sigmaerr[line][i]
@@ -601,21 +602,7 @@ class q3dout:
                         # Can't use sigma = 0 as criterion since the line could be
                         # fitted but unresolved.
                         if fluxpk[line][i] > 0:
-                            #sigmatmp = \
-                            #    sigma[line][i]/(constants.c/1.e3)*wave[line][i]
-                            # in km/s
-                            #sigma_obs[line][i] = \
-                            #    sigmatmp/wave[line][i]*(constants.c/1.e3)
-                            # error propagation for adding in quadrature
-                            #sigmaerr_obs[line][i] *= \
-                            #    sigma[line][i]/(constants.c/1.e3)*wave[line][i] /\
-                            #    sigmatmp
-                            # Correct peak flux and error for deconvolution
-                            #fluxpk[line][i] *= sigma_obs[line][i]/sigma[line][i]
-                            #fluxpkerr[line][i] *= sigma_obs[line][i]/sigma[line][i]
-
-                            # Compute total Gaussian flux
-                            # sigma and error need to be in wavelength space
+                            # Compute total Gaussian flux                                
                             gflux = \
                                 gaussflux(fluxpk[line][i],
                                           sigma[line][i] /
@@ -623,6 +610,14 @@ class q3dout:
                                           fluxpkerr[line][i],
                                           sigmaerr[line][i] /
                                           (constants.c / 1.e3) * wave[line][i])
+                            if self.waveunit == 'micron' and '/Angstrom' in self.fluxunit:
+                                # Convert to erg/s/cm^2/micron
+                                gflux['flux'] *= 1.e4
+                                gflux['flux_err'] *= 1.e4
+                            elif self.waveunit == 'Angstrom' and '/micron' in self.fluxunit:
+                                # Convert to erg/s/cm^2/Angstrom
+                                gflux['flux'] /= 1.e4
+                                gflux['flux_err'] /= 1.e4
                         else:
                             gflux = {'flux': 0., 'flux_err': 0.}
                         flux[line][i] = gflux['flux']

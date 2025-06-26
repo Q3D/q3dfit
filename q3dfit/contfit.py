@@ -168,6 +168,7 @@ def fitqsohost(wave: np.ndarray,
                hostonly: bool=False,
                blronly: bool=False,
                fluxunit: Optional[str]=None,
+               waveunit: Optional[Literal['micron','Angstrom']]=None,
                *, qsoxdr: str,
                **kwargs) -> tuple[np.ndarray, dict[str, Any], 
                                   Optional[float], Optional[float]]:
@@ -251,6 +252,12 @@ def fitqsohost(wave: np.ndarray,
         Default is None, which means no reddening is applied.
     qsoxdr
         Path and filename for the quasar template.
+    fluxunit
+        Optional. Units of the flux, as defined by :py:class:`~q3dfit.readcube.Cube`.
+        Default is None. Passed to :py:func:`~q3dfit.contfit.questfit` if refit='questfit'.
+    waveunit
+        Optional. Units of the wavelength, as defined by :py:class:`~q3dfit.readcube.Cube`.
+        Default is None.
 
     Returns
     -------
@@ -396,13 +403,21 @@ def fitqsohost(wave: np.ndarray,
         temp_log = q3dmath.interptemp(lambda_log, np.log(template_wave.T[0]),
             template_flux)
 
+        # Rest wavelength if reddening is applied
+        # must be in Angstroms
+        redlam = np.exp(lambda_log)/(1. + zstar)
+        if waveunit is not None:
+            if waveunit == 'micron':
+                redlam *= 1.e4
+
+
         # vel = c*np.log(1 + zstar)   # eq.(8) of Cappellari (2017)
         # t = clock()
         start = [0, siginit_stars]  # (km/s), starting guess for [V, sigma]
         pp = ppxf(temp_log, resid_log, err_log, velscale, start,
                   goodpixels=index_log,
                   reddening=av_star,
-                  lam=np.exp(lambda_log),
+                  lam=redlam,
                   degree=add_poly_degree,
                   quiet=quiet)
 

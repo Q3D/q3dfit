@@ -33,6 +33,7 @@ def plotcont(q3do: q3dout,
              compcols: Optional[list]=None,
              title: Optional[str]=None,
              xran: Optional[list]=None,
+             yran: Optional[list]=None,
              zeroymin: bool=False,
              xstyle: Literal['log', 'lin']='lin',
              ystyle: Literal['log', 'lin']='lin',
@@ -82,6 +83,9 @@ def plotcont(q3do: q3dout,
     xran
         Optional. Range of x-axis (wavelength) to plot. If None, applies the
        `fitrange` attribute of :py:class:`~q3dfit.q3dout.q3dout`.
+    yran
+        Optional. Range of y-axis (flux) to plot. If None, the y-axis limits
+        are determined automatically based on the data.
     zeroymin
         Optional. If True, sets the minimum y-axis value to 0. Defaults to False.
     xstyle
@@ -197,7 +201,9 @@ def plotcont(q3do: q3dout,
             ydat = specstars
             ymod = modstars
             # plotting
-            plt.xlim(xran[0], xran[1])
+            plt.xlim(xran)
+            if yran is not None:
+                plt.ylim(yran)
 
             fig.axes[0].axis('off')  # so the subplots don't share a y-axis
             fig.axes[1].axis('off')  # so the subplots don't share a y-axis
@@ -319,30 +325,35 @@ def plotcont(q3do: q3dout,
                     maximum = np.nanmax(dat_et_mod)
                     minimum = np.nanmin(dat_et_mod)
                     # set min and max in yran
-                    yran = [minimum, maximum]
+                    yranpan = None
+                    if yran is None:
+                        yranpan = [minimum, maximum]
+
+                        # finding yran[1] aka max
+                        ydi = np.zeros(len(idict[group]))
+                        ydi = np.array(ydat)[idict[group]]
+
+                        ymodi = np.zeros(len(idict[group]))
+                        ymodi = np.array(ymod)[idict[group]]
+                        y = np.array(ydi - ymodi)
+                        ny = len(y)
+
+                        iysort = np.argsort(y)
+                        ysort = np.array(y)[iysort]
+
+                        ymodisort = ymodi[iysort]
+                        if ysort[ny - ntop] < ysort[ny - 1] * maxthresh:
+                            yranpan[1] = np.nanmax(ysort[0:ny - ntop] +
+                                                ymodisort[0:ny - ntop])
+                    else:
+                        yranpan = copy(yran)
+
                     if zeroymin:
-                        yran[0] = 0.
-
-                    # finding yran[1] aka max
-                    ydi = np.zeros(len(idict[group]))
-                    ydi = np.array(ydat)[idict[group]]
-
-                    ymodi = np.zeros(len(idict[group]))
-                    ymodi = np.array(ymod)[idict[group]]
-                    y = np.array(ydi - ymodi)
-                    ny = len(y)
-
-                    iysort = np.argsort(y)
-                    ysort = np.array(y)[iysort]
-
-                    ymodisort = ymodi[iysort]
-                    if ysort[ny - ntop] < ysort[ny - 1] * maxthresh:
-                        yran[1] = np.nanmax(ysort[0:ny - ntop] +
-                                            ymodisort[0:ny - ntop])
+                        yranpan[0] = 0.
 
                     # plotting
                     plt.xlim(xrans[group][0], xrans[group][1])
-                    plt.ylim(yran[0], yran[1])
+                    plt.ylim(yranpan)
                     plt.ylabel(ytit, fontsize=15)
                     if group == 3:
                         plt.xlabel(xtit, fontsize=15, labelpad=10)
@@ -363,8 +374,8 @@ def plotcont(q3do: q3dout,
                     #    plt.xticks(xticks, fontsize=10)
                     if np.nanmin(ydat) > 1e-10:
                         # this will fail if fluxes are very low (<~1e-10)
-                        plt.yticks(np.arange(yran[0], yran[1],
-                                             np.around((yran[1] - yran[0])/5.,
+                        plt.yticks(np.arange(yranpan[0], yranpan[1],
+                                             np.around((yranpan[1] - yranpan[0])/5.,
                                                    decimals=2)), fontsize=10)
                     else:
                         plt.yticks()
@@ -585,30 +596,35 @@ def plotcont(q3do: q3dout,
                         if smallboy < minimum:
                             minimum = smallboy
                     # set min and max in yran
-                    yran = [minimum, maximum]
+                    yranpan = None
+                    if yran is None:
+                        yranpan = [minimum, maximum]
+
+                        # finding yran[1] aka max
+                        ydi = np.zeros(len(idict[group]))
+                        ydi = np.array(ydat)[idict[group]]
+
+                        ymodi = np.zeros(len(idict[group]))
+                        ymodi = np.array(ymod)[idict[group]]
+                        y = np.array(ydi - ymodi)
+                        ny = len(y)
+
+                        iysort = np.argsort(y)
+                        ysort = np.array(y)[iysort]
+
+                        ymodisort = ymodi[iysort]
+                        if ysort[ny - ntop] < ysort[ny - 1] * maxthresh:
+                            yranpan[1] = np.nanmax(ysort[0:ny - ntop] +
+                                                   ymodisort[0:ny - ntop])
+                    else:
+                        yranpan = copy(yran)
+
                     if zeroymin:
-                        yran[0] = 0.
-
-                    # finding yran[1] aka max
-                    ydi = np.zeros(len(idict[group]))
-                    ydi = np.array(ydat)[idict[group]]
-
-                    ymodi = np.zeros(len(idict[group]))
-                    ymodi = np.array(ymod)[idict[group]]
-                    y = np.array(ydi - ymodi)
-                    ny = len(y)
-
-                    iysort = np.argsort(y)
-                    ysort = np.array(y)[iysort]
-
-                    ymodisort = ymodi[iysort]
-                    if ysort[ny - ntop] < ysort[ny - 1] * maxthresh:
-                        yran[1] = np.nanmax(ysort[0:ny - ntop] +
-                                            ymodisort[0:ny - ntop])
+                        yranpan[0] = 0.
 
                     # plotting
                     plt.xlim(xrans[group][0], xrans[group][1])
-                    plt.ylim(yran[0], yran[1])
+                    plt.ylim(yranpan)
                     plt.ylabel(ytit, fontsize=15)
                     if group == 3:
                         plt.xlabel(xtit, fontsize=15, labelpad=10)
@@ -628,8 +644,8 @@ def plotcont(q3do: q3dout,
                         plt.xticks(xticks, fontsize=10)
                     if fluxunit_out != 'fnu':
                         # this will fail if fluxes are very low (<~1e-10)
-                        plt.yticks(np.arange(yran[0], yran[1],
-                                             np.around((yran[1] - yran[0])/5.,
+                        plt.yticks(np.arange(yranpan[0], yranpan[1],
+                                             np.around((yranpan[1] - yranpan[0])/5.,
                                                        decimals=2)),
                                    fontsize=10)
                     else:

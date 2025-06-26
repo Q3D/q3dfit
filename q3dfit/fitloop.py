@@ -304,13 +304,13 @@ def fitloop(ispax: int,
                 q3do = q3do_init
 
             # Check components
-            if q3di.dolinefit:
-                if q3di.checkcomp \
-                    and not onefit \
-                    and not abortfit \
-                    and ncomp:
+            if q3di.dolinefit \
+                and not onefit \
+                and not abortfit:
 
-                    q3do.sepfitpars()
+                q3do.sepfitpars()
+
+                if q3di.checkcomp and ncomp:
 
                     ccModule = \
                         importlib.import_module('q3dfit.' +
@@ -344,9 +344,7 @@ def fitloop(ispax: int,
             q3do.col = i+1
             q3do.row = j+1
 
-            # update units, etc.
-            q3do.fluxunit = cube.fluxunit_out
-            q3do.waveunit = cube.waveunit_out
+            # update q3do with cube properties
             q3do.fluxnorm = cube.fluxnorm
             q3do.pixarea_sqas = cube.pixarea_sqas
             #

@@ -711,7 +711,8 @@ def plotline(q3do: q3dout,
              size: float|ArrayLike=300.,
              savefig: bool=False,
              outfile: Optional[str]=None,
-             argssavefig: dict={'bbox_inches': 'tight', 'dpi': 300}):
+             argssavefig: dict={'bbox_inches': 'tight', 'dpi': 300},
+             mode: Literal['dark', 'light'] = 'dark'):
     """
     Plot emission line fit and output to JPG
 
@@ -758,8 +759,16 @@ def plotline(q3do: q3dout,
         Optional. Dictionary of arguments to pass to 
         :py:meth:`~matplotlib.pyplt.savefig()`. Defaults to
         {'bbox_inches': 'tight', 'dpi': 300}.
+    mode
+        Optional. Plotting mode, either 'dark' or 'light'. Defaults to 'dark
     """
-
+    #setting mode parameters
+    if mode == 'dark':
+        pltstyle = 'dark_background'
+        dcolor = 'w'
+    elif mode == 'light':
+        pltstyle = 'seaborn-v0_8-ticks'
+        dcolor = 'k'
     rcParamsOrig = rcParams.copy()
 
     ncomp = q3do.maxncomp
@@ -850,7 +859,7 @@ def plotline(q3do: q3dout,
     off = np.array([-1.*size/2., size/2.])
     off = off.transpose()
 
-    plt.style.use('dark_background')
+    plt.style.use(pltstyle)
     fig = plt.figure(figsize=figsize)
     for i in range(0, nlin):
 
@@ -897,13 +906,13 @@ def plotline(q3do: q3dout,
             ax0.set_xticks(xmticks, minor=True)
             ax1.set_xticks(xmticks, minor=True)
             ax0.tick_params('x', which='major', direction='in', length=7,
-                            width=2, color='white')
+                            width=2, color=dcolor)
             ax0.tick_params('x', which='minor', direction='in', length=5,
-                            width=1, color='white')
+                            width=1, color=dcolor)
             ax1.tick_params('x', which='major', direction='in', length=7,
-                            width=2, color='white')
+                            width=2, color=dcolor)
             ax1.tick_params('x', which='minor', direction='in', length=5,
-                            width=1,  color='white')
+                            width=1,  color=dcolor)
 
             # create yran
             ydat = spectot
@@ -935,7 +944,7 @@ def plotline(q3do: q3dout,
             ax0.set_xlim([xran[0], xran[1]])
             ax0.set_ylim([yran[0], yran[1]])
             # plots on ax0
-            ax0.plot(wave, ydat, color='White', linewidth=1)
+            ax0.plot(wave, ydat, color=dcolor, linewidth=1)
             if waveunit_out == 'micron':
                 xtit = 'Wavelength ($\mu$m)'
             elif waveunit_out == 'Angstrom':

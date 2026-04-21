@@ -10,6 +10,7 @@ from numpy.typing import ArrayLike
 from astropy.constants import c
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.table import Table
+from astropy import units as u
 from importlib import import_module
 from lmfit import Parameters
 from ppxf.ppxf_util import log_rebin
@@ -57,7 +58,9 @@ class q3dout:
     fitran_indx : ndarray
         Fit range indices. Added by constructor. Defaults to None.
     fluxunit : str
-        Flux unit. Added by constructor. Defaults to `erg/s/cm^2/micron`.
+        Flux density unit. Added by constructor. Defaults to `erg/s/cm^2/micron`.
+    linefluxunit : str
+        Line flux unit. Added by :py:func:`~q3dfit.q3dout.q3dout.sepfitpars()`.
     waveunit : str
         Wavelength unit. Added by constructor. Defaults to 'micron'.
     fluxnorm : float
@@ -423,6 +426,13 @@ class q3dout:
 
             tf = Table(basearr_1comp, names=self.linelist['name'])
             tfe = Table(basearr_1comp, names=self.linelist['name'])
+
+            # Set up line flux unit
+            self.linefluxunit = (u.Unit(self.fluxunit)*u.Unit(self.waveunit)).to_string()
+            if self.waveunit == 'micron' and '/Angstrom' in self.fluxunit:
+                self.linefluxunit = (u.Unit(self.fluxunit)*u.Angstrom).to_string()
+            elif self.waveunit == 'Angstrom' and '/micron' in self.fluxunit:
+                self.linefluxunit = (u.Unit(self.fluxunit)*u.micron).to_string()
 
             #   Populate Tables
             for line in self.linelist['name']:

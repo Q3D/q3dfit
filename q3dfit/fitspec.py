@@ -415,7 +415,8 @@ def fitspec(wlambda: np.ndarray,
             if 'bounds' in q3di.argscontfit:
                 bounds = q3di.argscontfit['bounds']
             else:
-                bounds = [[-1000., 1000.], [0., 1000.]]
+            #    bounds = [[-1000., 1000.], [0., 1000.]]
+                bounds = None
 
             # Rest wavelength if reddening is applied
             # must be in Angstroms

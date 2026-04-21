@@ -8,6 +8,7 @@ import re
 import warnings
 from typing import Literal, Optional
 from numpy.typing import ArrayLike
+from scipy.ndimage import median_filter
 
 from astropy import units as u
 from astropy.constants import c
@@ -669,6 +670,7 @@ class Cube:
                     radius: float=1.,
                     norm: float=1.,
                     plot: bool=True,
+                    medfilt: Optional[int]=None,
                     ylim: Optional[tuple]=None):
         '''
         Extract a spectrum in a single spaxel or a circular aperture.
@@ -686,6 +688,9 @@ class Cube:
             Optional. Factor by which to divide output spectrum. Default is 1.
         plot
             Optional. Plot extracted spectrum.
+        medfilt
+            Optional. If not None, apply median filter of specified size to
+            extracted spectrum. Default is None.
         ylim
             Optional. Y-axis limits for plot. Default is None, in which case
             the plot will autoscale.
@@ -758,9 +763,18 @@ class Cube:
                             self.dq[:, :, i], aper)
                     spec[i, 2] = specdq['aperture_sum'].data[0]
 
+        if medfilt is not None:
+            spec[:, 0] = median_filter(spec[:, 0], size=medfilt)
+            if self.var is not None:
+                spec[:, 1] = median_filter(spec[:, 1], size=medfilt)
+            if self.dq is not None:
+                spec[:, 2] = median_filter(spec[:, 2], size=medfilt)
+
         if plot:
             plt.plot(self.wave, spec[:, 0])
             plt.plot(self.wave, np.sqrt(spec[:, 1]))
+            plt.xlabel('Wavelength ('+self.waveunit_out+')')
+            plt.ylabel('Flux ('+self.fluxunit_out+')')
             if ylim is not None:
                 plt.ylim(ylim)
             plt.show()

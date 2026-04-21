@@ -116,6 +116,7 @@ def q3dcollect(q3di: str | q3din.q3din,
         emlweq['ftot'] = dict()
         emlflx['ftot'] = dict()
         emlflxerr['ftot'] = dict()
+        emlunits = dict()
         for k in range(0, q3dii.maxncomp):
             cstr = 'c' + str(k + 1)
             emlwav[cstr] = dict()
@@ -253,6 +254,25 @@ def q3dcollect(q3di: str | q3din.q3din,
 
                 # process line fit parameters
                 q3do.sepfitpars(doublets=doublets, ignoreres=ignoreres)
+
+                # Record units
+                if emlunits == {}:
+                    emlunits['wave'] = q3do.waveunit
+                    emlunits['fluxpk'] = q3do.fluxunit
+                    if hasattr(q3do, 'sigmaunit'):
+                       emlunits['sigma'] = q3do.sigmaunit
+                    else:
+                        # Calculate it here as well as in q3dout.sepfitpars for backward compatibility with old versions
+                        emlunits['sigma'] = q3do.waveunit
+                    if hasattr(q3do, 'linefluxunit'):
+                        emlunits['flux'] = q3do.linefluxunit
+                    else:
+                        # Calculate it here as well as in q3dout.sepfitpars for backward compatibility with old versions
+                        emlunits['flux'] = (u.Unit(q3do.fluxunit)*u.Unit(q3do.waveunit)).to_string()
+                        if q3do.waveunit == 'micron' and '/Angstrom' in q3do.fluxunit:
+                            emlunits['flux'] = (u.Unit(q3do.fluxunit)*u.Angstrom).to_string()
+                        elif q3do.waveunit == 'Angstrom' and '/micron' in q3do.fluxunit:
+                            emlunits['flux'] = (u.Unit(q3do.fluxunit)*u.micron).to_string()
 
                 # get correct number of components in this spaxel
                 thisncomp = 0
@@ -400,7 +420,8 @@ def q3dcollect(q3di: str | q3din.q3din,
                  emlwav=emlwav, emlwaverr=emlwaverr,
                  emlsig=emlsig, emlsigerr=emlsigerr,
                  emlflx=emlflx, emlflxerr=emlflxerr,
-                 emlweq=emlweq, emlncomp=emlncomp)
+                 emlweq=emlweq, emlncomp=emlncomp,
+                 emlunits=emlunits)
         q3dutil.write_msg(f'Saving emission-line fit results into {outfile}', q3dii.logfile, quiet)
 
     if q3dii.docontfit:

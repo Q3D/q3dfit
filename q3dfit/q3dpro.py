@@ -1805,19 +1805,28 @@ class ContData:
             raise FileNotFoundError(f'Continuum file {filename} does not exist.')
 
         self.data = self._read_npy(datafile)
-        self.wave           = self.data['wave']
-        self.qso_mod        = self.data['qso_mod']
-        self.host_mod       = self.data['host_mod']
-        self.poly_mod       = self.data['poly_mod']
-        self.npts           = self.data['npts']
-        self.stel_sixgma    = self.data['stel_sigma']
+        self.wave = self.data['wave']
+        self.npts = self.data['npts']
+        self.stel_sixgma = self.data['stel_sigma']
         self.stel_sigma_err = self.data['stel_sigma_err']
-        self.stel_z         = self.data['stel_z']
-        self.stel_z_err     = self.data['stel_z_err']
-        self.stel_rchisq    = self.data['stel_rchisq']
-        self.stel_ebv       = self.data['stel_ebv']
-        self.stel_ebv_err   = self.data['stel_ebv_err']
-
+        self.stel_z = self.data['stel_z']
+        self.stel_z_err = self.data['stel_z_err']
+        self.stel_rchisq = self.data['stel_rchisq']
+        self.stel_av = self.data['stel_av']
+        #self.stel_ebv_err = self.data['stel_av_err']
+        if q3di.fcncontfit == 'ppxf':
+            self.poly_mod = self.data['poly_mod']
+            self.stel_mod = self.data['stel_mod']
+            self.all_mod = self.data['all_mod']
+        elif q3di.fcncontfit == 'fitqsohost':
+            self.qso_mod = self.data['qso_mod']
+            self.host_mod = self.data['host_mod']
+            self.poly_mod = self.data['poly_mod']
+            self.stel_mod = self.data['stel_mod']
+            self.all_mod = self.data['all_mod']
+        else:
+            self.all_mod = self.data['all_mod']
+ 
 
     def _read_npy(self,
                   datafile: str) -> dict:

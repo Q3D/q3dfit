@@ -708,6 +708,8 @@ def plotline(q3do: q3dout,
              waveunit_in: Literal['micron','Angstrom']='micron',
              waveunit_out: Optional[str]=None,
              specConv: Optional[spectConvol]=None,
+             yran: Optional[list]=None,
+             zeroymin: bool=False,
              size: float|ArrayLike=300.,
              savefig: bool=False,
              outfile: Optional[str]=None,
@@ -748,6 +750,11 @@ def plotline(q3do: q3dout,
     specConv
         Optional. :py:class:`~q3dfit.spectConvol.spectConvol` object for
         spectral convolution. If None, no convolution is applied.
+    yran
+        Optional. Range of y-axis (flux) to plot. If None, the y-axis limits
+        are determined automatically based on the data.
+    zeroymin
+        Optional. If True, sets the minimum y-axis value to 0. Defaults to False.
     size
         Optional. Size of the plot window in Angstroms. If a single float is
     savefig
@@ -934,7 +941,10 @@ def plotline(q3do: q3dout,
                 yranmax = ydatmax
             else:
                 yranmax = ymodmax
-            yran = [yranmin, yranmax]
+            if yran is None:
+                yranpan = [yranmin, yranmax]
+            if zeroymin:
+                yranpan[0]=0.
             icol = (float(i))/(float(nx))
             if icol % 1 == 0:
                 ytit = 'Fit'
@@ -942,7 +952,7 @@ def plotline(q3do: q3dout,
                 ytit = ''
             ax0.set(ylabel=ytit)
             ax0.set_xlim([xran[0], xran[1]])
-            ax0.set_ylim([yran[0], yran[1]])
+            ax0.set_ylim([yranpan[0], yranpan[1]])
             # plots on ax0
             ax0.plot(wave, ydat, color=dcolor, linewidth=1)
             if waveunit_out == 'micron':
@@ -972,7 +982,7 @@ def plotline(q3do: q3dout,
                                                                 wavecen=refwav)
                             else:
                                 conv = flux
-                            ax0.plot(wave, yran[0] + conv, color=colors[j],
+                            ax0.plot(wave, yranpan[0] + conv, color=colors[j],
                                      linewidth=2, linestyle='dashed')
                         ax0.annotate(linetext[k], (0.05, 1. - ylaboff),
                                      xycoords='axes fraction',
@@ -1002,7 +1012,7 @@ def plotline(q3do: q3dout,
                 yranmax = ydatmax
             else:
                 yranmax = ymodmax
-            yran = [yranmin, yranmax]
+            yranpan = [yranmin, yranmax]
             if icol % 1 == 0:
                 ytit = 'Residual'
             else:
@@ -1010,7 +1020,7 @@ def plotline(q3do: q3dout,
             ax1.set(ylabel=ytit)
             # plots on ax1
             ax1.set_xlim([xran[0], xran[1]])
-            ax1.set_ylim([yran[0], yran[1]])
+            ax1.set_ylim([yranpan[0], yranpan[1]])
             ax1.plot(wave, ydat, linewidth=1)
             ax1.plot(wave, ymod, color='Red')
 

@@ -1,3 +1,7 @@
+2.0.0 (21 April 2026)
+---------------------
+- Minor bugfixes. Ready to go so folks can pip install more easily.
+
 2.0.0-rc.3 (26 Jun 2025)
 ------------------------
 - Improved unit handling; testing 'microns' and 'Angstroms' for wavelength units.

@@ -18,11 +18,11 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'q3dfit'
-copyright = '2025, David Rupke and the Q3D Team'
+copyright = '2026, David Rupke and the Q3D Team'
 author = 'David Rupke and the Q3D Team'
 
 # The full version, including alpha/beta/rc tags
-release = '2.0.0-rc.3'
+release = '2.0.0'
 
 
 # -- General configuration ---------------------------------------------------

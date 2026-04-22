@@ -4,7 +4,8 @@ from numpy.typing import ArrayLike
 import numpy as np
 
 def read_bpass(infile: str,
-               outfile: str,
+               outfile: str = '',
+               outdir: str = '',
                waverange: ArrayLike = [1., 100000.],
                binary: bool = False,
                zs: ArrayLike = [0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 
@@ -37,6 +38,10 @@ def read_bpass(infile: str,
     outfile
         The path to the output file where the numpy save file
         will be written. Should have a .npy extension.
+    outdir
+        Optional. Will generate an output filename based on the other parameters
+        and save in this directory. If not provided, will save to the path 
+        specified in outfile. If not provided, outfile must be provided.
     waverange
         Optional. The wavelength range to use for the templates, expressed in 
         Angstroms. Defaults to [1., 100000.].
@@ -48,6 +53,8 @@ def read_bpass(infile: str,
         [0.001,0.002,0.003,0.004,0.006,0.008,0.010,0.014,0.020,0.030,0.040].
         Defaults to all metallicities.
     '''
+    # spectral resolution of templates
+    R = 10000
     # number of metallicities
     nz = len(zs)
     # ages for one metallicity
@@ -93,11 +100,20 @@ def read_bpass(infile: str,
             flux[indices, i] /= np.mean(flux[indices, i])
         # write the fluxes to the output array
         fluxall[:, iz * int(nages):(iz + 1) * int(nages)] = flux[indices, :]
+        
+        # calculating sigma array for templates based on spectral resolution
+        sigma = [2.35 * (i / R) for i in waveall]
+
+    if outdir is not '':
+        indir = infile.split('/')[-2]
+        outfile = f'{outdir}/{indir}_z{min(zall) * 1000:03.0f}to{max(zall) * 1000:03.0f}_{sinorbin}_lam{waverange[0]:.0f}to{waverange[1]:.0f}.npy'
 
     # save the output array to a numpy file
     np.save(outfile, {'lambda': waveall,
                       'flux': fluxall,
                       'ages': agesall,
-                      'zs': zall})
+                      'zs': zall,
+                      'unit': 'Angstrom',
+                      'sigma' : sigma})
 
     print(f'BPASS templates saved to {outfile}')

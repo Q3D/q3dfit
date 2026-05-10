@@ -19,6 +19,7 @@ from scipy.interpolate import interp1d
 from . import q3din, q3dmath, q3dout
 from q3dfit.q3dutil import lmlabel, write_msg
 from q3dfit.spectConvol import spectConvol
+from q3dfit.q3dutil import airtovac
 
 
 def fitspec(wlambda: np.ndarray,
@@ -465,9 +466,13 @@ def fitspec(wlambda: np.ndarray,
                 cont_fit_mpoly = np.zeros_like(gdlambda)
 
             ct_coeff = dict()
+            if q3di.savematrix : ct_coeff['matrix'] = pp.matrix 
             ct_coeff['polymod'] = cont_fit_poly
             ct_coeff['mpolymod'] = cont_fit_mpoly
             # this includes the multiplicative polynomial
+            ct_coeff['npoly'] = add_poly_degree
+            ct_coeff['ntemplates'] = len(pp.weights)
+            ct_coeff['gdlambda_log'] = gdlambda_log
             ct_coeff['stelmod'] = q3do.cont_fit - cont_fit_poly
             ct_coeff['polyweights'] = pp.polyweights
             ct_coeff['stelweights'] = pp.weights
@@ -475,7 +480,7 @@ def fitspec(wlambda: np.ndarray,
             ct_coeff['sigma'] = pp.sol[1]
             ct_coeff['sigma_err'] = solerr[1]
             q3do.ct_coeff = ct_coeff
-    
+
             # Adjust stellar redshift based on fit
             # From ppxf docs:
             # IMPORTANT: The precise relation between the output pPXF velocity
@@ -831,56 +836,6 @@ def fitspec(wlambda: np.ndarray,
 def per_iteration(pars, iteration, resid, *args, **kws):
     print(" ITER ", iteration, [f"{p.name} = {p.value:.5f}"
                                 for p in pars.values()])
-
-
-def airtovac(wv: np.ndarray,
-             waveunit: Literal['micron','Angstrom']='Angstrom',
-             logfile: Optional[str]=None,
-             quiet: bool=True) -> np.ndarray:
-    """
-    Takes an array of wavelengths in air and converts them to vacuum
-    using eq. 3 from Morton et al. 1991.
-
-    Parameters
-    ----------
-    wv
-        Input wavelengths.
-    waveunit
-        Optional. Wavelength unit. Default is Angstrom.
-
-    Returns
-    -------
-    ndarray
-        An array of the same dimensions as the input and in the same units
-        as the input
-
-    References
-    ----------
-    Morton 1991, ApJSS, 77, 119
-
-    Examples
-    --------
-    >>> wv=np.arange(3000,7000,1)
-    >>> vac_wv=airtovac(wv)
-    array([3000.87467224, 3001.87492143, 3002.87517064, ..., 6998.92971915, 6999.92998844, 7000.93025774])
-    """
-    x=wv
-    # get x to be in Angstroms for calculations if it isn't already
-    if ((waveunit!='Angstrom') & (waveunit!='micron')):
-        write_msg(f'Wave unit {waveunit} not recognized, assuming Angstroms.', logfile, quiet)
-    if (waveunit=='micron'):
-        x=wv*1.e4
-
-    tmp=1.e4/x
-    # vacuum wavelengths are indeed slightly longer
-    y=x*(1.+6.4328e-5+2.94981e-2/(146.-tmp**2)+2.5540e-4/(41.-tmp**2))
-
-    # get y to be in the same units as the input:
-    if (waveunit=='micron'):
-        y=y*1.e-4
-
-    return(y)
-
 
 def masklin(llambda: np.ndarray,
             linelambda: dict[str, np.ndarray],

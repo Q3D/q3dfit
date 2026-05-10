@@ -767,8 +767,11 @@ def plotline(q3do: q3dout,
         :py:meth:`~matplotlib.pyplt.savefig()`. Defaults to
         {'bbox_inches': 'tight', 'dpi': 300}.
     mode
-        Optional. Plotting mode, either 'dark' or 'light'. Defaults to 'dark
+        Optional. Plotting mode, either 'dark' or 'light'. Defaults to 'dark'
+        Changes the plot background and text colors for better visibility.
     """
+    rcParamsOrig = rcParams.copy()
+
     #setting mode parameters
     if mode == 'dark':
         pltstyle = 'dark_background'
@@ -776,7 +779,6 @@ def plotline(q3do: q3dout,
     elif mode == 'light':
         pltstyle = 'seaborn-v0_8-ticks'
         dcolor = 'k'
-    rcParamsOrig = rcParams.copy()
 
     ncomp = q3do.maxncomp
     colors = ['Magenta', 'Green', 'Orange', 'Teal']
@@ -1041,6 +1043,114 @@ def plotline(q3do: q3dout,
 
     rcParams.update(rcParamsOrig)
 
+def plotcontcomponents(q3do: q3dout, 
+                         mode: Literal['dark', 'light'] = 'dark',
+                         figsize: tuple = (12,12),
+                         plottype: Literal['line', 'stackplot'] = 'line',
+                         savefig: bool=False,
+                         outfile: Optional[str]='none',
+                         totals_plot_components: Optional[ArrayLike] = None, 
+                         totals_plot_labels: Optional[ArrayLike] = None, 
+                         totals_plot_colors: Optional[ArrayLike] = None, 
+                         totals_plot: bool=True, 
+                         components_plot: bool=True, 
+                         sortorder: bool=False,
+                         linalpha: float=0.8,
+                         linwidth: float=1,
+                         argssavefig: dict={'bbox_inches': 'tight', 'dpi': 30}):
+    
+    rcParamsorig = rcParams.copy()
+
+    wave = q3do.wave
+    if mode == 'dark':
+        pltstyle = 'dark_background'
+        dcolor = 'w'
+    elif mode == 'light':
+        pltstyle = 'seaborn-v0_8-ticks'
+        dcolor = 'k'
+    else:
+        raise ValueError("Invalid mode. Choose 'dark' or 'light'.")
+    
+    plt.style.use(pltstyle)
+    if totals_plot and components_plot:
+        fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize)
+    elif components_plot and not totals_plot:
+        fig, ax = plt.subplots(1, 1, sharex=True, figsize=figsize)
+        ax = [ax]
+    elif totals_plot and not components_plot:
+        fig, ax = plt.subplots(1, 1, sharex=True, figsize=figsize)
+        ax = [None, ax]
+    else:
+        raise ValueError("At least one of totals_plot or components_plot must be True.")
+
+    # Initializing variables
+    ages = q3do.component_templates['age']
+    zs = q3do.component_templates['zs']
+    convolved_templates = q3do.component_templates['interpolated']
+    weights = q3do.ct_coeff['stelweights']
+    indecies = q3do.component_templates['index']
+
+    # Create a list of relavent templates
+    templates_list = [convolved_templates[:,i] for i in indecies]
+    labels_list = [f'Age: {(ages[i]/1e9):.2f} Gyr | Z: {zs[i]:.3f} (wt = {weights[indecies[i]]:.2f})' for i in range(len(indecies))]
+    
+    # Plotting the compoonents plot
+    
+    if components_plot:
+        # Sort templates by their mean value 
+        templates_medians = [np.mean(template) for template in templates_list]
+        sorted_indices = np.argsort(templates_medians)
+        if not sortorder:
+            sorted_indices = sorted_indices[::-1]  # Sort in descending order
+
+        templates_list = [templates_list[i] for i in sorted_indices]
+        labels_list = [labels_list[i] for i in sorted_indices]
+
+        # Plot each component in the upper panel
+        if plottype == 'line':
+            for i in range(len(templates_list)):
+                ax[0].plot(wave, templates_list[i], label=labels_list[i], alpha=linalpha, lw=linwidth)
+        if plottype == 'stackplot':
+            ax[0].stackplot(wave, templates_list, labels=labels_list, alpha=linalpha, lw=linwidth)
+
+        ax[0].legend()
+        ax[0].set_title('Stellar fit components')
+        ax[0].set_xlabel('Wavelength (Angstrom)')
+        ax[0].set_ylabel('Flux')
+
+    # Plotting the totals plot
+
+    # Finding the total fit.
+    if totals_plot:
+        total_fit = np.sum(templates_list, axis=0) + q3do.polymod
+        # Establish comppnents for totals plot
+        if totals_plot_components == None:
+            totals_plot_components = [q3do.cont_dat, total_fit, q3do.stelmod, q3do.polymod, q3do.cont_fit]
+        if totals_plot_labels == None:
+            totals_plot_labels = ['Continuum Data', 'Sum of components', 'Stel temp', f'Ord. {q3do.add_poly_degree} Legendre poly', 'Continuum fit']
+        if totals_plot_colors == None:
+            totals_plot_colors = [dcolor, 'blue', 'cyan', 'magenta', 'red']
+    
+        # Plot each component for totals plot
+        for i in range(len(totals_plot_components)):
+            ax[1].plot(q3do.wave, totals_plot_components[i], label=totals_plot_labels[i], lw=1, zorder=11+i, color=totals_plot_colors[i])
+
+        ax[1].legend()
+        ax[1].set_title('Total stellar fit')
+        ax[1].set_xlabel('Wavelength (Angstrom)')
+        ax[1].set_ylabel('Flux')
+
+    fig.suptitle('Stellar Population Component Decomposition', fontsize=16)
+
+    if savefig and outfile is not None:
+        if len(outfile[0])>1:
+            fig.savefig(outfile[0], **argssavefig)
+        else:
+            fig.savefig(outfile, **argssavefig)
+
+    plt.show()
+
+    rcParams.update(rcParamsorig)
 
 def adjust_ax(ax,
               fig,

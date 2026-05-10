@@ -8,12 +8,13 @@ from typing import Literal, Optional
 from numpy.typing import ArrayLike
 
 from astropy.constants import c
+from astropy import units as u
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.table import Table
 from astropy import units as u
 from importlib import import_module
 from lmfit import Parameters
-from ppxf.ppxf_util import log_rebin
+from ppxf.ppxf_util import log_rebin, gaussian_filter1d
 from scipy import constants
 from scipy.interpolate import interp1d
 
@@ -21,6 +22,7 @@ from . import q3dutil, q3din
 from q3dfit.qsohostfcn import qsohostfcn
 from q3dfit.contfit import readcf
 from q3dfit.exceptions import InitializationError
+from q3dfit.q3dutil import airtovac
 
 class q3dout:
     '''
@@ -1159,6 +1161,96 @@ class q3dout:
                 print(f'Redshift: {self.zstar:.5f}+/-{self.zstar_err:.5f}')
         else:
             print('Run q3dout.sepcontpars first!')
+
+    def get_component_templates_ppxf(self, 
+                              q3di: q3din.q3din, 
+                              min_weight: float=0.01):
+        '''    
+        Decomposes the stellar fit components into individual spectra, ages, metallicities, and weights and 
+        stores them in the `component_templates` attribute.
+
+        Parameters
+        ----------
+        q3di 
+            :py:class:`~q3dfit.q3din.q3din` object containing stellar template file path
+        min_weight
+            Minimum weight threshold for including components in the decomposition. Default is 0.01.
+
+        Outputs
+        -------
+        component_templates
+            Dictionary containing the decomposed stellar fit components with keys 'index', 'spectrum', 'age', 'logage', 'zs', 'weight', and 'lambda'.
+        '''
+        if not hasattr(self, 'decompose_ppxf_fit'):
+            print('Needed to run sepcontpars first, doing that')
+            self.sepcontpars(q3di)
+
+        templates = np.load(q3di.startempfile, allow_pickle=True)[()]
+
+        stellar_spectra = {'lambda': templates['lambda']}
+ 
+        stellar_spectra['nages'] = np.count_nonzero(templates['zs'] == templates['zs'][0])
+
+        stellar_spectra['index'] = [i for i, w in enumerate(self.ct_coeff['stelweights']) if w > min_weight]
+        stellar_spectra['flux'] = templates['flux'][:, stellar_spectra['index']]
+        stellar_spectra['age'] = templates['ages'][stellar_spectra['index']]
+        stellar_spectra['zs'] = templates['zs'][stellar_spectra['index']]
+        stellar_spectra['weight'] = self.ct_coeff['stelweights'][stellar_spectra['index']]
+
+        total_weight = np.sum(stellar_spectra['weight'])
+        stellar_spectra['rel_weight'] = [i / total_weight for i in stellar_spectra['weight']]
+
+        self.component_templates = stellar_spectra
+    
+    def get_convolved_component_templates(self, q3di):
+        if not hasattr(self, 'component_templates'):
+            print('Running get_component_templates_ppxf with default settings...')
+            self.get_component_templates_ppxf(self, q3di)
+        
+        if 'matrix' in self.ct_coeff:
+            coeff = self.ct_coeff
+        
+            #extract the templates from the design matrix
+            npoly = coeff['npoly'] + 1
+            ntemp = len(coeff['stelweights'])
+
+            template_matrix = coeff['matrix'][:, npoly :]
+
+            #factor in the stelweight to get the processed templates
+            broadened_templates_log = template_matrix * coeff['stelweights']
+
+            lin_lambda = self.wave
+            log_lambda = np.log(lin_lambda)
+            source_log_lambda = coeff['gdlambda_log']
+
+            interp_func = interp1d(source_log_lambda, broadened_templates_log, axis=0,
+                                   kind='cubic', bounds_error=False, fill_value=0.0)
+            
+            components = interp_func(log_lambda)
+                
+            self.component_templates['interpolated'] = components
+        else:
+            print('No saved convolution matrix, set q3di.savematrix to True and re-run pPXF fit to save the convolution matrix')
+
+
+
+    def plot_cont_components(self,
+                            q3di: q3din.q3din,
+                            savefig: bool=False,
+                            outfile: Optional[str]=None,
+                            argssavefig: dict={'bbox_inches': 'tight','dpi': 300},
+                            plotargs: dict={}):
+        
+        if not 'interpolated' in self.component_templates:
+            'needed to get convolved component templates'
+            self.get_convolved_component_templates(self, q3di)
+        
+        mod = import_module('q3dfit.plot')
+        plotcontcomponets = getattr(mod, plotcontcomponets)
+        
+        plotcontcomponets(q3do=self, **plotargs)
+        
+
 
 
 def load_q3dout(q3di: str | q3din.q3din,

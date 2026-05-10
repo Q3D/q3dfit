@@ -5,11 +5,12 @@ import numpy as np
 
 def read_bpass(infile: str,
                outfile: str = '',
-               outdir: str = '',
                waverange: ArrayLike = [1., 100000.],
                binary: bool = False,
                zs: ArrayLike = [0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 
-                                0.010, 0.014, 0.020, 0.030, 0.040]) -> None:
+                                0.010, 0.014, 0.020, 0.030, 0.040],
+               outdir: str = '',
+               agerange: ArrayLike = [6., 11.]) -> None:
     '''
     Read the BPASS templates into a dictionary. Templates located
     here: https://bpass.auckland.ac.nz/14.html. Download the gzipped
@@ -102,9 +103,9 @@ def read_bpass(infile: str,
         fluxall[:, iz * int(nages):(iz + 1) * int(nages)] = flux[indices, :]
         
         # calculating sigma array for templates based on spectral resolution
-        sigma = [2.35 * (i / R) for i in waveall]
+        sigma = np.array([ i / (2.35 * R) for i in waveall], dtype=float)
 
-    if outdir is not '':
+    if outdir != '':
         indir = infile.split('/')[-2]
         outfile = f'{outdir}/{indir}_z{min(zall) * 1000:03.0f}to{max(zall) * 1000:03.0f}_{sinorbin}_lam{waverange[0]:.0f}to{waverange[1]:.0f}.npy'
 
@@ -114,6 +115,7 @@ def read_bpass(infile: str,
                       'ages': agesall,
                       'zs': zall,
                       'unit': 'Angstrom',
-                      'sigma' : sigma})
+                      'sigma' : sigma,
+                      })
 
     print(f'BPASS templates saved to {outfile}')

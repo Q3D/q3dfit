@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 from numpy.typing import ArrayLike
-from copy import copy
+from copy import copy, deepcopy
 
 from astropy.constants import c
 from astropy import units as u
@@ -411,7 +411,7 @@ def plotcont(q3do: q3dout,
     # for IR spectra fit with questfit:
     else:
 
-        comp_best_fit = q3do.ct_coeff['comp_best_fit']
+        comp_best_fit = deepcopy(q3do.ct_coeff['comp_best_fit'])
         if xstyle == 'log' or ystyle == 'log':
             fig = plt.figure(figsize=figsize)
             gs = fig.add_gridspec(4,1)
@@ -460,13 +460,13 @@ def plotcont(q3do: q3dout,
                                 label=list(comp_best_fit.keys())[i],
                                 linestyle='--',alpha=0.5)
             else:
-                for i in np.arange(0,len(comp_best_fit.keys()),3):
-                    ax1.plot(MIRgdlambda,
-                                np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
-                                            np.multiply(comp_best_fit[list(comp_best_fit.keys())[i+1]],
-                                                        comp_best_fit[list(comp_best_fit.keys())[i+2]])),
-                                label=list(comp_best_fit.keys())[i],
-                                linestyle='--',alpha=0.5)
+                #for i in np.arange(0,len(comp_best_fit.keys()),3):
+                #    ax1.plot(MIRgdlambda,
+                #                np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
+                #                            np.multiply(comp_best_fit[list(comp_best_fit.keys())[i+1]],
+                #                                        comp_best_fit[list(comp_best_fit.keys())[i+2]])),
+                #                label=list(comp_best_fit.keys())[i],
+                #                linestyle='--',alpha=0.5)
 
                 for comp_i in comp_best_fit.keys():
                         if 'ext' not in comp_i and 'abs' not in comp_i:
@@ -475,7 +475,7 @@ def plotcont(q3do: q3dout,
                                 spec_out *= comp_best_fit[comp_i+'_ext']
                             if comp_i+'_abs' in comp_best_fit.keys():
                                 spec_out *= comp_best_fit[comp_i+'_abs']
-                            plt.plot(MIRgdlambda, spec_out, label=comp_i,linestyle='--',alpha=0.5)
+                            plt.plot(MIRgdlambda, spec_out, label=comp_i, alpha=0.5) #linestyle='--',
 
 
             #ax1.legend(ncol=2)
@@ -484,7 +484,10 @@ def plotcont(q3do: q3dout,
                 ax1.set_xscale('log')
             if ystyle == 'log':
                 ax1.set_yscale('log')
-            ax1.set_ylim(1e-4)
+            if yran is not None:
+                ax1.set_ylim(yran)
+            else:
+                ax1.set_ylim(1e-4)
             ax1.set_ylabel(ytit, fontsize=12)
 
             ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
@@ -1270,7 +1273,6 @@ def plotquest(MIRgdlambda,
         ax1.legend(ncol=2)
         ax1.set_xscale('log')
         ax1.set_yscale('log')
-
 
         #ax1.set_ylim(1e-5,1e2)
         ax1.set_ylabel('Flux')

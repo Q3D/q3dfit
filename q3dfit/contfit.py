@@ -552,6 +552,9 @@ def questfit(wave: np.ndarray,
         None, as the redshift error is not calculated in this function.
     '''
 
+    # maximum model legendre polynomial order
+    legordmax = 9
+    
     # models dictionary holds extinction, absorption models
     emcomps = dict()
     # template dictionary holds templates, blackbodies, powerlaws
@@ -575,12 +578,11 @@ def questfit(wave: np.ndarray,
             if 'absorption' in config_file[key]:
                 global_ice_model = key
 
-    # counter for PAH/silicate/quasar templates
+    # counter for PAH/silicate/PSF templates
     n_temp = 0
     # populating the components dictionaries and setting up lmfit models
     for i in config_file.keys():
 
-        # loc_models = q3dfit.__path__[0]+'/data/questfit_templates/'
         if 'blackbody' in i:
             #starting with the blackbodies
             model_parameters = config_file[i]
@@ -699,25 +701,38 @@ def questfit(wave: np.ndarray,
             name_model = 'template_'+str(n_temp)#i
             extinction_model = config_file[i][3]
             ice_model = config_file[i][9]
+            model_to_mult_leg = None
             # if it's not a polynomial model for PSF fitting
-            #if not 'poly' in i:
-            model_temp_template, param_temp_template = \
-                questfitfcn.\
-                    set_up_fit_model_scale([np.float64(model_parameters[1])],
-                                           [np.float64(model_parameters[2])],
-                                           name_model, name_model) #,
-                                            #maxamp=1.05*max(flux[index]) )
-            # # ... and if it is!
-            # Not presently implmented
-            # else:
-            #     # constrain amplitude
-            #     minamp = np.float64(model_parameters[1]) / 1.25
-            #     maxamp = np.float64(model_parameters[1]) * 1.25
-            #     model_temp_template, param_temp_template = \
-            #         questfitfcn.set_up_fit_model_scale_withpoly(
-            #             [np.float64(model_parameters[1])],
-            #             [np.float64(model_parameters[2])],
-            #             name_model, name_model, minamp=minamp, maxamp=maxamp)
+            if not 'poly' in i:
+                model_temp_template, param_temp_template = \
+                    questfitfcn.\
+                        set_up_fit_model_scale([np.float64(model_parameters[1])],
+                                               [np.float64(model_parameters[2])],
+                                               name_model, name_model) #,
+                                                #maxamp=1.05*max(flux[index]) )
+            # ... and if it is!
+            else:
+                 # constrain amplitude
+                #minamp = np.float64(model_parameters[1]) / 1.25
+                #maxamp = np.float64(model_parameters[1]) * 1.25
+                polyord = int(float(model_parameters[7]))
+                if polyord <= legordmax and polyord >= 0:
+                    #initvals = np.zeros(legordmax)
+                    medfluxuse = np.median(flux[index])
+                    initvals = np.full(legordmax+1, medfluxuse/float(legordmax))
+                    for ind in np.arange(legordmax, polyord, -1):
+                        initvals[ind] = np.nan
+                    model_temp_template, param_temp_template = \
+                        questfitfcn.set_up_model_mult_leg(initvals, name_model)
+                    model_to_mult_leg = name_model
+                else:
+                    raise InitializationError('Order of multiplicative ' +
+                                              'Legendre polynomial for scaling ' +
+                                              'model template ' + 
+                                              'must be 0 <= order <= {legordmax}')
+
+#                        [np.float64(model_parameters[2])],
+                          #, minamp=minamp, maxamp=maxamp)
 
             if global_extinction is False and \
                 config_file[i][3] != '_' and \
@@ -818,15 +833,19 @@ def questfit(wave: np.ndarray,
     # loop over emission template dictionary, load them in and resample.
     for i in emcomps.keys():
         if 'sifrom' in emcomps[i]:
-            tempdir = silicatemodels #questfit_templates.silicatemodels
+            tempdir_use = silicatemodels
         else:
-            tempdir = questfit_templates
-        with pkg_resources.path(tempdir, emcomps[i]) as p:
+            tempdir_use = questfit_templates
+        with pkg_resources.path(tempdir_use, emcomps[i]) as p:
             if os.path.exists(p):
                 temp_model = np.load(p, allow_pickle=True)
             else:
                 if tempdir is not None:
-                    temp_model = np.load(tempdir+emcomps[i])
+                    if os.path.exists(tempdir+emcomps[i]):
+                        temp_model = np.load(tempdir+emcomps[i], allow_pickle=True)
+                    else:
+                        raise FileNotFoundError(f'Cannot locate template {emcomps[i]} '+
+                                                'in default directory or tempdir')
                 else:
                     raise InitializationError(f'Cannot locate template {emcomps[i]} '+
                                               'in default directory and no tempdir specified')
@@ -836,11 +855,13 @@ def questfit(wave: np.ndarray,
                 temp_wave = np.float64(temp_wave*(1.+z))
             temp_value = np.float64(temp_model['FLUX'])
         except:
-            # if a QSO template generated by makeqsotemplate() is included,
+            # if a template generated by makeqsotemplate() is included,
             # that is formatted slightly differently
             temp_model = temp_model[()]
             temp_wave = temp_model['wave'] #*(1.+z)
             temp_value = temp_model['flux']
+        if i == model_to_mult_leg:
+            allcomps['model_to_mult_leg'] = temp_value
 
         temp_value_rebin = \
             q3dmath.interp_lis(wave, temp_wave, temp_value)
@@ -857,6 +878,8 @@ def questfit(wave: np.ndarray,
     # Add in wavelength and units flags
     allcomps['wave'] = np.float64(wave)
     allcomps['fluxunit'] = fluxunit
+    if model_to_mult_leg is not None:
+        allcomps['model_to_mult_leg'] = allcomps[model_to_mult_leg]
 
     # produce copy of components dictionary with index applied
     flux_cut = flux[index]

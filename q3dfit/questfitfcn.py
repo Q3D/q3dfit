@@ -84,7 +84,7 @@ def set_up_fit_blackbody_model(p: list,
     blackbody_model_parameters[model_name+'a'].\
         set(value=p[0], min=np.finfo(float).eps, vary=p_fixfree[0])
     blackbody_model_parameters[model_name+'T'].\
-        set(value=p[1], min=50., max=3000., vary=p_fixfree[1])
+        set(value=p[1], min=10., max=3000., vary=p_fixfree[1])
 
     return blackbody_model, blackbody_model_parameters
 
@@ -254,6 +254,88 @@ def set_up_fit_model_scale(p: ArrayLike,
 
     return model_scale_model, model_scale_parameters
 
+
+def model_mult_leg(wave: ArrayLike,
+                   model_to_mult_leg: np.ndarray,
+                   i: float, j: float, k: float, l: float, m: float,
+                   n: float, o: float, p: float, q: float, r: float) -> np.ndarray:
+    '''
+    Model legendre polys for qso template multiplier
+
+    Parameters
+    ----------
+    wave
+        1-D array of wavelengths
+    model
+        1-D array of the model to be multiplied by the legendre polynomials
+    i,j,k,l,m,n,o,p,q,r
+        scale factors for 0-9 order legendre polynomials.
+
+    Returns
+    -------
+    np.ndarray
+        Multiplicative factor times the model spectrum.
+    '''
+    x = np.linspace(-1., 1., len(wave))
+    multiplier = \
+        np.polynomial.legendre.legval(x, [i, j, k, l, m, n, o, p, q, r])
+    multiplier = i
+    return multiplier*model_to_mult_leg
+
+
+
+def set_up_model_mult_leg(p: ArrayLike,
+                          model: str) \
+                              -> Tuple[lmfit.Model, lmfit.Parameters]:
+                         #p_fixfree: ArrayLike,
+                         #maxamp: Optional[float]=None) \
+    '''
+    Set up fitting model_scale within lmfit
+
+    Parameters
+    ----------
+    p
+        List containing initial guess for the scale factor. The lower limit on the scale 
+        factor is the minimum positive float value. If maxamp is not None, the upper limit 
+        is set to maxamp.
+    model
+        Name of the input model
+
+    Returns
+    -------
+    lmfit.Model
+    lmfit.Parameters
+    '''
+    smodel = model+'_mult_leg_'
+    model_x_leg = \
+        lmfit.Model(model_mult_leg,
+                    independent_vars=['wave', 'model_to_mult_leg'],
+                    prefix=smodel)
+    model_x_leg_pars = model_x_leg.make_params()
+ 
+    for counter, i in enumerate(['i', 'j', 'k', 'l', 'm',
+                                 'n', 'o', 'p', 'q', 'r']):
+        if not np.isnan(p[counter]):
+            model_x_leg_pars[smodel+i].set(value=p[counter]) #,min=np.finfo(float).eps)
+        else:
+            model_x_leg_pars[smodel+i].set(value=np.finfo(float).eps,vary=False)
+
+    return model_x_leg, model_x_leg_pars
+
+    '''
+    if maxamp is not None:
+        model_scale_parameters[model+'_amp'].set(value=p[0],
+                                                 min=np.finfo(float).eps,
+                                                 max=maxamp,
+                                                 vary=p_fixfree[0])
+    else:
+        model_scale_parameters[model+'_amp'].set(value=p[0],
+                                                 min=np.finfo(float).eps,
+                                                 vary=p_fixfree[0])
+
+    return model_scale_model, model_scale_parameters
+    '''
+   
 
 def set_up_absorption(p: ArrayLike,
                       p_fixfree: ArrayLike,

@@ -1044,20 +1044,64 @@ def plotline(q3do: q3dout,
     rcParams.update(rcParamsOrig)
 
 def plotcontcomponents(q3do: q3dout, 
-                         mode: Literal['dark', 'light'] = 'dark',
-                         figsize: tuple = (12,12),
                          plottype: Literal['line', 'stackplot'] = 'line',
-                         savefig: bool=False,
-                         outfile: Optional[str]='none',
+                         totals_plot: bool=True, 
                          totals_plot_components: Optional[ArrayLike] = None, 
                          totals_plot_labels: Optional[ArrayLike] = None, 
                          totals_plot_colors: Optional[ArrayLike] = None, 
-                         totals_plot: bool=True, 
                          components_plot: bool=True, 
-                         sortorder: bool=False,
+                         sortorder: bool=True,
                          linalpha: float=0.8,
                          linwidth: float=1,
+                         mode: Literal['dark', 'light'] = 'dark',
+                         figsize: tuple = (12,12),
+                         savefig: bool=False,
+                         outfile: Optional[str]='none',
                          argssavefig: dict={'bbox_inches': 'tight', 'dpi': 30}):
+    
+    """
+    Plot stellar components of fit and output to JPG
+
+    Parameters
+    ----------
+    q3do
+        :py:class:`~q3dfit.q3dout.q3dout` object containing the output of the
+        fit.
+    plottype
+        Select type of plot for components, currently only "line" and "stackplot", defaults to "line"        
+    totals_plot
+        Optional. If True plots the component sum on a seperate plot, defaults to True
+    totals_plot_components
+        Optional. Additional data to plot on the totals plot.
+    totals_plot_labels
+        Optional. Labels for additional data to plot on the totals plot.
+    totals_plot_colors
+        Optional. Colors for additional data to plot on the totals plot.
+    components_plot
+        Optional. If True plots the stellar components, defaults to True
+    sortorder
+        Optional. If True plots stellar components in decending order, if False plots in ascending order. Defaults to True
+    linalpha
+        Optional. Sets the alpha value of plotted lines.
+    linwidth
+        Optional. Sets the line width of plotted lines.
+    mode
+        set plotting mode, "light" or "dark", defaults to "dark"
+    figsize
+        Size of the figure in inches, specified as a tuple (width, height).
+    savefig
+        Optional. If True, saves the plot to a file. Defaults to False.
+    outfile
+        Optional. Full path and name of output plot. Defaults to None, which
+        means no output file is created.
+    argssavefig
+        Optional. Dictionary of arguments to pass to 
+        :py:meth:`~matplotlib.pyplt.savefig()`. Defaults to
+        {'bbox_inches': 'tight', 'dpi': 300}.
+    mode
+        Optional. Plotting mode, either 'dark' or 'light'. Defaults to 'dark'
+        Changes the plot background and text colors for better visibility.
+    """
     
     rcParamsorig = rcParams.copy()
 
@@ -1086,7 +1130,7 @@ def plotcontcomponents(q3do: q3dout,
     # Initializing variables
     ages = q3do.component_templates['age']
     zs = q3do.component_templates['zs']
-    convolved_templates = q3do.component_templates['interpolated']
+    convolved_templates = q3do.component_templates['convolved']
     weights = q3do.ct_coeff['stelweights']
     indecies = q3do.component_templates['index']
 
@@ -1100,7 +1144,7 @@ def plotcontcomponents(q3do: q3dout,
         # Sort templates by their mean value 
         templates_medians = [np.mean(template) for template in templates_list]
         sorted_indices = np.argsort(templates_medians)
-        if not sortorder:
+        if sortorder:
             sorted_indices = sorted_indices[::-1]  # Sort in descending order
 
         templates_list = [templates_list[i] for i in sorted_indices]
@@ -1122,14 +1166,18 @@ def plotcontcomponents(q3do: q3dout,
 
     # Finding the total fit.
     if totals_plot:
-        total_fit = np.sum(templates_list, axis=0) + q3do.polymod
+        tempSum = np.sum(templates_list, axis=0) + q3do.polymod
         # Establish comppnents for totals plot
         if totals_plot_components == None:
-            totals_plot_components = [q3do.cont_dat, total_fit, q3do.stelmod, q3do.polymod, q3do.cont_fit]
+            totals_plot_components = [q3do.cont_dat, q3do.stelmod, q3do.polymod, q3do.cont_fit]
         if totals_plot_labels == None:
-            totals_plot_labels = ['Continuum Data', 'Sum of components', 'Stel temp', f'Ord. {q3do.add_poly_degree} Legendre poly', 'Continuum fit']
+            totals_plot_labels = ['Continuum Data', 'Sum of Convolved Templates', f'Ord. {q3do.add_poly_degree} Legendre poly', 'Continuum fit']
         if totals_plot_colors == None:
-            totals_plot_colors = [dcolor, 'blue', 'cyan', 'magenta', 'red']
+            totals_plot_colors = [dcolor, 'cyan', 'magenta', 'red']
+
+        totals_plot_components.append(tempSum)
+        totals_plot_labels.append('Total Component Sum (Templates + Polynomial)')
+        totals_plot_colors.append('blue')
     
         # Plot each component for totals plot
         for i in range(len(totals_plot_components)):

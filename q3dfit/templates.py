@@ -53,15 +53,19 @@ def read_bpass(infile: str,
         Optional. The metallicities to include. The options are
         [0.001,0.002,0.003,0.004,0.006,0.008,0.010,0.014,0.020,0.030,0.040].
         Defaults to all metallicities.
+    agerange
+        Optional. Array containing the minimum and maximum log ages of the templates to be used.
+        Must be a multiple of 0.1 between 6.0 and 11.0.
+        Defaults to [6., 11.].
     '''
     # spectral resolution of templates
     R = 10000
     # number of metallicities
     nz = len(zs)
     # ages for one metallicity
-    nages = 51
+    nages = round(((agerange[1] - agerange[0]) / 0.1) + 1)
     # log age in years
-    ages = 10.**(6. + 0.1 * np.arange(0, nages))
+    ages = 10.**(agerange[0] + 0.1 * np.arange(0, nages))
     # Output spectra will loop through zs, and then the ages for each
     # metallicity. 
     # So first we'll run through the ages for every metallicity:
@@ -115,7 +119,7 @@ def read_bpass(infile: str,
                       'ages': agesall,
                       'zs': zall,
                       'unit': 'Angstrom',
-                      'sigma' : sigma,
+                      'sigma' : sigma
                       })
 
     print(f'BPASS templates saved to {outfile}')

@@ -1164,7 +1164,7 @@ class q3dout:
 
     def get_component_templates_ppxf(self, 
                               q3di: q3din.q3din, 
-                              min_weight: float=0.01):
+                              min_weight: Optional[float]=0.01):
         '''    
         Decomposes the stellar fit components into individual spectra, ages, metallicities, and weights and 
         stores them in the `component_templates` attribute.
@@ -1179,7 +1179,7 @@ class q3dout:
         Outputs
         -------
         component_templates
-            Dictionary containing the decomposed stellar fit components with keys 'index', 'spectrum', 'age', 'logage', 'zs', 'weight', and 'lambda'.
+            Dictionary containing the raw stellar templates included in the fit with keys 'index', 'spectrum', 'age', 'logage', 'zs', 'weight', and 'lambda'.
         '''
         if not hasattr(self, 'decompose_ppxf_fit'):
             print('Needed to run sepcontpars first, doing that')
@@ -1201,18 +1201,27 @@ class q3dout:
         stellar_spectra['rel_weight'] = [i / total_weight for i in stellar_spectra['weight']]
 
         self.component_templates = stellar_spectra
-    
+
     def get_convolved_component_templates(self, q3di):
+        '''
+        Gets the relevant convolved stellar template components from q3di.matirx and saves them to q3do.component_templaes['interpolated']. Requires q3di.savematrix to be set to True before fitting
+        
+        Parameters
+        ----------
+
+        q3di
+            :py:class:`~q3dfit.q3din.q3din` object containing stellar template file path
+
+        '''
         if not hasattr(self, 'component_templates'):
             print('Running get_component_templates_ppxf with default settings...')
-            self.get_component_templates_ppxf(self, q3di)
+            self.get_component_templates_ppxf(q3di)
         
         if 'matrix' in self.ct_coeff:
             coeff = self.ct_coeff
         
             #extract the templates from the design matrix
             npoly = coeff['npoly'] + 1
-            ntemp = len(coeff['stelweights'])
 
             template_matrix = coeff['matrix'][:, npoly :]
 
@@ -1228,30 +1237,51 @@ class q3dout:
             
             components = interp_func(log_lambda)
                 
-            self.component_templates['interpolated'] = components
+            self.component_templates['convolved'] = components
         else:
             print('No saved convolution matrix, set q3di.savematrix to True and re-run pPXF fit to save the convolution matrix')
 
-
-
     def plot_cont_components(self,
                             q3di: q3din.q3din,
-                            savefig: bool=False,
+                            savefig: Optional[bool]=False,
                             outfile: Optional[str]=None,
                             argssavefig: dict={'bbox_inches': 'tight','dpi': 300},
                             plotargs: dict={}):
-        
-        if not 'interpolated' in self.component_templates:
+        '''
+        Continuum plotting function.
+
+        Parameters
+        ----------
+        q3di
+            :py:class:`~q3dfit.q3din.q3din` object with input parameters.
+        savefig
+            If True, save the figure to a file. Default is False.
+        outfile
+            If savefig is True, the name of the output file to save the figure.
+            Default is None, which means the output file will be named
+            `<filelab>_cnt` where `<filelab>` is the path+filename set
+            by :py:meth:`~q3dfit.q3dout.q3dout.load_q3dout`.
+        argssavefig
+            Optional. Dictionary of arguments to pass to 
+            :py:meth:`~matplotlib.pyplt.savefig()`. Defaults to
+            {'bbox_inches': 'tight', 'dpi': 300}.
+        plotargs
+            Additional keyword arguments to pass to the plotting function.
+        '''
+        from q3dfit.plot import plotcontcomponents
+
+        if not 'convolved' in self.component_templates:
             'needed to get convolved component templates'
-            self.get_convolved_component_templates(self, q3di)
+            self.get_convolved_component_templates(q3di)
         
-        mod = import_module('q3dfit.plot')
-        plotcontcomponets = getattr(mod, plotcontcomponets)
-        
-        plotcontcomponets(q3do=self, **plotargs)
-        
+        if savefig:
+            if outfile is None:
+                if hasattr(self, 'filelab'):
+                    outfile = self.filelab
+                else:
+                    print('plot_line: need to specify outfile')
 
-
+        plotcontcomponents(q3do=self, savefig=savefig, outfile=outfile, argssavefig=argssavefig, **plotargs)
 
 def load_q3dout(q3di: str | q3din.q3din,
                 col: Optional[int]=None,

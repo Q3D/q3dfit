@@ -55,7 +55,7 @@ def fitloop(ispax: int,
     quiet
         Optional. Suppress progress messages. Default is False.
     """
-
+    
     i = colarr[ispax]
     j = rowarr[ispax]
     # print(i,j)

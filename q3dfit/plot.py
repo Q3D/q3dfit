@@ -13,6 +13,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import gridspec, rcParams
+import matplotlib as mpl
 from matplotlib.ticker import StrMethodFormatter
 
 from q3dfit.contfit import readcf
@@ -1044,20 +1045,22 @@ def plotline(q3do: q3dout,
     rcParams.update(rcParamsOrig)
 
 def plotcontcomponents(q3do: q3dout, 
-                         plottype: Literal['line', 'stackplot'] = 'line',
-                         totals_plot: bool=True, 
-                         totals_plot_components: Optional[ArrayLike] = None, 
-                         totals_plot_labels: Optional[ArrayLike] = None, 
-                         totals_plot_colors: Optional[ArrayLike] = None, 
-                         components_plot: bool=True, 
-                         sortorder: bool=True,
-                         linalpha: float=0.8,
-                         linwidth: float=1,
-                         mode: Literal['dark', 'light'] = 'dark',
-                         figsize: tuple = (12,12),
-                         savefig: bool=False,
-                         outfile: Optional[str]='none',
-                         argssavefig: dict={'bbox_inches': 'tight', 'dpi': 30}):
+                        plottype: Literal['line', 'stackplot'] = 'line',
+                        totals_plot: bool=True, 
+                        totals_plot_components: Optional[ArrayLike] = None, 
+                        totals_plot_labels: Optional[ArrayLike] = None, 
+                        totals_plot_colors: Optional[ArrayLike] = None, 
+                        components_plot: Optional[bool] = True, 
+                        min_weight: Optional[float] = 0,
+                        sortvar: Optional[Literal['medians', 'ages', 'zs', 'weights']] = 'medians',
+                        sortorder: Optional[bool] = True,
+                        linalpha: Optional[float] = 0.8,
+                        linwidth: Optional[float] = 1,
+                        mode: Optional[Literal['dark', 'light']] = 'dark',
+                        figsize: tuple = (12,12),
+                        savefig: bool=False,
+                        outfile: Optional[str]='none',
+                        argssavefig: dict={'bbox_inches': 'tight', 'dpi': 300}):
     
     """
     Plot stellar components of fit and output to JPG
@@ -1079,6 +1082,12 @@ def plotcontcomponents(q3do: q3dout,
         Optional. Colors for additional data to plot on the totals plot.
     components_plot
         Optional. If True plots the stellar components, defaults to True
+    compcmap
+        Optional. Matplotlib colormap to use for stellar components plot, defaults to 'cividis'
+    min_weight
+        Optional. Minimum weight for a component to be plotted. Defaults to 0, which means all components are plotted.
+    sortvar
+        Optional. Variable by which to sort the stellar components, either 'medians', 'ages', 'zs', or 'weights'. Defaults to 'medians'.
     sortorder
         Optional. If True plots stellar components in decending order, if False plots in ascending order. Defaults to True
     linalpha
@@ -1105,6 +1114,8 @@ def plotcontcomponents(q3do: q3dout,
     
     rcParamsorig = rcParams.copy()
 
+    # Dark Mode!
+
     wave = q3do.wave
     if mode == 'dark':
         pltstyle = 'dark_background'
@@ -1115,6 +1126,8 @@ def plotcontcomponents(q3do: q3dout,
     else:
         raise ValueError("Invalid mode. Choose 'dark' or 'light'.")
     
+    # Configuring plot layout based on enabled subplots
+
     plt.style.use(pltstyle)
     if totals_plot and components_plot:
         fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize)
@@ -1130,32 +1143,56 @@ def plotcontcomponents(q3do: q3dout,
     # Initializing variables
     ages = q3do.component_templates['age']
     zs = q3do.component_templates['zs']
-    convolved_templates = q3do.component_templates['convolved']
+    templates_list = q3do.component_templates['convolved']
     weights = q3do.ct_coeff['stelweights']
     indecies = q3do.component_templates['index']
-
+    if 'flux_fraction' in q3do.ct_coeff:
+        flux_percentage = [f' | Flux: {q3do.ct_coeff['flux_fraction'][i]*100:.2f}%' for i in indecies]
+    else:
+        flux_percentage = [''] * len(indecies)
+    if 'mass_fraction' in q3do.ct_coeff:
+        mass_percentage = [f' | Mass: {q3do.ct_coeff['mass_fraction'][i]*100:.2f}%' for i in indecies]
+    else:
+        mass_percentage = [''] * len(indecies)
     # Create a list of relavent templates
-    templates_list = [convolved_templates[:,i] for i in indecies]
-    labels_list = [f'Age: {(ages[i]/1e9):.2f} Gyr | Z: {zs[i]:.3f} (wt = {weights[indecies[i]]:.2f})' for i in range(len(indecies))]
+    templates_list = [templates_list[:, i] for i in range(len(indecies))]
+    labels_list = [f'Age: {(ages[i]/1e9):.2f} Gyr | Z: {zs[i]:.3f}{flux_percentage[i]}{mass_percentage[i]}' for i in range(len(indecies))]
     
     # Plotting the compoonents plot
     
     if components_plot:
         # Sort templates by their mean value 
-        templates_medians = [np.mean(template) for template in templates_list]
-        sorted_indices = np.argsort(templates_medians)
-        if sortorder:
-            sorted_indices = sorted_indices[::-1]  # Sort in descending order
-
+        if sortvar != None:
+            if sortvar == 'medians':
+                templates_medians = [np.mean(template) for template in templates_list]
+                sorted_indices = np.argsort(templates_medians)
+            if sortvar == 'ages':
+                sorted_indices = np.argsort(ages)
+            if sortvar == 'zs':
+                sorted_indices = np.argsort(zs)
+            if sortvar == 'weights':
+                sorted_indices = np.argsort(weights[indecies])
+            if sortvar == 'maxima':
+                sorted_indices = np.argsort([np.max(template) for template in templates_list])
+            if sortorder:
+                sorted_indices = sorted_indices[::-1]  # Sort in descending order
+            
         templates_list = [templates_list[i] for i in sorted_indices]
         labels_list = [labels_list[i] for i in sorted_indices]
 
+        # Generating colors for each component
+        #n_lines = len(templates_list)
+        #cmap = plt.get_cmap(compcmap)
+        #color = cmap(np.linspace(0, 1, n_lines))
+        
         # Plot each component in the upper panel
         if plottype == 'line':
             for i in range(len(templates_list)):
-                ax[0].plot(wave, templates_list[i], label=labels_list[i], alpha=linalpha, lw=linwidth)
+                if weights[i] >= min_weight:
+                    ax[0].plot(wave, templates_list[i], label=labels_list[i], alpha=linalpha, lw=linwidth)#, color=color[i])
         if plottype == 'stackplot':
-            ax[0].stackplot(wave, templates_list, labels=labels_list, alpha=linalpha, lw=linwidth)
+            ax[0].stackplot(wave, templates_list, labels=labels_list, alpha=linalpha, lw=linwidth)# colors=color)
+            
 
         ax[0].legend()
         ax[0].set_title('Stellar fit components')
@@ -1166,22 +1203,29 @@ def plotcontcomponents(q3do: q3dout,
 
     # Finding the total fit.
     if totals_plot:
-        tempSum = np.sum(templates_list, axis=0) + q3do.polymod
+        tempSum = q3do.component_templates['convolved'].sum(1) + q3do.polymod
         # Establish comppnents for totals plot
+        
         if totals_plot_components == None:
-            totals_plot_components = [q3do.cont_dat, q3do.stelmod, q3do.polymod, q3do.cont_fit]
+            totals_plot_components = [q3do.cont_dat, q3do.cont_fit]
+            if q3do.add_poly_degree >= 0:
+                totals_plot_components += [q3do.polymod, q3do.stelmod]
         if totals_plot_labels == None:
-            totals_plot_labels = ['Continuum Data', 'Sum of Convolved Templates', f'Ord. {q3do.add_poly_degree} Legendre poly', 'Continuum fit']
+            totals_plot_labels = ['Continuum Data', 'Continuum fit']
+            if q3do.add_poly_degree >= 0:
+                totals_plot_labels += [f'Ord. {q3do.add_poly_degree} Legendre poly', 'Sum of Convolved Templates']
         if totals_plot_colors == None:
-            totals_plot_colors = [dcolor, 'cyan', 'magenta', 'red']
+            totals_plot_colors = [dcolor, 'red']
+            if q3do.add_poly_degree >= 0:
+                totals_plot_colors += ['magenta', 'cyan']
 
-        totals_plot_components.append(tempSum)
-        totals_plot_labels.append('Total Component Sum (Templates + Polynomial)')
-        totals_plot_colors.append('blue')
+        totals_plot_components.insert(-1, tempSum)
+        totals_plot_labels.insert(-1, 'Total Component Sum (Templates + Polynomial)')
+        totals_plot_colors.insert(-1, 'blue')
     
         # Plot each component for totals plot
         for i in range(len(totals_plot_components)):
-            ax[1].plot(q3do.wave, totals_plot_components[i], label=totals_plot_labels[i], lw=1, zorder=11+i, color=totals_plot_colors[i])
+            ax[1].plot(q3do.wave, totals_plot_components[i], label=totals_plot_labels[i], lw=1, zorder=0+i, color=totals_plot_colors[i])
 
         ax[1].legend()
         ax[1].set_title('Total stellar fit')
@@ -1197,6 +1241,102 @@ def plotcontcomponents(q3do: q3dout,
             fig.savefig(outfile, **argssavefig)
 
     plt.show()
+
+    rcParams.update(rcParamsorig)
+
+def plotpopheatmap(q3do: q3dout,
+                   startempfile: str = None,
+                   stelweights: ArrayLike = None,
+                   savefig: bool = False,
+                   outfile: str = None,
+                   argssavefig: dict = {'bbox_inches': 'tight', 'dpi': 300}):
+    '''
+    Plot a heatmap of the stellar population weights as a function of age and metallicity.
+    
+    Parameters
+    ----------
+    q3do
+        :py:class:`~q3dfit.q3dout.q3dout` object containing the output of the fit.
+    startempfile
+        Optional. Path to a .npz file containing the stellar population templates.
+        Used to load the ages and metallicities of the templates. If None, uses data saved in the q3do object.
+    stelweights
+        Optional. Array of stellar population weights. If None, uses the weights from the q3do object.
+    savefig
+        Boolean indicating whether to save the figure.
+    outfile
+        String specifying the path and filename for the saved figure.
+    argssavefig
+        Dictionary of arguments to pass to the savefig function.
+    '''
+    
+    rcParamsorig = rcParams.copy()
+    if startempfile != None:
+        templates = np.load(startempfile, allow_pickle=True)[()]
+        ages = np.asarray(templates['ages'])
+        zs = np.asarray(templates['zs'])
+
+        # Getting unique ages and metallicities from templates
+        unique_log_ages = np.unique(np.log10(ages))
+        unique_zs = np.unique(zs)
+    else: 
+        # Getting unique ages and metallicities from q3do
+        unique_log_ages = np.log10(q3do.component_templates['unique_ages'])
+        unique_zs = q3do.component_templates['unique_zs']
+    if stelweights != None:
+        # getting weights from stelweights
+        weights = np.asarray(stelweights)
+    else:
+        # getting weights from q3do
+        weights = np.asarray(q3do.ct_coeff['stelweights'])
+
+    n_ages = len(unique_log_ages)
+    n_metal = len(unique_zs)
+
+    # Sanity check and reshape
+    if weights.size != n_metal * n_ages:
+        raise ValueError(f"weights length {weights.size} != n_metal*n_ages ({n_metal}*{n_ages}={n_metal*n_ages})")
+
+    weights_grid = weights.reshape(n_metal, n_ages)
+
+    #weights_grid = weights_grid[:, -20:]
+    #unique_log_ages = unique_log_ages[-20:]
+    #nages = len(unique_log_ages)
+
+    # Plotting heatmap
+    fig, ax = plt.subplots(figsize=(10, 5))
+    im = ax.imshow(weights_grid, origin='lower', aspect='auto', cmap='viridis')
+
+    # set x-ticks at log-age intervals
+    tick_interval = 0.2
+    half_ints = np.arange(unique_log_ages[0], unique_log_ages[-1], tick_interval)
+    xtick_positions = []
+    xtick_labels = []
+    for val in half_ints:
+        idx = np.where(np.isclose(unique_log_ages, val))[0]
+        if idx.size:
+            xtick_positions.append(int(idx[0]))
+            xtick_labels.append(f"{val:.1f}")
+
+    ax.set_xticks(xtick_positions)
+    ax.set_xticklabels(xtick_labels, rotation=45)
+
+    ax.set_yticks(np.arange(n_metal))
+    ax.set_yticklabels([f"{z:.3f}" for z in unique_zs])
+
+    ax.set_xlabel('Stellar Age (log10 Age [yr])')
+    ax.set_ylabel('Metallicity (Z)')
+    ax.set_title('Stellar Population Heatmap')
+    fig.colorbar(im, ax=ax, label='Weight')
+    fig.tight_layout()
+
+    if savefig and outfile is not None:
+        if len(outfile[0])>1:
+            fig.savefig(outfile[0], **argssavefig)
+        else:
+            fig.savefig(outfile, **argssavefig)    
+
+    fig.show()
 
     rcParams.update(rcParamsorig)
 

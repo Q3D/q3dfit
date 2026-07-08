@@ -1247,9 +1247,10 @@ def plotcontcomponents(q3do: q3dout,
 def plotpopheatmap(q3do: q3dout,
                    startempfile: str = None,
                    stelweights: ArrayLike = None,
-                   savefig: bool = False,
-                   outfile: str = None,
-                   argssavefig: dict = {'bbox_inches': 'tight', 'dpi': 300}):
+                   mode: Optional[Literal['dark', 'light']] = 'dark',
+                   savefig: Optional[bool] = False,
+                   outfile: Optional[str] = None,
+                   argssavefig: Optional[dict] = {'bbox_inches': 'tight', 'dpi': 300}):
     '''
     Plot a heatmap of the stellar population weights as a function of age and metallicity.
     
@@ -1262,6 +1263,9 @@ def plotpopheatmap(q3do: q3dout,
         Used to load the ages and metallicities of the templates. If None, uses data saved in the q3do object.
     stelweights
         Optional. Array of stellar population weights. If None, uses the weights from the q3do object.
+    mode
+        Optional. Plotting mode, either 'dark' or 'light'. Defaults to 'dark'.
+        Changes the plot background and text colors for better visibility.
     savefig
         Boolean indicating whether to save the figure.
     outfile
@@ -1271,7 +1275,19 @@ def plotpopheatmap(q3do: q3dout,
     '''
     
     rcParamsorig = rcParams.copy()
-    if startempfile != None:
+
+    if mode == 'dark':
+        pltstyle = 'dark_background'
+        dcolor = 'w'
+    elif mode == 'light':
+        pltstyle = 'seaborn-v0_8-ticks'
+        dcolor = 'k'
+    else:   
+        raise ValueError("Invalid mode. Choose 'dark' or 'light'.")
+
+    plt.style.use(pltstyle)
+
+    if type(startempfile) != type(None):
         templates = np.load(startempfile, allow_pickle=True)[()]
         ages = np.asarray(templates['ages'])
         zs = np.asarray(templates['zs'])
@@ -1283,7 +1299,7 @@ def plotpopheatmap(q3do: q3dout,
         # Getting unique ages and metallicities from q3do
         unique_log_ages = np.log10(q3do.component_templates['unique_ages'])
         unique_zs = q3do.component_templates['unique_zs']
-    if stelweights != None:
+    if type(stelweights) != type(None):
         # getting weights from stelweights
         weights = np.asarray(stelweights)
     else:
@@ -1306,7 +1322,7 @@ def plotpopheatmap(q3do: q3dout,
     # Plotting heatmap
     fig, ax = plt.subplots(figsize=(10, 5))
     im = ax.imshow(weights_grid, origin='lower', aspect='auto', cmap='viridis')
-
+    
     # set x-ticks at log-age intervals
     tick_interval = 0.2
     half_ints = np.arange(unique_log_ages[0], unique_log_ages[-1], tick_interval)

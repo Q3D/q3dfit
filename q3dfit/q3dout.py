@@ -11,11 +11,14 @@ from astropy.constants import c
 from astropy import units as u
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.table import Table
+from astropy.coordinates import Distance
 from importlib import import_module
 from lmfit import Parameters
 from ppxf.ppxf_util import log_rebin, gaussian_filter1d
 from scipy import constants, sparse
 from scipy.interpolate import interp1d
+from decimal import Decimal
+
 
 from . import q3dutil, q3din
 from q3dfit.qsohostfcn import qsohostfcn
@@ -1348,7 +1351,106 @@ class q3dout:
                 self.ct_coeff['mass_fraction'] = mass_weights
             else:
                 print('Not enough information to find mass porportions. Please provide startempfile.')
+    def find_population_masses(self,
+                               cube_norm,
+                               templates,
+                               mass_templates,
+                               wave_min=None,
+                               wave_max=None,
+                               data_scale=0,
+                               cosmology=None
+                               ):
+        '''
+        Function to find the absolute stellar masses of the component templates from the continuum fit.
+        It calculates the total galaxy luminosity from the integrated continuum flux and then scales 
+        the component templates to find their individual luminosities and stellar masses.
 
+        Parameters
+        ----------
+        q3do
+            :py:class:`~q3dfit.q3dout.q3dout object containing the continuum fit and component templates.
+        cube_norm
+            q3di.argsreadcube['fluxnorm'] value used to normalize the data.
+        templates
+            Dictionary containing the stellar templates with keys 'norm' and 'flux'.
+        mass_templates
+            Array containing the stellar masses corresponding to each template in the same order as the templates.
+        wave_min
+            Minimum wavelength for integration. If None, will use the lower limit of the fit range.
+        wave_max
+            Maximum wavelength for integration. If None, will use the upper limit of the fit range.
+        data_scale
+            Any other scale factor applied to the data before cube reading. Default is 0 (no additional scaling).
+        cosmology
+            Optional. Astropy cosmology object or string for included cosmology to use for calculating 
+            the luminosity distance. If None, will use the global default cosmology.
+
+        returns
+        -------
+        Updates the `component_templates` attribute of the q3dout object with the calculated stellar masses 
+        and luminosities for each component template, as well as the total galaxy luminosity in solar luminosities.
+        '''
+        from astropy import cosmology as cosmo
+        wave_unit = u.Unit(self.waveunit)
+        flux_unit = u.Unit(self.fluxunit)
+        template_unit = u.solLum / u.Angstrom
+
+        if wave_min is None:
+            wave_min = self.fitrange[0]
+        if wave_max is None:
+            wave_max = self.fitrange[1]
+
+        wave_min = wave_min * wave_unit
+        wave_max = wave_max * wave_unit
+        from decimal import Decimal
+        flux_rescale = float(Decimal(str(cube_norm)) * Decimal(str(data_scale)))
+
+        wave = self.wave * wave_unit
+        fit = self.cont_fit * flux_unit * flux_rescale
+        template_flux = self.component_templates['convolved']
+        indecies = self.component_templates['index']
+        template_norms = templates['norm'][indecies]
+
+        mask = (wave >= wave_min) & (wave <= wave_max)
+
+        # Calculate the luminosity distance using astropy
+        if cosmology is None:
+            cosmology = cosmo.default_cosmology.get()
+        elif isinstance(cosmology, str):
+            cosmology = cosmo.get_cosmology(cosmology)
+        elif not isinstance(cosmology, cosmo.Cosmology):
+            raise ValueError("Invalid cosmology input. Must be None, a string, or an astropy Cosmology object.")
+        
+        luminosity_distance = Distance(z = self.zstar, cosmology=cosmology).to('cm')
+        
+        # Integrate the total continuum flux over the specified range and calculate the galaxy luminosity
+        raw_cont_flux_sum = np.trapezoid(fit.value[mask], wave.value[mask])
+        cont_flux_sum = raw_cont_flux_sum * (wave.unit * fit.unit)
+
+        galaxy_luminosity_erg = cont_flux_sum  * 4 * np.pi * luminosity_distance**2
+        galaxy_luminosity_lsun = galaxy_luminosity_erg.to(u.solLum)
+        
+        # Initialize a list to hold the integrated flux for each component template
+        temp_flux_sum = [0] * len(self.component_templates['index'])
+        for j in range(len(temp_flux_sum)):
+            temp_flux_sum[j] = np.trapezoid(template_flux[:, j][mask], wave.value[mask]) * (fit.unit * wave.unit)
+
+        # Calculate the flux fractions
+        flux_fractions = np.array([temp_flux_sum[j] / cont_flux_sum for j in range(len(temp_flux_sum))]) * flux_rescale
+
+        # Keep template_scale in matching luminosity units
+        template_luminosities = u.Quantity([flux_fractions[j] * galaxy_luminosity_lsun for j in range(len(indecies))])
+
+        scaled_component_templates = self.component_templates['convolved'] * template_norms / self.ct_coeff['stelweights'][indecies]
+        per_template_lums = u.Quantity([np.trapezoid(scaled_component_templates[:, j][mask], wave.value[mask]) * template_unit * wave_unit for j in range(len(indecies))])
+
+        template_scale = template_luminosities / per_template_lums
+
+        stellar_masses = template_scale * mass_templates[indecies]
+
+        self.component_templates['stellar_masses'] = stellar_masses
+        self.component_templates['template_luminosities'] = template_luminosities
+        self.component_templates['galaxy_luminosity_lsun'] = galaxy_luminosity_lsun
 
 def load_q3dout(q3di: str | q3din.q3din,
                 col: Optional[int]=None,

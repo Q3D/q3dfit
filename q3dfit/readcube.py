@@ -76,6 +76,12 @@ class Cube:
     usecunit
         Optional. If CUNIT and waveunit_in differ, default to CUNIT. 
         Default is False.
+    is_x1d
+        Optional. Allows q3dfit to read in a JWST x1d.fits file. Default is False.
+        Will override datext, varext, dqext, wavext, and wmapext to appropriate values.
+    load_SB
+        Optional. If is_x1d is True, load the surface brightness data. 
+        If False, load the flux data. Default is True.
     logfile
         Optional. Filename for progress messages. Default is None.
     quiet
@@ -154,6 +160,8 @@ class Cube:
                  waveunit_in: str='micron', 
                  waveunit_out: str='micron',
                  usecunit: bool=False,
+                 is_x1d: bool=False,
+                 load_SB: bool=True,
 #                 linearize: bool=False,
 #                 vormap=None,
                  quiet: bool=False,
@@ -162,16 +170,29 @@ class Cube:
         warnings.filterwarnings("ignore")
 
         self.infile = infile
-        try:
-            hdu = fits.open(infile, ignore_missing_end=True)
-        except FileNotFoundError:
-            raise CubeError(infile+' does not exist')
+
+        if not is_x1d:
+            try:
+                hdu = fits.open(infile, ignore_missing_end=True)
+            except FileNotFoundError:
+                raise CubeError(infile+' does not exist')
+        elif is_x1d:
+            try:
+                hdu = convert_x1d(infile, load_SB=load_SB)
+            except FileNotFoundError:
+                raise CubeError(infile+' does not exist')
+            # assign extension labels based on x1d output
+            datext = 1
+            varext = 2
+            dqext = 3
+            wavext = 4
+            wmapext = None
+
         # fits extensions labels
         self.datext = datext
         self.varext = varext
         self.dqext = dqext
         self.wmapext = wmapext
-
         # Data
         # Input assumed to be array (nwave, nrows, ncols)
         # Transpose turns this into (ncols, nrows, nwave)
@@ -950,3 +971,35 @@ class Cube:
         #     hdul.append(fits.ImageHDU(self.wmap.T, header=self.header_wmap))
 
         hdul.writeto(outfile, overwrite=True)
+
+def convert_x1d(infile, 
+                load_SB=True):
+    # takes a JWST x1d.fits file and generates an imageHDU compatible with q3dfit
+    with fits.open(infile) as hdul:
+        # access the 1D extracted spectrum table
+        data = hdul['EXTRACT1D'].data
+        
+        wavelength = data['WAVELENGTH']
+        waveunit = data.columns['WAVELENGTH'].unit
+        dq = data['DQ'] if 'DQ' in data.names else np.zeros_like(wavelength, dtype=np.int32)
+        if 'SURF_BRIGHT' in data.names and load_SB:
+            flux = data['SURF_BRIGHT']
+            err = data['SB_ERROR']
+            flux_unit = data.columns['SURF_BRIGHT'].unit
+        else:
+            flux = data['FLUX']
+            err = data['FLUX_ERROR']
+            flux_unit = data.columns['FLUX'].unit
+
+        primaryHDU = fits.PrimaryHDU()
+        sciHDU = fits.ImageHDU(flux, name='SCI')
+        errHDU = fits.ImageHDU(err, name='ERR')
+        dqHDU = fits.ImageHDU(dq, name='DQ')
+        waveHDU = fits.ImageHDU(wavelength, name='WAVE')
+
+        for hdu in [sciHDU, errHDU, dqHDU]:
+            hdu.header['BUNIT'] = flux_unit
+            hdu.header['CUNIT1'] = waveunit
+
+        #assemble the HDU list for the cube. 0: Primary, 1: SCI, 2: ERR, 3: DQ, 4: WAVE
+        return fits.HDUList([primaryHDU, sciHDU, errHDU, dqHDU, waveHDU])

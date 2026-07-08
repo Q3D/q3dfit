@@ -440,9 +440,6 @@ def fitspec(wlambda: np.ndarray,
                 if waveunit == 'micron':
                     redlam *= 1.e4
 
-            if 'ppxf_kwargs' not in q3di.argscontfit:
-                q3di.argscontfit['ppxf_kwargs'] = dict()
-
             # run ppxf
             #import pdb; pdb.set_trace()
             pp = ppxf(temp_log, gdflux_log, gderr_log, velscale,

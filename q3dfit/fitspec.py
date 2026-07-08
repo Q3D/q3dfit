@@ -408,15 +408,29 @@ def fitspec(wlambda: np.ndarray,
             # Check polynomial degree
             add_poly_degree = 4
             mult_poly_degree = 0
-            if 'add_poly_degree' in q3di.argscontfit:
-                add_poly_degree = q3di.argscontfit['add_poly_degree']
-            if 'mult_poly_degree' in q3di.argscontfit:
-                mult_poly_degree = q3di.argscontfit['mult_poly_degree']
-            if 'bounds' in q3di.argscontfit:
-                bounds = q3di.argscontfit['bounds']
-            else:
+
+            argscontfit_use = dict()
+            bounds = None
             #    bounds = [[-1000., 1000.], [0., 1000.]]
-                bounds = None
+            if q3di.argscontfit is not None:
+                for key, value in q3di.argscontfit.items():
+                    if key == 'add_poly_degree':
+                        add_poly_degree = value
+                    elif key == 'mult_poly_degree':
+                        mult_poly_degree = value
+                    elif key == 'bounds':
+                        bounds = value
+                    else:
+                        argscontfit_use[key] = value
+#            if 'add_poly_degree' in q3di.argscontfit:
+#                add_poly_degree = q3di.argscontfit['add_poly_degree']
+#            if 'mult_poly_degree' in q3di.argscontfit:
+#                mult_poly_degree = q3di.argscontfit['mult_poly_degree']
+#            if 'bounds' in q3di.argscontfit:
+#                bounds = q3di.argscontfit['bounds']
+#            else:
+#            #    bounds = [[-1000., 1000.], [0., 1000.]]
+#                bounds = None
 
             # Rest wavelength if reddening is applied
             # must be in Angstroms
@@ -435,7 +449,7 @@ def fitspec(wlambda: np.ndarray,
                       mdegree=mult_poly_degree,
                       reddening=q3di.av_star,
                       lam=redlam,
-                      quiet=quiet)
+                      quiet=quiet,**argscontfit_use)
 
             # Errors in best-fit velocity and dispersion.
             # From PPXF docs:

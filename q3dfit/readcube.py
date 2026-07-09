@@ -980,7 +980,19 @@ class Cube:
 def convert_x1d(infile, 
                 load_SB=True,
                 keep_disp=False):
-    # takes a JWST x1d.fits file and generates an imageHDU compatible with q3dfit
+    '''
+    Convert a JWST x1d.fits file to a fits HDUList with extensions for flux, variance, DQ, and wavelength readble by q3dfit.
+
+    Parameters
+    ----------
+    infile
+        Name of input x1d.fits file.
+    load_SB
+        If True, load the surface brightness data. If False, or if SB is not available, load the flux data. Default is True.
+    keep_disp
+        If True, keep the original dispersion data. If False, interpolate the data to a constant dispersion. Default is False.
+    '''
+
     with fits.open(infile) as hdul:
         # access the 1D extracted spectrum table
         data = hdul['EXTRACT1D'].data

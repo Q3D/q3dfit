@@ -9,6 +9,7 @@ import warnings
 from typing import Literal, Optional
 from numpy.typing import ArrayLike
 from scipy.ndimage import median_filter
+from scipy import interpolate
 
 from astropy import units as u
 from astropy.constants import c
@@ -79,9 +80,12 @@ class Cube:
     is_x1d
         Optional. Allows q3dfit to read in a JWST x1d.fits file. Default is False.
         Will override datext, varext, dqext, wavext, and wmapext to appropriate values.
-    load_SB
-        Optional. If is_x1d is True, load the surface brightness data. 
-        If False, load the flux data. Default is True.
+    x1d_load_SB
+        Optional. If is_x1d is True, load the surface brightness data if available. 
+        If False, or if SB not avaliable, load the flux data. Default is True.
+    x1d_keep_disp
+        Optional. If is_x1d is True, dont convolve the data to a constant dispersion.
+        Default is False.
     logfile
         Optional. Filename for progress messages. Default is None.
     quiet
@@ -161,7 +165,8 @@ class Cube:
                  waveunit_out: str='micron',
                  usecunit: bool=False,
                  is_x1d: bool=False,
-                 load_SB: bool=True,
+                 x1d_load_SB: bool=True,
+                 x1d_keep_disp: bool=False,
 #                 linearize: bool=False,
 #                 vormap=None,
                  quiet: bool=False,
@@ -178,7 +183,7 @@ class Cube:
                 raise CubeError(infile+' does not exist')
         elif is_x1d:
             try:
-                hdu = convert_x1d(infile, load_SB=load_SB)
+                hdu = convert_x1d(infile, load_SB=x1d_load_SB, keep_disp=x1d_keep_disp)
             except FileNotFoundError:
                 raise CubeError(infile+' does not exist')
             # assign extension labels based on x1d output
@@ -973,33 +978,67 @@ class Cube:
         hdul.writeto(outfile, overwrite=True)
 
 def convert_x1d(infile, 
-                load_SB=True):
+                load_SB=True,
+                keep_disp=False):
     # takes a JWST x1d.fits file and generates an imageHDU compatible with q3dfit
     with fits.open(infile) as hdul:
         # access the 1D extracted spectrum table
         data = hdul['EXTRACT1D'].data
-        
-        wavelength = data['WAVELENGTH']
-        waveunit = data.columns['WAVELENGTH'].unit
+
+        wavelength = np.copy(data['WAVELENGTH'])
+        wave_unit = data.columns['WAVELENGTH'].unit
         dq = data['DQ'] if 'DQ' in data.names else np.zeros_like(wavelength, dtype=np.int32)
         if 'SURF_BRIGHT' in data.names and load_SB:
-            flux = data['SURF_BRIGHT']
-            err = data['SB_ERROR']
+            flux = np.copy(data['SURF_BRIGHT'])
+            err = np.copy(data['SB_ERROR'])
+            var = np.array(err)**2
             flux_unit = data.columns['SURF_BRIGHT'].unit
         else:
-            flux = data['FLUX']
-            err = data['FLUX_ERROR']
+            flux = np.copy(data['FLUX'])
+            err = np.copy(data['FLUX_ERROR'])
+            var = np.array(err)**2
             flux_unit = data.columns['FLUX'].unit
 
+        # fixing dispersion
+        if not keep_disp:
+            # finding the average dispersion
+            davg = np.average(np.diff(wavelength))
+
+            # cleaning up the wavelength array
+            gddata_mask = ((dq & 1) == 0 ) & (~np.isnan(flux))
+
+            gdwave = wavelength[gddata_mask]
+            gdflux = flux[gddata_mask]
+            gdvar = var[gddata_mask]
+
+            # generating a new wave array based on the average dispersion
+            new_wave = np.arange(gdwave.min(), gdwave.max() + davg, davg)
+
+            # interplating to the new wave array
+            finterpolater = interpolate.PchipInterpolator(gdwave, gdflux)
+            flux = finterpolater(new_wave)
+            vinterpolater = interpolate.PchipInterpolator(gdwave, gdvar)
+            var = vinterpolater(new_wave)
+
+            wavelength = new_wave
+
+            # generating a new dq array
+            dq = np.zeros_like(wavelength, dtype=np.int32)
+
+        # storing in ImageHDUs that load_cube is expecting
         primaryHDU = fits.PrimaryHDU()
         sciHDU = fits.ImageHDU(flux, name='SCI')
-        errHDU = fits.ImageHDU(err, name='ERR')
+        varHDU = fits.ImageHDU(var, name='VAR')
         dqHDU = fits.ImageHDU(dq, name='DQ')
         waveHDU = fits.ImageHDU(wavelength, name='WAVE')
 
-        for hdu in [sciHDU, errHDU, dqHDU]:
-            hdu.header['BUNIT'] = flux_unit
-            hdu.header['CUNIT1'] = waveunit
+        if flux_unit is not None:
+            sciHDU.header['BUNIT'] = str(flux_unit)
+            varHDU.header['BUNIT'] = f'({flux_unit})^2'
+
+        if wave_unit is not None:
+            for hdu in [sciHDU, varHDU, dqHDU, waveHDU]:
+                hdu.header['CUNIT1'] = str(wave_unit)
 
         #assemble the HDU list for the cube. 0: Primary, 1: SCI, 2: ERR, 3: DQ, 4: WAVE
-        return fits.HDUList([primaryHDU, sciHDU, errHDU, dqHDU, waveHDU])
+        return fits.HDUList([primaryHDU, sciHDU, varHDU, dqHDU, waveHDU])

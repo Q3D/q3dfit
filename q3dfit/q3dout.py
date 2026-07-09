@@ -1352,7 +1352,6 @@ class q3dout:
             else:
                 print('Not enough information to find mass porportions. Please provide startempfile.')
     def find_population_masses(self,
-                               cube_norm,
                                templates,
                                mass_templates,
                                wave_min=None,
@@ -1369,8 +1368,6 @@ class q3dout:
         ----------
         q3do
             :py:class:`~q3dfit.q3dout.q3dout object containing the continuum fit and component templates.
-        cube_norm
-            q3di.argsreadcube['fluxnorm'] value used to normalize the data.
         templates
             Dictionary containing the stellar templates with keys 'norm' and 'flux'.
         mass_templates
@@ -1399,6 +1396,8 @@ class q3dout:
             wave_min = self.fitrange[0]
         if wave_max is None:
             wave_max = self.fitrange[1]
+
+        cube_norm = self.fluxnorm
 
         wave_min = wave_min * wave_unit
         wave_max = wave_max * wave_unit

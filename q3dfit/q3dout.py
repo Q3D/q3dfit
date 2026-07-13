@@ -500,10 +500,13 @@ class q3dout:
                             zeroflux is False and nouncert is False:    
                             # Get spectral resolution
                             Ruse = specres.get_R(wave[line][i])
-                            sigma_obs[line][i] = \
-                                np.sqrt(self.param[isigma]**2 +
-                                        (c.to('km/s').value/Ruse/
-                                         gaussian_sigma_to_fwhm)**2)
+                            if Ruse is None:
+                                sigma_obs[line][i] = sigma[line][i]
+                            else:
+                                sigma_obs[line][i] = \
+                                    np.sqrt(self.param[isigma]**2 +
+                                            (c.to('km/s').value/Ruse/
+                                             gaussian_sigma_to_fwhm)**2)
                             sigmaerr_obs[line][i] = self.perror[isigma] * \
                                 sigma_obs[line][i]/sigma[line][i]
                             fluxpk_obs[line][i] = self.param[ifluxpk] * \

@@ -5,11 +5,12 @@ import numpy as np
 
 def read_bpass(infile: str,
                outfile: str = '',
-               outdir: str = '',
                waverange: ArrayLike = [1., 100000.],
                binary: bool = False,
                zs: ArrayLike = [0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 
-                                0.010, 0.014, 0.020, 0.030, 0.040]) -> None:
+                                0.010, 0.014, 0.020, 0.030, 0.040],
+               outdir: str = '',
+               agerange: ArrayLike = [6., 11.]) -> None:
     '''
     Read the BPASS templates into a dictionary. Templates located
     here: https://bpass.auckland.ac.nz/14.html. Download the gzipped
@@ -22,7 +23,7 @@ def read_bpass(infile: str,
     range 1 - 100,000 A. Most users will wish to resample to lower resolution, 
     depending on their use case. We caution that some of the stellar atmospheres 
     we use also have slightly lower spectral resolution.
-    Each file has 52 columns and 105 rows. The first column lists a wavelength 
+    Each file has 52 columns and 10^5 rows. The first column lists a wavelength 
     in angstroms, and each remaining column n (n>1) holds the model flux for the 
     population at an age of 10^(6+0.1*(n-2)) years at that wavelength.
     The units of flux are Solar Luminosities per Angstrom, normalised for a 
@@ -52,15 +53,21 @@ def read_bpass(infile: str,
         Optional. The metallicities to include. The options are
         [0.001,0.002,0.003,0.004,0.006,0.008,0.010,0.014,0.020,0.030,0.040].
         Defaults to all metallicities.
+    agerange
+        Optional. Array containing the minimum and maximum log ages of the templates to be used.
+        Must be a multiple of 0.1 between 6.0 and 11.0.
+        Defaults to [6., 11.].
     '''
     # spectral resolution of templates
     R = 10000
     # number of metallicities
     nz = len(zs)
     # ages for one metallicity
-    nages = 51
+    nages = round(((agerange[1] - agerange[0]) / 0.1) + 1)
     # log age in years
-    ages = 10.**(6. + 0.1 * np.arange(0, nages))
+    ages = 10.**(agerange[0] + 0.1 * np.arange(0, nages))
+    # initial age data index
+    ageindex = round((agerange[0] - 6) / 0.1) + 1
     # Output spectra will loop through zs, and then the ages for each
     # metallicity. 
     # So first we'll run through the ages for every metallicity:
@@ -75,6 +82,8 @@ def read_bpass(infile: str,
     waveall = np.arange(waverange[0], waverange[1] + 1., dtype=float)
     # output array will have shape (nwave, nz * nages)
     fluxall = np.zeros((len(waveall), nz * nages), dtype=float)
+    #initialize normalization factors array
+    normall = np.zeros_like(agesall, dtype=float)
 
     for iz, z in enumerate(zs):
         # read the file for this metallicity
@@ -89,22 +98,27 @@ def read_bpass(infile: str,
         alph = infile.split('.a')[1][0:3]
         filename = f'{infile}/spectra-{sinorbin}-imf135_300.a{alph}.z{zstr}.dat'
         # read the data from the file
-        data = np.loadtxt(filename, usecols=range(nages + 1))
+        data = np.loadtxt(filename)
         # extract the wavelengths and fluxes
         wave = data[:, 0]
-        flux = data[:, 1:]
+        flux = data[:, ageindex : ageindex + nages]
+        norms = np.zeros(nages)
         # find the indices of the wavelengths that are within the desired range
         indices = np.where((wave >= waverange[0]) & (wave <= waverange[1]))[0]
         # normalize fluxes over desired wavelength range
         for i in range(flux.shape[1]):
-            flux[indices, i] /= np.mean(flux[indices, i])
+            norm_factor = np.mean(flux[indices, i])
+            flux[indices, i] /= norm_factor
+            norms[i] = norm_factor
+        # storing normalization factors in output array
+        normall[iz * int(nages) : (iz + 1) * int(nages)] = norms[:]
         # write the fluxes to the output array
         fluxall[:, iz * int(nages):(iz + 1) * int(nages)] = flux[indices, :]
         
-        # calculating sigma array for templates based on spectral resolution
-        sigma = [2.35 * (i / R) for i in waveall]
+    # calculating sigma array for templates based on spectral resolution
+    sigma = np.array([ i / (2.35 * R) for i in waveall], dtype=float)
 
-    if outdir is not '':
+    if outdir != '':
         indir = infile.split('/')[-2]
         outfile = f'{outdir}/{indir}_z{min(zall) * 1000:03.0f}to{max(zall) * 1000:03.0f}_{sinorbin}_lam{waverange[0]:.0f}to{waverange[1]:.0f}.npy'
 
@@ -114,6 +128,83 @@ def read_bpass(infile: str,
                       'ages': agesall,
                       'zs': zall,
                       'unit': 'Angstrom',
-                      'sigma' : sigma})
+                      'sigma' : sigma,
+                      'norm' : normall
+                      })
 
     print(f'BPASS templates saved to {outfile}')
+    
+
+def read_bpass_starmass(infile: str,
+                       outfile: str = '',
+                       binary: bool = False,
+                       zs: ArrayLike = [0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 
+                                        0.010, 0.014, 0.020, 0.030, 0.040],
+                       agerange: ArrayLike = [6., 11.]) -> None:
+    '''
+    Read the BPASS starmass templates into a dictionary. Templates located
+    here: https://bpass.auckland.ac.nz/14.html. Download the gzipped
+    tarball of the desired version and alpha-enhancement. Unpack it
+    into a directory, and pass the path to the directory to this function.
+
+    From p 16 of the v2.3 manual:
+    These files contain the total mass of the surviving stellar population as a function of age,
+    for a population of 106 Msun formed at t=0. These do not include the mass in compact
+    remnants.
+    Each file has 51 rows (one for each age bin) and 2 columns. The first column holds the
+    log(age/years) of the population while the second holds the total mass of surviving stars
+    in solar masses.
+    For the binary files we have included a third, untested, column that includes the mass in
+    stellar remnants, i.e. white dwarfs, neutron stars and black holes. We will add this column
+    to the single star population in future.
+    Filenames: starmass-<opt>-<imf>.<z>.dat
+
+    Parameters
+    ----------
+    infile
+        The path to the BPASS template files.
+    outfile
+        The path to the output file where the numpy save file
+        will be written. Should have a .npy extension.
+    binary
+        Optional. If True, the models with binary star evolution will be used.
+        Defaults to False.
+    zs
+        Optional. The metallicities to include. The options are
+        [0.001,0.002,0.003,0.004,0.006,0.008,0.010,0.014,0.020,0.030,0.040].
+        Defaults to all metallicities.
+    agerange
+        Optional. Array containing the minimum and maximum log ages of the templates to be used.
+        Must be a multiple of 0.1 between 6.0 and 11.0.
+        Defaults to [6., 11.].
+    '''
+
+    # number of metallicities
+    nz = len(zs)
+    # ages for one metallicity
+    nages = round(((agerange[1] - agerange[0]) / 0.1) + 1)
+    # finding index for ages
+    ageindex = round((agerange[0] - 6) / 0.1)
+    # Output masses will loop through zs, and then the ages for each
+    # metallicity.
+    # Initializimg masses array
+    starmassesall = np.zeros(nages*nz)
+
+
+    for iz, z in enumerate(zs):
+        # read file for single or binaries
+        sinorbin = 'sin'
+        if binary:
+            sinorbin = 'bin'
+
+        # convert the metallicity to a zero-padded integer string
+        # with three digits
+        zstr = f'{int(round(z * 1000)):03d}'
+        # strip the alpha enhancement value from the infile path
+        filename = f'{infile}/starmass-{sinorbin}-imf135_300.z{zstr}.dat'
+        # read the data from the file
+        data = np.loadtxt(filename)
+        # read data into starmasses array
+        starmassesall[iz * int(nages): (iz + 1) * int(nages)] = data[ageindex : ageindex + nages, 1]
+    
+    np.save(outfile, starmassesall)

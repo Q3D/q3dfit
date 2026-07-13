@@ -164,6 +164,9 @@ class q3din:
         self.docontfit: bool = False
         self.dolinefit: bool = False
 
+        # switch for saving ppxf matrix
+        self.savematrix: bool = False
+
 
     def init_linefit(self, 
                      lines: list[str], 

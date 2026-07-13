@@ -19,6 +19,7 @@ from scipy.interpolate import interp1d
 from . import q3din, q3dmath, q3dout
 from q3dfit.q3dutil import lmlabel, write_msg
 from q3dfit.spectConvol import spectConvol
+from q3dfit.q3dutil import airtovac
 
 
 def fitspec(wlambda: np.ndarray,
@@ -439,18 +440,23 @@ def fitspec(wlambda: np.ndarray,
                 if waveunit == 'micron':
                     redlam *= 1.e4
 
+            if 'ppxf_kwargs' not in q3di.argscontfit:
+                q3di.argscontfit['ppxf_kwargs'] = dict()
+
             # run ppxf
             #import pdb; pdb.set_trace()
             pp = ppxf(temp_log, gdflux_log, gderr_log, velscale,
                       [0, siginit_stars],
-                      bounds=bounds,
+                      #bounds=bounds,
                       goodpixels=ct_indx_log,
                       degree=add_poly_degree, 
                       mdegree=mult_poly_degree,
                       reddening=q3di.av_star,
                       lam=redlam,
-                      quiet=quiet,**argscontfit_use)
+                      quiet=quiet,**argscontfit_use, 
+                      **q3di.argscontfit['ppxf_kwargs'])
 
+            
             # Errors in best-fit velocity and dispersion.
             # From PPXF docs:
             # These errors are meaningless unless Chi^2/DOF~1.
@@ -482,14 +488,41 @@ def fitspec(wlambda: np.ndarray,
             ct_coeff['polymod'] = cont_fit_poly
             ct_coeff['mpolymod'] = cont_fit_mpoly
             # this includes the multiplicative polynomial
+            ct_coeff['npoly'] = add_poly_degree
+            ct_coeff['ntemplates'] = len(pp.weights)
+            ct_coeff['gdlambda_log'] = gdlambda_log
             ct_coeff['stelmod'] = q3do.cont_fit - cont_fit_poly
             ct_coeff['polyweights'] = pp.polyweights
             ct_coeff['stelweights'] = pp.weights
+            ct_coeff['goodpixels'] = pp.goodpixels
             ct_coeff['av'] = pp.reddening
             ct_coeff['sigma'] = pp.sol[1]
             ct_coeff['sigma_err'] = solerr[1]
             q3do.ct_coeff = ct_coeff
-    
+        
+            if q3di.savematrix:
+                # Extract the templates from the design matrix
+                npoly = add_poly_degree + 1
+
+                template_matrix = pp.matrix[:, npoly : ]
+
+                zero_filter = pp.weights.copy().astype(bool)
+                filtered_matrix = template_matrix[:, zero_filter]
+
+                # Factor in the stelweights to get the fully processed templates
+                broadened_templates_log = filtered_matrix * pp.weights[zero_filter]
+
+                lin_lambda = q3do.wave
+                log_lambda = np.log(lin_lambda)
+
+                interp_func = interp1d(gdlambda_log, broadened_templates_log, axis=0,
+                                       kind='cubic', bounds_error=False, fill_value=0.0)
+            
+                components = interp_func(log_lambda)
+            
+            
+                q3do.component_templates = {'convolved' : components}
+
             # Adjust stellar redshift based on fit
             # From ppxf docs:
             # IMPORTANT: The precise relation between the output pPXF velocity
@@ -845,56 +878,6 @@ def fitspec(wlambda: np.ndarray,
 def per_iteration(pars, iteration, resid, *args, **kws):
     print(" ITER ", iteration, [f"{p.name} = {p.value:.5f}"
                                 for p in pars.values()])
-
-
-def airtovac(wv: np.ndarray,
-             waveunit: Literal['micron','Angstrom']='Angstrom',
-             logfile: Optional[str]=None,
-             quiet: bool=True) -> np.ndarray:
-    """
-    Takes an array of wavelengths in air and converts them to vacuum
-    using eq. 3 from Morton et al. 1991.
-
-    Parameters
-    ----------
-    wv
-        Input wavelengths.
-    waveunit
-        Optional. Wavelength unit. Default is Angstrom.
-
-    Returns
-    -------
-    ndarray
-        An array of the same dimensions as the input and in the same units
-        as the input
-
-    References
-    ----------
-    Morton 1991, ApJSS, 77, 119
-
-    Examples
-    --------
-    >>> wv=np.arange(3000,7000,1)
-    >>> vac_wv=airtovac(wv)
-    array([3000.87467224, 3001.87492143, 3002.87517064, ..., 6998.92971915, 6999.92998844, 7000.93025774])
-    """
-    x=wv
-    # get x to be in Angstroms for calculations if it isn't already
-    if ((waveunit!='Angstrom') & (waveunit!='micron')):
-        write_msg(f'Wave unit {waveunit} not recognized, assuming Angstroms.', logfile, quiet)
-    if (waveunit=='micron'):
-        x=wv*1.e4
-
-    tmp=1.e4/x
-    # vacuum wavelengths are indeed slightly longer
-    y=x*(1.+6.4328e-5+2.94981e-2/(146.-tmp**2)+2.5540e-4/(41.-tmp**2))
-
-    # get y to be in the same units as the input:
-    if (waveunit=='micron'):
-        y=y*1.e-4
-
-    return(y)
-
 
 def masklin(llambda: np.ndarray,
             linelambda: dict[str, np.ndarray],

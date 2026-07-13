@@ -8,19 +8,20 @@ from typing import Literal, Optional
 from numpy.typing import ArrayLike
 
 from astropy.constants import c
+from astropy import units as u
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.table import Table
-from astropy import units as u
 from importlib import import_module
 from lmfit import Parameters
-from ppxf.ppxf_util import log_rebin
-from scipy import constants
+from ppxf.ppxf_util import log_rebin, gaussian_filter1d
+from scipy import constants, sparse
 from scipy.interpolate import interp1d
 
 from . import q3dutil, q3din
 from q3dfit.qsohostfcn import qsohostfcn
 from q3dfit.contfit import readcf
 from q3dfit.exceptions import InitializationError
+from q3dfit.q3dutil import airtovac
 
 class q3dout:
     '''
@@ -717,21 +718,6 @@ class q3dout:
                     decompose_ppxf_fit: Optional[bool]=None):
         '''
         Separate continuum fit parameters into individual components.
-
-        Parameters
-        ----------
-        q3di
-            :py:class:`~q3dfit.q3din.q3din` object with input parameters.
-        decompose_qso_fit
-            Optional. Decompose QSO fit if continuum fit method is
-            :py:func:`~q3dfit.contfit.fitqsohost`. Default is None,
-            which means True if the continuum fit method is
-            :py:func:`~q3dfit.contfit.fitqsohost`, and False otherwise.
-        decompose_ppxf_fit
-            Optional. Decompose pPXF fit if continuum fit method
-            is :py:mod:`~ppxf.ppxf`. Default is None,
-            which means True if the continuum fit method is
-            :py:mod:`~ppxf.ppxf`, and False otherwise.
         '''
         q3dii: q3din.q3din = q3dutil.get_q3dio(q3di)
 
@@ -791,7 +777,7 @@ class q3dout:
                 # Get QSO template
                 qsotemplate = \
                     np.load(q3dii.argscontfit['qsoxdr'],
-                            allow_pickle='TRUE').item()
+                            allow_pickle=True).item()
                 qsowave = qsotemplate['wave']
                 qsoflux_full = qsotemplate['flux']
                 qsoflux = qsoflux_full[self.fitran_indx]
@@ -1070,7 +1056,8 @@ class q3dout:
         qso_out_intr = np.array([])
 
         config_file = readcf(q3di.argscontfit['config_file'])
-        if not 'qso' in list(config_file.keys())[1]:
+        # Expect QSO template to be the first template entry in the config
+        if not 'qso' in list(config_file.keys())[0]:
             raise InitializationError(\
                 'During QSO-host decomposition, the function assumes that in the '+
                 'config file the qso template is the first template, but its name '+
@@ -1159,6 +1146,208 @@ class q3dout:
                 print(f'Redshift: {self.zstar:.5f}+/-{self.zstar_err:.5f}')
         else:
             print('Run q3dout.sepcontpars first!')
+
+    def get_template_data(self, 
+                              q3di: q3din.q3din, 
+                              min_weight: Optional[float]=0.0):
+        '''    
+        Decomposes the stellar fit components into individual spectra, ages, metallicities, and weights and 
+        stores them in the `component_templates` attribute.
+
+        Parameters
+        ----------
+        q3di 
+            :py:class:`~q3dfit.q3din.q3din` object containing stellar template file path
+        min_weight
+            Minimum weight threshold for including components in the decomposition. Default is 0.0.
+
+        Outputs
+        -------
+        component_templates
+            Dictionary containing the raw stellar templates included in the fit with keys 'index', 'spectrum', 'age', 'logage', 'zs', 'weight', and 'lambda'.
+        '''
+        if not hasattr(self, 'decompose_ppxf_fit'):
+            print('Needed to run sepcontpars first, doing that')
+            self.sepcontpars(q3di)
+
+        templates = np.load(q3di.startempfile, allow_pickle=True)[()]
+
+        stellar_spectra = {'lambda': templates['lambda']}
+ 
+        stellar_spectra['nages'] = np.count_nonzero(templates['zs'] == templates['zs'][0])
+
+        stellar_spectra['index'] = [i for i, w in enumerate(self.ct_coeff['stelweights']) if w > min_weight]
+        #stellar_spectra['flux'] = templates['flux'][:, stellar_spectra['index']]
+        stellar_spectra['age'] = templates['ages'][stellar_spectra['index']]
+        stellar_spectra['zs'] = templates['zs'][stellar_spectra['index']]
+        stellar_spectra['weight'] = self.ct_coeff['stelweights'][stellar_spectra['index']]
+        stellar_spectra['unique_ages'] = np.unique(templates['ages'])
+        stellar_spectra['unique_zs'] = np.unique(templates['zs'])
+
+        total_weight = np.sum(stellar_spectra['weight'])
+        stellar_spectra['rel_weight'] = [i / total_weight for i in stellar_spectra['weight']]
+
+        if hasattr(self, 'component_templates'):
+            stellar_spectra['convolved'] = self.component_templates['convolved']
+
+        self.component_templates = stellar_spectra
+
+    def plot_cont_components(self,
+                            q3di: Optional[q3din.q3din] = None,
+                            quiet: bool=True,
+                            savefig: Optional[bool]=False,
+                            outfile: Optional[str]=None,
+                            argssavefig: dict={'bbox_inches': 'tight','dpi': 300},
+                            plotargs: dict={}):
+        '''
+        Function to plot the component spectra of a ppxf fit
+        
+        Parameters
+        ----------
+        q3di
+            :py:class:`~q3dfit.q3din.q3din` object with input parameters. If 
+            included, will automatically run get_template_data if needed
+        quiet
+            Suppresses progress messages. Default: True
+        savefig
+            If True, save the figure to a file. Default is False.
+        outfile
+            If savefig is True, the name of the output file to save the figure.
+            Default is None, which means the output file will be named
+            `<filelab>_cnt_comp` where `<filelab>` is the path+filename set
+            by :py:meth:`~q3dfit.q3dout.q3dout.load_q3dout`.
+        argssavefig
+            Optional. Dictionary of arguments to pass to 
+            :py:meth:`~matplotlib.pyplt.savefig()`. Defaults to
+            {'bbox_inches': 'tight', 'dpi': 300}.
+        plotargs
+            Additional keyword arguments to pass to the plotting function.
+        '''
+        from q3dfit.plot import plotcontcomponents
+
+        if 'age' not in self.component_templates:
+            if q3di is not None:
+                if not quiet:
+                    print('plot_cont_comps: Running get_template_data with default settings...')
+                self.get_template_data(q3di)
+            else:
+                print('plot_cont_comps: Need to run q3do.get_template_data first, aborting')
+                return
+        
+        if savefig:
+            if outfile is None:
+                if hasattr(self, 'filelab'):
+                    outfile = self.filelab
+                else:
+                    print('plot_cont_comps: need to specify outfile')
+
+        if outfile is not None:
+            outfile = outfile + '_cnt_comps'
+        
+        plotcontcomponents(q3do=self, savefig=savefig, outfile=outfile, argssavefig=argssavefig, **plotargs)
+
+    def plot_comp_heatmap(  self,
+                            plottingmode: Literal['stelweights', 'flux_fraction', 'mass_fraction'] = 'stelweights',
+                            savefig: Optional[bool]=False,
+                            outfile: Optional[str]=None,
+                            argssavefig: dict={'bbox_inches': 'tight','dpi': 300},
+                            plotargs: dict={}):
+        '''
+        Plots a heatmat of population weights on an age x metallicity grid. 
+        Will default to plotting raw weights, but can be used to plot flux fractions and mass fractions
+        after q3do.find_porportions() has been run.
+
+        Parameters
+        ----------
+        plottingmode
+            The weight value to plot: 'stelweights', 'flux_fraction, or 'mass_fraction
+        savefig
+            If True, save the figure to a file. Default is False.
+        outfile
+            If savefig is True, the name of the output file to save the figure.
+            Default is None, which means the output file will be named
+            `<filelab>_cnt_comp` where `<filelab>` is the path+filename set
+            by :py:meth:`~q3dfit.q3dout.q3dout.load_q3dout`.
+        argssavefig
+            Optional. Dictionary of arguments to pass to 
+            :py:meth:`~matplotlib.pyplt.savefig()`. Defaults to
+            {'bbox_inches': 'tight', 'dpi': 300}.
+        plotargs
+            Additional keyword arguments to pass to the plotting function.
+        '''
+        if savefig:
+            if outfile is None:
+                if hasattr(self, 'filelab'):
+                    outfile = self.filelab
+                else:
+                    print('plot_line: need to specify outfile')
+
+        if outfile is not None:
+            outfile = outfile + '_cnt_heatmap'
+
+        if plottingmode == 'flux_fraction' and 'flux_fraction' in self.ct_coeff:
+            stelweights = self.ct_coeff['flux_fraction']
+        elif plottingmode == 'mass_fraction' and 'mass_fraction' in self.ct_coeff:
+            stelweights = self.ct_coeff['mass_fraction']
+        else:
+            if plottingmode != 'stelweights':
+                print(f'{plottingmode} not found in q3do.ct_coeff, please run q3do.find_porportion()')
+                return
+            stelweights = self.ct_coeff['stelweights']
+
+        if savefig:
+            if outfile is None:
+                if hasattr(self, 'filelab'):
+                    outfile = self.filelab
+                else:
+                    print('plot_cont_comps: need to specify outfile')
+
+        if outfile is not None:
+            outfile = outfile + f'_{plottingmode}_heatmap'
+
+        from q3dfit.plot import plotpopheatmap
+
+        plotpopheatmap(self, stelweights=stelweights, savefig=savefig, outfile=outfile, argssavefig=argssavefig, **plotargs)
+        
+    def find_fractions(self, 
+                       startempfile, 
+                       massestempfile):
+        '''
+        Function to convert the weights outputted by ppxf to flux and mass porportions.
+        
+        Parameters
+        ----------
+        startempfile
+            Stellar template file provided to original q3di object 
+            containing template normalization factors.
+
+            Providing will compute flux porportions and store them in:
+            self.ct_coeff['flux_fraction'].
+        massestempfile
+            Template file containg the remaining stellar mass as a function
+            of age for the same metallicities and ages as startempfile.
+        
+            Providing will compute mass porportions and store them in:
+            self.ct_coeff['mass_fraction'].
+
+            Will only work if provided alongside startempfile, or after
+            this function has already been run with startempfile
+        '''
+        if startempfile is not None:
+            stelweights = self.ct_coeff['stelweights']
+            templates = np.load(startempfile, allow_pickle = True)[()]
+            stelweights = stelweights / templates['norm']
+            stelweights /= np.sum(stelweights)
+            self.ct_coeff['flux_fraction'] = stelweights
+
+        if massestempfile is not None:
+            if 'flux_fraction' in self.ct_coeff:
+                masses = np.load(massestempfile)
+                mass_weights = self.ct_coeff['flux_fraction'] * masses
+                mass_weights /= np.sum(mass_weights)
+                self.ct_coeff['mass_fraction'] = mass_weights
+            else:
+                print('Not enough information to find mass porportions. Please provide startempfile.')
 
 
 def load_q3dout(q3di: str | q3din.q3din,

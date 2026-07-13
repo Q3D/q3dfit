@@ -147,26 +147,48 @@ def fitspec(wlambda: np.ndarray,
         # Need option for when template is in vac and data in air ...
         if q3di.vacuum and not q3di.startempvac:
             templatelambdaz = airtovac(templatelambdaz, logfile=q3di.logfile, quiet=quiet)
+        # Need to ensure templates and data have the same wavelength units
         if waveunit is not None:
             if q3di.startempwaveunit != waveunit:
                 lambda_tmp = templatelambdaz * u.Unit(q3di.startempwaveunit)
                 templatelambdaz = lambda_tmp.to(u.Unit(waveunit)).value
         #     templatelambdaz *= q3di['waveunit']
-        if specConv is not None and 'sigma' in template:
+        if specConv is not None:
             # Convolve stellar template to match instrumental resolution
-            # Need to ensure templates and data have the same wavelength units
-            if waveunit is not None:
-                if q3di.startempwaveunit != waveunit:
-                    sigma_tmp = template['sigma'] * u.Unit(q3di.startempwaveunit)
-                    template['sigma'] = sigma_tmp.to(u.Unit(waveunit)).value
-            if template['flux'].ndim == 1:
-                # If template is 1D, convolve it directly
-                template['flux'] = specConv.spect_convolver(
-                    templatelambdaz, template['flux'], dsig=template['sigma'])
-            else:
-                for i in range(template['flux'].shape[1]):
-                    template['flux'][:,i] = specConv.spect_convolver(
-                        templatelambdaz, template['flux'][:,i], dsig=template['sigma'])
+            # Case of kernel
+            if specConv.KernelObj is not None:
+                oldkernobj = copy.deepcopy(specConv.KernelObj)
+                # Assume that the template has a constant wavelength dispersion, or doesn't change much
+                tempdisp = np.median(np.diff(templatelambdaz))
+                if tempdisp != specConv.KernelObj.dwave:
+                    # interpolate kernel to match the template wavelength grid
+                    oldkernwave = np.arange(0, len(specConv.KernelObj.kernel)) * specConv.KernelObj.dwave
+                    interpfcn = interp1d(oldkernwave, specConv.KernelObj.kernel, kind='cubic')
+                    tempwave = np.arange(0, int(oldkernwave[-1]/tempdisp)) * tempdisp
+                    newkernel = interpfcn(tempwave)
+                    specConv.KernelObj.kernel = newkernel
+                    specConv.KernelObj.dwave = tempdisp
+                if template['flux'].ndim == 1:
+                    template['flux'] = specConv.spect_convolver(None, template['flux'])
+                else:
+                    for i in range(template['flux'].shape[1]):
+                        template['flux'][:,i] = specConv.spect_convolver(None, template['flux'][:,i])
+                specConv.KernelObj = oldkernobj
+            # Case of Gaussian profile
+            elif 'sigma' in template:
+                do_conv = True
+                if waveunit is not None:
+                    # Need to ensure sigmas are in the right units
+                    if q3di.startempwaveunit != waveunit:
+                        sigma_tmp = template['sigma'] * u.Unit(q3di.startempwaveunit)
+                        template['sigma'] = sigma_tmp.to(u.Unit(waveunit)).value
+                if template['flux'].ndim == 1:
+                    template['flux'] = specConv.spect_convolver(
+                        templatelambdaz, template['flux'], dsig=template['sigma'])
+                else:
+                    for i in range(template['flux'].shape[1]):
+                        template['flux'][:,i] = specConv.spect_convolver(
+                            templatelambdaz, template['flux'][:,i], dsig=template['sigma'])
     else:
         templatelambdaz = wlambda
 

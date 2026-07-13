@@ -132,6 +132,18 @@ def plotcont(q3do: q3dout,
     wavein = wave.copy()*getattr(u,waveunit_in)
     waveout = wavein.copy().to(waveunit_out)
 
+    # get masked values
+    allidx = np.arange(0.,len(wave))
+    maskidx = np.setdiff1d(allidx, q3do.ct_indx)
+    print(wave[q3do.ct_indx])
+    from itertools import groupby
+    from operator import itemgetter
+    maskidxlim = []
+    for k, g in groupby(enumerate(maskidx), lambda ix : ix[0] - ix[1]):
+        maskidxsep = list(map(itemgetter(1), g))
+        maskidxlim.append([maskidxsep[0],maskidxsep[-1]])
+    print(maskidxlim)
+
     # for optical spectra fit by fitqsohost or ppxf:
     if not questfit:
 

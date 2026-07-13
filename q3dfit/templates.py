@@ -102,7 +102,7 @@ def read_bpass(infile: str,
         fluxall[:, iz * int(nages):(iz + 1) * int(nages)] = flux[indices, :]
         
         # calculating sigma array for templates based on spectral resolution
-        sigma = [2.35 * (i / R) for i in waveall]
+        sigma = np.array([2.35 * (i / R) for i in waveall])
 
     if outdir is not '':
         indir = infile.split('/')[-2]

@@ -4,6 +4,8 @@
 @author: Yuzo Ishikawa
 """
 
+from fileinput import filename
+from select import select
 from typing import Literal, Optional, Union
 
 #import copy
@@ -13,6 +15,7 @@ import re
 from astropy.constants import c
 from astropy.io import fits
 from astropy.stats import gaussian_sigma_to_fwhm
+from astropy.convolution import convolve_fft, convolve
 from ppxf.ppxf_util import varsmooth
 #from scipy.ndimage import gaussian_filter1d
 from scipy.interpolate import CubicSpline
@@ -55,6 +58,8 @@ class spectConvol:
     InstGratObjs
         Nested dictionary whose keys are instrument/grating combinations.
         The values are dispersion objects.
+    KernelObj
+        Object for a kernel, if specified in the input dictionary.
     '''
     def __init__(self,
                  spect_convol: dict[str, Union[dict[str, str], str, None]],
@@ -73,17 +78,24 @@ class spectConvol:
             self.dispdir = spect_convol['dispdir']
 
         # create the nested dictionaries to hold the dispersion objects
+        # if the instrument is 'KERNEL', instead populate the KernelObj attribute
+        # with a Kernel object
         self.InstGratObjs = {}
+        self.KernelObj = None
         # inst is a telescope+instrument string
-        # gratlist is dictionary of grating strings
+        # gratlist is a list of grating strings
         if 'ws_instrum' not in spect_convol:
             raise SystemExit('No ws_instrum dictionary found in ' +
                 'q3dinit.spect_convol.')
         try:
             for inst, gratlist in spect_convol['ws_instrum'].items():
-                self.InstGratObjs[inst.upper()] = {}
-                for grat in gratlist:
-                    self.InstGratObjs[inst.upper()][grat.upper()] = None
+                if inst.upper() == 'KERNEL':
+                    self.KernelObj = Kernel(gratlist[0], waveunit=waveunit)
+                    print(f'Loaded kernel from {gratlist[0]}.')
+                else:
+                    self.InstGratObjs[inst] = {}
+                    for grat in gratlist:
+                        self.InstGratObjs[inst][grat] = None
         except:
             raise SystemExit('Error in loading spect_convol dictionary ' +
                 'in q3dinit.')
@@ -114,8 +126,9 @@ class spectConvol:
                                            waveunit=self.waveunit)
                     self.InstGratObjs[inst][grat].get_MRS_Rdlam()
 
+
     def spect_convolver(self,
-                        wave: np.ndarray,
+                        wave: Union[None, np.ndarray],
                         flux: np.ndarray,
                         dsig: Optional[np.ndarray]=None,
                         wavecen: Optional[float]=None,
@@ -140,7 +153,7 @@ class spectConvol:
             Optional. Oversample the spectrum by this factor before convolution. Default
             is 1, which means no oversampling is performed. Passed to 
             :py:func:`~ppxf.ppxf_util.varsmooth`.
-
+ 
         Returns
         -------
         np.ndarray
@@ -148,49 +161,64 @@ class spectConvol:
 
         '''
 
-        # select the instrument/grating combinations that cover the 
-        # input wavelength of interest; if no wavelength is specified,
-        # all instrument/grating combinations are used
-        InstGratSelect = self.selectInstGrat(wavecen=wavecen)
-        #
-        gwave, gdlam = self.get_InstGrat_waveDlam(InstGratSelect)
+        if self.KernelObj is not None:
 
-        # If MRS ever has grating dispersion files, we just have to comment out
-        # this block and remove the if/else statement.
-        if gwave is None or gdlam is None:
-
-            iwave = wave
-            iflux = flux
-            _, idlam = MRS_dispersion(wave)
+            fluxconv = convolve_fft(flux, self.KernelObj.kernel, fill_value=np.float64(0.))
 
         else:
 
-            # find the indices of the input wavelengths that are within the
-            # range of the grating
-            w1 = np.where(wave >= min(gwave))[0]
-            w2 = np.where(wave <= max(gwave))[0]
-            ww = np.intersect1d(w1, w2)
-            # indices of the input wavelengths that are outside the range of 
-            # the grating
-            w1x = np.where(wave < min(gwave))[0]
-            w2x = np.where(wave > max(gwave))[0]
-            # wavelengths and fluxes that are within the range of the grating
-            iwave= wave[ww]
-            iflux = flux[ww]
+            # select the instrument/grating combinations that cover the 
+            # input wavelength of interest; if no wavelength is specified,
+            # all instrument/grating combinations are used
+            InstGratSelect = self.selectInstGrat(wavecen=wavecen)
 
-            # interpolate the dispersion curve to the input wavelengths
-            dlam_interp_fcn = CubicSpline(gwave, gdlam)
-            idlam = dlam_interp_fcn(iwave)
+            gwave, gdlam = self.get_InstGrat_waveDlam(InstGratSelect)
 
-        idsig = idlam/gaussian_sigma_to_fwhm
-        if dsig is not None:
-            # if the input spectrum has a native dispersion,
-            # convolve the spectrum by the difference of the
-            # native dispersion and the grating dispersion
-            idsig = np.sqrt(idsig**2 - dsig[ww]**2)
-        fluxconv = varsmooth(iwave, iflux, idsig, oversample=oversample)
+            # If MRS ever has grating dispersion files, we just have to comment out
+            # this block and remove the if/else statement.
+            if gwave is None or gdlam is None:
 
-        if self.is_dispobj_mrs(InstGratSelect[0]):
+                iwave = wave
+                iflux = flux
+                _, idlam = MRS_dispersion(wave)
+
+            else:
+
+                # find the indices of the input wavelengths that are within the
+                # range of the grating
+                w1 = np.where(wave >= min(gwave))[0]
+                w2 = np.where(wave <= max(gwave))[0]
+                ww = np.intersect1d(w1, w2)
+                # indices of the input wavelengths that are outside the range of 
+                # the grating
+                w1x = np.where(wave < min(gwave))[0]
+                w2x = np.where(wave > max(gwave))[0]
+                # wavelengths and fluxes that are within the range of the grating
+                iwave= wave[ww]
+                iflux = flux[ww]
+
+                # interpolate the dispersion curve to the input wavelengths
+                dlam_interp_fcn = CubicSpline(gwave, gdlam)
+                idlam = dlam_interp_fcn(iwave)
+
+            idsig = idlam/gaussian_sigma_to_fwhm
+            if dsig is not None:
+                # if the input spectrum has a native dispersion,
+                # convolve the spectrum by the difference of the
+                # native dispersion and the grating dispersion
+                idsig = np.sqrt(idsig**2 - dsig[ww]**2)
+            fluxconv = varsmooth(iwave, iflux, idsig, oversample=oversample)
+
+        #import matplotlib.pyplot as plt
+        #fig=plt.figure(figsize=[10,4])
+        #plt.plot(wave,flux)
+        #plt.plot(wave,fluxconv)
+        #plt.savefig('test.png',dpi=300)
+        #plt.close(fig)
+
+        if self.KernelObj is not None:
+            return fluxconv
+        elif self.is_dispobj_mrs(InstGratSelect[0]):
             return fluxconv
         else:
             return np.concatenate((flux[w1x], fluxconv, flux[w2x]))
@@ -230,8 +258,7 @@ class spectConvol:
                     InstGratSelect.append(self.InstGratObjs[inst][grat])
                 else:
                     if (wavecen > gwave[0]) and (wavecen < gwave[-1]):
-                        InstGratSelect.append(self.InstGratObjs[inst][grat])
-                
+                        InstGratSelect.append(self.InstGratObjs[inst][grat])                
 
         # Not sure if this deserves a SystemExit, but it's a way to
         # catch the length errors.
@@ -248,6 +275,7 @@ class spectConvol:
                     f'More than 2 inst/grat combinations cover the line ' +
                     f'at {wavecen.__str__()} {self.waveunit}.')
 
+        #print(f'spectConvol.selectInstGrat: {InstGratSelect.__len__()} inst/grat combination(s) selected.')
         return InstGratSelect
     
 
@@ -326,7 +354,7 @@ class spectConvol:
 
 
     def get_R(self,
-              wave: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+              wave: Union[float, np.ndarray]) -> Union[float, np.ndarray, None]:
         '''
         Interpolate a dispersion curve to a new wavelength(s). This is
         used to get the resolving power at a new wavelength.
@@ -342,13 +370,17 @@ class spectConvol:
             Resolving power at the input wavelength(s).
         '''
 
-        instgrat = self.selectInstGrat(wavecen=wave)
-        if self.is_dispobj_mrs(instgrat[0]):
-            R, _ = MRS_dispersion(wave)
+        if self.KernelObj is not None:
+            R = None  # not applicable for kernel
         else:
-            gwave, gdlam = self.get_InstGrat_waveDlam(instgrat)
-            dlamint = CubicSpline(gwave, gdlam)
-            R = wave/dlamint(wave)
+            instgrat = self.selectInstGrat(wavecen=wave)
+            if self.is_dispobj_mrs(instgrat[0]):
+                R, _ = MRS_dispersion(wave)
+            else:
+                gwave, gdlam = self.get_InstGrat_waveDlam(instgrat)
+                dlamint = CubicSpline(gwave, gdlam)
+                R = wave/dlamint(wave)
+
         return R
 
 
@@ -791,6 +823,46 @@ class FlatDispersion(dispersion):
         self.compute_Rdlam(disp, type, wave=wave)
 
 
+    def __init__(self,
+                 disp: float,
+                 type: Literal['R', 'DLAMBDA', 'DVEL'],
+                 wave: Optional[np.ndarray]=None,
+                 waveunit: Literal['micron', 'Angstrom'] = 'micron'):
+        '''
+        Instantiate the FlatDispersion class. This is a subclass of
+        dispersion, specifically designed for flat dispersion curves --
+        i.e. that have a constant dispersion value R, dlambda, or dvel.
+        This sets the flat dispersion value and type, and computes
+        R and dlambda.
+
+        Parameters
+        ----------
+        disp
+            Flat dispersion value. This is a float, and it is the
+            dispersion value for the entire wavelength range.
+        type
+            Type of dispersion. Options are 'R', 'DLAMBDA', or 'DVEL'.
+        wave
+            Optional. Wavelength array. Default is None, which means
+            the object's wavelength array is used. If the object does not
+            have a wavelength array, a default wavelength array is used.
+        waveunit
+            Optional. Wavelength unit, either 'micron' or 'Angstrom'.
+            Default is 'micron'.
+
+        Attributes
+        ----------
+        flatdisp : float
+            Flat dispersion value.
+        flattype : str
+            Type of flat dispersion. Options are 'R', 'DLAMBDA', or 'DVEL'.
+        '''
+        super().__init__()
+        self.flatdisp = disp
+        self.flattype = type
+        self.waveunit = waveunit
+        self.compute_Rdlam(disp, type, wave=wave)
+
     def writeFlat(self,
                   dispdir: Optional[str]=None,
                   wave: Optional[np.ndarray]=None,
@@ -846,3 +918,26 @@ def MRS_dispersion(wave: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     dlam = wave / R
 
     return R, dlam
+
+
+class Kernel(object):
+
+    def __init__(self, 
+                 kernelfile: str,
+                 waveunit: Literal['micron','Angstrom']='micron'):
+        self.kernelfile = kernelfile
+        waveunit_in = waveunit
+        kerneldict = np.load(self.kernelfile, allow_pickle=True).item()
+        self.kernel = kerneldict['kernel']
+        self.dwave = kerneldict['dwave']
+        self.waveunit = kerneldict['waveunit']
+        if self.waveunit != waveunit_in:
+            if self.waveunit == 'micron' and waveunit_in == 'Angstrom':
+                self.dwave *= 10000.0
+                self.waveunit = 'Angstrom'
+            elif self.waveunit == 'Angstrom' and waveunit_in == 'micron':
+                self.dwave /= 10000.0
+                self.waveunit = 'micron'
+            else:
+                raise SystemExit(f"Invalid waveunit '{waveunit_in}' specified. " +
+                                 "Must be 'micron' or 'Angstrom'.")

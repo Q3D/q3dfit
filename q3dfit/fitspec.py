@@ -440,6 +440,9 @@ def fitspec(wlambda: np.ndarray,
                 if waveunit == 'micron':
                     redlam *= 1.e4
 
+            if 'ppxf_kwargs' not in q3di.argscontfit:
+                q3di.argscontfit['ppxf_kwargs'] = dict()
+
             # run ppxf
             #import pdb; pdb.set_trace()
             pp = ppxf(temp_log, gdflux_log, gderr_log, velscale,
@@ -450,7 +453,9 @@ def fitspec(wlambda: np.ndarray,
                       mdegree=mult_poly_degree,
                       reddening=q3di.av_star,
                       lam=redlam,
-                      quiet=quiet,**argscontfit_use)
+                      quiet=quiet,**argscontfit_use, 
+                      **q3di.argscontfit['ppxf_kwargs'])
+
             
             # Errors in best-fit velocity and dispersion.
             # From PPXF docs:

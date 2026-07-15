@@ -4,11 +4,13 @@ from numpy.typing import ArrayLike
 import numpy as np
 
 def read_bpass(infile: str,
+               starmassfile: str = None,
                outfile: str = '',
                waverange: ArrayLike = [1., 100000.],
                binary: bool = False,
                zs: ArrayLike = [0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 
                                 0.010, 0.014, 0.020, 0.030, 0.040],
+               R: int = 10000,
                outdir: str = '',
                agerange: ArrayLike = [6., 11.]) -> None:
     '''
@@ -36,6 +38,9 @@ def read_bpass(infile: str,
     ----------
     infile
         The path to the BPASS template files.
+    starmassfile
+        Optional. The path to the BPASS starmass template files. If provided,
+        the starmass templates will be read and saved to the output file.
     outfile
         The path to the output file where the numpy save file
         will be written. Should have a .npy extension.
@@ -53,13 +58,13 @@ def read_bpass(infile: str,
         Optional. The metallicities to include. The options are
         [0.001,0.002,0.003,0.004,0.006,0.008,0.010,0.014,0.020,0.030,0.040].
         Defaults to all metallicities.
+    R
+        Optional. The spectral resolution of the templates. Defaults to 10000.
     agerange
         Optional. Array containing the minimum and maximum log ages of the templates to be used.
         Must be a multiple of 0.1 between 6.0 and 11.0.
         Defaults to [6., 11.].
     '''
-    # spectral resolution of templates
-    R = 10000
     # number of metallicities
     nz = len(zs)
     # ages for one metallicity
@@ -67,7 +72,7 @@ def read_bpass(infile: str,
     # log age in years
     ages = 10.**(agerange[0] + 0.1 * np.arange(0, nages))
     # initial age data index
-    ageindex = round((agerange[0] - 6) / 0.1) + 1
+    ageindex = round((agerange[0] - 6) / 0.1)
     # Output spectra will loop through zs, and then the ages for each
     # metallicity. 
     # So first we'll run through the ages for every metallicity:
@@ -84,7 +89,9 @@ def read_bpass(infile: str,
     fluxall = np.zeros((len(waveall), nz * nages), dtype=float)
     #initialize normalization factors array
     normall = np.zeros_like(agesall, dtype=float)
-
+    #initialize starmasses array
+    starmassesall = np.zeros(nages*nz, dtype=float)
+    
     for iz, z in enumerate(zs):
         # read the file for this metallicity
         sinorbin = 'sin'
@@ -101,7 +108,7 @@ def read_bpass(infile: str,
         data = np.loadtxt(filename)
         # extract the wavelengths and fluxes
         wave = data[:, 0]
-        flux = data[:, ageindex : ageindex + nages]
+        flux = data[:, ageindex + 1: ageindex + nages + 1]
         norms = np.zeros(nages)
         # find the indices of the wavelengths that are within the desired range
         indices = np.where((wave >= waverange[0]) & (wave <= waverange[1]))[0]
@@ -111,9 +118,16 @@ def read_bpass(infile: str,
             flux[indices, i] /= norm_factor
             norms[i] = norm_factor
         # storing normalization factors in output array
-        normall[iz * int(nages) : (iz + 1) * int(nages)] = norms[:]
+        normall[iz * nages : (iz + 1) * nages] = norms[:]
         # write the fluxes to the output array
-        fluxall[:, iz * int(nages):(iz + 1) * int(nages)] = flux[indices, :]
+        fluxall[:, iz * nages : (iz + 1) * nages] = flux[indices, :]
+        if starmassfile is not None:    
+            # strip the alpha enhancement value from the infile path
+            filename = f'{starmassfile}/starmass-{sinorbin}-imf135_300.z{zstr}.dat'
+            # read the data from the file
+            data = np.loadtxt(filename)
+            # read data into starmasses array
+            starmassesall[iz * nages: (iz + 1) * nages] = data[ageindex : ageindex + nages, 1]
         
     # calculating sigma array for templates based on spectral resolution
     sigma = np.array([ i / (2.35 * R) for i in waveall], dtype=float)
@@ -122,15 +136,21 @@ def read_bpass(infile: str,
         indir = infile.split('/')[-2]
         outfile = f'{outdir}/{indir}_z{min(zall) * 1000:03.0f}to{max(zall) * 1000:03.0f}_{sinorbin}_lam{waverange[0]:.0f}to{waverange[1]:.0f}.npy'
 
+    # assenbling the output dictionary
+    outarr = {'lambda': waveall,
+              'flux': fluxall,
+              'ages': agesall,
+              'zs': zall,
+              'unit': 'Angstrom',
+              'sigma' : sigma,
+              'norm' : normall,
+            }
+    
+    if starmassfile is not None:
+        outarr['starmass'] = starmassesall
+
     # save the output array to a numpy file
-    np.save(outfile, {'lambda': waveall,
-                      'flux': fluxall,
-                      'ages': agesall,
-                      'zs': zall,
-                      'unit': 'Angstrom',
-                      'sigma' : sigma,
-                      'norm' : normall
-                      })
+    np.save(outfile, outarr)
 
     print(f'BPASS templates saved to {outfile}')
     

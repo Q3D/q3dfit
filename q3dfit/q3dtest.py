@@ -10,7 +10,6 @@ import numpy as np
 from matplotlib import rcParams
 
 from q3dfit.q3din import q3din
-from q3dfit.plot import plotpopheatmap
 '''
 Functions to vary a polynomial parameter in q3dfit and plot the results.
 '''
@@ -74,8 +73,6 @@ def plot_test_continum(polytestdat,
 
 def plot_test_components(polytestdat: dict,
                          cmap: str = 'magma',
-                         flux_fraction: bool = True,
-                         mass_fraction: bool = False,
                          savefig: Optional[bool] = False,
                          argssavefig: Optional[dict] = {'bbox_inches': 'tight', 'dpi': 300},
                          outfile: Optional[str] = None,
@@ -91,10 +88,6 @@ def plot_test_components(polytestdat: dict,
             Dictionary containing the test data for plotting.
         cmap
             String name of the matplotlib colormap to use for plotting the different components. Default is 'magma'.
-        flux_fraction
-            Boolean indicating whether to plot the flux fraction. Default is True.
-        mass_fraction
-            Boolean indicating whether to plot the mass fraction. Default is False.
         savefig
             Boolean indicating whether to save the figure.
         argssavefig
@@ -117,18 +110,10 @@ def plot_test_components(polytestdat: dict,
     unique_ages = np.unique(np.log10(templates['ages']))
     unique_zs = np.unique(templates['zs'])
     param = polytestdat[tstparam]
-
-    if flux_fraction:
-        norm_weights = polytestdat['flux_fraction']
-        label = 'Portion of total flux'
-    elif mass_fraction:
-        norm_weights = polynomial_test['mass_fraction']
-        label = 'Fration of total fitted population mass'
-    else:
-        norm_weights = []
-        for weights in polytestdat['stelweights']:
-            norm_weights.append(weights / np.sum(weights))
-        label = 'Normalized Weight'
+    norm_weights = []
+    for weights in polytestdat['stelweights']:
+        norm_weights.append(weights / np.sum(weights))
+    label = 'Normalized Weight'
 
     norm_weights = np.reshape(norm_weights, (-1, len(unique_zs), len(unique_ages)))
     norm_weights = norm_weights.transpose(0, 2, 1)
@@ -180,7 +165,6 @@ def polynomial_test(q3di: q3din.q3din,
                     tstmin: Optional[int]=0,
                     tstmax: Optional[int]=5,
                     tststep: Optional[int]=1,
-                    starmassfile: Optional[str]=None,
                     q3dfitargs: Optional[dict]={},
                     componentplots: Optional[bool]=False,
                     componentplotargs: Optional[dict]={},
@@ -202,9 +186,6 @@ def polynomial_test(q3di: q3din.q3din,
         Step size between test values. defults to 1.
     q3dfitargs
         Dictionary arguments to pass to q3fit().
-    starmassfile
-        File containing the population mass data at the same ages and metallicities as the file
-        in q3di.startempfile. Required to generate mass fractions in the output dictionary.
     componentplots
         If True, runs q3do.plotcontcomponents() after every fit. Defaults to False.
     componentplotargs
@@ -226,16 +207,12 @@ def polynomial_test(q3di: q3din.q3din,
                     'mult_poly_degree' : [],
                     'av' : [],
                     'stelweights' : [],
-                    'flux_fraction' : [],
                     'cont_fit' : [],
                     'chisq' : [],
                     'templatefile' : q3di.startempfile,
                     'tstparam' : '',
                     'wave' : [],
                     'cont_dat' : []}
-
-    templates = np.load(q3di.startempfile, allow_pickle = True)[()]
-    norms = templates['norm']
 
     initargscontfit = q3di.argscontfit
 
@@ -248,18 +225,11 @@ def polynomial_test(q3di: q3din.q3din,
     else:
         raise ValueError('Invalid tstparam')
 
-    if starmassfile is not None:
-        polytestdat['mass_fraction'] = []
-        massfile = np.load(starmassfile, allow_pickle=True)[()]
-
     for tstval in tests: 
         q3di.argscontfit[tstparam] = tstval
         q3dfit(q3di, quiet=quiet, **q3dfitargs)
 
         q3d0 = load_q3dout(q3di)
-
-        q3d0.ct_coeff['flux_fraction'] = q3d0.ct_coeff['stelweights'] / norms
-        q3d0.ct_coeff['flux_fraction'] /= np.sum(q3d0.ct_coeff['flux_fraction'])
 
         if componentplots:
             q3d0.plot_cont_components(q3di, quiet=quiet, **componentplotargs)
@@ -268,12 +238,8 @@ def polynomial_test(q3di: q3din.q3din,
         polytestdat[tstparam].append(q3di.argscontfit[tstparam])
         polytestdat['av'].append(q3d0.ct_coeff['av'])
         polytestdat['stelweights'].append(q3d0.ct_coeff['stelweights'])
-        polytestdat['flux_fraction'].append(q3d0.ct_coeff['flux_fraction'])
         polytestdat['cont_fit'].append(q3d0.cont_fit)
         polytestdat['chisq'].append(q3d0.ct_rchisq)
-
-        if 'mass_fraction' in polytestdat:
-            polytestdat['mass_fraction'] = polytestdat['flux_fraction'] * massfile
 
     polytestdat['wave'] = q3d0.wave
     polytestdat['cont_dat'] = q3d0.cont_dat

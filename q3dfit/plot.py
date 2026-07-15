@@ -1164,12 +1164,12 @@ def plotcontcomponents(q3do: q3dout,
     templates_list = q3do.component_templates['convolved']
     weights = q3do.ct_coeff['stelweights']
     indecies = q3do.component_templates['index']
-    if 'flux_fraction' in q3do.ct_coeff:
-        flux_percentage = [f' | Flux: {q3do.ct_coeff['flux_fraction'][i]*100:.2f}%' for i in indecies]
+    if 'flux_fraction' in q3do.component_templates:
+        flux_percentage = [f' | Flux: {q3do.component_templates["flux_fraction"][i]*100:.2f}%' for i in indecies]
     else:
         flux_percentage = [''] * len(indecies)
-    if 'mass_fraction' in q3do.ct_coeff:
-        mass_percentage = [f' | Mass: {q3do.ct_coeff['mass_fraction'][i]*100:.2f}%' for i in indecies]
+    if 'mass_fraction' in q3do.component_templates:
+        mass_percentage = [f' | Mass: {q3do.component_templates["mass_fraction"][i]*100:.2f}%' for i in indecies]
     else:
         mass_percentage = [''] * len(indecies)
     # Create a list of relavent templates

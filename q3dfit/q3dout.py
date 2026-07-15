@@ -158,6 +158,7 @@ class q3dout:
         self.col = col
         self.row = row
 
+
     def init_linefit(self,
                      linelist: Table,
                      linelabel: list[str],
@@ -1265,12 +1266,12 @@ class q3dout:
         '''
         Plots a heatmat of population weights on an age x metallicity grid. 
         Will default to plotting raw weights, but can be used to plot flux fractions and mass fractions
-        after q3do.find_porportions() has been run.
+        after q3do.find_population_stats() has been run.
 
         Parameters
         ----------
         plottingmode
-            The weight value to plot: 'stelweights', 'flux_fraction, or 'mass_fraction
+            The weight value to plot: 'stelweights', 'flux_fraction, or 'mass_fraction'
         savefig
             If True, save the figure to a file. Default is False.
         outfile
@@ -1295,15 +1296,15 @@ class q3dout:
         if outfile is not None:
             outfile = outfile + '_cnt_heatmap'
 
-        if plottingmode == 'flux_fraction' and 'flux_fraction' in self.ct_coeff:
-            stelweights = self.ct_coeff['flux_fraction']
-        elif plottingmode == 'mass_fraction' and 'mass_fraction' in self.ct_coeff:
-            stelweights = self.ct_coeff['mass_fraction']
+        if plottingmode == 'flux_fraction' and 'flux_fraction' in self.component_templates:
+            stelweights = self.component_templates['flux_fraction']
+        elif plottingmode == 'mass_fraction' and 'mass_fraction' in self.component_templates:
+            stelweights = self.component_templates['mass_fraction']
         else:
             if plottingmode != 'stelweights':
-                print(f'{plottingmode} not found in q3do.ct_coeff, please run q3do.find_porportion()')
+                print(f'{plottingmode} not found in q3do.component_templates, please run q3do.find_population_stats()')
                 return
-            stelweights = self.ct_coeff['stelweights']
+            stelweights = self.component_templates['stelweights']
 
         if savefig:
             if outfile is None:
@@ -1319,48 +1320,10 @@ class q3dout:
 
         plotpopheatmap(self, stelweights=stelweights, savefig=savefig, outfile=outfile, argssavefig=argssavefig, **plotargs)
         
-    def find_fractions(self, 
-                       startempfile, 
-                       massestempfile):
-        '''
-        Function to convert the weights outputted by ppxf to flux and mass porportions.
-        
-        Parameters
-        ----------
-        startempfile
-            Stellar template file provided to original q3di object 
-            containing template normalization factors.
-
-            Providing will compute flux porportions and store them in:
-            self.ct_coeff['flux_fraction'].
-        massestempfile
-            Template file containg the remaining stellar mass as a function
-            of age for the same metallicities and ages as startempfile.
-        
-            Providing will compute mass porportions and store them in:
-            self.ct_coeff['mass_fraction'].
-
-            Will only work if provided alongside startempfile, or after
-            this function has already been run with startempfile
-        '''
-        if startempfile is not None:
-            stelweights = self.ct_coeff['stelweights']
-            templates = np.load(startempfile, allow_pickle = True)[()]
-            stelweights = stelweights / templates['norm']
-            stelweights /= np.sum(stelweights)
-            self.ct_coeff['flux_fraction'] = stelweights
-
-        if massestempfile is not None:
-            if 'flux_fraction' in self.ct_coeff:
-                masses = np.load(massestempfile)
-                mass_weights = self.ct_coeff['flux_fraction'] * masses
-                mass_weights /= np.sum(mass_weights)
-                self.ct_coeff['mass_fraction'] = mass_weights
-            else:
-                print('Not enough information to find mass porportions. Please provide startempfile.')
-    def find_population_masses(self,
-                               templates,
-                               mass_templates,
+    def find_population_stats(self,
+                               templatefile,
+                               use_starmass=True,
+                               template_mass=1e6,
                                wave_min=None,
                                wave_max=None,
                                data_scale=0,
@@ -1375,10 +1338,14 @@ class q3dout:
         ----------
         q3do
             :py:class:`~q3dfit.q3dout.q3dout object containing the continuum fit and component templates.
-        templates
-            Dictionary containing the stellar templates with keys 'norm' and 'flux'.
-        mass_templates
-            Array containing the stellar masses corresponding to each template in the same order as the templates.
+        templatefile
+            Path to the stellar template file used in the continuum fit. This file should contain the normalization factors for each template.
+        use_starmass
+            If True, will use the present template stellar masses provided in the templates file if present. 
+            If False, will calculate the template stellar mass based on the value given in template_mass.
+        template_mass
+            The assumed initial mass (in solar masses) of the stellar templates. Must be provided if use_starmass
+            is False. If provided will override the masses if present in the template file. BPASS initial masses is 1e6. 
         wave_min
             Minimum wavelength for integration. If None, will use the lower limit of the fit range.
         wave_max
@@ -1395,6 +1362,17 @@ class q3dout:
         and luminosities for each component template, as well as the total galaxy luminosity in solar luminosities.
         '''
         from astropy import cosmology as cosmo
+        templates = np.load(templatefile, allow_pickle=True)[()]
+
+        if use_starmass:
+            try:
+                mass_templates = templates['starmass']
+            except KeyError:
+                print('Template file does not contain starmass, using template_mass instead')
+                mass_templates = np.full_like(templates['norm'], template_mass)
+        else:
+            mass_templates = np.full_like(templates['norm'], template_mass)
+
         wave_unit = u.Unit(self.waveunit)
         flux_unit = u.Unit(self.fluxunit)
         template_unit = u.solLum / u.Angstrom
@@ -1437,7 +1415,7 @@ class q3dout:
         galaxy_luminosity_lsun = galaxy_luminosity_erg.to(u.solLum)
         
         # Initialize a list to hold the integrated flux for each component template
-        temp_flux_sum = [0] * len(self.component_templates['index'])
+        temp_flux_sum = [0] * len(indecies)
         for j in range(len(temp_flux_sum)):
             temp_flux_sum[j] = np.trapezoid(template_flux[:, j][mask], wave.value[mask]) * (fit.unit * wave.unit)
 
@@ -1447,7 +1425,7 @@ class q3dout:
         # Keep template_scale in matching luminosity units
         template_luminosities = u.Quantity([flux_fractions[j] * galaxy_luminosity_lsun for j in range(len(indecies))])
 
-        scaled_component_templates = self.component_templates['convolved'] * template_norms / self.ct_coeff['stelweights'][indecies]
+        scaled_component_templates = template_flux * template_norms / self.ct_coeff['stelweights'][indecies]
         per_template_lums = u.Quantity([np.trapezoid(scaled_component_templates[:, j][mask], wave.value[mask]) * template_unit * wave_unit for j in range(len(indecies))])
 
         template_scale = template_luminosities / per_template_lums
@@ -1455,7 +1433,8 @@ class q3dout:
         stellar_masses = template_scale * mass_templates[indecies]
 
         self.component_templates['stellar_masses'] = stellar_masses
-        self.component_templates['template_luminosities'] = template_luminosities
+        self.component_templates['flux_fraction'] = flux_fractions
+        self.component_templates['mass_fraction'] = stellar_masses / np.sum(stellar_masses)
         self.component_templates['galaxy_luminosity_lsun'] = galaxy_luminosity_lsun
 
 def load_q3dout(q3di: str | q3din.q3din,

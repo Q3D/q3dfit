@@ -136,14 +136,12 @@ def plotcont(q3do: q3dout,
     # get masked values
     allidx = np.arange(0.,len(wave))
     maskidx = np.setdiff1d(allidx, q3do.ct_indx)
-    print(wave[q3do.ct_indx])
     from itertools import groupby
     from operator import itemgetter
     maskidxlim = []
     for k, g in groupby(enumerate(maskidx), lambda ix : ix[0] - ix[1]):
         maskidxsep = list(map(itemgetter(1), g))
-        maskidxlim.append([maskidxsep[0],maskidxsep[-1]])
-    print(maskidxlim)
+        maskidxlim.append([int(maskidxsep[0]),int(maskidxsep[-1])])
 
     # for optical spectra fit by fitqsohost or ppxf:
     if not questfit:
@@ -215,8 +213,6 @@ def plotcont(q3do: q3dout,
             ymod = modstars
             # plotting
             plt.xlim(xran)
-            if yran is not None:
-                plt.ylim(yran)
 
             fig.axes[0].axis('off')  # so the subplots don't share a y-axis
             fig.axes[1].axis('off')  # so the subplots don't share a y-axis
@@ -231,8 +227,8 @@ def plotcont(q3do: q3dout,
                 ax1.set_yscale('log')
 
             ax1.set_ylabel(ytit, fontsize=20)
-            #if title == 'QSO':
-            #    ax1.set_ylim(10e-7)
+            if yran is not None:
+                plt.ylim(yran)
 
             # actually plotting
             plt.plot(waveout.value, ydat, dcolor, linewidth=1)
@@ -254,14 +250,16 @@ def plotcont(q3do: q3dout,
             #ax1.tick_params(which='major', length=20, pad=10, labelsize=10)
             #ax1.tick_params(which='minor', length=7, labelsize=8)
 
-
             l = ax1.legend(loc='upper right', fontsize=16)
             for text in l.get_texts():
                 text.set_color(dcolor)
             ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
             ax2.plot(waveout.value, np.divide(specstars, modstars), color=dcolor)
             ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
+            for idx in maskidxlim:
+                plt.hlines(1,wave[idx[0]],wave[idx[1]], color='C0',alpha=0.5, linewidth=4)
             ax2.set_ylabel('Data/Model', fontsize=19)
+
 
 #            ax2.tick_params(which='major', length=20, pad=20, labelsize=9)
 #            ax2.tick_params(which='minor', length=7, labelsize=8)

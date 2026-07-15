@@ -296,9 +296,9 @@ def q3dcollect(q3di: str | q3din.q3din,
                     # assign total fluxes
                     if ctgd > 0:
                         emlflx['ftot'][line][i, j] = \
-                            q3do.line_fitpars['tflux'][line]
+                            q3do.line_fitpars['tflux'][line][0]
                         emlflxerr['ftot'][line][i, j] = \
-                            q3do.line_fitpars['tfluxerr'][line]
+                            q3do.line_fitpars['tfluxerr'][line][0]
 
                     # assign to output dictionary
                     emlncomp[line][i, j] = ctgd

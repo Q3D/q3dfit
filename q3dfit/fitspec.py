@@ -84,7 +84,7 @@ def fitspec(wlambda: np.ndarray,
         These dictionaries have keys 'flx', 'cen', and 'sig', with boolean arrays
         as values. Default is None.
     maskwidths
-        Optional. Widths, in km/s, of emission-line regions to mask from continuum fit. 
+        Optional. Half-widths, in km/s, of emission-line regions to mask from continuum fit. 
         If set to None, routine will look for `maskwidths` attribute in 
         :py:class:`~q3dfit.q3din.q3din`. If this is None and both continuum and emission-
         line fits are attempted, routine defaults to value 
@@ -339,6 +339,18 @@ def fitspec(wlambda: np.ndarray,
         # Check on ncomp is needed in case that we started with a line fit
         # but all components were masked out by checkcomp
         if q3di.dolinefit and not q3di.nolinemask and ncomp is not None:
+            # if kernel convolution is set, use the kernel width
+            if specConv is not None:
+                if specConv.KernelObj is not None:
+                    kernwidth = specConv.KernelObj.dwave * len(specConv.KernelObj.kernel)
+                    maskwidths = \
+                        Table(np.full([q3di.maxncomp, listlines['name'].size],
+                                      q3di.maskwidths_def, dtype=usetype),
+                              names=listlines['name'])
+                    for line, cwv in listlinesz.items():
+                        for i in range(maskwidths.columns[line].size):
+                            maskwidths.columns[line][i] = \
+                                kernwidth/2./cwv[i]*c.to('km/s').value
             if maskwidths is None:
                 if q3di.maskwidths is not None:
                     maskwidths = q3di.maskwidths
@@ -358,7 +370,7 @@ def fitspec(wlambda: np.ndarray,
                 maskwidths = Table(maskwidths)
             # Mask emission lines in linear space
             q3do.ct_indx = masklin(gdlambda, listlinesz, maskwidths,
-                                    nomaskran=q3di.nomaskran)
+                                   nomaskran=q3di.nomaskran)
             # Mask emission lines in log space
             ct_indx_log = masklin(np.exp(gdlambda_log), listlinesz,
                                   maskwidths, nomaskran=q3di.nomaskran)
@@ -462,21 +474,17 @@ def fitspec(wlambda: np.ndarray,
                 if waveunit == 'micron':
                     redlam *= 1.e4
 
-            if 'ppxf_kwargs' not in q3di.argscontfit:
-                q3di.argscontfit['ppxf_kwargs'] = dict()
-
             # run ppxf
             #import pdb; pdb.set_trace()
             pp = ppxf(temp_log, gdflux_log, gderr_log, velscale,
                       [0, siginit_stars],
-                      #bounds=bounds,
+                      bounds=bounds,
                       goodpixels=ct_indx_log,
                       degree=add_poly_degree, 
                       mdegree=mult_poly_degree,
                       reddening=q3di.av_star,
                       lam=redlam,
-                      quiet=quiet,**argscontfit_use, 
-                      **q3di.argscontfit['ppxf_kwargs'])
+                      quiet=quiet,**argscontfit_use)
 
             
             # Errors in best-fit velocity and dispersion.

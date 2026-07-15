@@ -11,6 +11,7 @@ import os
 from astropy.constants import c
 from astropy.table import QTable, Table
 from lmfit import Model, Parameters
+from scipy.interpolate import CubicSpline
 
 import q3dfit.data
 from . import q3dutil
@@ -437,14 +438,34 @@ def manygauss(x: np.ndarray,
         # constant dispersion, which I *think* is okay for the 
         # ppxf_util.varsmooth() algorithm. But I'm not sure.
         oversample = 1
-        if np.mean(sigs) <= np.mean(x[1:-1]-x[0:-2])*1.:
-            oversample = 10
-        datconv = SPECRES.spect_convolver(x, gaussian, wavecen=cwv,
+        meandisp = np.mean(np.diff(x))
+        osratio = np.mean(sigs)/meandisp
+        if osratio <= 1.:
+            oversample = np.ceil(1./osratio*5.)
+            if SPECRES.KernelObj is not None:
+                # this resamples to constant dispersion
+                osx = np.linspace(x[0], x[-1], len(x)*int(oversample), dtype=np.float64)
+                # this method works with non-constant dispersion, but doesn't handle
+                # edges well ... would require some recoding (perhaps with scipy method
+                # that can set edge treatment differently)
+#                osxind = np.arange(len(x)*oversample, dtype=np.float64)/float(oversample)
+#                osx = np.interp(osxind, np.arange(len(x)), x)
+                gaussian = flx * np.exp(-np.power((osx - cwv) / sigs, 2.)/2.)
+            else:
+                osx = x
+        else:
+            osx = x
+        datconv = SPECRES.spect_convolver(osx, gaussian, wavecen=cwv,
             oversample=oversample)
         #maskval = np.float64(1e-4*max(datconv))
         #maskind = np.asarray(datconv < maskval).nonzero()[0]
         #datconv[maskind] = np.float64(0.)
-        return datconv
+        if osratio <= 1. and SPECRES.KernelObj is not None:
+            interpfcn = CubicSpline(osx, datconv, extrapolate=False)
+            datconv_resamp = interpfcn(x)
+            return datconv_resamp
+        else:
+            return datconv
     else:
         #maskval = np.float64(1e-4*max(gaussian))
         #maskind = np.asarray(gaussian < maskval).nonzero()[0]

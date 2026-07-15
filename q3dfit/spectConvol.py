@@ -163,7 +163,15 @@ class spectConvol:
 
         if self.KernelObj is not None:
 
-            fluxconv = convolve_fft(flux, self.KernelObj.kernel, fill_value=np.float64(0.))
+            if oversample > 1:
+                meandisp = np.mean(np.diff(wave))
+                oldkernwave = np.arange(0, len(self.KernelObj.kernel)) * self.KernelObj.dwave
+                interpfcn = CubicSpline(oldkernwave, self.KernelObj.kernel)
+                tempwave = np.arange(0, int(oldkernwave[-1]/meandisp)) * meandisp
+                kernel_use = interpfcn(tempwave)
+            else:
+                kernel_use = self.KernelObj.kernel
+            fluxconv = convolve_fft(flux, kernel_use, fill_value=np.float64(0.))
 
         else:
 

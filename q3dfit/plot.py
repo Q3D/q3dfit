@@ -533,7 +533,6 @@ def plotcont(q3do: q3dout,
 
             # add a legend in the upper right with a transparent background and smaller font size
             ax1.legend(loc='upper right', frameon=True, prop={'size': 10})
-\
             ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
             ax2.plot(waveout,np.divide(data,model_cont),color=dcolor)
             ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
@@ -1064,7 +1063,9 @@ def plotline(q3do: q3dout,
 
 def plotcontcomponents(q3do: q3dout, 
                         plottype: Literal['line', 'stackplot'] = 'line',
-                        totals_plot: bool=True, 
+                        plot_raw_templates: Optional[bool] = False,
+                        startempfile: Optional[str] = None,
+                        totals_plot: Optional[bool] = True, 
                         totals_plot_components: Optional[ArrayLike] = None, 
                         totals_plot_labels: Optional[ArrayLike] = None, 
                         totals_plot_colors: Optional[ArrayLike] = None, 
@@ -1089,7 +1090,13 @@ def plotcontcomponents(q3do: q3dout,
         :py:class:`~q3dfit.q3dout.q3dout` object containing the output of the
         fit.
     plottype
-        Select type of plot for components, currently only "line" and "stackplot", defaults to "line"        
+        Select type of plot for components, currently only "line" and "stackplot", defaults to "line"  
+    plot_raw_templates
+        Optional. If True plots the redshifted raw templates instead of the convolved ones, defaults to False
+        Requires a startempfile to be provided, which is the path to the file containing the raw templates.
+    startempfile
+        Optional. Path to the file containing the templates used in the fit. 
+        Required if plot_raw_templates is True.
     totals_plot
         Optional. If True plots the component sum on a seperate plot, defaults to True
     totals_plot_components
@@ -1134,7 +1141,6 @@ def plotcontcomponents(q3do: q3dout,
 
     # Dark Mode!
 
-    wave = q3do.wave
     if mode == 'dark':
         pltstyle = 'dark_background'
         dcolor = 'w'
@@ -1161,21 +1167,31 @@ def plotcontcomponents(q3do: q3dout,
     # Initializing variables
     ages = q3do.component_templates['age']
     zs = q3do.component_templates['zs']
-    templates_list = q3do.component_templates['convolved']
-    weights = q3do.ct_coeff['stelweights']
     indecies = q3do.component_templates['index']
+    weights = q3do.ct_coeff['stelweights']
+
+    if plot_raw_templates:
+        templates = np.load(startempfile, allow_pickle=True)[()]
+        templates_lambda = templates['lambda'] * (q3do.zstar + 1)
+        mask = (templates_lambda >= q3do.fitrange[0]) & (templates_lambda <= q3do.fitrange[1])
+        wave = templates_lambda[mask]
+        templates_list = templates['flux'][mask][:, indecies]
+        templates_list = templates_list * q3do.ct_coeff['stelweights'][indecies]
+    else:
+        templates_list = q3do.component_templates['convolved']
+        wave = q3do.wave
+
     if 'flux_fraction' in q3do.component_templates:
-        flux_percentage = [f' | Flux: {q3do.component_templates["flux_fraction"][i]*100:.2f}%' for i in indecies]
+        flux_percentage = [f' | Flux: {q3do.component_templates["flux_fraction"][i]*100:.2f}%' for i in range(len(indecies))]
     else:
         flux_percentage = [''] * len(indecies)
     if 'mass_fraction' in q3do.component_templates:
-        mass_percentage = [f' | Mass: {q3do.component_templates["mass_fraction"][i]*100:.2f}%' for i in indecies]
+        mass_percentage = [f' | Mass: {q3do.component_templates["mass_fraction"][i]*100:.2f}%' for i in range(len(indecies))]
     else:
         mass_percentage = [''] * len(indecies)
     # Create a list of relavent templates
     templates_list = [templates_list[:, i] for i in range(len(indecies))]
     labels_list = [f'Age: {(ages[i]/1e9):.2f} Gyr | Z: {zs[i]:.3f}{flux_percentage[i]}{mass_percentage[i]}' for i in range(len(indecies))]
-    
     # Plotting the compoonents plot
     
     if components_plot:
@@ -1194,7 +1210,7 @@ def plotcontcomponents(q3do: q3dout,
                 sorted_indices = np.argsort([np.max(template) for template in templates_list])
             if sortorder:
                 sorted_indices = sorted_indices[::-1]  # Sort in descending order
-            
+        
         templates_list = [templates_list[i] for i in sorted_indices]
         labels_list = [labels_list[i] for i in sorted_indices]
 
@@ -1209,14 +1225,12 @@ def plotcontcomponents(q3do: q3dout,
                 if weights[i] >= min_weight:
                     ax[0].plot(wave, templates_list[i], label=labels_list[i], alpha=linalpha, lw=linwidth)#, color=color[i])
         if plottype == 'stackplot':
-            ax[0].stackplot(wave, templates_list, labels=labels_list, alpha=linalpha, lw=linwidth)# colors=color)
-            
+            ax[0].stackplot(wave, templates_list, labels=labels_list, alpha=linalpha, lw=linwidth)# colors=color)            
 
         ax[0].legend(frameon=True)
         ax[0].set_title('Stellar fit components')
         ax[0].set_xlabel('Wavelength (Angstrom)')
         ax[0].set_ylabel('Flux')
-
     # Plotting the totals plot
 
     # Finding the total fit.
@@ -1243,7 +1257,7 @@ def plotcontcomponents(q3do: q3dout,
     
         # Plot each component for totals plot
         for i in range(len(totals_plot_components)):
-            ax[1].plot(q3do.wave, totals_plot_components[i], label=totals_plot_labels[i], lw=1, zorder=0+i, color=totals_plot_colors[i])
+            ax[1].plot(q3do.wave[:-1], totals_plot_components[i][:-1], label=totals_plot_labels[i], lw=1, zorder=0+i, color=totals_plot_colors[i])
 
         ax[1].legend(frameon=True)
         ax[1].set_title('Total stellar fit')

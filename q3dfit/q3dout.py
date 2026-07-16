@@ -1244,6 +1244,11 @@ class q3dout:
             else:
                 print('plot_cont_comps: Need to run q3do.get_template_data first, aborting')
                 return
+            
+        if q3di is not None:
+            templatefile = q3di.startempfile
+        else:
+            templatefile = None
         
         if savefig:
             if outfile is None:
@@ -1255,7 +1260,7 @@ class q3dout:
         if outfile is not None:
             outfile = outfile + '_cnt_comps'
         
-        plotcontcomponents(q3do=self, savefig=savefig, outfile=outfile, argssavefig=argssavefig, **plotargs)
+        plotcontcomponents(q3do=self, savefig=savefig, outfile=outfile, argssavefig=argssavefig, startempfile=templatefile, **plotargs)
 
     def plot_comp_heatmap(  self,
                             plottingmode: Literal['stelweights', 'flux_fraction', 'mass_fraction'] = 'stelweights',
@@ -1326,7 +1331,7 @@ class q3dout:
                                template_mass=1e6,
                                wave_min=None,
                                wave_max=None,
-                               data_scale=0,
+                               data_scale=1,
                                cosmology=None
                                ):
         '''
@@ -1351,7 +1356,7 @@ class q3dout:
         wave_max
             Maximum wavelength for integration. If None, will use the upper limit of the fit range.
         data_scale
-            Any other scale factor applied to the data before cube reading. Default is 0 (no additional scaling).
+            Any other scale factor applied to the data before cube reading. Default is 1 (no additional scaling).
         cosmology
             Optional. Astropy cosmology object or string for included cosmology to use for calculating 
             the luminosity distance. If None, will use the global default cosmology.
@@ -1409,8 +1414,11 @@ class q3dout:
         
         # Integrate the total continuum flux over the specified range and calculate the galaxy luminosity
         raw_cont_flux_sum = np.trapezoid(fit.value[mask], wave.value[mask])
+        print(self.cont_fit)
+        print(fit.value[mask])
+        print(f'raw_cont_flux_sum: {raw_cont_flux_sum}')
         cont_flux_sum = raw_cont_flux_sum * (wave.unit * fit.unit)
-
+        
         galaxy_luminosity_erg = cont_flux_sum  * 4 * np.pi * luminosity_distance**2
         galaxy_luminosity_lsun = galaxy_luminosity_erg.to(u.solLum)
         
@@ -1418,13 +1426,13 @@ class q3dout:
         temp_flux_sum = [0] * len(indecies)
         for j in range(len(temp_flux_sum)):
             temp_flux_sum[j] = np.trapezoid(template_flux[:, j][mask], wave.value[mask]) * (fit.unit * wave.unit)
-
+        print(f'temp_flux_sum: {temp_flux_sum}')
         # Calculate the flux fractions
         flux_fractions = np.array([temp_flux_sum[j] / cont_flux_sum for j in range(len(temp_flux_sum))]) * flux_rescale
-
+        print(f'flux_fractions: {flux_fractions}')
         # Keep template_scale in matching luminosity units
         template_luminosities = u.Quantity([flux_fractions[j] * galaxy_luminosity_lsun for j in range(len(indecies))])
-
+        print(f'template_luminosities: {template_luminosities}')
         scaled_component_templates = template_flux * template_norms / self.ct_coeff['stelweights'][indecies]
         per_template_lums = u.Quantity([np.trapezoid(scaled_component_templates[:, j][mask], wave.value[mask]) * template_unit * wave_unit for j in range(len(indecies))])
 
@@ -1432,7 +1440,7 @@ class q3dout:
 
         stellar_masses = template_scale * mass_templates[indecies]
 
-        self.component_templates['stellar_masses'] = stellar_masses
+        self.component_templates['masses'] = stellar_masses
         self.component_templates['flux_fraction'] = flux_fractions
         self.component_templates['mass_fraction'] = stellar_masses / np.sum(stellar_masses)
         self.component_templates['galaxy_luminosity_lsun'] = galaxy_luminosity_lsun

@@ -153,7 +153,76 @@ def read_bpass(infile: str,
     np.save(outfile, outarr)
 
     print(f'BPASS templates saved to {outfile}')
+
+def trim_templates(startempfile: str,
+                   ages: ArrayLike = None,
+                   agerange: ArrayLike = [6., 11.],
+                   zs: ArrayLike = None,
+                   zrange: ArrayLike = [0.001, 0.040],
+                   waverange: ArrayLike = [1., 100000.],
+                   outfile: str = None):
+    '''
+    Trim a BPASS template file to the desired age, metallicity, and wavelength ranges. 
+    Returns a dictionary containing the trimmed templates, and saves to a new file, if specified.
+
+    Parameters
+    ----------
+    startempfile
+        Path to the BPASS template file to be trimmed.
+    ages
+        Optional. Array of ages to include in the trimmed templates. If None, will use agerange to select ages. Defaults to None.
+    agerange
+        Optional. Array containing the minimum and maximum log ages of the templates to be used.
+        Must be a multiple of 0.1 between 6.0 and 11.
+        Defaults to [6., 11.].
+    zs
+        Optional. Array of metallicities to include in the trimmed templates. If None, will use zrange to select metallicities. Defaults to None.
+    zrange
+        Optional. Array containing the minimum and maximum metallicities of the templates to be used.
+        Defaults to [0.001, 0.040].
+    waverange
+        Optional. The wavelength range to use for the templates, expressed in Angstroms. Defaults to [1., 100000.].
+    outfile
+        Optional. Path to the file where the trimmed templates will be saved. 
+        If None, the templates will not be saved to a file. Defaults to None.
+    '''
+    templates_orig = np.load(startempfile, allow_pickle=True)[()]
+
+    # generating masks for ages and metallicities based on the provided ranges or arrays
+    if ages is None:
+        agemask = (templates_orig['ages'] >= 10**agerange[0]) & (templates_orig['ages'] <= 10**agerange[1])
+    else:
+        agemask = np.isin(templates_orig['ages'], ages)
     
+    if zs is None:
+        zmask = (templates_orig['zs'] >= zrange[0]) & (templates_orig['zs'] <= zrange[1])
+    else:
+        zmask = np.isin(templates_orig['zs'], zs)
+
+    # combining the age and metallicity masks to get the final mask for selecting templates
+    tempmask = agemask & zmask
+
+    # generating a mask for the wavelength range
+    wmask = (templates_orig['lambda'] >= waverange[0]) & (templates_orig['lambda'] <= waverange[1])
+
+    #initializing the dictionary for the trimmed templates
+    templates_trimmed = {}
+
+    # populating the trimmed templates dictionary with the selected ages, metallicities, wavelengths, and corresponding fluxes and other properties
+    templates_trimmed['ages'] = templates_orig['ages'][tempmask]
+    templates_trimmed['zs'] = templates_orig['zs'][tempmask]
+    templates_trimmed['lambda'] = templates_orig['lambda'][wmask]
+    templates_trimmed['flux'] = templates_orig['flux'][wmask][:, tempmask]
+    templates_trimmed['sigma'] = templates_orig['sigma'][wmask]
+    templates_trimmed['norm'] = templates_orig['norm'][tempmask]
+    if 'starmass' in templates_orig: templates_trimmed['starmass'] = templates_orig['starmass'][tempmask]
+    templates_trimmed['unit'] = templates_orig['unit']
+
+    if outfile is not None:
+        np.save(outfile, templates_trimmed)
+        print(f'Trimmed templates saved to {outfile}')
+
+    return templates_trimmed
 
 def read_bpass_starmass(infile: str,
                        outfile: str = '',

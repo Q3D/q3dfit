@@ -15,6 +15,7 @@ import numpy as np
 from matplotlib import gridspec, rcParams
 import matplotlib as mpl
 from matplotlib.ticker import StrMethodFormatter
+from cycler import cycler
 
 from q3dfit.contfit import readcf
 from q3dfit.exceptions import InitializationError
@@ -1145,8 +1146,9 @@ def plotcontcomponents(q3do: q3dout,
         pltstyle = 'dark_background'
         dcolor = 'w'
     elif mode == 'light':
-        pltstyle = 'seaborn-v0_8-ticks'
+        pltstyle = 'seaborn-v0_8-white'
         dcolor = 'k'
+        plt.rcParams['axes.prop_cycle'] = cycler(color=plt.colormaps['tab10'].colors)
     else:
         raise ValueError("Invalid mode. Choose 'dark' or 'light'.")
     

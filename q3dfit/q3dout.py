@@ -1260,7 +1260,12 @@ class q3dout:
         if outfile is not None:
             outfile = outfile + '_cnt_comps'
         
-        plotcontcomponents(q3do=self, savefig=savefig, outfile=outfile, argssavefig=argssavefig, startempfile=templatefile, **plotargs)
+        plotcontcomponents(q3do=self, 
+                           savefig=savefig, 
+                           outfile=outfile,
+                           argssavefig=argssavefig,
+                           startempfile=templatefile, 
+                           **plotargs)
 
     def plot_comp_heatmap(  self,
                             plottingmode: Literal['stelweights', 'flux_fraction', 'mass_fraction'] = 'stelweights',
@@ -1301,15 +1306,18 @@ class q3dout:
         if outfile is not None:
             outfile = outfile + '_cnt_heatmap'
 
+        stelweights = np.zeros_like(self.ct_coeff['stelweights'])
         if plottingmode == 'flux_fraction' and 'flux_fraction' in self.component_templates:
-            stelweights = self.component_templates['flux_fraction']
+            stelweights[self.component_templates['index']] = self.component_templates['flux_fraction']
+            colorbarlabel = 'Flux Fraction'
         elif plottingmode == 'mass_fraction' and 'mass_fraction' in self.component_templates:
-            stelweights = self.component_templates['mass_fraction']
+            stelweights[self.component_templates['index']] = self.component_templates['mass_fraction']
+            colorbarlabel = 'Mass Fraction'
         else:
             if plottingmode != 'stelweights':
                 print(f'{plottingmode} not found in q3do.component_templates, please run q3do.find_population_stats()')
                 return
-            stelweights = self.component_templates['stelweights']
+            stelweights = self.ct_coeff['stelweights']
 
         if savefig:
             if outfile is None:
@@ -1323,7 +1331,13 @@ class q3dout:
 
         from q3dfit.plot import plotpopheatmap
 
-        plotpopheatmap(self, stelweights=stelweights, savefig=savefig, outfile=outfile, argssavefig=argssavefig, **plotargs)
+        plotpopheatmap(self, 
+                       stelweights=stelweights, 
+                       savefig=savefig, 
+                       outfile=outfile,
+                       argssavefig=argssavefig,
+                       colorbar_label=colorbarlabel, 
+                       **plotargs)
         
     def find_population_stats(self,
                                templatefile,
@@ -1414,9 +1428,6 @@ class q3dout:
         
         # Integrate the total continuum flux over the specified range and calculate the galaxy luminosity
         raw_cont_flux_sum = np.trapezoid(fit.value[mask], wave.value[mask])
-        print(self.cont_fit)
-        print(fit.value[mask])
-        print(f'raw_cont_flux_sum: {raw_cont_flux_sum}')
         cont_flux_sum = raw_cont_flux_sum * (wave.unit * fit.unit)
         
         galaxy_luminosity_erg = cont_flux_sum  * 4 * np.pi * luminosity_distance**2
@@ -1426,13 +1437,13 @@ class q3dout:
         temp_flux_sum = [0] * len(indecies)
         for j in range(len(temp_flux_sum)):
             temp_flux_sum[j] = np.trapezoid(template_flux[:, j][mask], wave.value[mask]) * (fit.unit * wave.unit)
-        print(f'temp_flux_sum: {temp_flux_sum}')
+
         # Calculate the flux fractions
         flux_fractions = np.array([temp_flux_sum[j] / cont_flux_sum for j in range(len(temp_flux_sum))]) * flux_rescale
-        print(f'flux_fractions: {flux_fractions}')
+        
         # Keep template_scale in matching luminosity units
         template_luminosities = u.Quantity([flux_fractions[j] * galaxy_luminosity_lsun for j in range(len(indecies))])
-        print(f'template_luminosities: {template_luminosities}')
+    
         scaled_component_templates = template_flux * template_norms / self.ct_coeff['stelweights'][indecies]
         per_template_lums = u.Quantity([np.trapezoid(scaled_component_templates[:, j][mask], wave.value[mask]) * template_unit * wave_unit for j in range(len(indecies))])
 

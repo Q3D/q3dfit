@@ -34,6 +34,27 @@ def read_bpass(infile: str,
     together. Or the flux over the wavelength range from, for example, 2000 to 
     3000 Angstroms can be calculated by summing the 2000th to 3000th rows.
 
+    The starmass templates are not avaliable for the BPASS v2.3 models, 
+    as the current v2.3 release is purely an upadate to the specral synthesis 
+    models and does not include any changes to the underlying stellar 
+    evolution models. As a result of this, we must use the starmass templates
+    from the v2.2.1 models, which are avaliable here: 
+    https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/v2p2/.
+    Download the gzipped tarball of the same IMF as the v2.3 models you're using 
+    (currently only IMF135_300), unpack it into a directory, and pass the path 
+    to the directory to this function as starmassfile.
+
+    From pg 17 of the v2.3 manual:
+    These files contain the total mass of the surviving stellar population as a function of age,
+    for a population of 106 Msun formed at t=0. These do not include the mass in compact
+    remnants.
+    Each file has 51 rows (one for each age bin) and 2 columns. The first column holds the
+    log(age/years) of the population while the second holds the total mass of surviving stars
+    in solar masses.
+    For the binary files we have included a third, untested, column that includes the mass in
+    stellar remnants, i.e. white dwarfs, neutron stars and black holes. We will add this column
+    to the single star population in future.
+
     Parameters
     ----------
     infile
@@ -231,12 +252,19 @@ def read_bpass_starmass(infile: str,
                                         0.010, 0.014, 0.020, 0.030, 0.040],
                        agerange: ArrayLike = [6., 11.]) -> None:
     '''
-    Read the BPASS starmass templates into a dictionary. Templates located
-    here: https://bpass.auckland.ac.nz/14.html. Download the gzipped
-    tarball of the desired version and alpha-enhancement. Unpack it
-    into a directory, and pass the path to the directory to this function.
+    Read the BPASS starmass templates into a numpy array.
 
-    From p 16 of the v2.3 manual:
+    The starmass templates are not avaliable for the BPASS v2.3 models, 
+    as the current v2.3 release is purely an upadate to the specral synthesis 
+    models and does not include any changes to the underlying stellar 
+    evolution models. As a result of this, we must use the starmass templates
+    from the v2.2.1 models, which are avaliable here: 
+    https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/v2p2/.
+    Download the gzipped tarball of the same IMF as the v2.3 models you're using 
+    (currently only IMF135_300), unpack it into a directory, and pass the path 
+    to the directory to this function as starmassfile.
+
+    From pg 17 of the v2.3 manual:
     These files contain the total mass of the surviving stellar population as a function of age,
     for a population of 106 Msun formed at t=0. These do not include the mass in compact
     remnants.
@@ -246,7 +274,6 @@ def read_bpass_starmass(infile: str,
     For the binary files we have included a third, untested, column that includes the mass in
     stellar remnants, i.e. white dwarfs, neutron stars and black holes. We will add this column
     to the single star population in future.
-    Filenames: starmass-<opt>-<imf>.<z>.dat
 
     Parameters
     ----------

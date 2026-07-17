@@ -1281,6 +1281,8 @@ def plotcontcomponents(q3do: q3dout,
 def plotpopheatmap(q3do: q3dout,
                    startempfile: str = None,
                    stelweights: ArrayLike = None,
+                   colorbar_label: str = 'Weight',
+                   title: str = 'Stellar Population Heatmap',
                    mode: Optional[Literal['dark', 'light']] = 'dark',
                    savefig: Optional[bool] = False,
                    outfile: Optional[str] = None,
@@ -1297,6 +1299,10 @@ def plotpopheatmap(q3do: q3dout,
         Used to load the ages and metallicities of the templates. If None, uses data saved in the q3do object.
     stelweights
         Optional. Array of stellar population weights. If None, uses the weights from the q3do object.
+    colorbar_label
+        Optional. Label for the colorbar. Defaults to 'Weight'.
+    title
+        Optional. Title for the heatmap. Defaults to 'Stellar Population Heatmap'.
     mode
         Optional. Plotting mode, either 'dark' or 'light'. Defaults to 'dark'.
         Changes the plot background and text colors for better visibility.
@@ -1376,8 +1382,8 @@ def plotpopheatmap(q3do: q3dout,
 
     ax.set_xlabel('Stellar Age (log10 Age [yr])')
     ax.set_ylabel('Metallicity (Z)')
-    ax.set_title('Stellar Population Heatmap')
-    fig.colorbar(im, ax=ax, label='Weight')
+    ax.set_title(title)
+    fig.colorbar(im, ax=ax, label=colorbar_label)
     fig.tight_layout()
 
     if savefig and outfile is not None:

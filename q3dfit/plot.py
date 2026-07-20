@@ -1071,11 +1071,12 @@ def plotcontcomponents(q3do: q3dout,
                         totals_plot_labels: Optional[ArrayLike] = None, 
                         totals_plot_colors: Optional[ArrayLike] = None, 
                         components_plot: Optional[bool] = True, 
-                        min_weight: Optional[float] = 0,
+                        min_flux: Optional[float] = 0,
                         sortvar: Optional[Literal['medians', 'ages', 'zs', 'weights']] = 'medians',
                         sortorder: Optional[bool] = True,
                         linalpha: Optional[float] = 0.8,
                         linwidth: Optional[float] = 1,
+                        legendargs: Optional[dict] = {},
                         mode: Optional[Literal['dark', 'light']] = 'dark',
                         figsize: tuple = (12,12),
                         savefig: bool=False,
@@ -1110,8 +1111,8 @@ def plotcontcomponents(q3do: q3dout,
         Optional. If True plots the stellar components, defaults to True
     compcmap
         Optional. Matplotlib colormap to use for stellar components plot, defaults to 'cividis'
-    min_weight
-        Optional. Minimum weight for a component to be plotted. Defaults to 0, which means all components are plotted.
+    min_flux
+        Optional. Minimum flux fraction for a component to be plotted. Defaults to 0, which means all components are plotted.
     sortvar
         Optional. Variable by which to sort the stellar components, either 'medians', 'ages', 'zs', or 'weights'. Defaults to 'medians'.
     sortorder
@@ -1120,6 +1121,9 @@ def plotcontcomponents(q3do: q3dout,
         Optional. Sets the alpha value of plotted lines.
     linwidth
         Optional. Sets the line width of plotted lines.
+    legendargs
+        Optional. Dictionary of arguments to pass to :py:meth:`~matplotlib.pyplt.legend()` for the stellar components plot.
+        Defaults to {}.
     mode
         set plotting mode, "light" or "dark", defaults to "dark"
     figsize
@@ -1215,7 +1219,9 @@ def plotcontcomponents(q3do: q3dout,
         
         templates_list = [templates_list[i] for i in sorted_indices]
         labels_list = [labels_list[i] for i in sorted_indices]
-
+        flux_weight = np.copy(q3do.component_templates['flux_fraction'])
+        flux_weight = [flux_weight[i] for i in sorted_indices]
+    
         # Generating colors for each component
         #n_lines = len(templates_list)
         #cmap = plt.get_cmap(compcmap)
@@ -1224,12 +1230,12 @@ def plotcontcomponents(q3do: q3dout,
         # Plot each component in the upper panel
         if plottype == 'line':
             for i in range(len(templates_list)):
-                if weights[i] >= min_weight:
+                if flux_weight[i] >= min_flux:
                     ax[0].plot(wave, templates_list[i], label=labels_list[i], alpha=linalpha, lw=linwidth)#, color=color[i])
         if plottype == 'stackplot':
             ax[0].stackplot(wave, templates_list, labels=labels_list, alpha=linalpha, lw=linwidth)# colors=color)            
 
-        ax[0].legend(frameon=True)
+        ax[0].legend(frameon=True, **legendargs)
         ax[0].set_title('Stellar fit components')
         ax[0].set_xlabel('Wavelength (Angstrom)')
         ax[0].set_ylabel('Flux')

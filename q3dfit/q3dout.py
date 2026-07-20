@@ -1307,6 +1307,7 @@ class q3dout:
             outfile = outfile + '_cnt_heatmap'
 
         stelweights = np.zeros_like(self.ct_coeff['stelweights'])
+        colorbarlabel = None
         if plottingmode == 'flux_fraction' and 'flux_fraction' in self.component_templates:
             stelweights[self.component_templates['index']] = self.component_templates['flux_fraction']
             colorbarlabel = 'Flux Fraction'

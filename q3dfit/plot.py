@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import colorsys
+from turtle import color
 from typing import Literal, Optional
 from numpy.typing import ArrayLike
 from copy import copy, deepcopy
@@ -17,6 +19,7 @@ import matplotlib as mpl
 from matplotlib.ticker import StrMethodFormatter
 from cycler import cycler
 
+from q3dfit import templates
 from q3dfit.contfit import readcf
 from q3dfit.exceptions import InitializationError
 from q3dfit.q3din import q3din
@@ -1076,6 +1079,8 @@ def plotcontcomponents(q3do: q3dout,
                         sortorder: Optional[bool] = True,
                         linalpha: Optional[float] = 0.8,
                         linwidth: Optional[float] = 1,
+                        use_colormap: Optional[bool] = False,
+                        colormapargs: Optional[dict] = {},
                         legendargs: Optional[dict] = {},
                         mode: Optional[Literal['dark', 'light']] = 'dark',
                         figsize: tuple = (12,12),
@@ -1121,6 +1126,13 @@ def plotcontcomponents(q3do: q3dout,
         Optional. Sets the alpha value of plotted lines.
     linwidth
         Optional. Sets the line width of plotted lines.
+    use_colormap
+        Optional. If True, uses a bivariate colormap to color the stellar components based on their age and metallicities.
+        If false, uses matplotlib's default color cycle.
+        Defaults to False.
+    colormapargs
+        Optional. Dictionary of arguments to pass to q3dfit.plot.get_bivariate_color() for the stellar components plot.
+        Defaults to {}.
     legendargs
         Optional. Dictionary of arguments to pass to :py:meth:`~matplotlib.pyplt.legend()` for the stellar components plot.
         Defaults to {}.
@@ -1221,20 +1233,74 @@ def plotcontcomponents(q3do: q3dout,
         labels_list = [labels_list[i] for i in sorted_indices]
         flux_weight = np.copy(q3do.component_templates['flux_fraction'])
         flux_weight = [flux_weight[i] for i in sorted_indices]
+        ages = [ages[i] for i in sorted_indices]
+        zs = [zs[i] for i in sorted_indices]
     
         # Generating colors for each component
-        #n_lines = len(templates_list)
-        #cmap = plt.get_cmap(compcmap)
-        #color = cmap(np.linspace(0, 1, n_lines))
-        
+        if use_colormap:
+            colors = []
+            for i in range(len(templates_list)):
+                color = get_bivariate_color(ages[i],
+                                            zs[i],
+                                            all_x=ages,
+                                            all_y=zs,
+                                            log_x=True,
+                                            use_percentiles=True,
+                                            **colormapargs
+                                            )
+                colors.append(color)
+        else:
+            colors = None
+
         # Plot each component in the upper panel
         if plottype == 'line':
             for i in range(len(templates_list)):
                 if flux_weight[i] >= min_flux:
-                    ax[0].plot(wave, templates_list[i], label=labels_list[i], alpha=linalpha, lw=linwidth)#, color=color[i])
+                    if colors is not None:
+                        line_color = colors[i]
+                    else:
+                        line_color = None
+                    ax[0].plot(wave, templates_list[i], label=labels_list[i], color=line_color, alpha=linalpha, lw=linwidth)#, color=color[i])
         if plottype == 'stackplot':
-            ax[0].stackplot(wave, templates_list, labels=labels_list, alpha=linalpha, lw=linwidth)# colors=color)            
+            ax[0].stackplot(wave, templates_list, labels=labels_list, alpha=linalpha, lw=linwidth)# colors=color)
 
+        # building a color map key for the stellar components plot if use_colormap is True
+        if use_colormap:
+            from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+            ax_inset = inset_axes(ax[0], width = '30%',height="35%", loc='upper left', bbox_to_anchor=(1, 0, 1, 1), bbox_transform=ax[0].transAxes, borderpad=1)
+
+            ax_inset.set_box_aspect(1)
+
+            grid_ages = np.quantile(ages, np.linspace(0, 1, 60))
+            grid_zs = np.quantile(zs, np.linspace(0, 1, 60))
+            legend_img = np.zeros((60, 60, 3))
+
+            for i, z_val in enumerate(grid_zs):
+                for j, age_val in enumerate(grid_ages):
+                    legend_img[i, j] = get_bivariate_color(
+                        x=age_val,
+                        y=z_val,
+                        all_x=ages,
+                        all_y=zs,
+                        log_x=True,
+                        use_percentiles=True,
+                        **colormapargs
+                        )
+
+            ax_inset.imshow(
+                legend_img, 
+                origin="lower", 
+                aspect="auto", 
+                extent=[round(np.log10(np.min(ages)), 1), round(np.log10(np.max(ages)), 1), (np.min(zs)), (np.max(zs))], 
+                interpolation='bilinear'
+                )
+            
+            ax_inset.set_xlabel("log10 Age", fontsize=10)
+            ax_inset.set_ylabel("Metallicity (Z)", fontsize=10)
+            ax_inset.tick_params(labelsize=8)
+            ax_inset.set_title("Color Map Key", fontsize=10)
+
+        # Formatting the stellar components plot
         ax[0].legend(frameon=True, **legendargs)
         ax[0].set_title('Stellar fit components')
         ax[0].set_xlabel('Wavelength (Angstrom)')
@@ -1676,3 +1742,93 @@ def plotquest(MIRgdlambda,
             plt.show()
 
     rcParams.update(rcParamsOrig)
+
+def get_bivariate_color(
+    x,
+    y,
+    all_x=None,
+    all_y=None,
+    min_x=None,
+    max_x=None,
+    min_y=None,
+    max_y=None,
+    log_x=False,
+    log_y=False,
+    hue_range=(0.60, 0.85),  # Y-axis (e.g., Blue -> Magenta)
+    lightness_range=(0.85, 0.20),  # X-axis (Light -> Dark)
+    saturation=0.85,
+    use_percentiles=True,
+):
+    """Universal 2D (bivariate) color mapping function for ANY pair of (X, Y) variables.
+
+    Parameters
+    ----------
+    x, y : float
+        The two values to map to a color.
+    all_x, all_y : array-like, optional
+        Full dataset arrays used for percentile ranking / quantile stretching.
+    min_x, max_x : float, optional
+        Minimum and maximum values for X axis normalization. If None, uses the min/max of `all_x`
+    min_y, max_y : float, optional
+        Minimum and maximum values for Y axis normalization. If None, uses the min/max of `all_y`
+    log_x, log_y : bool
+        Set True if X or Y spans orders of magnitude (e.g., mass, age).
+    hue_range : tuple (start_hue, end_hue)
+        HLS Hue range [0.0 - 1.0] assigned to the Y axis.
+    lightness_range : tuple (start_lightness, end_lightness)
+        HLS Lightness range [0.0 - 1.0] assigned to the X axis.
+    saturation : float
+        HLS Saturation value [0.0 - 1.0] for the color
+    use_percentiles : bool
+        If True, uses percentile ranking to normalize X and Y values. If False, uses linear scaling based on min/max values.
+        If False, must provide min_x, max_x, min_y, max_y for things to work properly.
+    """
+    # Transform inputs to log space if requested
+    val_x = np.log10(x) if log_x else x
+    val_y = np.log10(y) if log_y else y
+
+    # --- 1. Normalize X Axis -> Lightness ---
+    if use_percentiles and all_x is not None:
+        ref_x = np.log10(all_x) if log_x else all_x
+        unique_x = np.unique(ref_x)
+        u = np.interp(val_x, unique_x, np.linspace(0.0, 1.0, len(unique_x)))
+    else:
+        min_val = (
+            (np.log10(min_x) if log_x else min_x)
+            if min_x is not None
+            else np.min(val_x)
+        )
+        max_val = (
+            (np.log10(max_x) if log_x else max_x)
+            if max_x is not None
+            else np.max(val_x)
+        )
+        u = (val_x - min_val) / (max_val - min_val) if max_val != min_val else 0.5
+
+    u = np.clip(u, 0.0, 1.0)
+
+    # --- 2. Normalize Y Axis -> Hue ---
+    if use_percentiles and all_y is not None:
+        ref_y = np.log10(all_y) if log_y else all_y
+        unique_y = np.unique(ref_y)
+        v = np.interp(val_y, unique_y, np.linspace(0.0, 1.0, len(unique_y)))
+    else:
+        min_val = (
+            (np.log10(min_y) if log_y else min_y)
+            if min_y is not None
+            else np.min(val_y)
+        )
+        max_val = (
+            (np.log10(max_y) if log_y else max_y)
+            if max_y is not None
+            else np.max(val_y)
+        )
+        v = (val_y - min_val) / (max_val - min_val) if max_val != min_val else 0.5
+
+    v = np.clip(v, 0.0, 1.0)
+
+    # --- 3. Synthesize Color ---
+    hue = hue_range[0] + (hue_range[1] - hue_range[0]) * v
+    lightness = lightness_range[0] + (lightness_range[1] - lightness_range[0]) * u
+
+    return colorsys.hls_to_rgb(hue, lightness, saturation)

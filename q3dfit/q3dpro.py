@@ -19,7 +19,7 @@ from astropy.constants import c
 from astropy.cosmology import WMAP9 as cosmo
 from astropy.io import fits
 from matplotlib import pyplot as plt
-from matplotlib import cm
+from matplotlib import colormaps
 from matplotlib.colors import LogNorm
 from matplotlib.ticker import MaxNLocator, LinearLocator
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -555,7 +555,7 @@ class Q3Dpro:
                     else:
                         ipixVals = pixVals
                 if doPLT is True:
-                    cmap_r = cm.get_cmap(cmap)
+                    cmap_r = colormaps.get_cmap(cmap)
                     # cmap_r.set_bad(color='black')
                     cmap_r.set_bad(color=self.map_bkg)
                     axi = ax[i, j]
@@ -776,7 +776,7 @@ class Q3Dpro:
         fig.set_figheight(figOUT[1])
         fig.set_figwidth(figOUT[0])
 
-        cmap_r = cm.get_cmap(cmap)
+        cmap_r = colormaps.get_cmap(cmap)
         cmap_r.set_bad(color=self.map_bkg)
         cf = 0
 
@@ -1022,7 +1022,7 @@ class Q3Dpro:
         fig.set_figheight(figOUT[1]+1)
         fig.set_figwidth(figOUT[0])
 
-        cmap_r = cm.get_cmap(cmap)
+        cmap_r = colormaps.get_cmap(cmap)
         cmap_r.set_bad(color=self.map_bkg)
         cf = 0
         for linrat in lineratios:
@@ -1297,6 +1297,21 @@ class LineData:
     colname : list
         Sorted list of dictionary names in the :py:attr:`~q3dfit.q3din.q3din.data` attribute.
         Set in :py:meth:`~q3dfit.q3dpro.LineData._read_npz`.
+    waveunit : str
+        Copy of :py:attr:`~q3dfit.q3dout.q3dout.waveunit`.
+        Set by :py:meth`~q3dfit.q3dpro.LineData._get_units`.
+    fluxunit : str
+        Copy of :py:attr:`~q3dfit.q3dout.q3dout.fluxunit`.
+        Set by :py:meth`~q3dfit.q3dpro.LineData._get_units`.
+    linefluxunit : str
+        Copy of :py:attr:`~q3dfit.q3dout.q3dout.linefluxunit`.
+        Set by :py:meth`~q3dfit.q3dpro.LineData._get_units`.
+    sigmaunit : str
+        Copy of :py:attr:`~q3dfit.q3dout.q3dout.sigmaunit`.
+        Set by :py:meth`~q3dfit.q3dpro.LineData._get_units`.
+    fluxnorm : str
+        Copy of :py:attr:`~q3dfit.q3dout.q3dout.fluxnorm`.
+        Set by :py:meth`~q3dfit.q3dpro.LineData._get_units`.
     '''
 
     def __init__(self,
@@ -1315,6 +1330,7 @@ class LineData:
         self.bad = np.nan
         self.dataDIR = q3di.outdir
         self.target_name = q3di.name
+        self._get_units()
 
 
     def _read_npz(self,
@@ -1334,6 +1350,18 @@ class LineData:
         dataread = np.load(file, allow_pickle=True)
         self.colname = sorted(dataread)
         return dataread
+
+
+    def _get_units(self):
+        ''' 
+        Get units.
+        '''
+        emlunits = self.data['emlunits'].item()
+        self.waveunit = emlunits['wave']
+        self.fluxunit = emlunits['fluxpk']
+        self.linefluxunit = emlunits['flux']
+        self.sigmaunit = emlunits['sigma']
+        self.fluxnorm = emlunits['fluxnorm']
 
 
     def get_flux(self,
@@ -1362,10 +1390,15 @@ class LineData:
             fluxsel = kwargs['FLUXSEL']
         if lineselect not in self.lines:
             raise ValueError(f'Line {lineselect} is not present in the data.')
+        if 'pk' in fluxsel:
+            unit = self.fluxunit
+        else:
+            unit = self.linefluxunit
         emlflx = self.data['emlflx'].item()
         emlflxerr = self.data['emlflxerr'].item()
-        dataout = {'flux': emlflx[fluxsel][lineselect],
-                   'fluxerr': emlflxerr[fluxsel][lineselect]}
+        dataout = {'flux': emlflx[fluxsel][lineselect]*self.fluxnorm,
+                   'fluxerr': emlflxerr[fluxsel][lineselect]*self.fluxnorm,
+                   'unit': unit}
         return dataout
 
 
@@ -1417,7 +1450,8 @@ class LineData:
         emlsigerr = self.data['emlsigerr'].item()
         csel = 'c'+str(compsel)
         dataout = {'sig': emlsig[csel][lineselect],
-                   'sigerr': emlsigerr[csel][lineselect]}
+                   'sigerr': emlsigerr[csel][lineselect],
+                   'unit': self.sigmaunit}
         return dataout
 
 
@@ -1448,7 +1482,8 @@ class LineData:
         emlwaverr = self.data['emlwaverr'].item()
         csel = 'c'+str(compsel)
         dataout = {'wav': emlwav[csel][lineselect],
-                   'waverr': emlwaverr[csel][lineselect]}
+                   'waverr': emlwaverr[csel][lineselect],
+                   'unit': self.waveunit}
         return dataout
 
 
@@ -1479,7 +1514,7 @@ class OneLineData:
         Copy of :py:attr:`~q3dfit.q3dpro.LineData.target_name`.
     flux : numpy.ndarray
         Total flux of each spaxel and component for this line.
-    fpklux : numpy.ndarray
+    pkflux : numpy.ndarray
         Peak flux of each spaxel and component for this line.
     sig : numpy.ndarray
         Sigma of each spaxel and component for this line.
@@ -1518,6 +1553,10 @@ class OneLineData:
         self.bad = linedata.bad
         self.dataDIR = linedata.dataDIR
         self.target_name = linedata.target_name
+        self.waveunit = linedata.waveunit
+        self.fluxunit = linedata.fluxunit
+        self.linefluxunit = linedata.linefluxunit
+        self.sigmaunit = linedata.sigmaunit
         
         if line not in linedata.lines:
             raise ValueError(f'Line {line} is not present in the data.')
@@ -1746,7 +1785,7 @@ class OneLineData:
 
         vticks = [velran[0], velran[0]/2., 0., velran[1]/2., velran[1]]
         nticks = 4
-        cmap_r = cm.get_cmap(cmap)
+        cmap_r = colormaps.get_cmap(cmap)
         cmap_r.set_bad(color='black')
         # cmap_r.set_bad(color=self.map_bkg)
         _display_pixels_wz(cols_cent, rows_cent, pixVals, ax, CMAP=cmap, 
@@ -1937,7 +1976,7 @@ def _display_pixels_wz(x: np.ndarray,
                            norm=LogNorm(vmin=VMIN, vmax=VMAX),
                            interpolation='none')
 
-    current_cmap = cm.get_cmap()
+    current_cmap = plt.get_cmap()
     current_cmap.set_bad(color='white')
 
     if COLORBAR:

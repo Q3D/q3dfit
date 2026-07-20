@@ -1011,6 +1011,14 @@ def convert_x1d(infile,
             var = np.array(err)**2
             flux_unit = data.columns['FLUX'].unit
 
+        # to fix strange cases where data arrays reversed
+        if np.average(np.diff(wavelength)) < 0:
+            wavelength = wavelength[::-1]
+            dq = dq[::-1]
+            flux = flux[::-1]
+            err = err[::-1]
+            var = var[::-1]
+
         # fixing dispersion
         if not keep_disp:
             # finding the average dispersion

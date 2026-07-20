@@ -4,11 +4,8 @@
 @author: Yuzo Ishikawa
 """
 
-from fileinput import filename
-from select import select
 from typing import Literal, Optional, Union
 
-#import copy
 import numpy as np
 import os
 import re
@@ -17,10 +14,10 @@ from astropy.io import fits
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.convolution import convolve_fft, convolve
 from ppxf.ppxf_util import varsmooth
-#from scipy.ndimage import gaussian_filter1d
 from scipy.interpolate import CubicSpline
 
-import q3dfit.data.dispersion_files
+import q3dfit.data
+from q3dfit.exceptions import InitializationError
 from . import q3dutil
 
 
@@ -47,7 +44,7 @@ class spectConvol:
 
     Raises
     ------
-    SystemExit
+    InitializationError
         If no `ws_instrum` dictionary is found in the input dictionary.
         If an error is found in the input dictionary.
 
@@ -85,8 +82,8 @@ class spectConvol:
         # inst is a telescope+instrument string
         # gratlist is a list of grating strings
         if 'ws_instrum' not in spect_convol:
-            raise SystemExit('No ws_instrum dictionary found in ' +
-                'q3dinit.spect_convol.')
+            raise InitializationError(
+                'No ws_instrum dictionary found in q3dinit.spect_convol.')
         try:
             for inst, gratlist in spect_convol['ws_instrum'].items():
                 if inst.upper() == 'KERNEL':
@@ -97,8 +94,8 @@ class spectConvol:
                     for grat in gratlist:
                         self.InstGratObjs[inst][grat] = None
         except:
-            raise SystemExit('Error in loading spect_convol dictionary ' +
-                'in q3dinit.')
+            raise InitializationError(
+                'Error in loading spect_convol dictionary from q3dinit.')
     
         # set the wavelength unit
         self.waveunit = waveunit
@@ -161,7 +158,7 @@ class spectConvol:
 
         '''
 
-        if self.KernelObj is not None:
+        if self.is_kernel():
 
             if oversample > 1:
                 meandisp = np.mean(np.diff(wave))
@@ -224,7 +221,7 @@ class spectConvol:
         #plt.savefig('test.png',dpi=300)
         #plt.close(fig)
 
-        if self.KernelObj is not None:
+        if self.is_kernel():
             return fluxconv
         elif self.is_dispobj_mrs(InstGratSelect[0]):
             return fluxconv
@@ -256,7 +253,7 @@ class spectConvol:
 
         Raises
         ------
-        SystemExit
+        InitializationError
         '''
         InstGratSelect = list()
         for inst, gratlist in self.InstGratObjs.items():
@@ -268,22 +265,23 @@ class spectConvol:
                     if (wavecen > gwave[0]) and (wavecen < gwave[-1]):
                         InstGratSelect.append(self.InstGratObjs[inst][grat])                
 
-        # Not sure if this deserves a SystemExit, but it's a way to
-        # catch the length errors.
+        # Catch length errors.
         if InstGratSelect.__len__() == 0:
-            raise SystemExit(f'spectConvol.selectInstGrat: ' +
+            raise InitializationError(
+                f'spectConvol.selectInstGrat: ' +
                 f'No specified inst/grat combination covers the line ' +
                 f'at {wavecen.__str__()} {self.waveunit}.')
         elif InstGratSelect.__len__() > 2:
             if wavecen is None:
-                raise SystemExit('spectConvol.selectInstGrat: ' +
+                raise InitializationError(
+                    f'spectConvol.selectInstGrat: ' +
                     f'More than 2 inst/grat combinations are specified.')
             else:
-                raise SystemExit(f'spectConvol.selectInstGrat: ' +
+                raise InitializationError(
+                    f'spectConvol.selectInstGrat: ' +
                     f'More than 2 inst/grat combinations cover the line ' +
                     f'at {wavecen.__str__()} {self.waveunit}.')
 
-        #print(f'spectConvol.selectInstGrat: {InstGratSelect.__len__()} inst/grat combination(s) selected.')
         return InstGratSelect
     
 
@@ -378,7 +376,7 @@ class spectConvol:
             Resolving power at the input wavelength(s).
         '''
 
-        if self.KernelObj is not None:
+        if self.is_kernel():
             R = None  # not applicable for kernel
         else:
             instgrat = self.selectInstGrat(wavecen=wave)
@@ -408,6 +406,27 @@ class spectConvol:
         '''
         if isinstance(InstGratObj, InstGratDispersion):
             if InstGratObj.inst == 'JWST_MIRI':
+                return True
+            else:
+                return False
+        else:
+            return False
+        
+    
+    def is_kernel(self) -> bool:
+        
+        '''
+        Convenience method to check if the dispersion object is a kernel
+
+        Parameters
+        ----------
+        Returns
+        -------
+        bool
+            True if the instrument/grating is MRS, False otherwise.
+        '''
+        if hasattr(self, 'KernelObj'):
+            if self.KernelObj is not None:
                 return True
             else:
                 return False
@@ -487,7 +506,7 @@ class dispersion(object):
 
         Raises
         ------
-        SystemExit
+        InitializationError
         '''
 
         with fits.open(filename) as hdul:
@@ -499,7 +518,7 @@ class dispersion(object):
         try: 
             self.wave = indisp['WAVELENGTH']  # wavelength
         except:
-            raise SystemExit(f"No wavelength array found in " +
+            raise InitializationError(f"No wavelength array found in " +
                 "dispersion file {filename}.")
         try: 
             waveunit_in = inhead['TUNIT1'].lower()
@@ -530,7 +549,7 @@ class dispersion(object):
                 type = t
                 break
         if type is None:
-            raise SystemExit(f"No viable type found in " +
+            raise InitializationError(f"No viable type found in " +
                 "dispersion file {filename}. Options are 'R', "+
                 "'DVEL', or 'DLAMBDA'.")
 
@@ -586,16 +605,16 @@ class dispersion(object):
 
         Raises
         ------
-        SystemExit
+        InitializationError
 
         '''
 
         if wave is None:
             if self.wave is None:
-                raise SystemExit("No wavelength array provided.")
+                raise InitializationError("No wavelength array provided.")
             wave = self.wave
         if type is None:
-            raise SystemExit("No dispersion type provided.")
+            raise InitializationError("No dispersion type provided.")
         c1 = fits.Column(name='WAVELENGTH', format='E', array=wave,
                          unit=waveunit if waveunit is not None else self.waveunit)
         clist = [c1]
@@ -604,7 +623,7 @@ class dispersion(object):
         if disp is None:
             if self.R is None:
                 if self.dlam is None:
-                    raise SystemExit("dispersion.write: no dispersion array " +
+                    raise InitializationError("dispersion.write: no dispersion array " +
                                  "provided.")
                 else:
                     disp = self.dlam
@@ -663,7 +682,7 @@ class dispersion(object):
         if isinstance(disp, (int, float)):
             disparr = np.full(self.wave.__len__(), disp)
         elif disp.__len__() != self.wave.__len__():
-            raise SystemExit("Dispersion and wavelength arrays must "+
+            raise InitializationError("Dispersion and wavelength arrays must "+
                              "have the same length.")
         else:
             disparr = disp
@@ -728,7 +747,7 @@ class InstGratDispersion(dispersion):
         try:
             self.read(os.path.join(self.dispdir, self.filename))
         except:
-            raise SystemExit('The instrument/grating ' +
+            raise InitializationError('The instrument/grating ' +
                 'combination ' + self.inst + '/' + self.grat + 
                 ' cannot be read.')
         
@@ -929,6 +948,35 @@ def MRS_dispersion(wave: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 
 class Kernel(object):
+    '''
+    Class for convolving spectra with a predefined kernel, rather than a Gaussian.
+
+    Parameters
+    ----------
+    kernelfile : str
+        File that holds a dictionary continaing the keys 'kernel', 'dwave', and 
+        'waveunit'.
+    waveunit : str
+        Wavelength unit of the spectrum to be convolved.
+        
+    Attributes
+    ----------
+    kernel : np.ndarray
+        1d array with the kernel values. The :py:func:`~astropy.convolution.convolve_fft` 
+        routine will normalize the kernel internally. When fitting emission lines, 
+        'q3dfit' will automatically mask the lines based on the size of the kernel. 
+    dwave : float
+        Wavelength dispersion of the array, assumed to be constant. At present, this must 
+        match the dispersion of the spectrum to be fit (when applied to emission lines).
+    waveunit : Literal['micron', 'Angstrom']
+        Wavelength unit of the dispersion.
+
+    Example
+    -------
+
+    Save the dictionary to a file for loading:
+    np.save('/path/to/kernel.npy', kerneldict, allow_pickle=True)
+    '''
 
     def __init__(self, 
                  kernelfile: str,
@@ -939,13 +987,21 @@ class Kernel(object):
         self.kernel = kerneldict['kernel']
         self.dwave = kerneldict['dwave']
         self.waveunit = kerneldict['waveunit']
+        # Check to make sure spectrum and kernel match in units.
+        # If not, raise an error.
         if self.waveunit != waveunit_in:
-            if self.waveunit == 'micron' and waveunit_in == 'Angstrom':
-                self.dwave *= 10000.0
-                self.waveunit = 'Angstrom'
-            elif self.waveunit == 'Angstrom' and waveunit_in == 'micron':
-                self.dwave /= 10000.0
-                self.waveunit = 'micron'
-            else:
-                raise SystemExit(f"Invalid waveunit '{waveunit_in}' specified. " +
-                                 "Must be 'micron' or 'Angstrom'.")
+            raise InitializationError(f"Kernel wavelength unit '{waveunit}' "+
+                                      f"does not match spectrum units "+
+                                      f"{waveunit_in}")
+        # We could adjust the kernel dispersion like this, but this would also
+        # require significant resampling (not shown). Better to just get the
+        # kernel right upfront ...
+        #    if self.waveunit == 'micron' and waveunit_in == 'Angstrom':
+        #        self.dwave *= 10000.0
+        #        self.waveunit = 'Angstrom'
+        #    elif self.waveunit == 'Angstrom' and waveunit_in == 'micron':
+        #        self.dwave /= 10000.0
+        #        self.waveunit = 'micron'
+        #    else:
+        #        raise InitializationError(f"Invalid waveunit '{waveunit_in}' specified. " +
+        #                         "Must be 'micron' or 'Angstrom'.")

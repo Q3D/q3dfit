@@ -259,11 +259,12 @@ def q3dcollect(q3di: str | q3din.q3din,
                 if emlunits == {}:
                     emlunits['wave'] = q3do.waveunit
                     emlunits['fluxpk'] = q3do.fluxunit
+                    emlunits['fluxnorm'] = q3do.fluxnorm
                     if hasattr(q3do, 'sigmaunit'):
                        emlunits['sigma'] = q3do.sigmaunit
                     else:
                         # Calculate it here as well as in q3dout.sepfitpars for backward compatibility with old versions
-                        emlunits['sigma'] = q3do.waveunit
+                        emlunits['sigma'] = 'km/s'
                     if hasattr(q3do, 'linefluxunit'):
                         emlunits['flux'] = q3do.linefluxunit
                     else:

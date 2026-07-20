@@ -67,6 +67,8 @@ class q3dout:
         Line flux unit. Added by :py:func:`~q3dfit.q3dout.q3dout.sepfitpars()`.
     waveunit : str
         Wavelength unit. Added by constructor. Defaults to 'micron'.
+    sigmaunit : str
+        Dispersion unit. Added by constructor. Defaults to 'km/s'.
     fluxnorm : float
         Flux normalization. Added by constructor. Defaults to 1.0.
     pixarea_sqas : float
@@ -128,6 +130,7 @@ class q3dout:
                  fitran_indx: Optional[ArrayLike]=None,
                  fluxunit: str='erg/s/cm^2/micron',
                  waveunit: str='micron',
+                 sigmaunit: str='km/s',
                  fluxnorm: float=1.,
                  pixarea_sqas: Optional[float]=None,
                  nogood: bool=False):
@@ -141,6 +144,7 @@ class q3dout:
         self.fluxunit = fluxunit
         self.waveunit = waveunit
         self.fluxnorm = fluxnorm
+        self.sigmaunit = sigmaunit
         self.pixarea_sqas = pixarea_sqas
 
         self.fitran_indx = fitran_indx

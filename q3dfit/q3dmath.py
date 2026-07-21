@@ -48,7 +48,7 @@ def interptemp(spec_lam: ArrayLike,
               str(max(temp_lam)) + ' to ' + str(max(spec_lam)) + '.')
 
     if ntemp != 1:
-        for i in range(ntemp - 1):
+        for i in range(ntemp):
             interpfunc = \
                 interpolate.interp1d(temp_lam, template[:, i], kind='linear')
             new_temp[:, i] = interpfunc(spec_lam)

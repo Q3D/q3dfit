@@ -56,6 +56,7 @@ class Cube:
         than variance, set to True. Defaults to False.
     fluxnorm
         Optional. Factor by which to divide the data. Defaults to 1.
+        Can also be a string corresponding to a numpy function, e.g., 'mean', 'median'.
     fluxunit_in
         Optional. Flux unit of input data cube. Default is `MJy/sr` (JWST 
         default). Must be parseable by :py:mod:`~astropy.units`.
@@ -495,6 +496,15 @@ class Cube:
             self.var = self.var * convert_flux**2
         if self.err is not None:
             self.err = self.err * convert_flux
+
+
+        if isinstance(fluxnorm, (str)):
+            norm_func = fluxnorm
+            func = getattr(np, norm_func)
+            fluxnorm = func(self.dat)
+            if not quiet:
+                q3dutil.write_msg('Normalizing flux by '+norm_func+
+                    ' of data cube, '+str(fluxnorm), file=logfile, quiet=quiet)
 
         self.fluxnorm = fluxnorm
         self.dat = self.dat / fluxnorm

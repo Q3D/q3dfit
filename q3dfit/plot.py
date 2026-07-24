@@ -859,9 +859,9 @@ def plotline(q3do: q3dout,
                     linwav[i] = q3do.param[f'{lmline.lmlabel}_0_cwv']
                 # otherwise
                 else:
-                    idx = np.where(q3do.linelist['name'] == sub_linlab[i])
+                    idx = np.where(q3do.linelist['name'] == sub_linlab[i])[0]
                     if len(idx) > 0:
-                        linwav[i] = q3do.linelist['lines'][idx] * \
+                        linwav[i] = q3do.linelist['lines'][idx][0] * \
                             (1. + q3do.zstar)
                     else:
                         raise InitializationError(f'Line {sub_linlab[i]} not fit.')

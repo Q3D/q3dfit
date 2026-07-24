@@ -458,6 +458,8 @@ def fitspec(wlambda: np.ndarray,
                         bounds = value
                     else:
                         argscontfit_use[key] = value
+            if 'regul' in argscontfit_use and not 'reg_dim' in argscontfit_use:
+                argscontfit_use['reg_dim'] = (len(np.unique(template['zs'])), len(np.unique(template['ages'])))
 #            if 'add_poly_degree' in q3di.argscontfit:
 #                add_poly_degree = q3di.argscontfit['add_poly_degree']
 #            if 'mult_poly_degree' in q3di.argscontfit:

@@ -429,7 +429,7 @@ def plotcont(q3do: q3dout,
             ax1 = fig.add_subplot(gs[:3, :])
 
             MIRgdlambda = wave #[q3do.ct_indx]
-            MIRgdflux = q3do.spec #[q3do.ct_indx]
+            MIRgdflux = q3do.cont_dat #[q3do.ct_indx]
             MIRcontinuum = modstars #[q3do.ct_indx]
 
             if waveunit_in =='micron' and waveunit_out == 'Angstrom':
@@ -462,40 +462,51 @@ def plotcont(q3do: q3dout,
             ax1.plot(MIRgdlambda, MIRgdflux, label='Data',color=dcolor)
             ax1.plot(MIRgdlambda, MIRcontinuum, label='Model', color='r')
 
+            compkeys = list(comp_best_fit.keys())
             if 'global_ext_model' in q3di.argscontfit:
-                for i in np.arange(0,len(comp_best_fit.keys())-2,1):
+                for i in np.arange(0,len(compkeys)-2,1):
                     ax1.plot(MIRgdlambda,
-                                np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
-                                            np.multiply(comp_best_fit[list(comp_best_fit.keys())[-2]],
-                                                        comp_best_fit[list(comp_best_fit.keys())[-1]])),
-                                label=list(comp_best_fit.keys())[i],
+                                np.multiply(comp_best_fit[compkeys[i]],
+                                            np.multiply(comp_best_fit[compkeys[-2]],
+                                                        comp_best_fit[compkeys[-1]])),
+                                label=compkeys[i],
                                 linestyle='--',alpha=0.5)
             else:
-                for i in np.arange(0,len(comp_best_fit.keys()),3):
-                    ax1.plot(MIRgdlambda,
-                                np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
-                                            np.multiply(comp_best_fit[list(comp_best_fit.keys())[i+1]],
-                                                        comp_best_fit[list(comp_best_fit.keys())[i+2]])),
-                                label=list(comp_best_fit.keys())[i],
-                                linestyle='--',alpha=0.5)
+#                for i in np.arange(0,len(compkeys),3):
+#                    spec_out = comp_best_fit[compkeys[i]]
+#                    if compkeys[i]+'_ext' in comp_best_fit.keys():
+#                        spec_out *= comp_best_fit[compkeys[i]+'_ext']
+#                    if compkeys[i]+'_abs' in comp_best_fit.keys():
+#                        spec_out *= comp_best_fit[compkeys[i]+'_abs']
+#                   ax1.plot(MIRgdlambda,
+#                                np.multiply(comp_best_fit[compkeys[i]],
+#                                            np.multiply(comp_best_fit[compkeys[i+1]],
+#                                                        comp_best_fit[compkeys[i+2]])),
+#                              label=compkeys[i],
+#                                linestyle='--',alpha=0.5)
 
                 for comp_i in comp_best_fit.keys():
-                        if 'ext' not in comp_i and 'abs' not in comp_i:
-                            spec_out = comp_best_fit[comp_i]
-                            if comp_i+'_ext' in comp_best_fit.keys():
-                                spec_out *= comp_best_fit[comp_i+'_ext']
-                            if comp_i+'_abs' in comp_best_fit.keys():
-                                spec_out *= comp_best_fit[comp_i+'_abs']
-                            plt.plot(MIRgdlambda, spec_out, label=comp_i,linestyle='--',alpha=0.5)
+                    if 'ext' not in comp_i and 'abs' not in comp_i:
+                        spec_out = comp_best_fit[comp_i]
+                        if comp_i+'_ext' in comp_best_fit.keys():
+                            spec_out *= comp_best_fit[comp_i+'_ext']
+                        if comp_i+'_abs' in comp_best_fit.keys():
+                            spec_out *= comp_best_fit[comp_i+'_abs']
+                        if 'blackbody' in comp_i:
+                            label = f'BB {q3do.ct_coeff['MIRparams'][comp_i+'T'].value:0.0f}K'
+                        else:
+                            label = 'PL f$_\lambda\propto\lambda^{'+f'{q3do.ct_coeff['MIRparams'][comp_i+'b'].value:0.2f}'+'}$'
+                        ax1.plot(MIRgdlambda, spec_out, label=label,linestyle='--',alpha=0.5)
+                        #plt.plot(MIRgdlambda, spec_out, label=comp_i,linestyle='--',alpha=0.5)
 
 
-            #ax1.legend(ncol=2)
-            ax1.legend(loc='upper right',bbox_to_anchor=(1.15, 1),prop={'size': 10})
+            ax1.legend() #loc='upper right',bbox_to_anchor=(1.15, 1),prop={'size': 10})
             if xstyle == 'log':
                 ax1.set_xscale('log')
             if ystyle == 'log':
                 ax1.set_yscale('log')
-            ax1.set_ylim(1e-4)
+            if yran is not None:
+                plt.ylim(yran)
             ax1.set_ylabel(ytit, fontsize=12)
 
             ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
@@ -507,7 +518,8 @@ def plotcont(q3do: q3dout,
             elif waveunit_out == 'micron':
                 ax2.set_xlabel('Wavelength ($\mu$m)', fontsize=12)
             gs.update(wspace=0.0, hspace=0.05)
-            plt.suptitle('Total', fontsize=30)
+            #plt.suptitle('Total', fontsize=30)
+
 
         elif xstyle == 'lin' or ystyle == 'lin':
 
@@ -515,7 +527,7 @@ def plotcont(q3do: q3dout,
                 xran = q3do.fitrange
 
             MIRgdlambda = wave #[q3do.ct_indx]
-            MIRgdflux = q3do.spec #[q3do.ct_indx]
+            MIRgdflux = q3do.cont_dat #[q3do.ct_indx]
             MIRcontinuum = modstars #[q3do.ct_indx]
 
             xtit = ''

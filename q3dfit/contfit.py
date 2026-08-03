@@ -764,7 +764,7 @@ def questfit(wave: np.ndarray,
 
         #if qsoflux is not None:
             #model_qso, param_qso = questfitfcn.set_up_fit_model_scale
-
+        
     # Check to see if we are using global extinction, where the total
     # model flux is extincted by the same ice and dust model.
     if global_extinction:
@@ -854,15 +854,16 @@ def questfit(wave: np.ndarray,
 
         allcomps[i] = allcomps[i]/allcomps[i].max()
 
-    # Add in wavelength and units flags
+    # Add in wavelength, units, and redshift for input to the models
     allcomps['wave'] = np.float64(wave)
     allcomps['fluxunit'] = fluxunit
+    allcomps['z'] = z
 
     # produce copy of components dictionary with index applied
     flux_cut = flux[index]
     allcomps_cut = copy.deepcopy(allcomps)
     for el in allcomps.keys():
-        if not ('fluxunit' in el):
+        if not ('fluxunit' in el or 'z' in el):
             allcomps_cut[el] = allcomps_cut[el][index]
 
     # Get ready for fit

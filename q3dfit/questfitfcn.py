@@ -13,18 +13,28 @@ import lmfit
 def blackbody(wave: np.ndarray,
               a: float,
               T: float,
+              z: Optional[float]=None,
               fluxunit: Optional[str]=None) -> np.ndarray:
     '''
-    Blackbody model function
+    Blackbody model function. Default is to compute in f_lambda, in the rest frame.
 
     Parameters
     -----
     wave
-        1-D array of the wavelength to be fit, in microns.
+        1-D array of the wavelength to be fit, in microns. Assumed to be in the rest frame 
+        if z is None, otherwise assumed to be in the observed frame.
     a
-        Scale factor for blackbody model after it is normalized to its maximum value.
+        Scale factor for blackbody model after it is normalized to its maximum value in
+        the wavelength range of the input spectrum.
     T
         Temperature of the blackbody in Kelvin.
+    z
+        Redshift of the input spectrum. If None, the blackbody model will be computed using
+        the input wavelength array. If a redshift is provided, the blackbody model will be
+        computed in the rest frame.
+    fluxunit
+        Optional. If the flux is in f_nu, then the blackbody model will be converted to f_nu. 
+        If None, the blackbody model will be computed in f_lambda.
 
     returns
     -------
@@ -34,22 +44,31 @@ def blackbody(wave: np.ndarray,
     # Blam = BlackBody(temperature=T*u.K, scale=1.*u.Unit('erg/cm^2/micron/s/sr'))
     # Blamval = Blam(wave*u.micron).value
  
+    if z is not None:
+        wave_temp = wave.copy()/(1.+z)
+    else:
+        wave_temp = wave
+
     # hck in cgs units
     hck = const.h.to('cm2 g/s').value*const.c.to('cm/s').value/\
         const.k_B.to('cm2 g / (s2 K)').value
     # flux density in erg/cm^2/s/micron
     # convert wave from microns to cm
-    BB_model = (wave*1e-4)**-4*(np.exp(hck/(wave*1e-4)/T)-1)**-1 / wave
+    BB_model = (wave_temp*1e-4)**-4*(np.exp(hck/(wave_temp*1e-4)/T)-1)**-1 / wave_temp
 
-    # if data is in f_lambda, convert to f_nu
+    # Compute peak flux density
+    wpeak = 2898./T # in microns
+    BB_peak = (wpeak*1e-4)**-4*(np.exp(hck/(wpeak*1e-4)/T)-1)**-1 / wpeak
+
+    # if data is in f_nu, convert to f_lambda
     # exact scale doesn't matter since we normalize by the maximum value
     if fluxunit is not None:
-        if 'micron' in fluxunit or 'Angstrom' in fluxunit:
+        if not('micron' in fluxunit or 'Angstrom' in fluxunit):
             #c_scale = c * u.Unit('m').to('micron') /(wave)**2 *1e-23
-            c_scale = 1. / wave**2            
+            c_scale = 1. / wave_temp**2
             BB_model /= c_scale
     
-    BB_model /= BB_model.max()
+    BB_model /= BB_peak
 
     return a*BB_model
 
@@ -79,7 +98,7 @@ def set_up_fit_blackbody_model(p: list,
 
     model_name = name
     blackbody_model = \
-        lmfit.Model(blackbody, independent_vars=['wave', 'fluxunit'], prefix=model_name)
+        lmfit.Model(blackbody, independent_vars=['wave', 'fluxunit', 'z'], prefix=model_name)
     blackbody_model_parameters = blackbody_model.make_params()
     blackbody_model_parameters[model_name+'a'].\
         set(value=p[0], min=np.finfo(float).eps, vary=p_fixfree[0])
@@ -134,7 +153,8 @@ def set_up_fit_model_scale_withpoly(p,p_fixfree,model_name,model, minamp=0.,
 
 def powerlaw(wave: np.ndarray,
              a: float,
-             b: float) -> np.ndarray:
+             b: float,
+             z: Optional[float]=None) -> np.ndarray:
     '''
     Powerlaw model
 
@@ -146,12 +166,22 @@ def powerlaw(wave: np.ndarray,
         Scale factor the powerlaw model.
     b
         Exponent for powerlaw.
+    z
+        Redshift of the input spectrum. If None, the powerlaw model will be computed using
+        the input wavelength array. If a redshift is provided, the powerlaw model will be
+        computed in the rest frame.
 
     returns
     -------
     np.ndarray
     '''
-    powerlaw_model = wave**b
+
+    if z is not None:
+        wave_temp = wave.copy()/(1.+z)
+    else:
+        wave_temp = wave
+
+    powerlaw_model = wave_temp**b
     return a*powerlaw_model
 
 
@@ -177,7 +207,7 @@ def set_up_fit_powerlaw_model(p: ArrayLike,
 
     model_name = name
     powerlaw_model = \
-        lmfit.Model(powerlaw, independent_vars=['wave'],
+        lmfit.Model(powerlaw, independent_vars=['wave', 'z'],
                     prefix=model_name)
     powerlaw_model_parameters = powerlaw_model.make_params()
     powerlaw_model_parameters[model_name+'a'].\

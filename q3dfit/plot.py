@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 from numpy.typing import ArrayLike
-from copy import copy
+from copy import copy, deepcopy
 
 from astropy.constants import c
 from astropy import units as u
@@ -23,6 +23,54 @@ from q3dfit.spectConvol import spectConvol
 from q3dfit.q3dout import q3dout
 from q3dfit.q3dutil import lmlabel
 
+def flam_to_lamflam(wave: ArrayLike, flux: ArrayLike) -> ArrayLike:
+    """
+    Convert flux density from F_lambda to lambda*F_lambda.
+    Assume that flux density and input wavelength are in inverse units of each other 
+    (e.g., flux in erg/s/cm^2/Angstrom and wavelength in Angstrom)
+            data = list(np.multiply(data, wave))
+            model = list(np.multiply(model, wave))
+            if ncomp > 0:
+                for i in range(0, ncomp):
+                    ccompspec[i] = list(np.multiply(ccompspec[i], wave))
+
+    Parameters
+    ----------
+    wave : ArrayLike
+        Wavelength array.
+    flux : ArrayLike
+        Flux density array in F_lambda.
+
+    Returns
+    -------
+    ArrayLike
+        Flux density array in lambda*F_lambda.
+    """
+    return np.multiply(flux, wave)
+
+def flam_to_fnu(wave: ArrayLike, flux: ArrayLike, waveunit: Literal['micron','Angstrom']) -> ArrayLike:
+    """
+    Convert flux density from F_lambda to F_nu.
+    Assume that flux density and input wavelength are in inverse units of each other 
+    (e.g., flux in erg/s/cm^2/Angstrom and wavelength in Angstrom)
+    Return fnu in units of */Hz.
+
+    Parameters
+    ----------
+    wave : ArrayLike
+        Wavelength array.
+    flux : ArrayLike
+        Flux density array in F_lambda, units of */wavelength unit.
+    waveunit : Literal['micron','Angstrom']
+        Unit of the wavelength array.
+
+    Returns
+    -------
+    ArrayLike
+        Flux density array in F_nu, units of */Hz.
+    """
+    return np.multiply(flux, np.divide(np.multiply(wave, wave), c.to(waveunit+'/s').value))
+
 def plotcont(q3do: q3dout,
              savefig: bool=False,
              outfile: Optional[str]=None,
@@ -39,9 +87,9 @@ def plotcont(q3do: q3dout,
              xstyle: Literal['log', 'lin']='lin',
              ystyle: Literal['log', 'lin']='lin',
              figsize: tuple=(10, 5),
-             waveunit_in: Literal['micron','Angstrom']='micron',
+             waveunit_in: Optional[Literal['micron','Angstrom']]=None,
              waveunit_out: Optional[str]=None,
-             fluxunit_out: Literal['flambda', 'lambdaflambda', 'fnu'] = 'flambda',
+             fluxunit_out: Literal['flambda', 'lambdaflambda', 'fnu']='flambda',
              mode: Literal['dark', 'light'] = 'dark'
              ):
     '''
@@ -101,7 +149,7 @@ def plotcont(q3do: q3dout,
         This affects the background color and text color of the plot.
     waveunit_in
         Optional. Input wavelength unit, either 'micron' or 'Angstrom'.
-        Defaults to 'micron'.
+        Defaults to :py:attr:`~q3dfit.q3dout.q3dout.waveunit`.
     waveunit_out
         Optional. Output wavelength unit, either 'micron' or 'Angstrom'.
         If None, defaults to waveunit_in.
@@ -124,9 +172,11 @@ def plotcont(q3do: q3dout,
         dcolor = 'k'
 
     wave = q3do.wave.copy()
-    specstars = copy(q3do.cont_dat)
-    modstars = copy(q3do.cont_fit)
+    data_in = q3do.cont_dat.copy()
+    model_cont_in = q3do.cont_fit.copy()
 
+    if waveunit_in is None:
+        waveunit_in = q3do.waveunit
     if waveunit_out is None:
         # if no output wavelength unit is specified, use the input wavelength unit
         waveunit_out = waveunit_in
@@ -142,6 +192,34 @@ def plotcont(q3do: q3dout,
     for k, g in groupby(enumerate(maskidx), lambda ix : ix[0] - ix[1]):
         maskidxsep = list(map(itemgetter(1), g))
         maskidxlim.append([int(maskidxsep[0]),int(maskidxsep[-1])])
+
+    if waveunit_out == 'micron':
+        xtit = 'Observed Wavelength ($\mu$m)'
+    elif waveunit_out == 'Angstrom':
+        xtit = 'Observed Wavelength ($\AA$)'
+
+    if fluxunit_out == 'lambdaflambda':
+        data = flam_to_lamflam(wave, data_in)
+        model_cont = flam_to_lamflam(wave, model_cont_in)
+        ytit = '$\lambda$F$_\lambda$'
+    elif fluxunit_out == 'fnu':
+        data = flam_to_fnu(wave, data_in, waveunit_in)
+        model_cont = flam_to_fnu(wave, model_cont_in, waveunit_in)
+        ytit = 'F$_\u03BD$'
+    else:
+        data = data_in
+        model_cont = model_cont_in
+        ytit = 'F$_\lambda$'
+
+    ydat = data
+    ymod = model_cont
+
+    if xran is None:
+        xran = copy(q3do.fitrange)
+
+    if waveunit_in != waveunit_out:
+        xran_in = xran * u.Unit(waveunit_in)
+        xran = xran_in.to(u.Unit(waveunit_out)).value
 
     # for optical spectra fit by fitqsohost or ppxf:
     if not questfit:
@@ -159,46 +237,18 @@ def plotcont(q3do: q3dout,
         else:
             ncomp = 0
 
-        if xran is None:
-            xran = copy(q3do.fitrange)
-
-        if waveunit_in == 'Angstrom' and waveunit_out == 'micron':
-            # convert angstrom to microns
-            xran = list(np.divide(xran, 10**4))
-        elif waveunit_in == 'micron' and waveunit_out == 'Angstrom':
-            # convert microns to angstroms
-            xran = list(np.multiply(xran, 10**4))
-
         if fluxunit_out == 'lambdaflambda':
-            # multiply the flux by wavelength
-            specstars = list(np.multiply(specstars, wave))
-            modstars = list(np.multiply(modstars, wave))
             if ncomp > 0:
                 for i in range(0, ncomp):
-                    ccompspec[i] = list(np.multiply(ccompspec[i], wave))
-            ytit = '$\lambda$F$_\lambda$'
+                    ccompspec[i] = flam_to_lamflam(wave, ccompspec[i])
         elif fluxunit_out == 'fnu':
-            # multiply the flux by wavelength^2/c
-            specstars = \
-                list(np.multiply(specstars,
-                                 np.divide(np.multiply(wavein.value, waveout.value), 
-                                           c.to(waveunit_out+'/s').value)))
-            modstars = \
-                list(np.multiply(modstars,
-                                 np.divide(np.multiply(wavein.value, waveout.value), 
-                                           c.to(waveunit_out+'/s').value)))
             if ncomp > 0:
                 for i in range(0, ncomp):
-                    ccompspec[i] = \
-                        list(np.multiply(ccompspec[i],
-                                         np.divide(np.multiply(wavein.value, waveout.value), 
-                                           c.to(waveunit_out+'/s').value)))
-            ytit = 'F$_\u03BD$'
-        else:
-            ytit = 'F$_\lambda$'
+                    ccompspec[i] = flam_to_fnu(wave, ccompspec[i], waveunit_in)
 
         # plot on a log scale:
         if xstyle == 'log' or ystyle == 'log':
+
             plt.style.use(pltstyle)
             # CB: Otherwise the background becomes black and the axes ticks
             # unreadable when saving the figure
@@ -209,8 +259,6 @@ def plotcont(q3do: q3dout,
             plt.axis('off')  # so the subplots don't share a y-axis
 
             fig.add_subplot(1, 1, 1)
-            ydat = specstars
-            ymod = modstars
             # plotting
             plt.xlim(xran)
 
@@ -250,11 +298,11 @@ def plotcont(q3do: q3dout,
             #ax1.tick_params(which='major', length=20, pad=10, labelsize=10)
             #ax1.tick_params(which='minor', length=7, labelsize=8)
 
-            l = ax1.legend(loc='upper right', fontsize=16)
+            l = ax1.legend(loc='upper right', fontsize=16, frameon=True)
             for text in l.get_texts():
                 text.set_color(dcolor)
             ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
-            ax2.plot(waveout.value, np.divide(specstars, modstars), color=dcolor)
+            ax2.plot(waveout.value, np.divide(data, model_cont), color=dcolor)
             ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
             for idx in maskidxlim:
                 plt.hlines(1,wave[idx[0]],wave[idx[1]], color='C0',alpha=0.5, linewidth=4)
@@ -264,10 +312,7 @@ def plotcont(q3do: q3dout,
 #            ax2.tick_params(which='major', length=20, pad=20, labelsize=9)
 #            ax2.tick_params(which='minor', length=7, labelsize=8)
 
-            if waveunit_out == 'micron':
-                ax2.set_xlabel('Wavelength ($\mu$m)', fontsize=20)
-            elif waveunit_out == 'Angstrom':
-                ax2.set_xlabel('Wavelength ($\AA$)', fontsize=20)
+            ax2.set_xlabel(xtit, fontsize=20)
             gs.update(wspace=0.0, hspace=0.05)
             plt.gcf().subplots_adjust(bottom=0.1)
 
@@ -278,6 +323,7 @@ def plotcont(q3do: q3dout,
                 plt.savefig(outfile[0], **argssavefig)
 
         elif xstyle == 'lin' or ystyle == 'lin':
+
             dxran = xran[1] - xran[0]
             xran1 = [xran[0], xran[0] + np.around(dxran/3.0, 3)]
             xran2 = [xran[0] + np.around(dxran/3.0, 3),
@@ -292,8 +338,8 @@ def plotcont(q3do: q3dout,
             i2.pop(0)
             i3.pop(0)
 
-            ydat = specstars
-            ymod = modstars
+            ydat = data
+            ymod = model_cont
 
             for i in range(0, len(waveout.value)):
                 if waveout.value[i] > xran1[0] and waveout.value[i] < xran1[1]:
@@ -311,11 +357,6 @@ def plotcont(q3do: q3dout,
                 nbottom = 10
             ++ntop
             --nbottom
-
-            if waveunit_out == 'micron':
-                xtit = 'Observed Wavelength ($\mu$m)'
-            elif waveunit_out == 'Angstrom':
-                xtit = 'Observed Wavelength ($\AA$)'
 
             plt.style.use(pltstyle)
             fig = plt.figure(figsize=figsize)
@@ -401,7 +442,7 @@ def plotcont(q3do: q3dout,
 
                     plt.plot(waveout.value, ymod, 'r', linewidth=2, label=title)
                     if group == 1:
-                        plt.legend(loc='upper right')
+                        plt.legend(loc='upper right', frameon=True)
 
             # more formatting
             plt.subplots_adjust(hspace=0.25)
@@ -422,85 +463,57 @@ def plotcont(q3do: q3dout,
     # for IR spectra fit with questfit:
     else:
 
-        comp_best_fit = q3do.ct_coeff['comp_best_fit']
+        comp_best_fit = deepcopy(q3do.ct_coeff['comp_best_fit'])
+        compkeys = list(comp_best_fit.keys())
+
         if xstyle == 'log' or ystyle == 'log':
+
             fig = plt.figure(figsize=figsize)
             gs = fig.add_gridspec(4,1)
             ax1 = fig.add_subplot(gs[:3, :])
-
-            MIRgdlambda = wave #[q3do.ct_indx]
-            MIRgdflux = q3do.cont_dat #[q3do.ct_indx]
-            MIRcontinuum = modstars #[q3do.ct_indx]
-
-            if waveunit_in =='micron' and waveunit_out == 'Angstrom':
-                # convert microns to angstroms
-                MIRgdlambda = list(np.multiply(MIRgdlambda, 10**4))
-            elif waveunit_in =='Angstrom' and waveunit_out == 'micron':
-                # convert angstroms to microns
-                MIRgdlambda = list(np.divide(MIRgdlambda, 10**4))
-
-            if fluxunit_out == 'lambdaflambda':
-                # multiply the flux by wavelength
-                MIRgdflux = list(np.multiply(MIRgdflux, MIRgdlambda))
-                MIRcontinuum = list(np.multiply(MIRcontinuum, MIRgdlambda))
-                if len(comp_best_fit.keys()) > 0:
-                    for i in range(0, len(comp_best_fit.keys())):
-                        comp_best_fit[list(comp_best_fit.keys())[i]] = \
-                            np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
-                                        MIRgdlambda)
-                ytit = '$\lambda$F$_\lambda$'
-            elif fluxunit_out == 'fnu':
-                # multiply the flux by wavelength^2/c
-                MIRgdflux = list(np.multiply(MIRgdflux, MIRgdlambda))
-                MIRcontinuum = list(np.multiply(MIRgdflux, MIRgdlambda))
-                ytit = 'F$_\u03BD$'
-            else:
-                ytit = 'F$_\lambda$'
-
             plt.style.use(pltstyle)
 
-            ax1.plot(MIRgdlambda, MIRgdflux, label='Data',color=dcolor)
-            ax1.plot(MIRgdlambda, MIRcontinuum, label='Model', color='r')
+            ax1.plot(waveout, data, label='Data',color=dcolor)
+            ax1.plot(waveout, model_cont, label='Model', color='r')
 
-            compkeys = list(comp_best_fit.keys())
             if 'global_ext_model' in q3di.argscontfit:
                 for i in np.arange(0,len(compkeys)-2,1):
-                    ax1.plot(MIRgdlambda,
-                                np.multiply(comp_best_fit[compkeys[i]],
-                                            np.multiply(comp_best_fit[compkeys[-2]],
-                                                        comp_best_fit[compkeys[-1]])),
-                                label=compkeys[i],
-                                linestyle='--',alpha=0.5)
+                    spec_out = np.multiply(comp_best_fit[compkeys[i]],
+                                           np.multiply(comp_best_fit[compkeys[-2]],
+                                                       comp_best_fit[compkeys[-1]]))
+                    if fluxunit_out == 'lambdaflambda':
+                        spec_out = flam_to_lamflam(wave, spec_out)
+                    elif fluxunit_out == 'fnu':
+                        spec_out = flam_to_fnu(wave, spec_out, waveunit_in)
+                    ax1.plot(waveout, spec_out, label=compkeys[i], linestyle='--',alpha=0.5)
             else:
-#                for i in np.arange(0,len(compkeys),3):
-#                    spec_out = comp_best_fit[compkeys[i]]
-#                    if compkeys[i]+'_ext' in comp_best_fit.keys():
-#                        spec_out *= comp_best_fit[compkeys[i]+'_ext']
-#                    if compkeys[i]+'_abs' in comp_best_fit.keys():
-#                        spec_out *= comp_best_fit[compkeys[i]+'_abs']
-#                   ax1.plot(MIRgdlambda,
-#                                np.multiply(comp_best_fit[compkeys[i]],
-#                                            np.multiply(comp_best_fit[compkeys[i+1]],
-#                                                        comp_best_fit[compkeys[i+2]])),
-#                              label=compkeys[i],
-#                                linestyle='--',alpha=0.5)
-
-                for comp_i in comp_best_fit.keys():
+                for comp_i in compkeys:
                     if 'ext' not in comp_i and 'abs' not in comp_i:
                         spec_out = comp_best_fit[comp_i]
-                        if comp_i+'_ext' in comp_best_fit.keys():
+                        if comp_i+'_ext' in compkeys:
                             spec_out *= comp_best_fit[comp_i+'_ext']
-                        if comp_i+'_abs' in comp_best_fit.keys():
-                            spec_out *= comp_best_fit[comp_i+'_abs']
-                        if 'blackbody' in comp_i:
-                            label = f'BB {q3do.ct_coeff['MIRparams'][comp_i+'T'].value:0.0f}K'
+                            extlab = f'A$_V$={q3do.ct_coeff['MIRparams'][comp_i+'_ext_Av'].value:0.2f}'
                         else:
-                            label = 'PL f$_\lambda\propto\lambda^{'+f'{q3do.ct_coeff['MIRparams'][comp_i+'b'].value:0.2f}'+'}$'
-                        ax1.plot(MIRgdlambda, spec_out, label=label,linestyle='--',alpha=0.5)
-                        #plt.plot(MIRgdlambda, spec_out, label=comp_i,linestyle='--',alpha=0.5)
+                            extlab = ''
+                        if comp_i+'_abs' in compkeys:
+                            spec_out *= comp_best_fit[comp_i+'_abs']
+                            abslab = f'$\\tau$={q3do.ct_coeff['MIRparams'][comp_i+'_abs_tau'].value:0.2f}'
+                        else:
+                            abslab = ''
+                        if 'blackbody' in comp_i:
+                            label = f'BB {q3do.ct_coeff['MIRparams'][comp_i+'T'].value:0.0f}K'+f' {extlab} {abslab}'
+                        elif 'powerlaw' in comp_i:
+                            label = 'PL f$_\lambda\propto\lambda^{'+f'{q3do.ct_coeff['MIRparams'][comp_i+'b'].value:0.2f}'+'}$'+f' {extlab} {abslab}'
+                        elif 'template' in comp_i:
+                            label = f'Template {comp_i.split("_")[1]}'
+                        else:
+                            label = comp_i
+                        if fluxunit_out == 'lambdaflambda':
+                            spec_out = flam_to_lamflam(wave, spec_out)
+                        elif fluxunit_out == 'fnu':
+                            spec_out = flam_to_fnu(wave, spec_out, waveunit_in)
+                        ax1.plot(waveout, spec_out, label=label,linestyle='--',alpha=0.5)
 
-
-            ax1.legend() #loc='upper right',bbox_to_anchor=(1.15, 1),prop={'size': 10})
             if xstyle == 'log':
                 ax1.set_xscale('log')
             if ystyle == 'log':
@@ -508,59 +521,28 @@ def plotcont(q3do: q3dout,
             if yran is not None:
                 plt.ylim(yran)
             ax1.set_ylabel(ytit, fontsize=12)
+            ax1.minorticks_on()
+            ax1.tick_params(which='major', length=10, pad=5)
+            ax1.tick_params(which='minor', length=5)
+            ax1.xaxis.set_major_formatter(StrMethodFormatter('{x:,.2f}'))
+            ax1.yaxis.set_major_formatter(StrMethodFormatter('{x:,.2e}'))
+            plt.setp(ax1.get_xticklabels(), visible=False)
+            plt.setp(ax1.get_yticklabels(), visible=True)
+            plt.tick_params(axis='both', which='major', labelsize=10)
+            plt.tick_params(axis='both', which='minor', labelsize=8)
 
+            # add a legend in the upper right with a transparent background and smaller font size
+            ax1.legend(loc='upper right', frameon=True, prop={'size': 10})
+\
             ax2 = fig.add_subplot(gs[-1, :], sharex=ax1)
-            ax2.plot(MIRgdlambda,np.divide(MIRgdflux,MIRcontinuum),color=dcolor)
+            ax2.plot(waveout,np.divide(data,model_cont),color=dcolor)
             ax2.axhline(1, color='grey', linestyle='--', alpha=0.7, zorder=0)
             ax2.set_ylabel('Data/Model', fontsize=12)
-            if waveunit_out == 'Angstrom':
-                ax2.set_xlabel('Wavelength ($\AA$)', fontsize=12)
-            elif waveunit_out == 'micron':
-                ax2.set_xlabel('Wavelength ($\mu$m)', fontsize=12)
+            ax2.set_xlabel(xtit, fontsize=12)
             gs.update(wspace=0.0, hspace=0.05)
             #plt.suptitle('Total', fontsize=30)
 
-
         elif xstyle == 'lin' or ystyle == 'lin':
-
-            if xran is None:
-                xran = q3do.fitrange
-
-            MIRgdlambda = wave #[q3do.ct_indx]
-            MIRgdflux = q3do.cont_dat #[q3do.ct_indx]
-            MIRcontinuum = modstars #[q3do.ct_indx]
-
-            xtit = ''
-            if waveunit_in == 'microns' and waveunit_out == 'Angstrom':
-                # convert wave list from microns to angstroms
-                MIRgdlambda = list(np.multiply(MIRgdlambda, 10**4))
-                xtit = 'Observed Wavelength ($\AA$)'
-            elif waveunit_in == 'Angstrom' and waveunit_out == 'micron':
-                # convert wave list from angstroms to microns
-                MIRgdlambda = list(np.divide(MIRgdlambda, 10**4))
-                xtit = 'Observed Wavelength ($\mu$m)'
-
-            if fluxunit_out == 'lambdaflambda':
-                # multiply the flux by wavelength
-                MIRgdflux = list(np.multiply(MIRgdflux, MIRgdlambda))
-                MIRcontinuum = list(np.multiply(MIRcontinuum, MIRgdlambda))
-                if len(comp_best_fit.keys()) > 0:
-                    for i in range(0, len(comp_best_fit.keys())):
-                        comp_best_fit[list(comp_best_fit.keys())[i]] = \
-                            list(np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
-                                             MIRgdlambda))
-                ytit = '$\lambda$F$_\lambda$'
-            elif fluxunit_out == 'fnu':
-                # multiply the flux by wavelength
-                MIRgdflux = list(np.multiply(MIRgdflux, MIRgdlambda))
-                MIRcontinuum = list(np.multiply(MIRgdflux, MIRgdlambda))
-                ytit = 'F$_\u03BD$'
-            else:
-                ytit = 'F$_\lambda$'
-
-            wave = MIRgdlambda
-            ydat = MIRgdflux
-            ymod = MIRcontinuum
 
             dxran = xran[1] - xran[0]
             xran1 = [xran[0], xran[0] + np.around(dxran/3.0,3)]
@@ -675,31 +657,45 @@ def plotcont(q3do: q3dout,
                         plt.yticks()
 
                     # actually plotting
-                    plt.plot(MIRgdlambda, MIRgdflux, label='Data',
+                    plt.plot(waveout, data, label='Data',
                              color=dcolor)
-                    plt.plot(MIRgdlambda, MIRcontinuum, label='Model',
+                    plt.plot(waveout, model_cont, label='Model',
                              color='red')
-
+                    
                     if 'global_ext_model' in q3di.argscontfit:
-                           for i in np.arange(0,len(comp_best_fit.keys())-2,1):
-                              plt.plot(MIRgdlambda,
-                                       np.multiply(comp_best_fit[list(comp_best_fit.keys())[i]],
-                                                   np.multiply(comp_best_fit[list(comp_best_fit.keys())[-2]],
-                                                               comp_best_fit[list(comp_best_fit.keys())[-1]])),
-                                       label=list(comp_best_fit.keys())[i],linestyle='--',alpha=0.5)
-
+                        for i in np.arange(0,len(compkeys)-2,1):
+                            spec_out = np.multiply(comp_best_fit[compkeys[i]],
+                                                np.multiply(comp_best_fit[compkeys[-2]],
+                                                            comp_best_fit[compkeys[-1]]))
+                            if fluxunit_out == 'lambdaflambda':
+                                spec_out = flam_to_lamflam(wave, spec_out)
+                            elif fluxunit_out == 'fnu':
+                                spec_out = flam_to_fnu(wave, spec_out, waveunit_in)
+                            ax.plot(waveout, spec_out, label=compkeys[i], linestyle='--',alpha=0.5)
                     else:
-                        for comp_i in comp_best_fit.keys():
+                        for comp_i in compkeys:
                             if 'ext' not in comp_i and 'abs' not in comp_i:
                                 spec_out = comp_best_fit[comp_i]
-                                if comp_i+'_ext' in comp_best_fit.keys():
+                                if comp_i+'_ext' in compkeys:
                                     spec_out *= comp_best_fit[comp_i+'_ext']
-                                if comp_i+'_abs' in comp_best_fit.keys():
+                                if comp_i+'_abs' in compkeys:
                                     spec_out *= comp_best_fit[comp_i+'_abs']
-                                plt.plot(MIRgdlambda, spec_out, label=comp_i,linestyle='--',alpha=0.5)
+                                if 'blackbody' in comp_i:
+                                    label = f'BB {q3do.ct_coeff['MIRparams'][comp_i+'T'].value:0.0f}K'
+                                elif 'powerlaw' in comp_i:
+                                    label = 'PL f$_\lambda\propto\lambda^{'+f'{q3do.ct_coeff['MIRparams'][comp_i+'b'].value:0.2f}'+'}$'
+                                elif 'template' in comp_i:
+                                    label = f'Template {comp_i.split("_")[1]}'
+                                else:
+                                    label = comp_i
+                                if fluxunit_out == 'lambdaflambda':
+                                    spec_out = flam_to_lamflam(wave, spec_out)
+                                elif fluxunit_out == 'fnu':
+                                    spec_out = flam_to_fnu(wave, spec_out, waveunit_in)
+                                ax.plot(waveout, spec_out, label=label,linestyle='--',alpha=0.5)
 
                     if group == 1:
-                        ax.legend(loc='upper right',bbox_to_anchor=(1.22, 1),prop={'size': 10})
+                        ax.legend(loc='upper right',prop={'size': 10}, frameon=True)
 
         # more formatting
         plt.subplots_adjust(hspace=0.25)
@@ -811,11 +807,11 @@ def plotline(q3do: q3dout,
         waveunit_out = waveunit_in
 
     wave = q3do.wave.copy()
-    spectot = q3do.spec
-    specstars = q3do.cont_dat
-    modstars = q3do.cont_fit
-    modlines = q3do.line_fit
-    modtot = modstars + modlines
+    spectot = q3do.spec.copy()
+    data = q3do.cont_dat.copy()
+    model_cont = q3do.cont_fit.copy()
+    model_lines = q3do.line_fit.copy()
+    modtot = model_cont + model_lines
 
     if waveunit_in == 'Angstrom' and waveunit_out == 'micron':
         # convert angstrom to microns
@@ -1018,8 +1014,8 @@ def plotline(q3do: q3dout,
         #   for r in range(0,nmasked):
         #        ax0.plot([masklam[r,0], masklam[r,1]], [yran[0], yran[0]],linewidth=8, color='Cyan')
             # set new value for yran
-            ydat = specstars
-            ymod = modstars
+            ydat = data
+            ymod = model_cont
             ydattmp = np.zeros((len(ind)), dtype=float)
             ymodtmp = np.zeros((len(ind)), dtype=float)
             for j in range(0, len(ind)):
@@ -1216,7 +1212,7 @@ def plotcontcomponents(q3do: q3dout,
             ax[0].stackplot(wave, templates_list, labels=labels_list, alpha=linalpha, lw=linwidth)# colors=color)
             
 
-        ax[0].legend()
+        ax[0].legend(frameon=True)
         ax[0].set_title('Stellar fit components')
         ax[0].set_xlabel('Wavelength (Angstrom)')
         ax[0].set_ylabel('Flux')
@@ -1249,7 +1245,7 @@ def plotcontcomponents(q3do: q3dout,
         for i in range(len(totals_plot_components)):
             ax[1].plot(q3do.wave, totals_plot_components[i], label=totals_plot_labels[i], lw=1, zorder=0+i, color=totals_plot_colors[i])
 
-        ax[1].legend()
+        ax[1].legend(frameon=True)
         ax[1].set_title('Total stellar fit')
         ax[1].set_xlabel('Wavelength (Angstrom)')
         ax[1].set_ylabel('Flux')
@@ -1453,11 +1449,11 @@ def plotdecomp(q3do,
     '''
 
     wave = q3do.wave
-    specstars = q3do.cont_dat
-    modstars = q3do.cont_fit
+    data = q3do.cont_dat
+    model_cont= q3do.cont_fit
     MIRgdlambda = wave
     MIRgdflux = q3do.spec
-    MIRcontinuum = modstars
+    MIRcontinuum = model
 
     if outfile is None:
         outfile=q3do.filelab + '_decomp'
@@ -1603,7 +1599,7 @@ def plotquest(MIRgdlambda,
                       ax1.plot(MIRgdlambda_temp, spec_i, label=label_i, color=colour_list[i], linestyle='--',alpha=0.5)
                     count += 1
 
-        ax1.legend(ncol=2)
+        ax1.legend(ncol=2, frameon=True)
         ax1.set_xscale('log')
         ax1.set_yscale('log')
 

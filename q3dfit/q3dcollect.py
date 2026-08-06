@@ -254,7 +254,7 @@ def q3dcollect(q3di: str | q3din.q3din,
 
                 # process line fit parameters
                 q3do.sepfitpars(doublets=doublets, ignoreres=ignoreres)
-
+ 
                 # Record units
                 if emlunits == {}:
                     emlunits['wave'] = q3do.waveunit

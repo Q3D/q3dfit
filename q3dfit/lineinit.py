@@ -455,6 +455,7 @@ def manygauss(x: np.ndarray,
                 osx = x
         else:
             osx = x
+        #print(oversample, osratio, meandisp, sigs)
         datconv = SPECRES.spect_convolver(osx, gaussian, wavecen=cwv,
             oversample=oversample)
         #maskval = np.float64(1e-4*max(datconv))

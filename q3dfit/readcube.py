@@ -418,7 +418,7 @@ class Cube:
         # explicitly cast as float64
         self.wave = self.wave.astype('float64')
 
-        # convert wavelengths if requested
+       # convert wavelengths if requested
         if self.waveunit_in != self.waveunit_out:
             wave_in = self.wave * u.Unit(self.waveunit_in)
             self.wave = wave_in.to(u.Unit(self.waveunit_out)).value

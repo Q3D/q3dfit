@@ -944,7 +944,7 @@ class q3dout:
                     if hasattr(self, 'filelab'):
                         outfile = self.filelab
                     else:
-                        print('plot_line: need to specify outfile')
+                        print('plot_cont: need to specify outfile')
 
             if outfile is not None:
                 outfilecnt = outfile + '_cnt',

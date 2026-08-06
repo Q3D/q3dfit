@@ -373,8 +373,9 @@ class q3din:
                      startempfile: Optional[str]=None,
                      startempwaveunit: Literal['micron', 'Angstrom']='micron',
                      startempvac: bool=True,
-                     quiet: bool=False
-                     #tweakcntfit=None
+                     quiet: bool=False,
+                     tweakcont: bool=False,
+                     argstweakcont: dict={}
                      ):
         '''
         Initialize continuum fit.
@@ -464,9 +465,18 @@ class q3din:
             :py:attr:`~q3dfit.q3din.q3din.startempvac`.
         quiet
             Optional. Suppress messages. Default is False.
-        tweakcntfit
+        tweakcont
             Optional. Tweak the continuum fit using local polynomial fitting.
-            Default is None. (Not yet implemented.)
+            Default is False. Also sets the attribute :py:attr:`~q3dfit.q3din.q3din.tweakcont`.
+        argstweakcont
+            Optional. Arguments for tweaking the continuum fit. Default is an empty dict.
+            Also sets the attribute :py:attr:`~q3dfit.q3din.q3din.argstweakcont`.
+            Possible dictionary keys are 'degree' (degree of polynomial to fit) and 'percent'
+            (percentage of wavelength, which then equals the range above and below
+            the masked region around each emission line to use for the polynomial fit). 
+            Degree can be specified as a single value to apply for all lines, or as
+            a dictionary with a value for each line. Default values (set in 
+            :py:func:`~q3dfit.fitspec.fitspec`) are degree=2 and percent=0.5.
         '''
 
         self.fcncontfit = fcncontfit
@@ -482,6 +492,8 @@ class q3din:
         self.startempfile = startempfile
         self.startempvac = startempvac
         self.startempwaveunit = startempwaveunit
+        self.tweakcont = tweakcont
+        self.argstweakcont = argstweakcont
 
         # flip this switch
         self.docontfit = True
@@ -507,12 +519,6 @@ class q3din:
                                      dtype=np.float64)
         self.zinit_stars = np.full((self.ncols, self.nrows), zinit,
                                    dtype=np.float64)
-
-        # Template convolution not yet implemented
-        #self.fcnconvtemp = fcnconvtemp
-        #self.argsconvtemp = argsconvtemp
-        # Tweaking of continuum fit not yet implemented
-        #self.tweakcntfit = tweakcntfit
 
 
     def load_cube(self, quiet: bool=False) -> readcube.Cube:

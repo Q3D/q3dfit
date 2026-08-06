@@ -11,6 +11,7 @@ from typing import Literal, Optional
 from astropy.constants import c
 from astropy.table import Table
 from astropy import units as u
+from astropy.modeling import models, fitting
 from numpy.typing import ArrayLike
 from ppxf.ppxf import ppxf
 from ppxf.ppxf_util import log_rebin
@@ -561,46 +562,13 @@ def fitspec(wlambda: np.ndarray,
             q3do.zstar += np.exp(pp.sol[0]/c.to('km/s').value)-1.
             q3do.zstar_err = (np.exp(solerr[0]/c.to('km/s').value))-1.
 
-# ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-# # Option to tweak cont. fit with local polynomial fits
-# ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        # if q3di.tweakcntfit is not None:
-        #     q3do.cont_fit_pretweak = q3do.cont_fit.copy()
-        # # Arrays holding emission-line-masked data
-        #     ct_lambda = gdlambda[q3do.ct_indx]
-        #     ct_flux = gdflux[q3do.ct_indx]
-        #     ct_err = gderr[q3do.ct_indx]
-        #     ct_cont = q3do.cont_fit[q3do.ct_indx]
-        #     for i in range(len(tweakcntfit[0,:])):
-        #     # Indices into full data
-        #         tmp_ind1 = np.where(gdlambda >= tweakcntfit[i,0])[0]
-        #         tmp_ind2 = np.where(gdlambda <= tweakcntfit[i,1])[0]
-        #         tmp_ind = np.intersect1d(tmp_ind1,tmp_ind2)
-        #         ct_ind = len(tmp_ind)
-        #     # Indices into masked data
-        #         tmp_ctind1 = np.where(ct_lambda >= tweakcntfit[i,0])[0]
-        #         tmp_ctind2 = np.where(ct_lambda <= tweakcntfit[i,1])[0]
-        #         tmp_ctind = np.intersect1d(tmp_ctind1,tmp_ctind2)
-        #         ct_ctind = len(tmp_ctind)
-
-        #         if ct_ind > 0 and ct_ctind > 0:
-        #             parinfo =  list(np.repeat({'value':0.},tweakcntfit[2,i]+1))
-        #             # parinfo = replicate({value:0d},tweakcntfit[2,i]+1)
-        #             pass # this is just a placeholder for now
-        #             # tmp_pars = mpfitfun('poly',ct_lambda[tmp_ctind],$
-        #             #                     ct_flux[tmp_ctind] - ct_cont[tmp_ctind],$
-        #             #                     ct_err[tmp_ctind],parinfo=parinfo,/quiet)
-        #             # continuum[tmp_ind] += poly(gdlambda[tmp_ind],tmp_pars)
-        # else:
-        #     continuum_pretweak = continuum.copy()
-
         if q3di.dividecont:
-            continuum = gdflux.copy() / q3do.cont_fit - 1
+            gdflux_nocnt = gdflux.copy() / q3do.cont_fit - 1
             gdinvvar_nocnt = gdinvvar.copy() * np.power(q3do.cont_fit, 2.)
             # gderr_nocnt = gderr / continuum
             q3do.ct_method = 'divide'
         else:
-            continuum = gdflux.copy() - q3do.cont_fit
+            gdflux_nocnt = gdflux.copy() - q3do.cont_fit
             gdinvvar_nocnt = gdinvvar.copy()
             q3do.ct_method = 'subtract'
 
@@ -610,7 +578,8 @@ def fitspec(wlambda: np.ndarray,
 
     else:
 
-        continuum = gdflux.copy()
+        gdflux_nocnt = gdflux.copy()
+        gdinvvar_nocnt = gdinvvar.copy()
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # Fit emission lines
@@ -618,23 +587,95 @@ def fitspec(wlambda: np.ndarray,
 
     if q3di.dolinefit and not q3do.nogood and ncomp is not None:
 
-        q3do.init_linefit(listlines, q3di.lines, q3di.maxncomp,
-                          line_dat=continuum.astype(usetype))
-
         # Make sure line within fitrange
         # To deal with case of truncated data where continuum can be fit but
         # line not within good data range
         line_in_good_range = False
         for line in q3di.lines:
-            if line_in_good_range:
-                break
             for icomp in range(0, ncomp[line]):
                 if listlinesz[line][icomp] >= min(gdlambda) and \
                     listlinesz[line][icomp] <= max(gdlambda):
                     line_in_good_range = True
-                    break
 
         if line_in_good_range:
+
+#           # Option to tweak cont. fit with local polynomial fits
+            if q3di.tweakcont:
+
+                #  Set tweak parameters. These can be set in q3di.argstweakcont, or default to degree=2 and percent=0.5
+                if q3di.argstweakcont is not None:
+                    for key, value in q3di.argstweakcont.items():
+                        if key == 'degree':
+                            if isinstance(value, dict):
+                                tweakdeg = value
+                            else:
+                                tweakdeg = {line: value for line in q3di.lines}
+                        elif key == 'percent':
+                            tweakpct = value
+                else:
+                    tweakdeg = {line: 2 for line in q3di.lines}
+                    tweakpct = 0.5
+
+                q3do.cont_fit_pretweak = q3do.cont_fit.copy()
+                # Arrays holding emission-line-masked data
+                ct_lambda = gdlambda[q3do.ct_indx]
+                ct_flux_nocnt = gdflux_nocnt[q3do.ct_indx]
+                #ct_err = gderr[q3do.ct_indx]
+                # Do a local polynomial fit around each line, and add to continuum
+                for line in q3di.lines:
+                    # Find the continuum range to fit around each line
+                    # Try a percentage range above and below the masked line wavelength
+                    lamwin = np.ndarray((2, ncomp[line]), dtype=usetype)
+                    for icomp in range(0, ncomp[line]):
+                        # Find the closest wavelengths in the continuum-masked data to the line wavelength
+                        ct_lambda_diff = ct_lambda - listlinesz[line][icomp]
+                        # all wavelengths below and above the line wavelength
+                        ct_lambda_diff_neg = ct_lambda_diff[ct_lambda_diff < 0]
+                        ct_lambda_diff_pos = ct_lambda_diff[ct_lambda_diff > 0]
+                        # closest wavelengths in the continuum-masked data to the line wavelength
+                        lomasklam = listlinesz[line][icomp] + max(ct_lambda_diff_neg) if len(ct_lambda_diff_neg) > 0 else np.nan
+                        himasklam = listlinesz[line][icomp] + min(ct_lambda_diff_pos) if len(ct_lambda_diff_pos) > 0 else np.nan
+                        # window limits
+                        ilamwin = [lomasklam*(1. - tweakpct/100.), himasklam*(1. + tweakpct/100.)]
+                        lamwin[:, icomp] = np.array(ilamwin)
+                    # minimum and maximum of the window limits for all components of this line
+                    lamwin = np.array((np.min(lamwin[0, :]), np.max(lamwin[1,:])))
+                    # Indices into full data
+                    tmp_ind1 = np.where(gdlambda >= lamwin[0])[0]
+                    tmp_ind2 = np.where(gdlambda <= lamwin[1])[0]
+                    tmp_ind = np.intersect1d(tmp_ind1,tmp_ind2)
+                    ct_ind = len(tmp_ind)
+                    # Indices into masked data
+                    tmp_ctind1 = np.where(ct_lambda >= lamwin[0])[0]
+                    tmp_ctind2 = np.where(ct_lambda <= lamwin[1])[0]
+                    tmp_ctind = np.intersect1d(tmp_ctind1,tmp_ctind2)
+                    ct_ctind = len(tmp_ctind)
+                    if ct_ind > 0 and ct_ctind > 0:
+                        # polynomial fit to the continuum-masked data
+                        # with a polynomial of degree 2
+                        # Initialize polynomial model (degree=2 for quadratic)
+                        poly_init = models.Polynomial1D(degree=tweakdeg[line])
+                        # Initialize the linear least-squares fitter
+                        fit_poly = fitting.LinearLSQFitter()
+                        # Fit the model to the data
+                        best_fit_poly = fit_poly(poly_init, ct_lambda[tmp_ctind],
+                                                 ct_flux_nocnt[tmp_ctind])
+                        # Evaluate the fitted polynomial at the original wavelengths
+                        if q3di.dividecont:
+                            gdflux_nocnt[tmp_ind] /= best_fit_poly(gdlambda[tmp_ind])
+                            gdinvvar_nocnt[tmp_ind] *= \
+                                np.power(best_fit_poly(gdlambda[tmp_ind]), 2.)
+                            q3do.cont_fit[tmp_ind] *= best_fit_poly(gdlambda[tmp_ind])
+
+                        else:
+                            gdflux_nocnt[tmp_ind] -= best_fit_poly(gdlambda[tmp_ind])
+                            q3do.cont_fit[tmp_ind] += best_fit_poly(gdlambda[tmp_ind])
+            else:
+                 q3do.cont_fit_pretweak = None
+
+
+            q3do.init_linefit(listlines, q3di.lines, q3di.maxncomp,
+                              line_dat=gdflux_nocnt.astype(usetype))
 
             # Initial guesses for emission line peak fluxes (above continuum)
             peakinit_min = np.sqrt(np.median(q3do.line_dat[gd_indx]**2.))
@@ -779,8 +820,13 @@ def fitspec(wlambda: np.ndarray,
                 if 'max_nfev' not in fit_kws:
                     max_nfev = 2000*(len(q3do.parinit)+1)
 
-            lmout = emlmod.fit(q3do.line_dat, q3do.parinit, x=gdlambda,
-                               method=method, weights=np.sqrt(gdinvvar_nocnt),
+            # Only fit the data within the continuum-masked range, as specified by ct_indx
+            # This speeds things way up and prevents the fit from being affected by data outside the range of interest
+            irevmask = np.setdiff1d(np.arange(len(gdlambda)), q3do.ct_indx)
+            
+            #import ipdb; ipdb.set_trace()
+            lmout = emlmod.fit(q3do.line_dat[irevmask], q3do.parinit, x=gdlambda[irevmask],
+                               method=method, weights=np.sqrt(gdinvvar_nocnt[irevmask]),
                                nan_policy='omit', max_nfev=max_nfev,
                                fit_kws=fit_kws, iter_cb=iter_cb)
 

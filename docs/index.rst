@@ -48,7 +48,8 @@ The developers of ``q3dfit`` are:
 * Ryan McCrory (Rhodes College, contributor)
 * Anna Murphree (Rhodes College and University of Hawai'i, contributor)
 * Lillian Whitesell (Rhodes College, contributor)
-  
+* Gareth Turner (Rhodes College, contributor)
+
 .. note:: Please use ``q3dfit`` and let us know if you find a bug or
    have a feature request. To do so, `submit an issue on GitHub
    <https://github.com/Q3D/q3dfit/issues>`_.

@@ -1,3 +1,14 @@
+2.1.0 (7 August 2026)
+---------------------
+- Added option to tweak local continuum fit.
+- Sped up emission-line fitting significantly by only passing data in range of emission lines.
+- Fixed redshifting error in BB/PL components of mid-IR fits.
+- Added kernel convolution in spectral direction.
+- Improved plotting of rest-frame mid-IR spectra.
+- Added JWST x1d.fits file handling to readcube.
+- New routines for analysis of stellar spectral fitting.
+- Better stellar template management and propagation.
+
 2.0.0 (21 April 2026)
 ---------------------
 - Minor bugfixes. Ready to go so folks can pip install more easily.
@@ -7,7 +18,6 @@
 - Improved unit handling; testing 'microns' and 'Angstroms' for wavelength units.
 - V. minor updates to plotting and continuum fitting.
 - Various bugfixes.
-
 
 2.0.0-rc.2 (20 Jun 2025)
 ------------------------

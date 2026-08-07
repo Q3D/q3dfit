@@ -16,7 +16,7 @@ Six example notebooks are currently available.
 
    Data cube is from Gemini/GMOS observations of ORC2/3C, as published in `Rupke et al. 2024a <https://ui.adsabs.harvard.edu/abs/2024ApJ...967...51R/abstract>`_.
 
-   Jupyter notebook: `q3dfit_example_restframeopt_ground_ppxf.ipynb <https://github.com/Q3D/q3dfit/blob/main/jnb/q3dfit_example_restframeopt_ground_ppxf.ipynb>`_
+   Jupyter notebook: `q3dfit_example_restframeopt_ground_ppxf_SPS.ipynb <https://github.com/Q3D/q3dfit/blob/main/jnb/q3dfit_example_restframeopt_ground_ppxf_SPS.ipynb>`_
 	  
 2. **Ground-based data, rest-frame optical, single emission-line
    component, quasar**

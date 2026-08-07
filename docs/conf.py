@@ -90,3 +90,20 @@ html_theme = 'sphinx_rtd_theme'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+html_theme_options = {
+    'display_version': True,
+    'prev_next_buttons_location': 'bottom',
+    'style_external_links': False,
+    # Repository integration options
+    'vcs_pageview_mode': 'blob', 
+}
+
+# Define your repository variables so Read the Docs can build the URL
+html_context = {
+    "display_github": True, # Integrate GitHub
+    "github_user": "Q3D", # Username
+    "github_repo": "q3dfit", # Repo name
+    "github_version": "main", # Version control branch
+    "conf_py_path": "/docs/", # Path in the checkout to the docs root
+}

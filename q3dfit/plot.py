@@ -1200,11 +1200,11 @@ def plotcontcomponents(q3do: q3dout,
         wave = q3do.wave
 
     if 'flux_fraction' in q3do.component_templates:
-        flux_percentage = [f' | Flux: {q3do.component_templates["flux_fraction"][i]*100:.2f}%' for i in range(len(indecies))]
+        flux_percentage = [f' | Flux: {q3do.component_templates["flux_fraction"][i]*100:.2f}%' for i in indecies]
     else:
         flux_percentage = [''] * len(indecies)
     if 'mass_fraction' in q3do.component_templates:
-        mass_percentage = [f' | Mass: {q3do.component_templates["mass_fraction"][i]*100:.2f}%' for i in range(len(indecies))]
+        mass_percentage = [f' | Mass: {q3do.component_templates["mass_fraction"][i]*100:.2f}%' for i in indecies]
     else:
         mass_percentage = [''] * len(indecies)
     # Create a list of relavent templates
@@ -1367,7 +1367,7 @@ def plotpopheatmap(q3do: q3dout,
     q3do
         :py:class:`~q3dfit.q3dout.q3dout` object containing the output of the fit.
     startempfile
-        Optional. Path to a .npz file containing the stellar population templates.
+        Optional. Path to a .npy file containing the stellar population templates.
         Used to load the ages and metallicities of the templates. If None, uses data saved in the q3do object.
     stelweights
         Optional. Array of stellar population weights. If None, uses the weights from the q3do object.

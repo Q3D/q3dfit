@@ -1304,31 +1304,20 @@ class q3dout:
                     print('plot_line: need to specify outfile')
 
         if outfile is not None:
-            outfile = outfile + '_cnt_heatmap'
+            outfile = outfile + '_cnt_heatmap' f'_{plottingmode}'
 
-        stelweights = np.zeros_like(self.ct_coeff['stelweights'])
+        stelweights = copy.copy(self.ct_coeff['stelweights'])
         colorbarlabel = None
         if plottingmode == 'flux_fraction' and 'flux_fraction' in self.component_templates:
-            stelweights[self.component_templates['index']] = self.component_templates['flux_fraction']
+            stelweights = self.component_templates['flux_fraction']
             colorbarlabel = 'Flux Fraction'
         elif plottingmode == 'mass_fraction' and 'mass_fraction' in self.component_templates:
-            stelweights[self.component_templates['index']] = self.component_templates['mass_fraction']
+            stelweights = self.component_templates['mass_fraction']
             colorbarlabel = 'Mass Fraction'
         else:
             if plottingmode != 'stelweights':
                 print(f'{plottingmode} not found in q3do.component_templates, please run q3do.find_population_stats()')
                 return
-            stelweights = self.ct_coeff['stelweights']
-
-        if savefig:
-            if outfile is None:
-                if hasattr(self, 'filelab'):
-                    outfile = self.filelab
-                else:
-                    print('plot_cont_comps: need to specify outfile')
-
-        if outfile is not None:
-            outfile = outfile + f'_{plottingmode}_heatmap'
 
         from q3dfit.plot import plotpopheatmap
 
@@ -1342,120 +1331,122 @@ class q3dout:
         
     def find_population_stats(self,
                                templatefile,
-                               use_starmass=True,
-                               template_mass=1e6,
-                               wave_min=None,
-                               wave_max=None,
+                               starmass=None,
+                               mass_to_light=None,
                                data_scale=1,
-                               cosmology=None
+                               cosmology=None,
+                               quiet=False
                                ):
         '''
-        Function to find the absolute stellar masses of the component templates from the continuum fit.
-        It calculates the total galaxy luminosity from the integrated continuum flux and then scales 
-        the component templates to find their individual luminosities and stellar masses.
+        Function to find the fractional flux, fractional mass, and absolute stellar masses 
+        of the component templates from the continuum fit. Returned fractions are for the wavelength range 
 
+        
         Parameters
         ----------
-        q3do
-            :py:class:`~q3dfit.q3dout.q3dout object containing the continuum fit and component templates.
         templatefile
-            Path to the stellar template file used in the continuum fit. This file should contain the normalization factors for each template.
-        use_starmass
-            If True, will use the present template stellar masses provided in the templates file if present. 
-            If False, will calculate the template stellar mass based on the value given in template_mass.
-        template_mass
-            The assumed initial mass (in solar masses) of the stellar templates. Must be provided if use_starmass
-            is False. If provided will override the masses if present in the template file. BPASS initial masses is 1e6. 
-        wave_min
-            Minimum wavelength for integration. If None, will use the lower limit of the fit range.
-        wave_max
-            Maximum wavelength for integration. If None, will use the upper limit of the fit range.
+            Path to the stellar template file used in the continuum fit. This file should contain the normalization 
+            values and mass_to_light ratios for each template. If mass_to_light is not available in the template file,
+            it must be provided as an argument.
+        mass_to_light
+            Optional. Numpy array containing M/L ratios for each template of size equal to the number of 
+            templates and in the same order as the templates in the templatefile over the normalization range. 
+            If not provided, will attempt to read from the template file.
+        starmass
+            Optional. Numpy array containing the stellar masses for each template of size equal to the number of 
+            templates and in the same order as the templates in the templatefile over the normalization range.
+            If not provided, will be taken from the template file if avaliable
+        cosmology
+            Optional. Astropy cosmology or string for included cosmology to use for calculating 
+            the luminosity distance. If None, will use the global default cosmology.
         data_scale
             Any other scale factor applied to the data before cube reading. Default is 1 (no additional scaling).
-        cosmology
-            Optional. Astropy cosmology object or string for included cosmology to use for calculating 
-            the luminosity distance. If None, will use the global default cosmology.
+        quiet
+            Suppresses progress messages. Default: False.
 
-        returns
+        Returns
         -------
-        Updates the `component_templates` attribute of the q3dout object with the calculated stellar masses 
-        and luminosities for each component template, as well as the total galaxy luminosity in solar luminosities.
+        None
+
+        Notes
+        -----
+        Updates the `component_templates` attribute of the q3dout object with the following keys:
+        - 'masses': Numpy array of absolute stellar masses for each template in solar masses
+        - 'flux_fraction': Numpy array of fractional flux contributions for each template over the normalization band of the templates.
+        - 'mass_fraction': Numpy array of fractional flux-weighted mass contributions for each template over the normalization band of the templates.
+        - 'galaxy_luminosity_lsun': Total galaxy luminosity in solar luminosities over the normalization band of the templates.
         '''
         from astropy import cosmology as cosmo
+        if isinstance(cosmology, str):
+            try:
+                cosmology = getattr(cosmo, cosmology)
+            except:
+                raise ValueError('find_population_stats: invalid cosmology string')
+        elif cosmology is None:
+            cosmology = cosmo.default_cosmology.get()
+
         templates = np.load(templatefile, allow_pickle=True)[()]
 
-        if use_starmass:
-            try:
-                mass_templates = templates['starmass']
-            except KeyError:
-                print('Template file does not contain starmass, using template_mass instead')
-                mass_templates = np.full_like(templates['norm'], template_mass)
+        weights = self.ct_coeff['stelweights']
+        if mass_to_light is not None:
+            if not len(mass_to_light) == len(weights):
+                raise ValueError('find_population_stats: mass_to_light must be same length as q3do.ct_coeff["stelweights"]')
+            mtl = mass_to_light
         else:
-            mass_templates = np.full_like(templates['norm'], template_mass)
+            try:
+                mtl = templates['mass_to_light']
+            except KeyError:
+                raise ValueError('find_population_stats: mass_to_light must be provided if not present in template file')
+        if starmass is not None:
+            if not len(starmass) == len(weights):
+                raise ValueError('find_population_stats: starmass must be same length as q3do.ct_coeff["stelweights"]')
+            sm = starmass
+        else:
+            try:
+                sm = templates['starmass']
+            except KeyError:
+                raise ValueError('find_population_stats: starmass must be provided if not present in template file')
 
-        wave_unit = u.Unit(self.waveunit)
-        flux_unit = u.Unit(self.fluxunit)
-        template_unit = u.solLum / u.Angstrom
+        fluxunit = u.Unit(self.fluxunit) if isinstance(self.fluxunit, str) else self.fluxunit
 
-        if wave_min is None:
-            wave_min = self.fitrange[0]
-        if wave_max is None:
-            wave_max = self.fitrange[1]
-
-        cube_norm = self.fluxnorm
-
-        wave_min = wave_min * wave_unit
-        wave_max = wave_max * wave_unit
+        norms = templates['norm'] * u.solLum / u.angstrom
         from decimal import Decimal
-        flux_rescale = float(Decimal(str(cube_norm)) * Decimal(str(data_scale)))
-
-        wave = self.wave * wave_unit
-        fit = self.cont_fit * flux_unit * flux_rescale
-        template_flux = self.component_templates['convolved']
-        indecies = self.component_templates['index']
-        template_norms = templates['norm'][indecies]
-
-        mask = (wave >= wave_min) & (wave <= wave_max)
-
-        # Calculate the luminosity distance using astropy
-        if cosmology is None:
-            cosmology = cosmo.default_cosmology.get()
-        elif isinstance(cosmology, str):
-            cosmology = cosmo.get_cosmology(cosmology)
-        elif not isinstance(cosmology, cosmo.Cosmology):
-            raise ValueError("Invalid cosmology input. Must be None, a string, or an astropy Cosmology object.")
-        
+        cube_norm = self.fluxnorm
+        flux_rescale = float(Decimal(str(cube_norm)) * Decimal(str(data_scale))) * fluxunit
         luminosity_distance = Distance(z = self.zstar, cosmology=cosmology).to('cm')
-        
-        # Integrate the total continuum flux over the specified range and calculate the galaxy luminosity
-        raw_cont_flux_sum = np.trapezoid(fit.value[mask], wave.value[mask])
-        cont_flux_sum = raw_cont_flux_sum * (wave.unit * fit.unit)
-        
-        galaxy_luminosity_erg = cont_flux_sum  * 4 * np.pi * luminosity_distance**2
-        galaxy_luminosity_lsun = galaxy_luminosity_erg.to(u.solLum)
-        
-        # Initialize a list to hold the integrated flux for each component template
-        temp_flux_sum = [0] * len(indecies)
-        for j in range(len(temp_flux_sum)):
-            temp_flux_sum[j] = np.trapezoid(template_flux[:, j][mask], wave.value[mask]) * (fit.unit * wave.unit)
+        distance_scale = 4 * np.pi * luminosity_distance**2
 
-        # Calculate the flux fractions
-        flux_fractions = np.array([temp_flux_sum[j] / cont_flux_sum for j in range(len(temp_flux_sum))]) * flux_rescale
-        
-        # Keep template_scale in matching luminosity units
-        template_luminosities = u.Quantity([flux_fractions[j] * galaxy_luminosity_lsun for j in range(len(indecies))])
-    
-        scaled_component_templates = template_flux * template_norms / self.ct_coeff['stelweights'][indecies]
-        per_template_lums = u.Quantity([np.trapezoid(scaled_component_templates[:, j][mask], wave.value[mask]) * template_unit * wave_unit for j in range(len(indecies))])
+        sm = sm * u.solMass
+        mtl = mtl * u.solMass / u.solLum
 
-        template_scale = template_luminosities / per_template_lums
+        # Compute flux and mass fractions for each template
+        if np.all(norms == norms[0]):
+            mass_fractions = weights/np.sum(weights)
+            flux_fractions = weights / mtl
+            flux_fractions /= np.sum(flux_fractions)
+        else:
+            flux_fractions = weights / np.sum(weights)
+            mass_fractions = flux_fractions * mtl
+            mass_fractions /= np.sum(mass_fractions)
 
-        stellar_masses = template_scale * mass_templates[indecies]
+        # Compute absolute stellar masses for each template
+        real_weights = (weights / norms) * flux_rescale
+        real_weights *= distance_scale
+        stellar_masses = real_weights * sm
+        stellar_masses = stellar_masses.to(u.solMass)
+
+        # Compute total galaxy luminosity in solar luminosities over the normalization band of the templates
+        galaxy_luminosity_lsun = np.sum(stellar_masses / mtl)
+        galaxy_luminosity_lsun = galaxy_luminosity_lsun.to(u.solLum)
 
         self.component_templates['masses'] = stellar_masses
         self.component_templates['flux_fraction'] = flux_fractions
-        self.component_templates['mass_fraction'] = stellar_masses / np.sum(stellar_masses)
+        self.component_templates['mass_fraction'] = mass_fractions
         self.component_templates['galaxy_luminosity_lsun'] = galaxy_luminosity_lsun
+
+        if not quiet:
+            print(f'Normalization band galaxy luminosity: {galaxy_luminosity_lsun:.2e}')
+            print(f'Total galaxy stellar mass: {np.sum(stellar_masses):.2e}')
 
 def load_q3dout(q3di: str | q3din.q3din,
                 col: Optional[int]=None,

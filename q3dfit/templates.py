@@ -166,7 +166,9 @@ def read_bpass(infile: str,
             data = np.loadtxt(filename)
             # read data into starmasses array
             starmassesall[iz * nages: (iz + 1) * nages] = data[ageindex : ageindex + nages, 1]
-        
+
+    norm_indecies = np.where((waveall >= normrange[0]) & (waveall <= normrange[1]))[0]
+
     # preforming a constant normalization across all templates if requested
     if norm_uniform:
         norm_factor = np.median(fluxall[norm_indecies, :])
@@ -175,8 +177,7 @@ def read_bpass(infile: str,
     
     # calculating mass-to-light ratios if starmassfile is provided
     if starmassfile is not None:
-        norm_indecies = np.where((waveall >= normrange[0]) & (waveall <= normrange[1]))[0]
-        mass_to_light = starmassesall / np.trapz((fluxall[norm_indecies, :] * normall), waveall[norm_indecies])
+        mass_to_light = starmassesall / np.trapezoid((fluxall[norm_indecies, :] * normall), waveall[norm_indecies], axis=0)
 
     # calculating sigma array for templates based on spectral resolution
     sigma = np.array([ i / (2.35 * R) for i in waveall], dtype=float)
@@ -211,7 +212,7 @@ def trim_templates(startempfile: str,
                    zs: ArrayLike = None,
                    zrange: ArrayLike = [0.001, 0.040],
                    waverange: ArrayLike = [1., 100000.],
-                   normband: ArrayLike = None,
+                   normrange: ArrayLike = None,
                    norm_uniform: bool = False,
                    outfile: str = None):
     '''
@@ -238,7 +239,7 @@ def trim_templates(startempfile: str,
     waverange
         Optional. The wavelength range to use for the templates, expressed in Angstroms. 
         Defaults to [1., 100000.].
-    normband
+    normrange
         Optional. The wavelength range in angstroms over which to normalize the templates. 
         If None, the templates will remain normalized as in the original file. Defaults to None.
         If provided, the templates will be normalized over this wavelength range, 
@@ -272,23 +273,31 @@ def trim_templates(startempfile: str,
     # generating a mask for the wavelength range
     wmask = (templates_orig['lambda'] >= waverange[0]) & (templates_orig['lambda'] <= waverange[1])
 
-    if normband is not None:
+    if normrange is not None:
         templates = templates_orig['flux'] * templates_orig['norm']
-        norm_mask = (templates_orig['lambda'] >= normband[0]) & (templates_orig['lambda'] <= normband[1])
+        norm_mask = (templates_orig['lambda'] >= normrange[0]) & (templates_orig['lambda'] <= normrange[1])
+        # re-generating the M/L ratios if starmass is present in the original templates, using the new normalization
+        if 'starmass' in templates_orig:
+            wave = templates_orig['lambda']
+            luminosity_norm = np.trapezoid(templates[norm_mask, :], wave[norm_mask], axis=0)
+            templates_orig['mass_to_light'] = templates_orig['starmass'] / luminosity_norm
+        # re-normalizing the templates over the specified normalization range
         if norm_uniform:
             norm_factor = np.median(templates[norm_mask, :][:, tempmask])
             templates[:, tempmask] /= norm_factor
             templates_orig['norm'][tempmask] = norm_factor
             normall = np.ones_like(templates_orig['norm']) * norm_factor
         else:
+            normall = np.zeros_like(templates_orig['norm'])
             for i in range(templates.shape[1]):
                 if tempmask[i]:
                     norm_factor = np.median(templates[norm_mask, i])
                     templates[:, i] /= norm_factor
-                    templates_orig['norm'][i] = norm_factor
+                    normall[i] = norm_factor
         templates_orig['flux'] = templates
     else:
         normall = templates_orig['norm']
+        normrange = templates_orig['norm_range']
     
     #initializing the dictionary for the trimmed templates
     templates_trimmed = dict()
@@ -302,9 +311,10 @@ def trim_templates(startempfile: str,
     templates_trimmed['norm'] = normall[tempmask]
     if 'starmass' in templates_orig: 
         templates_trimmed['starmass'] = templates_orig['starmass'][tempmask]
+    if 'mass_to_light' in templates_orig:
         templates_trimmed['mass_to_light'] = templates_orig['mass_to_light'][tempmask]
     templates_trimmed['unit'] = templates_orig['unit']
-    templates_trimmed['norm_range'] = templates_orig['norm_range']
+    templates_trimmed['norm_range'] = normrange
     
     if outfile is not None:
         np.save(outfile, templates_trimmed)
